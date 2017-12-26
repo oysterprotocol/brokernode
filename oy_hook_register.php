@@ -9,7 +9,9 @@ if (!isset($_POST['oy_hook_address'])) oy_error(1);
 
 //if (oy_db("SELECT `oy_hook_id` FROM `oy_hook` WHERE `oy_hook_status` = 1")->num_rows>=$oy_hook_limit) oy_error(2);
 
-var_dump(file_get_contents("http://".$_POST['oy_hook_address']));
+$oy_command = "getNodeInfo";
+
+var_dump(file_get_contents("http://".$_POST['oy_hook_address']."/?oy_command=".$oy_command));
 
 //validate the node
 
