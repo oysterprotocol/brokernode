@@ -1,12 +1,15 @@
 <?php
 
 require_once("Converter.php");
-require_once("Kerl.php");
+require_once("KerlWrapper.php");
 require_once("Bundle.php");
 require_once("Helper.php");
-//var oldSigning = require("./oldSigning");
-//var errors = require("../../errors/inputErrors");
+//require_once('Kerl.php');
 
+//       TODOS:
+
+//when we have a real php Keccak384 algo, get rid of the require_once
+//for the KerlWrapper.php and uncomment out the line asking for Kerl.php
 
 class Signing
 {

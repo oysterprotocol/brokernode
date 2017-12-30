@@ -1,8 +1,8 @@
 <?php
 
-//UTILS METHODS
 require_once('InputValidator.php');
 
+//UTILS METHODS
 class Utils
 {
     const HASH_LENGTH = 243;
@@ -52,14 +52,13 @@ class Utils
      * @method addChecksum
      * @param {string | list} inputValue
      * @param {int} checksumLength
-     * @   @param {bool} isAddress default is true
+     * @param {bool} isAddress default is true
      * @returns {string | list} address (with checksum)
      **/
-    public static function addChecksum($inputValue, $checksumLength, $isAddress)
+    public static function addChecksum($inputValue, $checksumLength = 9, $isAddress = true)
     {
 
         // checksum length is either user defined, or 9 trytes
-        $checksumLength = $checksumLength || 9;
         $isAddress = ($isAddress !== false);
 
         // the length of the trytes to be validated

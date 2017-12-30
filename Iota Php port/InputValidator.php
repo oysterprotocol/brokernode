@@ -254,7 +254,7 @@ class InputValidator
     }
 
 }
-
+/*
 //tests of isAddress
 $testTrytes1 = 'AAJAAAJAJAAAJAAAJAJAAAJAAAJAJAAJAAAJAJJAAAJAJAAAJAAAJAJAAAJAAAJAJAAAJAAAJAJAAAJAA'; //81
 $testTrytes2 = 'AAJARRRRRRRRRAAJAJAAAJAAAJAJAAAJAAAJAJAAJAAAJAJJAAAJAJAAAJAAAJAJAAAJAAAJAJAAAJAAAJAJAAAJAA'; //90
@@ -294,6 +294,6 @@ if ($result5 == 1)
 else
     echo "Test Success!"; //we expected false
 //end tests
-
+*/
 
 
