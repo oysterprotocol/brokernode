@@ -34,6 +34,7 @@ class Signing
         $kerl->reset();
         $kerl->absorb($subseed, 0, count($subseed));
 
+        
         $key = [];
         $offset = 0;
         $buffer = [];
