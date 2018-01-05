@@ -2,13 +2,7 @@
 
 require_once('Converter.php');
 require_once('Helper.php');
-require_once('KerlWrapper.php');
-//require_once('Kerl.php');
-
-//       TODOS:
-
-//when we have a real php Keccak384 algo, get rid of the require_once
-//for the KerlWrapper.php and uncomment out the line asking for Kerl.php
+require_once('kerl-php\kerl.php');
 
 
 class Bundle
@@ -22,10 +16,9 @@ class Bundle
     {
         // Access instance variables with $this
         $this->bundle = [];
-        $this->words = new Words();
     }
 
-    public function addEntry($signatureMessageLength, $address, $value, $tag, $timestamp, $index)
+    public function addEntry($signatureMessageLength, $address, $value, $tag, $timestamp, $index = null)
     {
 
         for ($i = 0; $i < $signatureMessageLength; $i++) {
@@ -81,32 +74,30 @@ class Bundle
         while (!$validBundle) {
 
             $kerl = new Kerl();
-            $kerl->initialize();
 
             for ($i = 0; $i < count($this->bundle); $i++) {
 
                 $valueTrits = Converter::trytes_to_trits($this->bundle[$i]->value);
-                while (count($valueTrits) < 81) {
+                while (is_null($valueTrits) || count($valueTrits) < 81) {
                     $valueTrits[] = 0;
                 }
 
                 $timestampTrits = Converter::trytes_to_trits($this->bundle[$i]->timestamp);
-                while (count($timestampTrits) < 27) {
+                while (is_null($timestampTrits) || count($timestampTrits) < 27) {
                     $timestampTrits[] = 0;
                 }
 
                 $currentIndexTrits = Converter::trytes_to_trits($this->bundle[$i]->currentIndex = $i);
-                while (count($currentIndexTrits) < 27) {
+                while (is_null($currentIndexTrits) || count($currentIndexTrits) < 27) {
                     $currentIndexTrits[] = 0;
                 }
 
                 $lastIndexTrits = Converter::trytes_to_trits($this->bundle[$i]->lastIndex = count($this->bundle) - 1);
-                while (count($lastIndexTrits) < 27) {
+                while (is_null($lastIndexTrits) || count($lastIndexTrits) < 27) {
                     $lastIndexTrits[] = 0;
                 }
 
-                $bundleEssence = Converter::trytes_to_trits(
-                    $this->bundle[$i]->address .
+                $bundleEssence = Converter::trytes_to_trits($this->bundle[$i]->address .
                     Converter::trits_to_trytes($valueTrits) .
                     $this->bundle[$i]->obsoleteTag .
                     Converter::trits_to_trytes($timestampTrits) .
@@ -118,7 +109,9 @@ class Bundle
 
             $hash = [];
             $kerl->squeeze($hash, 0, self::HASH_LENGTH);
-            $hash = Converter::trits_to_trytes($hash);
+
+            $hash = trits_to_trytes($hash);
+            //DO NOT USE CONVERTER::trits_to_trytes here
 
             for ($i = 0; $i < count($this->bundle); $i++) {
 
@@ -126,8 +119,8 @@ class Bundle
             }
 
             $normalizedHash = $this->normalizedBundle($hash);
+
             if (in_array(13, $normalizedHash)) {
-                // Insecure bundle. Increment Tag and recompute bundle hash.
 
                 $tritArray = Converter::trytes_to_trits($this->bundle[0]->obsoleteTag);
                 $increasedTag = Helper::tritAdd($tritArray, [1]);

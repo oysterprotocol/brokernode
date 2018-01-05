@@ -4,15 +4,12 @@ TODOS:
 This file works, but does not seem to destroy kerls that it is done with.
  */
 
-
 var CryptoJS = require('crypto-js');
-
 var express = require('express');
 
 var app = express();
-var fs = require("fs");
 
-var bodyParser = require('body-parser')
+var bodyParser = require('body-parser');
 app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
     extended: true
@@ -21,30 +18,27 @@ app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
 app.use(express.json());       // to support JSON-encoded bodies
 app.use(express.urlencoded()); // to support URL-encoded bodies
 
-
 var kerlDictionary = {};
 var count = 0;
-
 
 //just for testing
 
 var trits1;
-var hashTrits = [];
 
 
 app.get('/initializeKerl', function(req, res) {
 
     var kerl = new Kerl();
-    console.log("before kerl initialize");
+    //console.log("before kerl initialize");
     kerl.initialize();
 
     var newkey = count.toString();
     count++;
 
-    console.log(newkey);
+    //console.log(newkey);
     kerlDictionary[newkey] = kerl;
 
-    console.log(kerl);
+    //console.log(kerl);
 
     res.send(newkey);
     res.end();
@@ -52,11 +46,11 @@ app.get('/initializeKerl', function(req, res) {
 
 
 app.post('/absorb', function (req, res) {
-    console.log("inabsorb");
+    //console.log("inabsorb");
     var key = parseInt(req.body.key);
 
     var kerl = kerlDictionary[key];
-    //console.log(kerl);
+    ////console.log(kerl);
 
     trits1 = req.body.trits;
     var keys = Object.getOwnPropertyNames(trits1);
@@ -74,7 +68,7 @@ app.post('/absorb', function (req, res) {
 
     kerl.absorb(newTrits, 0, newTrits.length);
 
-    console.log("At end of absorb");
+    //console.log("At end of absorb");
 
     res.send(newTrits);
     res.end();
@@ -94,7 +88,7 @@ app.post('/squeeze', function (req, res) {
 
     kerl.squeeze(trits, 0, length);
 
-    console.log("\nTrits Out:\n");
+    //console.log("\nTrits Out:\n");
 
     res.send(trits);
     res.end();
@@ -112,10 +106,10 @@ var server = app.listen(8081, function () {
     var host = server.address().address;
     var port = server.address().port;
 
-    console.log("Example app listening at http://%s:%s", host, port)
+    //console.log("Example app listening at http://%s:%s", host, port)
 });
 
-console.log('Listening on port 8081');
+//console.log('Listening on port 8081');
 
 var BIT_HASH_LENGTH = 384;
 var CHashLen = 243;
@@ -171,7 +165,7 @@ Kerl.BIT_HASH_LENGTH = BIT_HASH_LENGTH;
 Kerl.HASH_LENGTH = CHashLen;
 
 Kerl.prototype.initialize = function(state) {
-    console.log('init');
+    //console.log('init');
 };
 
 Kerl.prototype.reset = function() {
@@ -183,8 +177,8 @@ Kerl.prototype.reset = function() {
 Kerl.prototype.absorb = function(trits, offset, length) {
 
 
-    console.log("TRITS");
-    //console.log(trits);
+    //console.log("TRITS");
+    ////console.log(trits);
     if (length && ((length % CHashLen) !== 0)) {
 
         throw new Error('Illegal length provided');
@@ -199,20 +193,20 @@ Kerl.prototype.absorb = function(trits, offset, length) {
 
         // convert trit state to words
         var wordsToAbsorb = trits_to_words(trit_state);
-        console.log(wordsToAbsorb[0]);
+        //console.log(wordsToAbsorb[0]);
 
         // absorb the trit stat as wordarray
 
         var param = CryptoJS.lib.WordArray.create(wordsToAbsorb);
 
 
-        console.log('value passed to k.update');
-        //console.log(param);
-        //console.log(param._data.words);
+        //console.log('value passed to k.update');
+        ////console.log(param);
+        ////console.log(param._data.words);
 
         this.k.update(param);
 
-        console.log(this.k);
+        //console.log(this.k);
     } while ((length -= CHashLen) > 0);
 
 }
@@ -248,9 +242,9 @@ Kerl.prototype.squeeze = function(trits, offset, length) {
             final.words[i] = final.words[i] ^ 0xFFFFFFFF;
         }
 
-        console.log('final.words before k.update in squeeze call');
+        //console.log('final.words before k.update in squeeze call');
 
-        //console.log(final.words);
+        ////console.log(final.words);
 
         this.k.update(final);
 
@@ -500,10 +494,10 @@ var full_add = function(lh, rh, carry) {
 
 /// subtracts rh from base
 var bigint_sub = function(base, rh) {
-    //console.log("inside bigint");
+    ////console.log("inside bigint");
     var noborrow = true;
-    //console.log(base);
-    //console.log(rh);
+    ////console.log(base);
+    ////console.log(rh);
     for (var i = 0; i < base.length; i++) {
         var vc = full_add(base[i], (~rh[i] >>> 0), noborrow);
         base[i] = vc[0];
@@ -584,7 +578,7 @@ var words_to_trits = function(words) {
             bigint_add_small(base, 1);
             var tmp = ta_slice(HALF_3);
             //.log(tmp);
-            //console.log(base);
+            ////console.log(base);
             bigint_sub(tmp, base);
             base = tmp;
         }
@@ -600,8 +594,8 @@ var words_to_trits = function(words) {
 
 
             if(remc < 10){
-                //console.log("rem");
-                //console.log(rem*0xFFFFFFFF);
+                ////console.log("rem");
+                ////console.log(rem*0xFFFFFFFF);
             }
 
             var lhs = (rem != 0 ? rem * 0xFFFFFFFF + rem : 0) + base[j];

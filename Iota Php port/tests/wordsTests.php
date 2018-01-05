@@ -2,7 +2,7 @@
 
 <?php
 
-include "wordsFunctionsPHP.php";
+require_once("../wordsFunctionsPHP.php");
 
 
 $wordsToTritsTestArray = [0x00000080,0x000000020,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000];

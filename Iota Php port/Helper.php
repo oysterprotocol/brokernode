@@ -3,10 +3,10 @@
 class Helper
 {
 
-
     public function __construct()
     {
     }
+
 
     protected static function sum($a, $b)
     {

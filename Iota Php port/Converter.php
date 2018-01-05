@@ -2,7 +2,6 @@
 
 class Converter
 {
-
     const RADIX = 3;
     const RADIX_BYTES = 256;
     const MAX_TRIT_VALUE = 1;

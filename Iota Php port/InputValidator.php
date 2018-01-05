@@ -1,5 +1,5 @@
 <?php
-//InputValidator METHODS
+//InputValidator Methods
 
 class InputValidator
 {
@@ -7,6 +7,7 @@ class InputValidator
     public function _constructor()
     {
     }
+
 
     /*Not all iota library input validator methods are in this file.
     Just the ones needed for prepareTransfers.
@@ -163,7 +164,8 @@ class InputValidator
             return false;
         }
 
-        for ($i = 0; $i < $transfersArray->length; $i++) {
+        //for ($i = 0; $i < $transfersArray->length; $i++) {
+        for ($i = 0; $i < count($transfersArray); $i++) {
 
             $transfer = $transfersArray[$i];
 
@@ -186,7 +188,7 @@ class InputValidator
             }
 
             // Check if tag is correct trytes of {0,27} trytes
-            $tag = $transfer->tag || $transfer->obsoleteTag;
+            $tag = $transfer->tag ? $transfer->tag : $transfer->obsoleteTag;
             if (!self::isTrytes($tag, "0,27")) {
                 return false;
             }

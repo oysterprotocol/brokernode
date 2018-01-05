@@ -1,5 +1,6 @@
 <?php
-require_once("Uint32Array.php");
+require_once("TypedArrayLibrary/Uint32Array.php");
+
 
 //length of the uint32 array (or 'word' array) which makes up a big integer (each is 4bytes)
 $INT_LENGTH = 12.0;

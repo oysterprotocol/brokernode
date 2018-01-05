@@ -1,7 +1,5 @@
 <?php declare(strict_types=1);
 
-namespace ajf\TypedArrays;
-
 // https://www.khronos.org/registry/typedarray/specs/latest/#6
 /**
  * @property-read ArrayBuffer buffer
@@ -10,11 +8,15 @@ namespace ajf\TypedArrays;
  */
 abstract class ArrayBufferView
 {
-    private /* ArrayBuffer */ $buffer;
-    private /* int */ $byteOffset;
-    private /* int */ $byteLength;
+    private /* ArrayBuffer */
+        $buffer;
+    private /* int */
+        $byteOffset;
+    private /* int */
+        $byteLength;
 
-    public function __get(string $propertyName) {
+    public function __get(string $propertyName)
+    {
         if ($propertyName === "buffer") {
             return $this->buffer;
         } else if ($propertyName === "byteOffset") {
