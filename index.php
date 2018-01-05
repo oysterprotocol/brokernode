@@ -17,7 +17,14 @@ require './vendor/autoload.php';
 $app = new \Slim\App;
 
 $app->post('/api/v1/upload-session', function (Request $request, Response $response, array $args) {
-    $data = [ "foo" => "bar" ];
+    $json = json_decode($request->getBody(), true);
+
+    // TODO: Persist upload session data
+
+    $data = [
+        "id" => 123,
+        "fileSize" => $json["fileSize"]
+    ];
 
     return $response->withJson($data);
 });
