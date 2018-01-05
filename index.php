@@ -1,5 +1,10 @@
 <?php
 header("Access-Control-Allow-Origin: *");
+
+// Deps
+require 'vendor/autoload.php';
+
+
 //config definition
 $oy_iri = array(
     "IP_GOES_HERE",
@@ -7,6 +12,7 @@ $oy_iri = array(
     "IP_GOES_HERE"
 );
 $oy_fetch_timeout = 5;
+
 //config definition
 function oy_error($oy_error) {
     echo "{\"exception\":\"Invalid request: ".$oy_error."\",\"duration\":0}";
