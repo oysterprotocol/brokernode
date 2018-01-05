@@ -1,11 +1,10 @@
 <?php
 
+
 require_once("Converter.php");
-require_once("Kerl.php");
+require_once('kerl-php\kerl.php');
 require_once("Bundle.php");
 require_once("Helper.php");
-//var oldSigning = require("./oldSigning");
-//var errors = require("../../errors/inputErrors");
 
 
 class Signing

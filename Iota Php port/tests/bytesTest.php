@@ -1,11 +1,8 @@
 <?php
 
-include('Converter.php');
-include('wordsFunctionsPHP.php');
-require_once('Uint32Array.php');
-
-
-
+include('../Converter.php');
+include('../wordsFunctionsPHP.php');
+require_once('../TypedArrayLibrary/Uint32Array.php');
 
 $testTrits = [];
 // echo "\n";
