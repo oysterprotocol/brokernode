@@ -50,13 +50,13 @@ class Node
 
     public function dataIsUnattached($address)
     {
-        $result = null;
+        $result = NULL;
         $i = 0;
 
-        while ($result == NULL && $i <= $GLOBALS['maxIRICallAttempts']) { //how many times should we attempt the check?
+        do { //how many times should we attempt the check?
             $result = $this->attachmentChecker->attachmentCheck($address);
             $i++;
-        }
+        } while ($result == NULL && $i <= $GLOBALS['maxIRICallAttempts']);
 
         if (is_null($result) || property_exists($result, 'error') || is_null($result->hashes)) {
             return 'error;';
@@ -71,18 +71,18 @@ class Node
     public function processNewData($dataObject)
     {
 
-        $this->attacher->attachTx($dataObject);
+        // $this->attacher->attachTx($dataObject);
         //remove this, do proper checks
 
 
-//        if ($this->dataIsUnattached($dataObject->address) == 'unattached') {
-//            $this->attacher->attachTx($dataObject);
-//            // attach the data or hand off to hook node to attach
-//        } else if ($this->dataIsUnattached($dataObject->address) == 'attached') {
-//            // get next chunk of data
-//        } else {
-//            // something went wrong during our check, do something about it
-//        }
+        if ($this->dataIsUnattached($dataObject->address) == 'unattached') {
+            $this->attacher->attachTx($dataObject);
+            // attach the data or hand off to hook node to attach
+        } else if ($this->dataIsUnattached($dataObject->address) == 'attached') {
+            // get next chunk of data
+        } else {
+            // something went wrong during our check, do something about it
+        }
     }
 }
 
