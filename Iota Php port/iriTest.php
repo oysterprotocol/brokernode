@@ -8,7 +8,7 @@ require_once("HookNode.php");
 require_once("BrokerNode.php");
 
 
-$nodeUrl = 'http://104.5.45.19:14265';
+$nodeUrl = // need to input this;
 $useFakeAddress = true;
 
 //Real
@@ -21,7 +21,7 @@ $fakeAddress = 'XSV99HBPZUXYAUABFOQYKJHNMHOSBCBAXFPNEQKWYLKQJMRFGGWRVIVSDGVVPSPG
 $fakeData = 'SOMEFAKEDATATHATWEWANTTOPASSINFOROURTESTSBOYISUREHOPETHISWORKS';
 
 
-$node = new BrokerNode('http://104.5.45.19:14265');
+$node = new BrokerNode($nodeUrl);
 
 $transactionObject = new stdClass();
 
