@@ -1,11 +1,11 @@
 <?php
 require_once("IriWrapper.php");
-require_once("../fromGit/brokernode/Iota Php port/PrepareTransfers.php");
+require_once("PrepareTransfers.php");
 
 $nl = "<br/>";
-$nodeUrl = //PM REBEL FOR THIS
+$nodeUrl = 'http://104.5.45.19:14265';
 $apiVersion = '1.4';
-$useFakeAddress = false;
+$useFakeAddress = true;
 
 //Real
 $realAddress = 'XSV99HBPZUXYAUABFOQYKJHNMHOSBCBAXFPNEQKWYLKQJMRFGGWRVIVSDGVVPSPGIQZMLBBSECC9PCZWN';
@@ -18,17 +18,7 @@ $fakeTxHash = 'BYMFJLUEASMHBIXAYUXFOJMVPCPSYJPYNTJ9JCKLCCZLCYDKUROTOLMIRP9ZOLXGR
 
 $fakeData = 'SOMEFAKEDATATHATWEWANTTOPASSINFOROURTESTSBOYISUREHOPETHISWORKS';
 $prepareTransfersResult;
-$oysterSeed = 'OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL';
 
-function checkAddress($address, $nodeUrl, $apiVersion) {
-    $req = new IriWrapper($nodeUrl, $apiVersion);
-
-    $command = new stdClass();
-    $command->command = "findTransactions";
-    $command->addresses = array($address);
-
-    return $req->makeRequest($command);
-}
 
 echo ($nl . "findTransactions results" . $nl);
 echo ($nl . "Using a ");
@@ -36,10 +26,17 @@ echo ($useFakeAddress ? "fake" : "real");
 echo (" address:" . $nl);
 
 $address = $useFakeAddress ? $fakeAddress : $realAddress;
-$result = checkAddress($address, $nodeUrl, $apiVersion);
-$txHasBeenConfirmed = count($result->hashes) != 0;
+$result = NULL;
 
-echo ($txHasBeenConfirmed ? "TX confirmed!  Do something else." : "Tx not confirmed!  Do POW!");
+while ($result == NULL) {
+    $result = checkAddress($address, $nodeUrl, $apiVersion);
+}
+
+var_dump($result);
+
+$txHasBeenConfirmed = !(is_null($result->hashes) || count($result->hashes) == 0);
+
+echo $nl . ($txHasBeenConfirmed ? "TX confirmed!  Do something else." : "Tx not confirmed!  Do POW!") . $nl;
 
 if (!$txHasBeenConfirmed) {
 
@@ -48,10 +45,7 @@ if (!$txHasBeenConfirmed) {
     $transactionObject->address = $address;
     $transactionObject->value = 0;
     $transactionObject->message = $fakeData;
-
-
-
-    //HAVE NOT DONE ANYTHING WITH THIS YET 
+    $transactionObject->tag = 'OYSTERNODE';
 
     PrepareTransfers::prepareTransfers($oysterSeed,
         [$transactionObject],
@@ -67,4 +61,52 @@ if (!$txHasBeenConfirmed) {
         });
 }
 
+
+
+
+
+
+
+nodeSetup($nodeUrl, $apiVersion);
+
+echo($nl . "findTransactions results" . $nl);
+echo($nl . "Using a ");
+echo($useFakeAddress ? "fake" : "real");
+echo(" address:" . $nl);
+
+$address = $useFakeAddress ? $fakeAddress : $realAddress;
+$result = NULL;
+
+while ($result == NULL) {
+    $result = checkAddress($address, $nodeUrl, $apiVersion);
+}
+
+var_dump($result);
+
+$txHasBeenConfirmed = !(is_null($result->hashes) || count($result->hashes) == 0);
+
+echo $nl . ($txHasBeenConfirmed ? "TX confirmed!  Do something else." : "Tx not confirmed!  Do POW!") . $nl;
+
+if (!$txHasBeenConfirmed) {
+
+    $transactionObject = new stdClass();
+
+    $transactionObject->address = $address;
+    $transactionObject->value = 0;
+    $transactionObject->message = $fakeData;
+    $transactionObject->tag = 'OYSTERNODE';
+
+    PrepareTransfers::prepareTransfers($oysterSeed,
+        [$transactionObject],
+        null, //where options with inputs array would go, consider removing this and removing param from method
+        function ($e, $s) {
+            if ($s != null) {
+                $prepareTransfersResult = $s;
+                //do something with $s, which should be an array of transaction trytes
+            } else {
+                echo $e;
+                //do something with this error
+            }
+        });
+}
 

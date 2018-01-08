@@ -117,10 +117,9 @@ class Converter
         return $trytes;
     }
 
-    public static function trytes_to_trits($trytes_param, $state = [])
+    public static function trytes_to_trits($trytes_param, $state = array())
     {
-
-        $trits = $state || [];
+        $trits = $state;
 
         if (is_int($trytes_param)) {
 
