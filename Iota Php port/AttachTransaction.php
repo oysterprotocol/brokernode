@@ -12,7 +12,7 @@ class AttachTransaction
     {
     }
 
-    public function attachTx($dataObject)
+    public function getTransactionData($dataObject)
     {
         $trytesToBroadcast = NULL;
 
@@ -37,19 +37,28 @@ class AttachTransaction
             }
         }
 
+        return $transactionObject;
+    }
+
+    public function attachTx($transactionObject)
+    {
+        $trytesToBroadcast = NULL;
+
         if (property_exists($transactionObject, 'trunkTransaction')) {
             try {
                 $trytesToBroadcast = self::attachToTangle($transactionObject);
             } catch (Exception $e) {
                 echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+                return;
             }
         }
 
-        if (!is_null($trytesToBroadcast)) {
+        if ($trytesToBroadcast != NULL) {
             try {
                 self::broadcastTransactions($trytesToBroadcast);
             } catch (Exception $e) {
                 echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+                return;
             }
         }
     }
@@ -66,10 +75,10 @@ class AttachTransaction
 
         if (!is_null($result)) {
             //switching trunk and branch
+            //do we do this randomly or every time?
             $transactionObject->trunkTransaction = $result->branchTransaction;
             $transactionObject->branchTransaction = $result->trunkTransaction;
-        }
-        else {
+        } else {
             throw new Exception('getTransactionToApprove failed!');
         }
     }
@@ -94,21 +103,14 @@ class AttachTransaction
         }
     }
 
-    private function broadcastTransactions($trytesToBroadcast) {
+    private function broadcastTransactions($trytesToBroadcast)
+    {
         $req = new IriWrapper();
 
         $command = new stdClass();
         $command->command = "broadcastTransactions";
         $command->trytes = $trytesToBroadcast;
 
-        $resultOfBroadcast = $req->makeRequest($command);
-
-        var_dump($resultOfBroadcast);
-
-//        if (property_exists($resultOfAttach, 'trytes')) {
-//            $this->broadcastTransactions($resultOfAttach);
-//        } else {
-//            throw new Exception('attachToTangle failed!');
-//        }
+        $req->makeRequest($command);
     }
 }

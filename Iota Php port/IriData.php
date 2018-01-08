@@ -4,8 +4,8 @@ $nl = "\n";
 $nodeUrl;
 $apiVersion = '1.4';
 
-$depthToSearchForTxs = 18;
-$minDepth = 18;
+$depthToSearchForTxs = 9;
+$minDepth = 9;
 $minWeightMagnitude = 14;
 $minMinWeightMagnitude = 14;
 

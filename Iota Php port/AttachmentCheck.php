@@ -9,7 +9,7 @@ class AttachmentCheck
     {
     }
 
-    public function attachmentCheck($address)
+    public function dataNeedsAttaching($address)
     {
         $req = new IriWrapper();
 
@@ -19,7 +19,11 @@ class AttachmentCheck
 
         $result = $req->makeRequest($command);
 
-        return $result;
+        if (!is_null($result) && property_exists($result, 'hashes')) {
+            return count($result->hashes) == 0;
+        } else {
+            throw new Exception('findTransactions failed!');
+        }
     }
 }
 
