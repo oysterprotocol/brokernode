@@ -68,7 +68,7 @@ class PrepareTransfers
             $signatureMessageLength = 1;
 
             // If message longer than 2187 trytes, increase signatureMessageLength (add 2nd transaction)
-            if (count($transfers[$i]->message) > 2187) {
+            if (strlen($transfers[$i]->message) > 2187) {
 
                 // Get total length, message / maxLength (2187 trytes)
                 $signatureMessageLength += intval(floor(count($transfers[$i]->message) / 2187));
@@ -135,28 +135,53 @@ class PrepareTransfers
 
         return call_user_func($callback, null, array_reverse($bundleTrytes));
     }
+
+    public static function buildTxTrytes($txObject) {
+
+        $transactionObject = new stdClass();
+
+        $transactionObject->address = $txObject->address;
+        $transactionObject->value = $GLOBALS['txValue'];
+        $transactionObject->message = $txObject->message;
+        $transactionObject->tag = $GLOBALS['nodeId'];
+
+        $result = self::prepareTransfers($GLOBALS['oysterSeed'],
+            [$transactionObject],
+            null, //where options with inputs array would go, consider removing this and removing param from method
+            function ($e, $s) {
+                if ($s != null) {
+                    return $s;
+                    //do something with $s, which should be an array of transaction trytes
+                } else {
+                    throw new Exception($e);
+                    //do something with this error
+                }
+            });
+
+        return $result;
+    }
 }
 
-$seed = 'A9YZ9YMXBQRBKKQYLZSDPIBPWLOURJPQHQDSOE9QBAC9XYABCIMNWPWMX9NVCDSWOTMIWSMDJRFWPDSKC';
-$addressWithoutChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ';
-$addressWithChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQZNXDGNRJE';
-
-$transactionObject = new stdClass();
-
-$transactionObject->address = $addressWithoutChecksum;
-$transactionObject->value = 0;
-$transactionObject->message = 'WBTCGDGDPCVCTC';
-$transactionObject->tag = 'CCPCVC';
-
-PrepareTransfers::prepareTransfers($seed,
-    [$transactionObject],
-    null, //where options with inputs array would go, consider removing this and removing param from method
-    function ($e, $s) {
-        if ($s != null) {
-            echo implode(", ", $s);
-            //do something with $s, which should be an array of transaction trytes
-        } else {
-            echo "did not work";
-            //do something with this error
-        }
-    });
+//$seed = 'A9YZ9YMXBQRBKKQYLZSDPIBPWLOURJPQHQDSOE9QBAC9XYABCIMNWPWMX9NVCDSWOTMIWSMDJRFWPDSKC';
+//$addressWithoutChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ';
+//$addressWithChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQZNXDGNRJE';
+//
+//$transactionObject = new stdClass();
+//
+//$transactionObject->address = $addressWithoutChecksum;
+//$transactionObject->value = 0;
+//$transactionObject->message = 'WBTCGDGDPCVCTC';
+//$transactionObject->tag = 'CCPCVC';
+//
+//PrepareTransfers::prepareTransfers($seed,
+//    [$transactionObject],
+//    null, //where options with inputs array would go, consider removing this and removing param from method
+//    function ($e, $s) {
+//        if ($s != null) {
+//            echo implode(", ", $s);
+//            //do something with $s, which should be an array of transaction trytes
+//        } else {
+//            echo "did not work";
+//            //do something with this error
+//        }
+//    });

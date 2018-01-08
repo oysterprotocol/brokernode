@@ -177,22 +177,26 @@ class Utils
         /*
          * Leaving this in for future debugging purposes, makes it easier to find where problems are
          *
-        echo "<br/>signatureMessageFragment is <br/>" . $transaction->signatureMessageFragment . "<br/>";
-        echo "<br/>address is <br/>" . $transaction->address . "<br/>";
-        echo "<br/>trits_to_trytes(valueTrits) is <br/>" . (Converter::trits_to_trytes($valueTrits)) . "<br/>";
-        echo "<br/>transaction->obsoleteTag is <br/>" . $transaction->obsoleteTag . "<br/>";
-        echo "<br/>trits_to_trytes(timestampTrits) is <br/>" . Converter::trits_to_trytes($timestampTrits) . "<br/>";
-        echo "<br/>trits_to_trytes(currentIndexTrits) is <br/>" . Converter::trits_to_trytes($currentIndexTrits) . "<br/>";
-        echo "<br/>trits_to_trytes(lastIndexTrits) is <br/>" . Converter::trits_to_trytes($lastIndexTrits) . "<br/>";
-        echo "<br/>transaction->bundle is <br/>" . $transaction->bundle . "<br/>";
-        echo "<br/>transaction->trunkTransaction is <br/>" . $transaction->trunkTransaction . "<br/>";
-        echo "<br/>transaction->branchTransaction is <br/>" . $transaction->branchTransaction . "<br/>";
-        echo "<br/>transaction->tag is <br/>" . $transaction->tag . "<br/>";
-        echo "<br/>trits_to_trytes(attachmentTimestampTrits) is <br/>" . Converter::trits_to_trytes($attachmentTimestampTrits) . "<br/>";
-        echo "<br/>trits_to_trytes(attachmentTimestampLowerBoundTrits) is <br/>" . Converter::trits_to_trytes($attachmentTimestampLowerBoundTrits) . "<br/>";
-        echo "<br/>trits_to_trytes(attachmentTimestampUpperBoundTrits) is <br/>" . Converter::trits_to_trytes($attachmentTimestampUpperBoundTrits) . "<br/>";
-        echo "<br/>transaction->nonce is <br/>" . $transaction->nonce . "<br/>";
-        */
+         */
+
+//        $nl =  "<br/>";
+//
+//        echo $nl . "signatureMessageFragment is " . $nl . $transaction->signatureMessageFragment .  $nl;
+//        echo $nl . "address is " . $nl . $transaction->address .  $nl;
+//        echo $nl . "trits_to_trytes(valueTrits) is " . $nl . (Converter::trits_to_trytes($valueTrits)) .  $nl;
+//        echo $nl . "transaction->obsoleteTag is " . $nl . $transaction->obsoleteTag .  $nl;
+//        echo $nl . "trits_to_trytes(timestampTrits) is " . $nl . Converter::trits_to_trytes($timestampTrits) .  $nl;
+//        echo $nl . "trits_to_trytes(currentIndexTrits) is " . $nl . Converter::trits_to_trytes($currentIndexTrits) .  $nl;
+//        echo $nl . "trits_to_trytes(lastIndexTrits) is " . $nl . Converter::trits_to_trytes($lastIndexTrits) .  $nl;
+//        echo $nl . "transaction->bundle is " . $nl . $transaction->bundle .  $nl;
+//        echo $nl . "transaction->trunkTransaction is " . $nl . $transaction->trunkTransaction .  $nl;
+//        echo $nl . "transaction->branchTransaction is " . $nl . $transaction->branchTransaction .  $nl;
+//        echo $nl . "transaction->tag is " . $nl . $transaction->tag .  $nl;
+//        echo $nl . "trits_to_trytes(attachmentTimestampTrits) is " . $nl . Converter::trits_to_trytes($attachmentTimestampTrits) .  $nl;
+//        echo $nl . "trits_to_trytes(attachmentTimestampLowerBoundTrits) is " . $nl . Converter::trits_to_trytes($attachmentTimestampLowerBoundTrits) .  $nl;
+//        echo $nl . "trits_to_trytes(attachmentTimestampUpperBoundTrits) is " . $nl . Converter::trits_to_trytes($attachmentTimestampUpperBoundTrits) .  $nl;
+//        echo $nl . "transaction->nonce is " . $nl . $transaction->nonce .  $nl;
+
 
         return $transaction->signatureMessageFragment
             . $transaction->address
