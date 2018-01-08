@@ -1,5 +1,36 @@
 <?php
 header("Access-Control-Allow-Origin: *");
+
+/**
+ * Deps
+ */
+
+use \Psr\Http\Message\ServerRequestInterface as Request;
+use \Psr\Http\Message\ResponseInterface as Response;
+
+require './vendor/autoload.php';
+
+/**
+ * HTTP Handlers
+ */
+
+$app = new \Slim\App;
+
+$app->post('/api/v1/upload-session', function (Request $request, Response $response, array $args) {
+    $json = json_decode($request->getBody(), true);
+
+    // TODO: Persist upload session data
+
+    $data = [
+        "id" => 123,
+        "fileSize" => $json["fileSize"]
+    ];
+
+    return $response->withJson($data);
+});
+
+$app->run();
+
 //config definition
 $oy_iri = array(
     "IP_GOES_HERE",
@@ -7,6 +38,7 @@ $oy_iri = array(
     "IP_GOES_HERE"
 );
 $oy_fetch_timeout = 5;
+
 //config definition
 function oy_error($oy_error) {
     echo "{\"exception\":\"Invalid request: ".$oy_error."\",\"duration\":0}";
