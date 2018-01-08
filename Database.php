@@ -1,13 +1,35 @@
 <?php 
 
+/**
+ * Broker Database
+ *
+ * This class gives access to the broker database.  There are three tables:
+ *  upload session, data mappings, and hook node directory.
+ *  The class methods pertain to starting and stopping sessions, 
+ *  building and deleting data maps, and looking up hook nodes.
+ *
+ * @author     Oyster 
+ */
 class BrokerDatabase {
+        
+    /**
+     * Constructor
+     */
+    function __construct($server_name,$user_name,$pass,$db_name) {
+        
+        $this->server_name = $server_name;
+        $this->user_name = $user_name;
+        $this->pass = $pass;
+        $this->db_name = $db_name;
+        
+    }
     
     
+    /**
+     * Open/CLose
+     */
     public function openDatabaseConnection(){
-        $server_name = 'localhost';
-        $user_name = 'root';
-        $pass = 'nodeAdmin';
-        $db_name = "BrokerNodeDatabase";
+        
         $connection = mysqli_connect($server_name, $user_name, $pass, $db_name);
         if ($connection->connect_error) {
             die("Connection failed: " . $conn->connect_error);
@@ -19,36 +41,46 @@ class BrokerDatabase {
         $connection->close();
     }
     
-    public function processSql($connection, $sqlString){
-        return $connection->query($sqlString);
-    }
-    
-    //SESSION MANAGEMENT
-    function initializeSessionInDatabase($session_id, $genesis_hash){
-        
+    /**
+     * SESSION MANAGEMENT
+     */
+    function initializeSessionInDatabase($session_id, $genesis_hash){        
         //TODO
     }
     
-    //DATA MAP INSERTION---------------------------------------------------
-    public function insertDataMapSection($hashes, $genesis_hash){
+    /**
+     * Inserts an array of hash value to chunk id pairs along with the genesis hash.
+     * @param array $hash_chunkid_pairs [['asdasd',1],...]
+     * @return int indicating success or failues
+     * @throws Exception If element in array is not an integer
+     */
+    public function insertDataMapSection($hash_chunkid_pairs, $genesis_hash){
         
         print("enteringDM");
-        $connection = $this->openDatabaseConnection();
         
-        $sqlString = $this->buildDataMapInsertStatement($hashes, $genesis_hash);
-       
-        $result = $this->processSql($connection, $sqlString);
-             
+        try {
+            
+            $connection = $this->openDatabaseConnection();
+            
+            $sqlString = $this->buildDataMapInsertStatement($hash_chunkid_pairs, $genesis_hash);
+            
+            $result = $connection->query($sqlString);
+            
+        } catch (Exception $e) {
+           
+            echo $e->getMessage();
+        }
+
         $this->closeDatabaseConnection($connection);
         
         return $result;
-        
     }
     
-    //fix last sql prob tomorrow
+
     public function buildDataMapInsertStatement($hash_mappings, $genesis_hash){
         
-        $sqlString = "INSERT INTO DataMapping (genesis_hash, chunk_id, hash) VALUES ";
+        $sqlString = "INSERT INTO DataMapping (genesis_hash, hash, chunk_id) VALUES ";
+        
         
         $sqlChunks = array_map(
             
@@ -56,38 +88,40 @@ class BrokerDatabase {
             
             function($hash_mapping) use ($genesis_hash){
                 
-                print("gen inside");
-                print($genesis_hash);
-                $snippet = "(" . $genesis_hash . "," . strval($hash_mapping[0]) . "," . strval($hash_mapping[1]) . ")";
-                print($snippet);
-                return $snippet;
+                //given x1,x2,x3 this function creates a string '("x1","x2","x3")'
+                $snippet = "(\"" . $genesis_hash . "\",\"" . strval($hash_mapping[0]) . "\",\"" . strval($hash_mapping[1]) . "\"),";
             },
             
             $hash_mappings);
         
-        print("before explode");
-        print($sqlString);
-        $sqlString = $sqlString . "".implode($sqlChunks) . ";";
-        print("afterexplode");
-        print($sqlString);
+        //put this pieces together
+        $sqlString = $sqlString . "".implode($sqlChunks);
+        
+        //trim last comma
+        $sqlString = rtrim($sqlString,',');
+        
+        //and finish
+        $sqlString = $sqlString . ";";
         
         return $sqlString;
-    }
-    
-   
-        
+    }    
 }
 
 //TEST
-
 function testDataMapInsert(){
     
+    
+    $server_name = 'localhost';
+    $user_name = 'admin';
+    $pass = 'nodeAdmin';
+    $db_name = 'BrokerNodeDatabase';
+    
     print("beginning test\n");
-    $DB = new BrokerDatabase();
+    $DB = new BrokerDatabase($server_name, $user_name, $pass, $db_name);
     
-    $hashes  = [["f23", 1, "ddcsdc"], ["f3f3", 2, "dsfsdf"]];
+    $hashes  = [["ea", 1], ["we", 2]];
     
-    $result = $DB->insertDataMapSection($hashes, "teqwer");
+    $result = $DB->insertDataMapSection($hashes, "asd");
     
     print("result\n");
     print($result);
