@@ -34,10 +34,8 @@
     }
   },
   "scripts": {
-    "start": [
-      "cd laradock && docker-compose up nginx mariadb phpmyadmin && cd .."
-    ],
-    "stop": ["cd laradock && docker-compose down && cd .."],
+    "start": ["cd laradock && docker-compose up nginx mariadb phpmyadmin"],
+    "stop": ["cd laradock && docker-compose down"],
     "post-root-package-install": [
       "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
     ],
