@@ -19,7 +19,7 @@ class CreateUploadSessionsTable extends Migration
 
             // references genesis_hash on data_mappings
             $table->string('genesis_hash', 255);
-            $table->unsignedBigInteger('file_size_btyes');
+            $table->unsignedBigInteger('file_size_bytes');
 
             $table->timestamps();
 
