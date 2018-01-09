@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateDataMappingsTable extends Migration
+class CreateUploadSessionsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,17 +13,14 @@ class CreateDataMappingsTable extends Migration
      */
     public function up()
     {
-        Schema::create('data_mappings', function (Blueprint $table) {
+        Schema::create('upload_sessions', function (Blueprint $table) {
             $table->increments('id');
 
-            $table->string('genesis_hash', 255);
-            $table->string('hash', 255);
-            $table->integer('chunk_idx')->unsigned();
+            $table->foreign('genesis_hash')
+                  ->references('genesis_hash')->on('data_mappings')
+                  ->onDelete('cascade');
 
             $table->timestamps();
-
-            // Indexes
-            $table->unique('genesis_hash');
         });
     }
 
@@ -34,6 +31,6 @@ class CreateDataMappingsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('data_mappings');
+        Schema::dropIfExists('upload_sessions');
     }
 }
