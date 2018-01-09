@@ -35,10 +35,12 @@ class UploadSessionController extends Controller
     public function store(Request $request)
     {
         $fileSize = $request->input('fileSize');
+        $genesisHash = $request->input('genesisHash');
 
         return response()->json([
             'id' => 123,
-            'fileSize' => $fileSize
+            'fileSize' => $fileSize,
+            'genesisHash' => $genesisHash,
         ]);
     }
 
