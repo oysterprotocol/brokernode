@@ -20,8 +20,8 @@ class DataMapping extends Model
     }
 
     protected $table = 'data_mappings';
-    public $incrementing = false;  // UUID
 	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
+    public $incrementing = false;  // UUID
 }
 
 /**
