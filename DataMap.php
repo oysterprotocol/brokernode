@@ -17,7 +17,7 @@ function buildMap($genesis_hash, $file_chunk_count){
     
     //we put the first chunk
     $chunk_id = 0;
-    $DB->insertDataMapSection([[$genesis_hash, $chunk_id]]);
+    $Db->insertDataMapSection([[$genesis_hash, $chunk_id]]);
     
     //it takes the ceiling then disregards any past the correct number
     $hashes_per_db_update = 5;
@@ -32,7 +32,7 @@ function buildMap($genesis_hash, $file_chunk_count){
         
         $chunk_id += $hashes_per_db_update;
         
-        $DB->insertDataMapSection($next_group);
+        $Db->insertDataMapSection($next_group,$genesis_hash);
         
     }
     
@@ -42,7 +42,7 @@ function buildMap($genesis_hash, $file_chunk_count){
 /**
  * Separate out the Db initialization, this stuff will come from a config file
  */
-function intializeDbConnection(){
+function initializeDbConnection(){
     $server_name = 'localhost';
     $user_name = 'admin';
     $pass = 'nodeAdmin';
