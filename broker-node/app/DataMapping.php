@@ -6,7 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class DataMapping extends Model
 {
-	protected $table = 'data_mappings';
+    protected $table = 'data_mappings';
+    public $incrementing = false;  // UUID
 	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
 }
 
