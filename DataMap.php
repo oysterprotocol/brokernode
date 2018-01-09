@@ -96,7 +96,7 @@ function hashGenerator($genesis_hash, $n){
     
     $hash = $genesis_hash;
     
-    for($i = 0; $i < $n; $i++){
+    for($i = 0; $i <= $n; $i++){
         
         yield $hash;
         
