@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataMapping;
 use App\UploadSession;
 use Illuminate\Http\Request;
 
@@ -38,12 +39,17 @@ class UploadSessionController extends Controller
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
 
+        // TODO: Where does $file_chunk_count this come from.
+        $file_chunk_count = 3;
+        // This could take a while, but if we make this async, we have a race
+        // condition if the client attempts to upload before broker-node
+        // can save to DB.
+        DataMapping::buildMap($genesis_hash, $file_chunk_count);
+
         $upload_session = UploadSession::create([
             'genesis_hash' => $genesis_hash,
             'file_size_bytes' => $file_size_bytes,
         ]);
-
-        // TODO: Generate datamap.
 
         return response()->json($upload_session);
     }
