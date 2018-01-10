@@ -14,16 +14,17 @@ class CreateDataMappingsTable extends Migration
     public function up()
     {
         Schema::create('data_mappings', function (Blueprint $table) {
-            $table->increments('id');
+            $table->uuid('id');
 
             $table->string('genesis_hash', 255);
-            $table->string('hash', 255);
             $table->integer('chunk_idx')->unsigned();
+            $table->string('hash', 255);
 
             $table->timestamps();
 
             // Indexes
-            $table->unique('genesis_hash');
+            $table->primary('id');
+            $table->unique(['genesis_hash', 'chunk_idx']);
         });
     }
 

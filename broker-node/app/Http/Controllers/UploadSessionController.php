@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\UploadSession;
 use Illuminate\Http\Request;
 
 class UploadSessionController extends Controller
@@ -34,12 +35,15 @@ class UploadSessionController extends Controller
      */
     public function store(Request $request)
     {
-        $fileSize = $request->input('fileSize');
+        $genesis_hash = $request->input('genesis_hash');
+        $file_size_bytes = $request->input('file_size_bytes');
 
-        return response()->json([
-            'id' => 123,
-            'fileSize' => $fileSize
+        $upload_session = UploadSession::create([
+            'genesis_hash' => $genesis_hash,
+            'file_size_bytes' => $file_size_bytes,
         ]);
+
+        return response()->json($upload_session);
     }
 
     /**

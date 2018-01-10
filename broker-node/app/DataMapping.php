@@ -3,11 +3,25 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Webpatser\Uuid\Uuid;
 
 class DataMapping extends Model
 {
-	protected $table = 'data_mappings';
+    /**
+     * TODO: Make this a shared trait.
+     *  Setup model event hooks
+     */
+    public static function boot()
+    {
+        parent::boot();
+        self::creating(function ($model) {
+            $model->id = (string) Uuid::generate(4);
+        });
+    }
+
+    protected $table = 'data_mappings';
 	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
+    public $incrementing = false;  // UUID
 }
 
 /**
