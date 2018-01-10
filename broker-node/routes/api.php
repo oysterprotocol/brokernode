@@ -17,4 +17,6 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::resource('/upload-sessions', 'UploadSessionController');
+Route::group(['prefix' => 'v1'], function() {
+    Route::resource('/upload-sessions', 'UploadSessionController');
+});
