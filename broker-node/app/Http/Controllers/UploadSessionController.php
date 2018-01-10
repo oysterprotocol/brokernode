@@ -43,6 +43,8 @@ class UploadSessionController extends Controller
             'file_size_bytes' => $file_size_bytes,
         ]);
 
+        // TODO: Generate datamap.
+
         return response()->json($upload_session);
     }
 
@@ -88,6 +90,6 @@ class UploadSessionController extends Controller
      */
     public function destroy($id)
     {
-        //
+        // TODO: Delete session & datamap
     }
 }
