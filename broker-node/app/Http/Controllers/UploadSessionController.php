@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataMapping;
 use App\UploadSession;
 use Illuminate\Http\Request;
 
@@ -37,6 +38,13 @@ class UploadSessionController extends Controller
     {
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
+
+        // TODO: Where does $file_chunk_count this come from.
+        $file_chunk_count = 3;
+        // This could take a while, but if we make this async, we have a race
+        // condition if the client attempts to upload before broker-node
+        // can save to DB.
+        DataMapping::buildMap($genesis_hash, $file_chunk_count);
 
         $upload_session = UploadSession::create([
             'genesis_hash' => $genesis_hash,
@@ -77,7 +85,21 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $session = UploadSession::find($id);
+        if (empty($session)) return response('Session not found.', 404);
+
+        $genesis_hash = $session['genesis_hash'];
+        $chunk = $request->input('chunk');
+
+        $data_mapping = DataMapping::where('genesis_hash', $genesis_hash)
+            ->where('chunk_idx', $chunk['idx'])
+            ->first();
+        if (empty($data_mapping)) return response('Datamap not found', 404);
+
+        // TODO: What to do with $data_mapping['hash']
+        // TODO: Send off $chunk['data'] somewhere to be stored on tangle
+
+        return response('Success.', 204);
     }
 
     /**
@@ -88,6 +110,6 @@ class UploadSessionController extends Controller
      */
     public function destroy($id)
     {
-        //
+        // TODO: Delete session & datamap
     }
 }
