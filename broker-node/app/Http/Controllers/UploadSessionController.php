@@ -86,16 +86,18 @@ class UploadSessionController extends Controller
     public function update(Request $request, $id)
     {
         $session = UploadSession::find($id);
-        if (empty($session)) {
-            return response('Session not found.', 404);
-        }
+        if (empty($session)) return response('Session not found.', 404);
 
         $genesis_hash = $session['genesis_hash'];
         $chunk = $request->input('chunk');
 
-        // TODO: Fetch hash from datamap using $chunk['idx'] and $session['genesis_hash']
-        // TODO: Validate that $datamap['hash'] == $chunk['hash']
-        // TODO: Send off $chunk['data'] somewhere
+        $data_mapping = DataMapping::where('genesis_hash', $genesis_hash)
+            ->where('chunk_idx', $chunk['idx'])
+            ->first();
+        if (empty($data_mapping)) return response('Datamap not found', 404);
+
+        // TODO: What to do with $data_mapping['hash']
+        // TODO: Send off $chunk['data'] somewhere to be stored on tangle
 
         return response('Success.', 204);
     }
