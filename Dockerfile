@@ -10,3 +10,4 @@ RUN git clone https://github.com/oysterprotocol/brokernode.git /var/www/html/
 ## Expose port 80 for web
 
 EXPOSE 80
+
