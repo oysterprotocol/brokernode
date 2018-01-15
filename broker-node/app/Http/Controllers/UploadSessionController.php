@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Clients\HookNode;
 use App\DataMapping;
 use App\UploadSession;
 use Illuminate\Http\Request;
@@ -98,6 +99,16 @@ class UploadSessionController extends Controller
 
         // TODO: What to do with $data_mapping['hash']
         // TODO: Send off $chunk['data'] somewhere to be stored on tangle
+        HookNode::processNewChunk($chunk['hash'], $chunk['data'], $chunk['idx'])
+            ->then(
+                // TODO: What do do with these response?
+                function($res) {
+                    echo $res;
+                },
+                function($err) {
+                    echo $err;
+                }
+            );
 
         return response('Success.', 204);
     }
