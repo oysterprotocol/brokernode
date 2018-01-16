@@ -112,4 +112,21 @@ class UploadSessionController extends Controller
     {
         // TODO: Delete session & datamap
     }
+
+    /**
+     * Gets the status of a chunk. This will be polled until status  is complete
+     * or error.
+     *
+     * @param  int  $body => { genesis_hash, chunk_idx }
+     * @return \Illuminate\Http\Response
+     */
+    public function chunkStatus(Request $request)
+    {
+        $data_map = DataMap::where('genesis_hash', $genesis_hash)
+            ->where('chunk_idx', $chunk['idx'])
+            ->first();
+        if (empty($data_map)) return response('Datamap not found', 404);
+
+        return response()->json(['status' => $data_map['status']]);
+    }
 }
