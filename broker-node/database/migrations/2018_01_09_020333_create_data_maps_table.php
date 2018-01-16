@@ -35,6 +35,6 @@ class CreateDataMapsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('data_mappings');
+        Schema::dropIfExists('data_maps');
     }
 }
