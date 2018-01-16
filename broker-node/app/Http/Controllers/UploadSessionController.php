@@ -122,8 +122,11 @@ class UploadSessionController extends Controller
      */
     public function chunkStatus(Request $request)
     {
+        $genesis_hash = $request->input('genesis_hash');
+        $chunk_idx = $request->input('chunk_idx');
+
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
-            ->where('chunk_idx', $chunk['idx'])
+            ->where('chunk_idx', $chunk_idx)
             ->first();
         if (empty($data_map)) return response('Datamap not found', 404);
 
