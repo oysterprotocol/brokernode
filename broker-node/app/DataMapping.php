@@ -19,7 +19,7 @@ class DataMap extends Model
         });
     }
 
-    protected $table = 'data_map';
+    protected $table = 'data_maps';
 	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
     public $incrementing = false;  // UUID
 
