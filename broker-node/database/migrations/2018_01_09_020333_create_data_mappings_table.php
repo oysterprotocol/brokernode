@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateDataMappingsTable extends Migration
+class CreateDataMapTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,7 +13,7 @@ class CreateDataMappingsTable extends Migration
      */
     public function up()
     {
-        Schema::create('data_mappings', function (Blueprint $table) {
+        Schema::create('data_map', function (Blueprint $table) {
             $table->uuid('id');
 
             $table->string('genesis_hash', 255);
