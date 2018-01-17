@@ -1,0 +1,19 @@
+{
+  "name": "nodekeccakservice",
+  "version": "1.0.0",
+  "description": "RESTul Keccak Service",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "author": "me",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^1.14.3"
+  },
+  "dependencies": {
+    "crypto-js": "^3.1.9-1",
+    "express": "^4.16.2"
+  }
+}
