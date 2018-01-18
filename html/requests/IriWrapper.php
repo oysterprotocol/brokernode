@@ -19,9 +19,9 @@ class IriWrapper
             http://host:14265  (if using host)
         */
         try {
-            $this->validateUrl($GLOBALS['nodeUrl']);
-            array_push($this->headers, $this->apiVersionHeaderString . $GLOBALS['apiVersion']);
-            $this->nodeUrl = $GLOBALS['nodeUrl'];
+            $this->validateUrl(IriData::$nodeUrl);
+            array_push($this->headers, $this->apiVersionHeaderString . IriData::$apiVersion);
+            $this->nodeUrl = IriData::$nodeUrl;
         } catch (Exception $e) {
             echo 'Caught exception: ' . $e->getMessage() . $GLOBALS['nl'];
         }
@@ -33,13 +33,14 @@ class IriWrapper
         $port = "(\:[0-9]{2,5})"; // ends with :(port)
 
         /*TODOS
-        add auth tokens to regex test
+        If we decide to add authentication to urls, add auth tokens to regex test.
+        Probably not needed for testnet A.
         */
 
         if (preg_match("/^$http/", $nodeUrl) && preg_match("/$port$/", $nodeUrl)) {
             return true;
         } else {
-            throw new Exception('Invalid URL Format.');
+            throw new Exception('Invalid URL.');
         }
     }
 
@@ -60,15 +61,9 @@ class IriWrapper
             CURLOPT_TIMEOUT => 1000
         ));
 
-        echo $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "calling curl with command: " . $commandObject->command . $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "payload: " . $payload . $GLOBALS['nl'];
-
         $response = json_decode(curl_exec($curl));
-        curl_close($curl);
 
-        echo $GLOBALS['nl'] . "response was: " . $GLOBALS['nl'];
-        var_dump($response);
+        curl_close($curl);
 
         return $response;
     }

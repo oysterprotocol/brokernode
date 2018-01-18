@@ -15,12 +15,8 @@ class PrepareTransfers
 
     public static function prepareTransfers($seed, $transfers, $options = null, $callback)
     {
-        $addHMAC = false;
-        $addedHMAC = false;
-
         // validate the seed
         if (!InputValidator::isTrytes($seed)) {
-
             return call_user_func($callback, "Invalid Seed provided", null);
         }
 
@@ -49,8 +45,6 @@ class PrepareTransfers
         if (!InputValidator::isTransfersArray($transfers)) {
             return call_user_func($callback, "Invalid transfers object", null);
         }
-
-        $security = 2;
 
         // Create a new bundle
         $bundle = new Bundle();
@@ -125,6 +119,7 @@ class PrepareTransfers
 
         // If no input required, don't sign and simply finalize the bundle
         $bundle->finalize();
+
         $bundle->addTrytes($signatureFragments);
 
         $bundleTrytes = [];
@@ -136,16 +131,19 @@ class PrepareTransfers
         return call_user_func($callback, null, array_reverse($bundleTrytes));
     }
 
-    public static function buildTxTrytes($txObject) {
+    public static function buildTxTrytes($txObject, $seed) {
 
         $transactionObject = new stdClass();
 
         $transactionObject->address = $txObject->address;
-        $transactionObject->value = $GLOBALS['txValue'];
+        $transactionObject->value = $txObject->value;
         $transactionObject->message = $txObject->message;
-        $transactionObject->tag = $GLOBALS['nodeId'];
+        $transactionObject->tag = $txObject->tag;
 
-        $result = self::prepareTransfers($GLOBALS['oysterSeed'],
+        var_dump($transactionObject);
+        echo $transactionObject->value;
+
+        $result = self::prepareTransfers($seed,
             [$transactionObject],
             null, //where options with inputs array would go, consider removing this and removing param from method
             function ($e, $s) {

@@ -95,7 +95,9 @@ function convertToTrits($bytes_k)
 function convertToBytes($trits)
 {
     $bigInt = convertBaseToBigint($trits, 3);
+
     $bytes_k = convertBigintToBytes($bigInt);
+
     return $bytes_k;
 }
 

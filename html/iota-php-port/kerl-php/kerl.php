@@ -33,9 +33,12 @@ class Kerl
         }
 
         if ($length % 243 != 0) {
-            echo "error";
+
             return "Illegal length"; //raise Exception("Illegal length")
         }
+
+
+
         while ($offset < $length) {
             $stop = min($offset + $this->TRIT_HASH_LENGTH, $length);
 
@@ -44,10 +47,10 @@ class Kerl
             if ($stop - $offset == $this->TRIT_HASH_LENGTH) {
                 $trits[$stop - 1] = 0;
             }
+
             $to_bytes = array_slice($trits, $offset, $stop);
+
             $signed_nums = convertToBytes($to_bytes);
-
-
 
             $unsigned_bytes = array();
             foreach ($signed_nums as $b) {
@@ -57,7 +60,6 @@ class Kerl
             array_push($this->absorbArray, $unsigned_bytes);
 
             $offset += $this->TRIT_HASH_LENGTH;
-
         }
     }
 
@@ -68,7 +70,6 @@ class Kerl
             $length = $this->TRIT_HASH_LENGTH;
         }
         if ($length % 243 != 0) {
-            echo("Illegal length");
             return "Illegal length";
         }
 

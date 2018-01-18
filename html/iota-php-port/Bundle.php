@@ -2,7 +2,7 @@
 
 require_once('Converter.php');
 require_once('Helper.php');
-require_once('./kerl-php/kerl.php');
+require_once('kerl-php/kerl.php');
 
 
 class Bundle
