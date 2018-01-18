@@ -5,7 +5,7 @@ namespace App;
 use Illuminate\Database\Eloquent\Model;
 use Webpatser\Uuid\Uuid;
 
-class DataMapping extends Model
+class DataMap extends Model
 {
     /**
      * TODO: Make this a shared trait.
@@ -19,7 +19,7 @@ class DataMapping extends Model
         });
     }
 
-    protected $table = 'data_mappings';
+    protected $table = 'data_maps';
 	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
     public $incrementing = false;  // UUID
 

@@ -19,4 +19,5 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::group(['prefix' => 'v1'], function() {
     Route::resource('/upload-sessions', 'UploadSessionController');
+    Route::get('/chunk-status', 'UserController@chunkStatus');
 });
