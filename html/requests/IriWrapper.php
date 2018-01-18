@@ -33,7 +33,8 @@ class IriWrapper
         $port = "(\:[0-9]{2,5})"; // ends with :(port)
 
         /*TODOS
-        add auth tokens to regex test
+        If we decide to add authentication to urls, add auth tokens to regex test.
+        Probably not needed for testnet A.
         */
 
         if (preg_match("/^$http/", $nodeUrl) && preg_match("/$port$/", $nodeUrl)) {
@@ -60,19 +61,9 @@ class IriWrapper
             CURLOPT_TIMEOUT => 1000
         ));
 
-        echo $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "calling curl, url is: " . $this->nodeUrl . $GLOBALS['nl'];
-        echo "command: " . $commandObject->command . $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "payload: " . $payload . $GLOBALS['nl'];
-
-        //echo $GLOBALS['nl'] . "SLEEPING" . $GLOBALS['nl'];
-        //sleep(5);
-
         $response = json_decode(curl_exec($curl));
-        curl_close($curl);
 
-        echo $GLOBALS['nl'] . "response was: " . $GLOBALS['nl'];
-        var_dump($response);
+        curl_close($curl);
 
         return $response;
     }

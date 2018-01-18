@@ -4,7 +4,6 @@ $GLOBALS['nl'] = "\n";
 
 class IriData
 {
-
     public static $nodeUrl = "http://localhost:14265";
     public static $apiVersion = '1.4';
 
@@ -13,7 +12,7 @@ class IriData
     public static $minWeightMagnitude = 14;
     public static $minMinWeightMagnitude = 14;
 
-    public static $oysterSeed = 'OYSTERPRLOYSTERPRLOYSTERPRL9YSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL';
+    public static $oysterSeed = 'OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL';
     public static $oysterTag = 'OYSTERPEARL';  //will use this as the 'tag'
     public static $txValue = 0;
 
