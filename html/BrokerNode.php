@@ -78,18 +78,12 @@ class BrokerNode
         $request->tag = IriData::$oysterTag;
 
         try {
-            $trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
-            $request->trytes = $trytes;
+            $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
+            if (!is_null($request->trytes)) {
+                self::getTransactionsToApprove($request);
+            }
         } catch (Exception $e) {
             echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
-        }
-
-        if (!is_null($request->trytes)) {
-            try {
-                self::getTransactionsToApprove($request);
-            } catch (Exception $e) {
-                echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
-            }
         }
 
         return $request;
