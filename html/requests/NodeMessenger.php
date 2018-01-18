@@ -33,7 +33,6 @@ class NodeMessenger
 
     public function sendMessageToNode($commandObject, $nodeUrl)
     {
-
         try {
             $this->validateUrl($nodeUrl);
         } catch (Exception $e) {
@@ -45,7 +44,7 @@ class NodeMessenger
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            //CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_POST => 1,
             CURLOPT_URL => $nodeUrl,
             CURLOPT_USERAGENT => $this->userAgent,
@@ -55,15 +54,9 @@ class NodeMessenger
             CURLOPT_TIMEOUT => 1000
         ));
 
-        echo $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "calling curl in nodeMessenger, url is: " . $nodeUrl . $GLOBALS['nl'];
-        echo $GLOBALS['nl'] . "payload: " . $payload . $GLOBALS['nl'];
-
         $response = json_decode(curl_exec($curl));
-        curl_close($curl);
 
-        echo $GLOBALS['nl'] . "response was: " . $GLOBALS['nl'];
-        var_dump($response);
+        curl_close($curl);
 
         return $response;
     }
