@@ -1,9 +1,18 @@
 <?php
 
-require_once("requests/IriWrapper.php");
-require_once("requests/IriData.php");
-require_once("requests/NodeMessenger.php");
+namespace App\Clients;
+
 require_once("iota-php-port/PrepareTransfers.php");
+require_once("requests/IriData.php");
+require_once("requests/IriWrapper.php");
+require_once("requests/NodeMessenger.php");
+
+// This is a temporary hack to make the above required files work in this
+// namespace. We can clean this up after testnet.
+use \PrepareTransfers;
+use \IriData;
+use \IriWrapper;
+use \NodeMessenger;
 
 class BrokerNode
 {
@@ -39,7 +48,7 @@ class BrokerNode
             } else {
                 // move on to the next chunk
                 /*
-                 * TODO: is there anything specific we want to do if it's 
+                 * TODO: is there anything specific we want to do if it's
                  * already attached?
                  */
             }
@@ -172,7 +181,7 @@ class BrokerNode
 
     /*
      * We don't need the methods below for anything yet.
-     * Not worried about scalability now. 
+     * Not worried about scalability now.
      */
 
     private static function initIfEmpty(&$objectToInit)
