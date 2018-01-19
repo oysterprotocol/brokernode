@@ -106,8 +106,6 @@ class UploadSessionController extends Controller
 
         // Process chunk.
         $brokerReq = (object)[
-            // TODO: Constrain this API instead of relying on strings.
-            "command" => "processNewChunk",
             "responseAddress" =>
                 "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
             "message" => $chunk["data"],

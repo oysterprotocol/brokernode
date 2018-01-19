@@ -41,6 +41,7 @@ class BrokerNode
 
     public static function processNewChunk(&$chunk)
     {
+        $chunk->command = "processNewChunk";
         try {
             if (self::dataNeedsAttaching($chunk)) {
                 self::getTransactionData($chunk);
