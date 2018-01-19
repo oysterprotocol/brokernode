@@ -95,10 +95,26 @@ class UploadSessionController extends Controller
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
             ->where('chunk_idx', $chunk['idx'])
             ->first();
-        if (empty($data_map)) return response('Datamap not found', 404);
 
-        // TODO: What to do with $data_map['hash']
-        // TODO: Send off $chunk['data'] somewhere to be stored on tangle
+        // Error Responses
+        if (empty($data_map)) {
+            return response('Datamap not found', 404);
+        }
+        if ($data_map['hash'] != $chunk['hash']) {
+            return response('Forbidden', 403);
+        }
+
+        // Process chunk.
+        $brokerReq = (object)[
+            // TODO: Constrain this API instead of relying on strings.
+            "command" => "processNewChunk",
+            "responseAddress" =>
+                "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
+            "message" => $chunk["data"],
+            "chunkId" => $chunk["idx"],
+            "address" => $chunk["hash"],
+        ];
+        BrokerNode::processNewChunk($brokerReq);
 
         return response('Success.', 204);
     }
@@ -137,10 +153,12 @@ class UploadSessionController extends Controller
     public function brokerNodeListener(Request $request)
     {
         $cmd = $request->input('command');
+        $resAddress = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
         // This is a hack to cast an associative array to an object.
         // I don't know how to use PHP properly :(
         $req = (object)[
             "command" => $cmd,
+            "responseAddress" => $resAddress,
             "message" => $request->input('message'),
             "chunkId" => $request->input('chunkId'),
             "address" => "WHLOOOOOOAAAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
