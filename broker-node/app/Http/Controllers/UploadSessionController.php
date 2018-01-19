@@ -118,7 +118,7 @@ class UploadSessionController extends Controller
      * Gets the status of a chunk. This will be polled until status  is complete
      * or error.
      *
-     * @param  int  $body => { genesis_hash, chunk_idx }
+     * @param  int  $body => { genesis_hash, chunk: { idx, hash } }
      * @return \Illuminate\Http\Response
      */
     public function chunkStatus(Request $request)
@@ -127,10 +127,10 @@ class UploadSessionController extends Controller
         // It is shared by a few functions.
 
         $genesis_hash = $request->input('genesis_hash');
-        $chunk_idx = $request->input('chunk_idx');
+        $chunk = $request->input('chunk');
 
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
-            ->where('chunk_idx', $chunk_idx)
+            ->where('chunk_idx', $chunk['idx'])
             ->first();
         if (empty($data_map)) return response('Datamap not found', 404);
 
