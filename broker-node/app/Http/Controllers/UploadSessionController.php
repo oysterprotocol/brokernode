@@ -146,8 +146,6 @@ class UploadSessionController extends Controller
             "address" => "WHLOOOOOOAAAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
         ];
 
-        return response()->json(['cmd' => $cmd, 'req' => $req]);
-
         try {
             switch($cmd) {
                 case 'processNewChunk':
