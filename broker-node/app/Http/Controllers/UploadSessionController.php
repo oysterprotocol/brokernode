@@ -118,18 +118,42 @@ class UploadSessionController extends Controller
      * Gets the status of a chunk. This will be polled until status  is complete
      * or error.
      *
-     * @param  int  $body => { genesis_hash, chunk_idx }
+     * @param  int  $body => { genesis_hash, chunk: { idx, hash } }
      * @return \Illuminate\Http\Response
      */
     public function chunkStatus(Request $request)
     {
+        // TODO: Make it middleware to find datamap and check hashes match.
+        // It is shared by a few functions.
+
         $genesis_hash = $request->input('genesis_hash');
-        $chunk_idx = $request->input('chunk_idx');
+        $chunk = $request->input('chunk');
 
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
-            ->where('chunk_idx', $chunk_idx)
+            ->where('chunk_idx', $chunk['idx'])
             ->first();
-        if (empty($data_map)) return response('Datamap not found', 404);
+
+        // Error Responses
+        if (empty($data_map)) {
+            return response('Datamap not found', 404);
+        }
+        if ($data_map['hash'] != $chunk['hash']) {
+            return response('Forbidden', 403);
+        }
+
+        // Don't need to check tangle if already detected to be complete.
+        if ($data_map['status'] == 'complete') {
+            return response()->json(['status' => $data_map['status']]);
+        }
+
+        // Check tangle. This should be done in the background.
+        $isAttached = !BrokerNode::dataNeedsAttaching($request);
+        if ($isAttached) {
+            // Saving to DB is not needed yet, but will be once we check
+            // status on the tangle in the background.
+            $data_map['status'] = 'complete';
+            $data_map->save();
+        }
 
         return response()->json(['status' => $data_map['status']]);
     }
