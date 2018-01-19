@@ -140,7 +140,7 @@ class UploadSessionController extends Controller
         // This is a hack to cast an associative array to an object.
         // I don't know how to use PHP properly :(
         $req = (object)[
-            "command" => $request->input('command'),
+            "command" => $cmd,
             "message" => $request->input('message'),
             "chunkId" => $request->input('chunkId'),
             "address" => "WHLOOOOOOAAAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
