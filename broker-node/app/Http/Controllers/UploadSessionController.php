@@ -132,7 +132,6 @@ class UploadSessionController extends Controller
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
             ->where('chunk_idx', $chunk['idx'])
             ->first();
-        if (empty($data_map)) return response('Datamap not found', 404);
 
         // Error Responses
         if (empty($data_map)) {
