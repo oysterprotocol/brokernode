@@ -39,6 +39,8 @@ class UploadSessionController extends Controller
     {
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
+        $prl_payment = ($file_size_bytes / pow(1024, 3)) * BrokerNode::returnPrlPerGB();
+        $payment_address = BrokerNode::returnEthAddress();
 
         // TODO: Where does $file_chunk_count this come from.
         $file_chunk_count = 3;
@@ -50,6 +52,8 @@ class UploadSessionController extends Controller
         $upload_session = UploadSession::create([
             'genesis_hash' => $genesis_hash,
             'file_size_bytes' => $file_size_bytes,
+            'prl_payment' => $prl_payment,
+            'payment_address' => $payment_address
         ]);
 
         return response()->json($upload_session);
