@@ -19,8 +19,9 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
-            $table->enum('status', ['pending', 'complete', 'error'])
-                  ->default('pending');
+            $table->binary('chunk');
+            $table->enum('status', ['unassigned', 'pending', 'complete', 'error'])
+                  ->default('unassigned');  // TODO: Use integer mapping.
 
             $table->timestamps();
 
