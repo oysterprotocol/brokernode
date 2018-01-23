@@ -15,13 +15,6 @@ class CheckChunkStatus extends Command
         'Polls the status of chunks that have been sent to hook nodes';
 
     /**
-     * Create a new command instance.
-     */
-    public function __construct() {
-        parent::__construct();
-    }
-
-    /**
      * Execute the console command.
      */
     public function handle() {
@@ -49,7 +42,7 @@ class CheckChunkStatus extends Command
         }, $attached_datamaps);
 
         // Mass Update DB.
-        DataMap::whereIn('id', $attached_ids)->update('status', 'complete');
+        DataMap::whereIn('id', $attached_ids)->update(['status', 'complete']);
 
         // TODO: Increment hooknode reputations for $attached_datamaps.
 
