@@ -20,6 +20,7 @@ class CreateDataMapsTable extends Migration
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
             $table->binary('chunk');
+            $table->string('hooknode_id');
             $table->enum('status', ['unassigned', 'pending', 'complete', 'error'])
                   ->default('unassigned');  // TODO: Use integer mapping.
 
