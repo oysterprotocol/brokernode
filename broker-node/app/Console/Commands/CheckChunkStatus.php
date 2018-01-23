@@ -42,7 +42,7 @@ class CheckChunkStatus extends Command
         }, $attached_datamaps);
 
         // Mass Update DB.
-        DataMap::whereIn('id', $attached_ids)->update(['status', 'complete']);
+        DataMap::whereIn('id', $attached_ids)->update(['status' => 'complete']);
 
         // TODO: Increment hooknode reputations for $attached_datamaps.
 
