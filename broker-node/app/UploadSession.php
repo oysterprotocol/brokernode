@@ -23,9 +23,7 @@ class UploadSession extends Model
     public $incrementing = false; // UUID
     protected $fillable = [
         'genesis_hash',
-        'file_size_bytes',
-        'prl_payment',
-        'payment_address'
+        'file_size_bytes'
     ];
 
 }
