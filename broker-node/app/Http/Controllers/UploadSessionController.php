@@ -112,7 +112,13 @@ class UploadSessionController extends Controller
             "chunkId" => $chunk["idx"],
             "address" => $chunk["hash"],
         ];
-        BrokerNode::processNewChunk($brokerReq);
+        $hooknodeUrl = BrokerNode::processNewChunk($brokerReq);
+
+        // Updates datamap with hooknode url, status, and chunk.
+        $data_map->hooknode_id = $hooknodeUrl;
+        $data_map->chunk = $chunk["data"];
+        $data_map->status = 'pending';
+        $data_map->save();
 
         return response('Success.', 204);
     }
