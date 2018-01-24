@@ -1,20 +1,20 @@
 <?php
 namespace Controller;
 
-require_once("Dao/BrokerNodeDAO.php");
+require_once("Dao/hookNodeDao.php");
 
-use Dao\BrokerNodeDAO;
+use Dao\HookNodeModel;
 
 class BrokerNode {
 
-	private $brokerNodeDao;
+	private $hookNodeDao;
 
 	function __construct() {
-		$this->brokerNodeDao = new BrokerNodeDAO();
+		$this->hookNodeDao = new hookNodeDao();
 	}
 	
 	public function selectHookNode() {
-        return $this->brokerNodeDao->getHigherScoreHookNode();
+        return $this->hookNodeDao->getHigherScoreHookNode();
     }
 
 	/**
@@ -23,7 +23,7 @@ class BrokerNode {
 	*/
 	
 	public function increaseHookNodeScore($nodeId) {
-		return $this->brokerNodeDao->increaseHookNodeScore($nodeId);
+		return $this->hookNodeDao->increaseHookNodeScore($nodeId);
 	}
 	
 	/**
@@ -32,7 +32,7 @@ class BrokerNode {
 	*/
 	
 	public function decreaseHookNodeScore($nodeId) {
-		return $this->brokerNodeDao->decreaseHookNodeScore($nodeId);
+		return $this->hookNodeDao->decreaseHookNodeScore($nodeId);
 	}
 	
 	/**
@@ -41,7 +41,7 @@ class BrokerNode {
 	*/
 	
 	public function changeHookNodeStatus($nodeId, $status) {
-		return $this->brokerNodeDao->changeHookNodeStatus($nodeId, $status);
+		return $this->hookNodeDao->changeHookNodeStatus($nodeId, $status);
 	}
 	
 }

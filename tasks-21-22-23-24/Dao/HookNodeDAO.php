@@ -2,12 +2,12 @@
 namespace Dao;
 
 require_once("Lib/Database.php");
-require_once("Model/BrokerNodeModel.php");
+require_once("Model/HookNodeModel.php");
 
 use Lib\Database;
-use Model\BrokerNodeModel;
+use Model\HookNodeModel;
 
-class BrokerNodeDAO extends Database {
+class HookNodeDAO extends Database {
 	
 	function __construct() {
 		parent::__construct();
