@@ -12,6 +12,7 @@ Desktop.ini
 
 # ignore Composer downloads
 /vendor/*
+/broker-node/vendor/*
 
 # keep some hiddens
 !.htaccess

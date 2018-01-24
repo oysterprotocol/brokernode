@@ -19,4 +19,9 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 
 Route::group(['prefix' => 'v1'], function() {
     Route::resource('/upload-sessions', 'UploadSessionController');
+    Route::get('/chunk-status', 'UploadSessionController@chunkStatus');
+
+    // This is a temporary route used to integrate BrokerNode into
+    // laravel app. This will do exactly what BrokerListener did before.
+    Route::post('/broker-node-listener', 'UploadSessionController@brokerNodeListener');
 });
