@@ -81,7 +81,7 @@ class BrokerNode
 
     public static function dataNeedsAttaching($request)
     {
-        $command = new stdClass();
+        $command = new \stdClass();
         $command->command = "findTransactions";
         $command->addresses = array($request->address);
 
@@ -95,7 +95,7 @@ class BrokerNode
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
         } else {
-            throw new \Exception('findTransactions failed!');
+            throw new \Exception('dataNeedsAttaching failed!');
         }
     }
 
@@ -122,7 +122,7 @@ class BrokerNode
     {
         self::initIri();
 
-        $command = new stdClass();
+        $command = new \stdClass();
         $command->command = "getTransactionsToApprove";
         $command->depth = IriData::$depthToSearchForTxs;
 
@@ -159,21 +159,12 @@ class BrokerNode
     {
         $hookNodeUrl = self::selectHookNode();
 
-        $tx = new stdClass();
+        $tx = new \stdClass();
         $tx = $modifiedTx;
         $tx->command = 'attachToTangle';
 
         self::initMessenger();
         self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
-        echo "sleeping";
-        sleep(300);
-        echo "AWAKE";
-        try {
-            self::verifyChunkMatchesRecord($tx);
-        } catch (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage();
-            // something went wrong during our check, do something about it
-        }
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
     }
 
@@ -209,18 +200,13 @@ class BrokerNode
 
     public static function verifyChunkMatchesRecord($chunk)
     {
-        $command = new stdClass();
+        $command = new \stdClass();
         $command->command = "findTransactions";
         $command->addresses = array($chunk->address);
-
-        echo "in erifyChunkMatchesRecord";
 
         BrokerNode::$iriRequestInProgress = true;
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
-
-        echo "result of erifyChunkMatchesRecord";
-        var_dump($result);
 
         BrokerNode::$iriRequestInProgress = false;
 
@@ -235,8 +221,10 @@ class BrokerNode
                         update the status and leave the loop
                     */
                 }
+                else {
+                    echo "CHUNK DID NOT MATCH";
+                }
             }
-            echo "SHOULD HAVE HIT THE IF BLOCK?";
             /*TODO
                 no matches yet, respond accordingly
             */
@@ -247,26 +235,29 @@ class BrokerNode
 
     public static function chunksMatch($chunkOnTangle, $chunkOnRecord)
     {
-        return $chunkOnTangle->message == $chunkOnRecord->message &&
+        return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
             $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
             $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
     }
 
+    public static function messagesMatch($messageOnTangle, $messageOnRecord)
+    {
+        $lengthOfOriginalMessage = strlen($messageOnRecord);
+
+        return (substr($messageOnTangle, 0, $lengthOfOriginalMessage) == $messageOnRecord) &&
+            !(strlen(str_replace('9', '', substr($messageOnTangle, $lengthOfOriginalMessage))) > 0);
+    }
+
     public static function getTransactionObjects($hashes)
     {
-        $command = new stdClass();
+        $command = new \stdClass();
         $command->command = "getTrytes";
         $command->hashes = $hashes;
-
-        echo "in etTransactionObjects";
 
         BrokerNode::$iriRequestInProgress = true;
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
         BrokerNode::$iriRequestInProgress = false;
-
-        echo "result of etTransactionObjects";
-        var_dump($result);
 
         if (!is_null($result) && property_exists($result, 'trytes') &&
             count($result->trytes) != 0) {
@@ -288,7 +279,7 @@ class BrokerNode
     private static function initIfEmpty(&$objectToInit)
     {
         if (is_null($objectToInit)) {
-            $objectToInit = new stdClass();
+            $objectToInit = new \stdClass();
         }
     }
 
