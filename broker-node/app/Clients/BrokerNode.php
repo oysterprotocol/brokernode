@@ -99,46 +99,6 @@ class BrokerNode
         }
     }
 
-    public static function verifyChunkMatchesRecord($request)
-    {
-        $command = new stdClass();
-        $command->command = "findTransactions";
-        $command->addresses = array($request->address);
-
-        BrokerNode::$iriRequestInProgress = true;
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
-
-        BrokerNode::$iriRequestInProgress = false;
-
-        if (!is_null($result) && property_exists($result, 'hashes') &&
-            count($result->hashes) != 0) {
-            $txHashToCheck = end($result->hashes);
-            self::getTransactionTrytes($txHashToCheck);
-        } else {
-            throw new Exception('findTransactions failed!');
-        }
-    }
-
-    public static function getTransactionTrytes($txHash) {
-        $command = new stdClass();
-        $command->command = "getTrytes";
-        $command->hashes = array($txHash);
-
-        BrokerNode::$iriRequestInProgress = true;
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
-
-        BrokerNode::$iriRequestInProgress = false;
-
-        if (!is_null($result) && property_exists($result, 'trytes') &&
-            count($result->trytes) != 0) {
-            //START HERE
-        } else {
-            throw new Exception('findTransactions failed!');
-        }
-    }
-
     public static function buildTransactionData(&$request)
     {
         $trytesToBroadcast = NULL;
@@ -238,6 +198,65 @@ class BrokerNode
         }
     }
 
+    public static function verifyChunkMatchesRecord($chunk)
+    {
+        $command = new stdClass();
+        $command->command = "findTransactions";
+        $command->addresses = array($chunk->address);
+
+        BrokerNode::$iriRequestInProgress = true;
+        self::initIri();
+        $result = self::$IriWrapper->makeRequest($command);
+
+        BrokerNode::$iriRequestInProgress = false;
+
+        if (!is_null($result) && property_exists($result, 'hashes') &&
+            count($result->hashes) != 0) {
+            $txObjects = self::getTransactionObjects($result->hashes);
+            foreach ($txObjects as $key => $value) {
+                if (self::chunksMatch($value, $chunk)) {
+                    /*TODO
+                        update the status and leave the loop
+                    */
+                }
+            }
+            /*TODO
+                no matches yet, respond accordingly
+            */
+        } else {
+            throw new Exception('verifyChunkMatchesRecord failed!');
+        }
+    }
+
+    public static function chunksMatch($chunkOnTangle, $chunkOnRecord)
+    {
+        return $chunkOnTangle->message == $chunkOnRecord->message &&
+            $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
+            $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
+    }
+
+    public static function getTransactionObjects($hashes)
+    {
+        $command = new stdClass();
+        $command->command = "getTrytes";
+        $command->hashes = $hashes;
+
+        BrokerNode::$iriRequestInProgress = true;
+        self::initIri();
+        $result = self::$IriWrapper->makeRequest($command);
+        BrokerNode::$iriRequestInProgress = false;
+
+        if (!is_null($result) && property_exists($result, 'trytes') &&
+            count($result->trytes) != 0) {
+            $txObjects = array();
+            foreach ($result->trytes as $key => $value) {
+                $txObjects[] = \Utils::transactionObject($value);
+            }
+            return array_reverse($txObjects);
+        } else {
+            throw new Exception('getTransactionObjects failed!');
+        }
+    }
 
     /*
      * We don't need the methods below for anything yet.
