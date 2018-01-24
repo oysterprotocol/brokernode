@@ -39,26 +39,6 @@ class BrokerNode
         }
     }
 
-    public static function returnPrlPerGB()
-    {
-        /*
-         * TODO:  Replace this with something
-         * that takes into account the peg.
-        */
-        return 1;
-    }
-
-    public static function returnEthAddress()
-    {
-        /*
-         * TODO:  This needs to call the logic
-         * that Facundo is working on for issue #37
-         * to return the broker node's actual eth
-         * address
-        */
-        return "0x00F72426ccE219B5Fa1b7E4C680F4440669Ba273";
-    }
-
     public static function processNewChunk(&$chunk)
     {
         try {
