@@ -2,7 +2,9 @@
 
 
 require_once('InputValidator.php');
+require_once('Converter.php');
 require_once('kerl-php/kerl.php');
+require_once('kerl-php/conv.php');
 
 //UTILS METHODS
 class Utils
@@ -213,5 +215,65 @@ class Utils
             . Converter::trits_to_trytes($attachmentTimestampLowerBoundTrits)
             . Converter::trits_to_trytes($attachmentTimestampUpperBoundTrits)
             . $transaction->nonce;
+    }
+
+    /**
+     *   Converts transaction trytes of 2673 trytes into a transaction object
+     *
+     * @method transactionObject
+     * @param {string} trytes
+     * @returns {String} transactionObject
+     **/
+    public static function transactionObject($trytes)
+    {
+
+        if (!$trytes) return;
+
+        // validity check
+        for ($i = 2279; $i < 2295; $i++) {
+            if ($trytes{$i} !== "9") {
+                return null;
+            }
+        }
+
+        $thisTransaction = new stdClass();
+
+        /*
+         * NOTICE:  all of the code that has been commented out in this file
+         * produces the wrong output.  I've left it in the file so that it's closer to
+         * being a 1-to-1 port of the iota.lib.js library's Utils.transactionObject method.
+         * If we need the other properties and if we need them to be correct, we need to
+         * revisit this method.
+         */
+
+//        $transactionTrits = Converter::trytes_to_trits($trytes);
+//        $hash = array();
+//
+//        $curl = new Kerl();  // This needs to be the "Curl" library that Iota JS uses
+//
+//        // generate the correct transaction hash
+//        $curl->absorb($transactionTrits, 0, count($transactionTrits));
+//        $curl->squeeze($hash, 0, 243);
+//
+//        echo implode(", ", $hash);
+//
+//        $thisTransaction->hash = trits_to_trytes($hash);
+        $thisTransaction->signatureMessageFragment = substr($trytes, 0, 2187 - 0);
+        $thisTransaction->address = substr($trytes, 2187, 2268 - 2187);
+        //$thisTransaction->value = Converter::trits_to_integers(array_slice($transactionTrits, 6804, count($transactionTrits) - 6804));
+        $thisTransaction->obsoleteTag = substr($trytes, 2295, 2322 - 2295);
+        //$thisTransaction->timestamp = Converter::trits_to_integers(array_slice($transactionTrits, 6966, count($transactionTrits) - 6966));
+        //$thisTransaction->currentIndex = Converter::trits_to_integers(array_slice($transactionTrits, 6993, count($transactionTrits) - 6993));
+        //$thisTransaction->lastIndex = Converter::trits_to_integers(array_slice($transactionTrits, 7020, count($transactionTrits) - 7020));
+        $thisTransaction->bundle = substr($trytes, 2349, 2430 - 2349);
+        $thisTransaction->trunkTransaction = substr($trytes, 2430, 2511 - 2430);
+        $thisTransaction->branchTransaction = substr($trytes, 2511, 2592 - 2511);
+        $thisTransaction->tag = substr($trytes, 2592, 2619 - 2592);
+        //$thisTransaction->attachmentTimestamp = Converter::trits_to_integers(array_slice($transactionTrits, 7857, count($transactionTrits) - 7857));
+        //$thisTransaction->attachmentTimestampLowerBound = Converter::trits_to_integers(array_slice($transactionTrits, 7884, count($transactionTrits) - 7884));
+        //$thisTransaction->attachmentTimestampUpperBound = Converter::trits_to_integers(array_slice($transactionTrits, 7911, count($transactionTrits) - 7911));
+        $thisTransaction->nonce = substr($trytes, 2646, 2673 - 2646);
+
+        return $thisTransaction;
     }
 }

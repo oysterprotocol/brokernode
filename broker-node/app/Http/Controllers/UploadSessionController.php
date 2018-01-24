@@ -49,7 +49,7 @@ class UploadSessionController extends Controller
 
         $upload_session = UploadSession::create([
             'genesis_hash' => $genesis_hash,
-            'file_size_bytes' => $file_size_bytes,
+            'file_size_bytes' => $file_size_bytes
         ]);
 
         return response()->json($upload_session);
