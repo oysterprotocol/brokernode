@@ -2,18 +2,24 @@
 namespace Dao;
 
 require_once("Lib/Database.php");
-require_once("Model/HookNodeModel.php");
+require_once("Model/BrokerNodeModel.php");
 
 use Lib\Database;
-use Model\HookNodeModel;
+use Model\BrokerNodeModel;
 
-class HookNodeDAO extends Database {
+class BrokerNodeDAO extends Database {
 	
 	function __construct() {
 		parent::__construct();
 	}
 	
-	public function getHigherScoreNode() {
+	public function insertNode($data) {
+		$this->bindMore(array("ip_address" => $data["ipAddress"]));
+		$insert = $this->query("INSERT INTO brokernode(ip_address) VALUES(:ip_address)");
+		return $insert;
+	}
+	
+	public function getHigherScoreHookNode() {
 		$node = $this->query("SELECT id, ip_address, timestamp, score from hooknode ORDER BY score DESC, timestamp DESC LIMIT 1");
 		$model = new HookNodeModel();
 		$singleNode = $node[0];
@@ -23,25 +29,20 @@ class HookNodeDAO extends Database {
 		return $model;
 	}
 	
-	public function increaseNodeScore($id) {
+	public function increaseHookNodeScore($id) {
 		$update = $this->query("UPDATE hooknode SET score = score + 1 WHERE id = :id", array("id" => $id));
 		return $update;
 	}
 	
-	public function decreaseNodeScore($id) {
+	public function decreaseHookNodeScore($id) {
 		$update = $this->query("UPDATE hooknode SET score = score - 1 WHERE id = :id", array("id" => $id));
 		return $update;
 	}
 	
-	public function insertNode($data) {
+	public function insertHookNode($data) {
 		$this->bindMore(array("ip_address" => $data["ipAddress"], "timestamp" => $data["timestamp"], "score" => $data["score"]));
 		$insert = $this->query("INSERT INTO hooknode(ip_address, timestamp, score) VALUES(:ip_address, :timestamp, :score)");
 		return $insert;
-	}
-	
-	public function changeHookNodeStatus($id, $status) {
-		$update = $this->query("UPDATE hooknode SET status = :status WHERE id = :id", array("id" => $id, 'status' => $status));
-		return $update;
 	}
 	
 	function __destruct() {

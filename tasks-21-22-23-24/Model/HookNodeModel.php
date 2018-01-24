@@ -6,6 +6,7 @@ class HookNodeModel {
 	private $ipAddress;
 	private $timestamp;
 	private $score;
+	private $numChunksProcessed;
 	private $status;
 	
 	public function setIpAddress($__ipAddress){
@@ -18,6 +19,10 @@ class HookNodeModel {
 	
 	public function setScore($__score){
 		$this->score = $__score;
+	}
+	
+	public function setNumChunksProcessed($__numChunksProcessed){
+		$this->numChunksProcessed = $__numChunksProcessed;
 	}
 	
 	public function setStatus($__status){
@@ -34,6 +39,10 @@ class HookNodeModel {
 	
 	public function getScore() {
 		return $this->score;
+	}
+	
+	public function getNumChunksProcessed(){
+		return $this->$numChunksProcessed;
 	}
 	
 	public function getStatus() {
