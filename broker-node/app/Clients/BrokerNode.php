@@ -73,7 +73,7 @@ class BrokerNode
                  */
             }
         } catch
-        (Exception $e) {
+        (\Exception $e) {
             echo "Caught exception: " . $e->getMessage();
             // something went wrong during our check, do something about it
         }
@@ -95,7 +95,7 @@ class BrokerNode
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
         } else {
-            throw new Exception('findTransactions failed!');
+            throw new \Exception('findTransactions failed!');
         }
     }
 
@@ -111,7 +111,7 @@ class BrokerNode
             if (!is_null($request->trytes)) {
                 self::getTransactionsToApprove($request);
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
         }
 
@@ -138,7 +138,7 @@ class BrokerNode
             $request->trunkTransaction = $result->branchTransaction;
             $request->branchTransaction = $result->trunkTransaction;
         } else {
-            throw new Exception('getTransactionToApprove failed!');
+            throw new \Exception('getTransactionToApprove failed!');
         }
     }
 
@@ -224,7 +224,7 @@ class BrokerNode
                 no matches yet, respond accordingly
             */
         } else {
-            throw new Exception('verifyChunkMatchesRecord failed!');
+            throw new \Exception('verifyChunkMatchesRecord failed!');
         }
     }
 
@@ -254,7 +254,7 @@ class BrokerNode
             }
             return array_reverse($txObjects);
         } else {
-            throw new Exception('getTransactionObjects failed!');
+            throw new \Exception('getTransactionObjects failed!');
         }
     }
 
