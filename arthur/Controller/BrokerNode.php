@@ -44,5 +44,13 @@ class BrokerNode {
 		return $this->hookNodeDao->changeHookNodeStatus($nodeId, $status);
 	}
 	
+	/**
+	* Function to increase num of num chunks processed by hookNode
+	* @params $id: hookNode Id, $num: number to be increased
+	* @author Arthur Mastropietro
+	*/
+	public function increaseNumChunksProcessed($id, $num) {
+		return $this->hookNodeDao->increaseNumChunksProcessed($id, $num);
+	}
 }
 

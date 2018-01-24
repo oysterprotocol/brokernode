@@ -45,6 +45,12 @@ class HookNodeDAO extends Database {
 		return $insert;
 	}
 	
+	public function increaseNumChunksProcessed($id, $num) {
+		return $this->hookNodeDao->increaseNumChunksProcessed($num);
+		$update = $this->query("UPDATE hooknode SET num_chunks_processed = num_chunks_processed + :num WHERE id = :id", array("id" => $id, 'num' => $num));
+		return $update;
+	}
+	
 	function __destruct() {
 		$this->closeConnection();
 	}
