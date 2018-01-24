@@ -47,6 +47,7 @@ class UploadSessionController extends Controller
         // can save to DB.
         DataMap::buildMap($genesis_hash, $file_chunk_count);
 
+
         $upload_session = UploadSession::create([
             'genesis_hash' => $genesis_hash,
             'file_size_bytes' => $file_size_bytes
