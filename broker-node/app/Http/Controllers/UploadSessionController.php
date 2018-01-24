@@ -155,7 +155,20 @@ class UploadSessionController extends Controller
             return response('Forbidden', 403);
         }
 
-        // NOTE: $data_map['status'] is set via cron job CheckChunkStatus.
+        // Don't need to check tangle if already detected to be complete.
+        if ($data_map['status'] == 'complete') {
+            return response()->json(['status' => $data_map['status']]);
+        }
+
+        // Check tangle. This should be done in the background.
+        $isAttached = !BrokerNode::dataNeedsAttaching($request);
+        if ($isAttached) {
+            // Saving to DB is not needed yet, but will be once we check
+            // status on the tangle in the background.
+            $data_map['status'] = 'complete';
+            $data_map->save();
+        }
+
         return response()->json(['status' => $data_map['status']]);
     }
 
