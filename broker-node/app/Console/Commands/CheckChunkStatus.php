@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Clients\BrokerNode;
 use App\DataMap;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -18,13 +19,18 @@ class CheckChunkStatus extends Command
      * Execute the console command.
      */
     public function handle() {
-        $thresholdTime =
-            Carbon::now()->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
-                ->toDateTimeString();
+        $thresholdTime = Carbon::now()
+            ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
+            ->toDateTimeString();
 
-        /**
-         * Check unverified datamaps.
-         */
+        self::updateUnverifiedDatamaps($thresholdTime);
+        self::updateTimedoutDatamaps($thresholdTime);
+    }
+
+    /**
+     * Private
+     * */
+    private function updateUnverifiedDatamaps($thresholdTime) {
         $datamaps_unverified =
             DataMap::where('status', 'unverified')
                 ->where('updated_at', '>=', $thresholdTime)
@@ -33,9 +39,13 @@ class CheckChunkStatus extends Command
         $attached_datamaps = array_filter($datamaps_unverified->toArray(), function($dmap) {
             // TODO: Check status on tangle.
             // TODO: Make these concurrent.
-            $is_attached = true; // placeholder.
+            $req = (object)[
+                "address" => $dmap->hash,
+            ];
+            $is_attached = !BrokerNode::dataNeedsAttaching($req);
             return $is_attached;
         });
+        unset($datamaps_unverified); // Purges unused memory.
 
         $attached_ids = array_map(function($dmap) {
             return $dmap["id"];
@@ -44,18 +54,21 @@ class CheckChunkStatus extends Command
         // Mass Update DB.
         DataMap::whereIn('id', $attached_ids)->update(['status' => 'complete']);
 
-        // TODO: Increment hooknode reputations for $attached_datamaps.
+        $this->updateHooknodeReputations($attached_datamaps);
+    }
 
-        unset($datamaps_unverified); // Purges unused memory.
-
-        /**
-         * Retry timedout datamaps.
-         */
+    private function updateTimedoutDatamaps($thresholdTime) {
         $datamaps_timedout =
             DataMap::where('status', 'unverified')
                 ->where('updated_at', '<', $thresholdTime)
                 ->get();
 
         // TODO: Retry with another hooknode.
+        return true; // placeholder.
+    }
+
+    private function updateHooknodeReputations($attached_datamaps) {
+        // TODO: Increment hooknode reputations for $attached_datamaps.
+        return true; // placeholder.
     }
 }
