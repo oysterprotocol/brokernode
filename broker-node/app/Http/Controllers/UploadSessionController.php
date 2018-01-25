@@ -113,6 +113,7 @@ class UploadSessionController extends Controller
             "chunkId" => $chunk["idx"],
             "address" => $chunk["hash"],
         ];
+
         BrokerNode::processNewChunk($brokerReq);
 
         return response('Success.', 204);

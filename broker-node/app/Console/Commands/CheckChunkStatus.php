@@ -23,20 +23,20 @@ class CheckChunkStatus extends Command
                 ->toDateTimeString();
 
         /**
-         * Check pending datamaps.
+         * Check unverified datamaps.
          */
-
-        $datamaps_pending =
-            DataMap::where('status', 'pending')
+        $datamaps_unverified =
+            DataMap::where('status', 'unverified')
                 ->where('updated_at', '>=', $thresholdTime)
                 ->get();
 
-        $attached_datamaps = array_filter($datamaps_pending->toArray(), function($dmap) {
+        $attached_datamaps = array_filter($datamaps_unverified->toArray(), function($dmap) {
             // TODO: Check status on tangle.
             // TODO: Make these concurrent.
             $is_attached = true; // placeholder.
             return $is_attached;
         });
+
         $attached_ids = array_map(function($dmap) {
             return $dmap["id"];
         }, $attached_datamaps);
@@ -46,13 +46,13 @@ class CheckChunkStatus extends Command
 
         // TODO: Increment hooknode reputations for $attached_datamaps.
 
-        unset($datamaps_pending); // Purges unused memory.
+        unset($datamaps_unverified); // Purges unused memory.
 
         /**
          * Retry timedout datamaps.
          */
         $datamaps_timedout =
-            DataMap::where('status', 'pending')
+            DataMap::where('status', 'unverified')
                 ->where('updated_at', '<', $thresholdTime)
                 ->get();
 

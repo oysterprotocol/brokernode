@@ -21,11 +21,16 @@ class CreateDataMapsTable extends Migration
             $table->string('hash', 255);
             $table->binary('chunk');
             $table->string('hooknode_id');
+            $table->string('address');
+            $table->string('message');
+            $table->string('trunkTransaction');
+            $table->string('branchTransaction');
             $table->enum('status', [
-                    'error',
                     'unassigned',
                     'pending',
+                    'unverified',
                     'complete',
+                    'error'
                 ])
                 ->default('unassigned');  // TODO: Use integer mapping.
 
