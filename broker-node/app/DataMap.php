@@ -41,7 +41,7 @@ class DataMap extends Model
 
         //it takes the ceiling then disregards any past the correct number
         $hashes_per_db_update = 5;
-        $num_groups = ceil(($file_chunk_count - 1) / $hashes_per_db_update);
+        $num_groups = ceil(($file_chunk_count) / $hashes_per_db_update);
 
         //start process of getting hashes
         $hash_generator = self::hashGenerator($genesis_hash,  $file_chunk_count);
