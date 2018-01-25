@@ -43,7 +43,7 @@ class NodeMessenger
         $curl = curl_init();
 
         curl_setopt_array($curl, array(
-            //CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_POST => 1,
             CURLOPT_URL => $nodeUrl,
             CURLOPT_USERAGENT => $this->userAgent,
