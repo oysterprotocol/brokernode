@@ -41,7 +41,7 @@ class UploadSessionController extends Controller
         $file_size_bytes = $request->input('file_size_bytes');
 
         // TODO: Make this an env variable.
-        $file_chunk_count = $file_size_bytes / 1000;
+        $file_chunk_count = ceil($file_size_bytes / 1000);
         // This could take a while, but if we make this async, we have a race
         // condition if the client attempts to upload before broker-node
         // can save to DB.
