@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Clients\BrokerNode;
 use App\DataMap;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -18,25 +19,34 @@ class CheckChunkStatus extends Command
      * Execute the console command.
      */
     public function handle() {
-        $thresholdTime =
-            Carbon::now()->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
-                ->toDateTimeString();
+        $thresholdTime = Carbon::now()
+            ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
+            ->toDateTimeString();
 
-        /**
-         * Check pending datamaps.
-         */
+        self::updatePendingDatamaps($thresholdTime);
+        self::updateTimedoutDatamaps($thresholdTime);
+    }
 
+    /**
+     * Private
+     * */
+
+    private function updatePendingDatamaps($thresholdTime) {
         $datamaps_pending =
             DataMap::where('status', 'pending')
                 ->where('updated_at', '>=', $thresholdTime)
                 ->get();
 
         $attached_datamaps = array_filter($datamaps_pending->toArray(), function($dmap) {
-            // TODO: Check status on tangle.
             // TODO: Make these concurrent.
-            $is_attached = true; // placeholder.
+            $req = (object)[
+                "address" => $dmap->hash,
+            ];
+            $is_attached = !BrokerNode::dataNeedsAttaching($req);
             return $is_attached;
         });
+        unset($datamaps_pending); // Purges unused memory.
+
         $attached_ids = array_map(function($dmap) {
             return $dmap["id"];
         }, $attached_datamaps);
@@ -44,18 +54,21 @@ class CheckChunkStatus extends Command
         // Mass Update DB.
         DataMap::whereIn('id', $attached_ids)->update(['status' => 'complete']);
 
-        // TODO: Increment hooknode reputations for $attached_datamaps.
+        updateHooknodeReputations($attached_datamaps);
+    }
 
-        unset($datamaps_pending); // Purges unused memory.
-
-        /**
-         * Retry timedout datamaps.
-         */
+    private function updateTimedoutDatamaps($thresholdTime) {
         $datamaps_timedout =
             DataMap::where('status', 'pending')
                 ->where('updated_at', '<', $thresholdTime)
                 ->get();
 
         // TODO: Retry with another hooknode.
+        return true; // placeholder.
+    }
+
+    private function updateHooknodeReputations($attached_datamaps) {
+        // TODO: Increment hooknode reputations for $attached_datamaps.
+        return true; // placeholder.
     }
 }
