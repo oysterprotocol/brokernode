@@ -37,6 +37,7 @@
   "scripts": {
     "start": ["cd laradock && docker-compose up -d nginx mariadb phpmyadmin"],
     "stop": ["cd laradock && docker-compose down"],
+    "logs": ["tail -f ./storage/logs/laravel.log & php artisan serve"],
     "post-root-package-install": [
       "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
     ],
