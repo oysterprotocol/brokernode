@@ -46,7 +46,6 @@ class DataMap extends Model
         //start process of getting hashes
         $hash_generator = self::hashGenerator($genesis_hash,  $file_chunk_count);
 
-
         for($i = 0; $i < $num_groups; $i++) {
             $next_group = self::getNextNHashes($hash_generator, $hashes_per_db_update, $chunk_idx);
             $chunk_idx += $hashes_per_db_update;
