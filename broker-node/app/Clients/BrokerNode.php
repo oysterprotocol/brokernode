@@ -9,10 +9,12 @@ require_once("requests/NodeMessenger.php");
 
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
-use \PrepareTransfers;
+use \Exception;
 use \IriData;
 use \IriWrapper;
 use \NodeMessenger;
+use \PrepareTransfers;
+use \stdClass;
 
 class BrokerNode
 {
@@ -132,7 +134,7 @@ class BrokerNode
         For now, we have limited nodes so we are just hard-coding nodes
 
         */
-        return "http://localhost:250";
+        return "http://165.227.79.113:250";
     }
 
     private static function sendToHookNode($modifiedTx)

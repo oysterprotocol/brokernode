@@ -40,7 +40,7 @@ class CheckChunkStatus extends Command
             // TODO: Check status on tangle.
             // TODO: Make these concurrent.
             $req = (object)[
-                "address" => $dmap->hash,
+                "address" => $dmap["hash"],
             ];
             $is_attached = !BrokerNode::dataNeedsAttaching($req);
             return $is_attached;
