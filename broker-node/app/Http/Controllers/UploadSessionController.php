@@ -136,10 +136,7 @@ class UploadSessionController extends Controller
 
         // TODO: More auth checking? Maybe also send the genesis_hash?
 
-        $genesis_hash = $session['genesis_hash'];
-
-        // Deletes data_maps and session.
-        DataMap::where('genesis_hash', $genesis_hash)->delete();
+        DataMap::where('genesis_hash', $session['genesis_hash'])->delete();
         $session->delete();
 
         return response('Success.', 204);
