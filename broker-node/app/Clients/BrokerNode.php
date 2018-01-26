@@ -134,7 +134,7 @@ class BrokerNode
         For now, we have limited nodes so we are just hard-coding nodes
 
         */
-        return "http://localhost:250";
+        return "http://165.227.79.113:250";
     }
 
     private static function sendToHookNode($modifiedTx)
