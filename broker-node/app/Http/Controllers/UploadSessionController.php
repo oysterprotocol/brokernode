@@ -6,6 +6,7 @@ use App\Clients\BrokerNode;
 use App\DataMap;
 use App\UploadSession;
 use Illuminate\Http\Request;
+use Tuupola\Trytes;
 
 class UploadSessionController extends Controller
 {
@@ -99,14 +100,20 @@ class UploadSessionController extends Controller
         // Error Responses
         if (empty($data_map)) return response('Datamap not found', 404);
 
+        $trytes = new Trytes(["characters" => Trytes::IOTA]);
+
+        $message_in_tryte_format = $trytes->encode($chunk["data"]);
+
+        $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
+        $shortened_hash = substr($hash_in_tryte_format, 0, 81);
 
         // Process chunk.
         $brokerReq = (object)[
             "responseAddress" =>
                 "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
-            "message" => $chunk["data"],
+            "message" => $message_in_tryte_format,
             "chunkId" => $chunk["idx"],
-            "address" => $data_map["hash"],
+            "address" => $shortened_hash,
         ];
         $hooknodeUrl = BrokerNode::processNewChunk($brokerReq);
 
