@@ -6,6 +6,7 @@ use App\Clients\BrokerNode;
 use App\DataMap;
 use App\UploadSession;
 use Illuminate\Http\Request;
+use Tuupola\Trytes;
 
 class UploadSessionController extends Controller
 {
@@ -47,7 +48,7 @@ class UploadSessionController extends Controller
         // can save to DB.
         DataMap::buildMap($genesis_hash, $file_chunk_count);
 
-        $upload_session = UploadSession::create([
+        $upload_session = UploadSession::firstOrCreate([
             'genesis_hash' => $genesis_hash,
             'file_size_bytes' => $file_size_bytes
         ]);
@@ -97,20 +98,22 @@ class UploadSessionController extends Controller
             ->first();
 
         // Error Responses
-        if (empty($data_map)) {
-            return response('Datamap not found', 404);
-        }
-        if ($data_map['hash'] != $chunk['hash']) {
-            return response('Forbidden', 403);
-        }
+        if (empty($data_map)) return response('Datamap not found', 404);
+
+        $trytes = new Trytes(["characters" => Trytes::IOTA]);
+
+        $message_in_tryte_format = $trytes->encode($chunk["data"]);
+
+        $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
+        $shortened_hash = substr($hash_in_tryte_format, 0, 81);
 
         // Process chunk.
         $brokerReq = (object)[
             "responseAddress" =>
                 "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
-            "message" => $chunk["data"],
+            "message" => $message_in_tryte_format,
             "chunkId" => $chunk["idx"],
-            "address" => $chunk["hash"],
+            "address" => $shortened_hash,
         ];
         $hooknodeUrl = BrokerNode::processNewChunk($brokerReq);
 
@@ -155,19 +158,15 @@ class UploadSessionController extends Controller
         // It is shared by a few functions.
 
         $genesis_hash = $request->input('genesis_hash');
-        $chunk = $request->input('chunk');
+        $chunk_idx = $request->input('chunk_idx');
 
         $data_map = DataMap::where('genesis_hash', $genesis_hash)
-            ->where('chunk_idx', $chunk['idx'])
+            ->where('chunk_idx', $chunk_idx)
             ->first();
 
         // Error Responses
-        if (empty($data_map)) {
-            return response('Datamap not found', 404);
-        }
-        if ($data_map['hash'] != $chunk['hash']) {
-            return response('Forbidden', 403);
-        }
+        if (empty($data_map))  return response('Datamap not found', 404);
+
 
         // Don't need to check tangle if already detected to be complete.
         if ($data_map['status'] == 'complete') {

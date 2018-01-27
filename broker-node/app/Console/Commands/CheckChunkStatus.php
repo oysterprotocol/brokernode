@@ -40,7 +40,7 @@ class CheckChunkStatus extends Command
         $attached_datamaps = array_filter($datamaps_pending->toArray(), function($dmap) {
             // TODO: Make these concurrent.
             $req = (object)[
-                "address" => $dmap->hash,
+                "address" => $dmap["hash"],
             ];
             $is_attached = !BrokerNode::dataNeedsAttaching($req);
             return $is_attached;

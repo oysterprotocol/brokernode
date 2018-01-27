@@ -10,38 +10,6 @@ function gmp_shiftr($x, $n)
 }
 
 
-$tryte_table = array(
-    "9" =>array(0, 0, 0), // 0
-    "A" =>array(1, 0, 0), // 1
-    "B" =>array(-1, 1, 0), // 2
-    "C" =>array(0, 1, 0), // 3
-    "D" =>array(1, 1, 0), // 4
-    "E" =>array(-1, -1, 1), // 5
-    "F" =>array(0, -1, 1), // 6
-    "G" =>array(1, -1, 1), // 7
-    "H" =>array(-1, 0, 1), // 8
-    "I" =>array(0, 0, 1), // 9
-    "J" =>array(1, 0, 1), // 10
-    "K" =>array(-1, 1, 1), // 11
-    "L" =>array(0, 1, 1), // 12
-    "M" =>array(1, 1, 1), // 13
-    "N" =>array(-1, -1, -1), // -13
-    "O" =>array(0, -1, -1), // -12
-    "P" =>array(1, -1, -1), // -11
-    "Q" =>array(-1, 0, -1), // -10
-    "R" =>array(0, 0, -1), // -9
-    "S" =>array(1, 0, -1), // -8
-    "T" =>array(-1, 1, -1), // -7
-    "U" =>array(0, 1, -1), // -6
-    "V" =>array(1, 1, -1), // -5
-    "W" =>array(-1, -1, 0), // -4
-    "X" =>array(0, -1, 0), // -3
-    "Y" =>array(1, -1, 0), // -2
-    "Z" =>array(-1, 0, 0)); // -1
-
-$trit_table = array_reverse($tryte_table, false);
-
-
 function trytes_to_trits($trytes)
 {
     global $tryte_table;
@@ -58,8 +26,35 @@ function trytes_to_trits($trytes)
 
 function trits_to_trytes($trits)
 {
-    global $trit_table;
-    global $tryte_table;
+    $tryte_table = array(
+        "9" =>array(0, 0, 0), // 0
+        "A" =>array(1, 0, 0), // 1
+        "B" =>array(-1, 1, 0), // 2
+        "C" =>array(0, 1, 0), // 3
+        "D" =>array(1, 1, 0), // 4
+        "E" =>array(-1, -1, 1), // 5
+        "F" =>array(0, -1, 1), // 6
+        "G" =>array(1, -1, 1), // 7
+        "H" =>array(-1, 0, 1), // 8
+        "I" =>array(0, 0, 1), // 9
+        "J" =>array(1, 0, 1), // 10
+        "K" =>array(-1, 1, 1), // 11
+        "L" =>array(0, 1, 1), // 12
+        "M" =>array(1, 1, 1), // 13
+        "N" =>array(-1, -1, -1), // -13
+        "O" =>array(0, -1, -1), // -12
+        "P" =>array(1, -1, -1), // -11
+        "Q" =>array(-1, 0, -1), // -10
+        "R" =>array(0, 0, -1), // -9
+        "S" =>array(1, 0, -1), // -8
+        "T" =>array(-1, 1, -1), // -7
+        "U" =>array(0, 1, -1), // -6
+        "V" =>array(1, 1, -1), // -5
+        "W" =>array(-1, -1, 0), // -4
+        "X" =>array(0, -1, 0), // -3
+        "Y" =>array(1, -1, 0), // -2
+        "Z" =>array(-1, 0, 0)); // -1
+
     $trytes = array();
     $length = count($trits);
 

@@ -9,10 +9,12 @@ require_once("requests/NodeMessenger.php");
 
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
-use \PrepareTransfers;
+use \Exception;
 use \IriData;
 use \IriWrapper;
 use \NodeMessenger;
+use \PrepareTransfers;
+use \stdClass;
 
 class BrokerNode
 {
@@ -41,21 +43,15 @@ class BrokerNode
 
     public static function processNewChunk(&$chunk)
     {
-        try {
-            if (self::dataNeedsAttaching($chunk)) {
-                self::buildTransactionData($chunk);
-                self::sendToHookNode($chunk);
-            } else {
-                // move on to the next chunk
-                /*
-                 * TODO: is there anything specific we want to do if it's
-                 * already attached?
-                 */
-            }
-        } catch
-        (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage();
-            // something went wrong during our check, do something about it
+        if (self::dataNeedsAttaching($chunk)) {
+            self::buildTransactionData($chunk);
+            self::sendToHookNode($chunk);
+        } else {
+            // move on to the next chunk
+            /*
+              * TODO: is there anything specific we want to do if it's
+              * already attached?
+              */
         }
     }
 
@@ -86,13 +82,9 @@ class BrokerNode
         $request->value = IriData::$txValue;
         $request->tag = IriData::$oysterTag;
 
-        try {
-            $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
-            if (!is_null($request->trytes)) {
-                self::getTransactionsToApprove($request);
-            }
-        } catch (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+        $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
+        if (!is_null($request->trytes)) {
+            self::getTransactionsToApprove($request);
         }
 
         return $request;
@@ -132,7 +124,7 @@ class BrokerNode
         For now, we have limited nodes so we are just hard-coding nodes
 
         */
-        return "http://localhost:250";
+        return "http://165.227.79.113:250";
     }
 
     private static function sendToHookNode($modifiedTx)
