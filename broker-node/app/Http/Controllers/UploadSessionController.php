@@ -131,7 +131,15 @@ class UploadSessionController extends Controller
      */
     public function destroy($id)
     {
-        // TODO: Delete session & datamap
+        $session = UploadSession::find($id);
+        if (empty($session)) return response('Session not found.', 404);
+
+        // TODO: More auth checking? Maybe also send the genesis_hash?
+
+        DataMap::where('genesis_hash', $session['genesis_hash'])->delete();
+        $session->delete();
+
+        return response('Success.', 204);
     }
 
     /**
