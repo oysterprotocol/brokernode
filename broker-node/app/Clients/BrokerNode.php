@@ -45,7 +45,7 @@ class BrokerNode
     {
         if (self::dataNeedsAttaching($chunk)) {
             self::buildTransactionData($chunk);
-            self::sendToHookNode($chunk);
+            return self::sendToHookNode($chunk);
         } else {
             // move on to the next chunk
             /*
@@ -139,7 +139,8 @@ class BrokerNode
         self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 
-        return $hookNodeUrl;
+        $tx->hookNodeUrl = $hookNodeUrl;
+        return $tx;
     }
 
     private static function updateHookNodeDirectory($currentHook, $status)
@@ -172,7 +173,16 @@ class BrokerNode
         }
     }
 
-    public static function verifyChunkMatchesRecord($chunk)
+    public static function verifyChunkMessageMatchesRecord($chunk)
+    {
+        try {
+            return self::verifyChunkMatchesRecord($chunk, false);
+        } catch (\Exception $e) {
+            echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+        }
+    }
+
+    public static function verifyChunkMatchesRecord($chunk, $checkBranchAndTrunk = true)
     {
         $command = new \stdClass();
         $command->command = "findTransactions";
@@ -188,30 +198,26 @@ class BrokerNode
             count($result->hashes) != 0) {
             $txObjects = self::getTransactionObjects($result->hashes);
             foreach ($txObjects as $key => $value) {
-                if (self::chunksMatch($value, $chunk)) {
-
-                    echo "CHUNK MATCHED";
-                    /*TODO
-                        update the status and leave the loop
-                    */
-                }
-                else {
-                    echo "CHUNK DID NOT MATCH";
+                if (self::chunksMatch($value, $chunk, $checkBranchAndTrunk)) {
+                    return true;
+                } else {
+                    return false;
                 }
             }
-            /*TODO
-                no matches yet, respond accordingly
-            */
         } else {
             throw new \Exception('verifyChunkMatchesRecord failed!');
         }
     }
 
-    public static function chunksMatch($chunkOnTangle, $chunkOnRecord)
+    public static function chunksMatch($chunkOnTangle, $chunkOnRecord, $checkBranchAndTrunk)
     {
-        return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
-            $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
-            $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
+        if ($checkBranchAndTrunk == true) {
+            return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
+                $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
+                $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
+        } else {
+            return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message);
+        }
     }
 
     public static function messagesMatch($messageOnTangle, $messageOnRecord)

@@ -7,6 +7,15 @@ use Webpatser\Uuid\Uuid;
 
 class DataMap extends Model
 {
+
+    public const status = array(
+        'unassigned' => 0,
+        'pending' => 1,
+        'unverified' => 2,
+        'complete' => 3,
+        'error' => 4,
+    );
+
     /**
      * TODO: Make this a shared trait.
      *  Setup model event hooks

@@ -21,6 +21,11 @@ class NodeMessenger
     private function validateUrl($nodeUrl)
     {
 
+        /*
+         * TODO
+         * Remove this method or update it
+        */
+
         $http = "((http)\:\/\/)"; // starts with http://
         $port = "(\:[0-9]{2,5})"; // ends with a port
 
@@ -33,12 +38,6 @@ class NodeMessenger
 
     public function sendMessageToNode($commandObject, $nodeUrl)
     {
-        try {
-            $this->validateUrl($nodeUrl);
-        } catch (Exception $e) {
-            echo 'Caught exception: ' . $e->getMessage() . $GLOBALS['nl'];
-        }
-
         $payload = http_build_query($commandObject);
 
         $curl = curl_init();
@@ -59,11 +58,6 @@ class NodeMessenger
         curl_close($curl);
 
         return $response;
-    }
-
-    public function sendMessageToClient($commandObject, $url)
-    {
-
     }
 }
 

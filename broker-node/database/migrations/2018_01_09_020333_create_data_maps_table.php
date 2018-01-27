@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use App\DataMap;
 
 class CreateDataMapsTable extends Migration
 {
@@ -19,14 +20,20 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
+
             $table->binary('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
+            $table->string('address');
+            $table->string('message');
+            $table->string('trunkTransaction');
+            $table->string('branchTransaction');
             $table->enum('status', [
-                    'error',
-                    'unassigned',
-                    'pending',
-                    'complete',
-                ])
+                DataMap::status['unassigned'],
+                DataMap::status['pending'],
+                DataMap::status['unverified'],
+                DataMap::status['complete'],
+                DataMap::status['error']
+            ])
                 ->default('unassigned');  // TODO: Use integer mapping.
 
             $table->timestamps();
