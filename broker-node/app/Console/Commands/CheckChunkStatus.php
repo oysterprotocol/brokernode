@@ -52,7 +52,7 @@ class CheckChunkStatus extends Command
             $is_attached = BrokerNode::verifyChunkMessageMatchesRecord($req);
             /*
              * replace with 'verifyChunkMatchesRecord' if we also want to check
-             * branch and trunk match te record.
+             * branch and trunk match the record.
              *
              * verifyChunkMessageMatchesRecord and verifyChunkMatchesRecord both
              * check tangle for the address and makes sure the message matches,
