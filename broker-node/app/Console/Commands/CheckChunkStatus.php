@@ -90,7 +90,7 @@ class CheckChunkStatus extends Command
 
     public static function purgeCompletedSessions() {
         $not_complete_gen_hash = DB::table('data_maps')
-            ->where('status', '<>', DataMap::status['unassigned'])
+            ->where('status', '<>', DataMap::status['complete'])
             ->select('genesis_hash', DB::raw('COUNT(genesis_hash) as not_completed'))
             ->groupBy('genesis_hash')
             ->pluck('genesis_hash');
