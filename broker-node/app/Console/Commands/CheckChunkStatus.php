@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Clients\BrokerNode;
 use App\DataMap;
 use Carbon\Carbon;
+use DB;
 use Illuminate\Console\Command;
 
 class CheckChunkStatus extends Command
@@ -25,6 +26,7 @@ class CheckChunkStatus extends Command
 
         self::updatePendingDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
+        self::purgeCompletedSessions();
     }
 
     /**
@@ -70,5 +72,25 @@ class CheckChunkStatus extends Command
     private function updateHooknodeReputations($attached_datamaps) {
         // TODO: Increment hooknode reputations for $attached_datamaps.
         return true; // placeholder.
+    }
+
+    public static function purgeCompletedSessions() {
+        $not_complete_gen_hash = DB::table('data_maps')
+            ->where('status', '<>', 'unassigned')
+            ->select('genesis_hash', DB::raw('COUNT(genesis_hash) as not_completed'))
+            ->groupBy('genesis_hash')
+            ->pluck('genesis_hash');
+
+        $completed_gen_hash =  DB::table('upload_sessions')
+            ->whereNotIn('genesis_hash', $not_complete_gen_hash)
+            ->pluck('genesis_hash');
+
+        DB::table('data_maps')
+            ->whereIn('genesis_hash', $completed_gen_hash)
+            ->delete();
+
+        DB::table('upload_sessions')
+            ->whereIn('genesis_hash', $completed_gen_hash)
+            ->delete();
     }
 }
