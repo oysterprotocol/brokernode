@@ -205,7 +205,11 @@ class BrokerNode
 
         if (!is_null($result) && property_exists($result, 'hashes') &&
             count($result->hashes) != 0) {
-            $txObjects = self::getTransactionObjects($result->hashes);
+            try {
+                $txObjects = self::getTransactionObjects($result->hashes);
+            } catch (\Exception $e) {
+                echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+            }
             foreach ($txObjects as $key => $value) {
                 if (self::chunksMatch($value, $chunk, $checkBranchAndTrunk)) {
                     return true;
