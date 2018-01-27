@@ -46,7 +46,7 @@ class BrokerNode
         try {
             if (self::dataNeedsAttaching($chunk)) {
                 self::buildTransactionData($chunk);
-                self::sendToHookNode($chunk);
+                return self::sendToHookNode($chunk);
             } else {
                 // move on to the next chunk
                 /*

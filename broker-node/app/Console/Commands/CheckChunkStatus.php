@@ -18,7 +18,7 @@ class CheckChunkStatus extends Command
     /**
      * Execute the console command.
      */
-    public function handle() {
+    public static function handle() {
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
@@ -30,21 +30,35 @@ class CheckChunkStatus extends Command
     /**
      * Private
      * */
-    private function updateUnverifiedDatamaps($thresholdTime) {
+    private static function updateUnverifiedDatamaps($thresholdTime) {
         $datamaps_unverified =
             DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '>=', $thresholdTime)
                 ->get();
 
         $attached_datamaps = array_filter($datamaps_unverified->toArray(), function($dmap) {
-            // TODO: Check status on tangle.
             // TODO: Make these concurrent.
             $req = (object)[
-                "address" => $dmap["hash"],
+                "address" => $dmap["address"],
+                "message" => $dmap["message"],
+                "trunkTransaction" => $dmap["trunkTransaction"],
+                "branchTransaction" => $dmap["branchTransaction"],
+                "chunk_idx" => $dmap["chunk_idx"],
+                "hooknode_id" => $dmap["hooknode_id"],
             ];
-            $is_attached = !BrokerNode::dataNeedsAttaching($req);
+
+            $is_attached = BrokerNode::verifyChunkMessageMatchesRecord($req);
+            /*
+             * replace with 'verifyChunkMatchesRecord' if we also want to check
+             * branch and trunk match te record.
+             *
+             * verifyChunkMessageMatchesRecord and verifyChunkMatchesRecord both
+             * check tangle for the address and makes sure the message matches,
+             * verifyChunkMatchesRecord also checks trunk and branch.
+             */
             return $is_attached;
         });
+
         unset($datamaps_unverified); // Purges unused memory.
 
         $attached_ids = array_map(function($dmap) {
@@ -54,10 +68,10 @@ class CheckChunkStatus extends Command
         // Mass Update DB.
         DataMap::whereIn('id', $attached_ids)->update(['status' => DataMap::status['complete']]);
 
-        $this->updateHooknodeReputations($attached_datamaps);
+        self::updateHooknodeReputations($attached_datamaps);
     }
 
-    private function updateTimedoutDatamaps($thresholdTime) {
+    private static function updateTimedoutDatamaps($thresholdTime) {
         $datamaps_timedout =
             DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '<', $thresholdTime)
@@ -67,7 +81,7 @@ class CheckChunkStatus extends Command
         return true; // placeholder.
     }
 
-    private function updateHooknodeReputations($attached_datamaps) {
+    private static function updateHooknodeReputations($attached_datamaps) {
         // TODO: Increment hooknode reputations for $attached_datamaps.
         return true; // placeholder.
     }
