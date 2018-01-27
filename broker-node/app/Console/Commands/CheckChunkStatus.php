@@ -32,7 +32,7 @@ class CheckChunkStatus extends Command
      * */
     private function updateUnverifiedDatamaps($thresholdTime) {
         $datamaps_unverified =
-            DataMap::where('status', 'unverified')
+            DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '>=', $thresholdTime)
                 ->get();
 
@@ -52,14 +52,14 @@ class CheckChunkStatus extends Command
         }, $attached_datamaps);
 
         // Mass Update DB.
-        DataMap::whereIn('id', $attached_ids)->update(['status' => 'complete']);
+        DataMap::whereIn('id', $attached_ids)->update(['status' => DataMap::status['complete']]);
 
         $this->updateHooknodeReputations($attached_datamaps);
     }
 
     private function updateTimedoutDatamaps($thresholdTime) {
         $datamaps_timedout =
-            DataMap::where('status', 'unverified')
+            DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '<', $thresholdTime)
                 ->get();
 

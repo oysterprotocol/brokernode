@@ -121,10 +121,14 @@ class UploadSessionController extends Controller
          * may need to return more stuff from processNewChunk
          */
 
-        $hooknodeUrl = BrokerNode::processNewChunk($brokerReq);
+        $updatedChunk = BrokerNode::processNewChunk($brokerReq);
 
         // Updates datamap with hooknode url, status, and chunk.
-        $data_map->hooknode_id = $hooknodeUrl;
+        $data_map->hooknode_id = $updatedChunk->hooknodeUrl;
+        $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
+        $data_map->branchTransaction = $updatedChunk->branchTransaction;
+        $data_map->address = $shortened_hash;
+        $data_map->message = $message_in_tryte_format;
         $data_map->chunk = $chunk["data"];
         $data_map->status = 'pending';
         $data_map->save();
@@ -167,7 +171,7 @@ class UploadSessionController extends Controller
 
 
         // Don't need to check tangle if already detected to be complete.
-        if ($data_map['status'] == 'complete') {
+        if ($data_map['status'] == DataMap::status['complete']) {
             return response()->json(['status' => $data_map['status']]);
         }
 
@@ -176,7 +180,7 @@ class UploadSessionController extends Controller
         if ($isAttached) {
             // Saving to DB is not needed yet, but will be once we check
             // status on the tangle in the background.
-            $data_map['status'] = 'complete';
+            $data_map['status'] = DataMap::status['complete'];
             $data_map->save();
         }
 

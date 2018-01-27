@@ -149,7 +149,8 @@ class BrokerNode
         self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 
-        return $hookNodeUrl;
+        $tx->hookNodeUrl = $hookNodeUrl;
+        return $tx;
     }
 
     private static function updateHookNodeDirectory($currentHook, $status)

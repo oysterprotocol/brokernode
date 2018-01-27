@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use App\DataMap;
 
 class CreateDataMapsTable extends Migration
 {
@@ -27,12 +28,12 @@ class CreateDataMapsTable extends Migration
             $table->string('trunkTransaction');
             $table->string('branchTransaction');
             $table->enum('status', [
-                    'unassigned',
-                    'pending',
-                    'unverified',
-                    'complete',
-                    'error'
-                ])
+                DataMap::status['unassigned'],
+                DataMap::status['pending'],
+                DataMap::status['unverified'],
+                DataMap::status['complete'],
+                DataMap::status['error']
+            ])
                 ->default('unassigned');  // TODO: Use integer mapping.
 
             $table->timestamps();
