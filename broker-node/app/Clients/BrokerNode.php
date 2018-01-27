@@ -43,21 +43,15 @@ class BrokerNode
 
     public static function processNewChunk(&$chunk)
     {
-        try {
-            if (self::dataNeedsAttaching($chunk)) {
-                self::buildTransactionData($chunk);
-                self::sendToHookNode($chunk);
-            } else {
-                // move on to the next chunk
-                /*
-                 * TODO: is there anything specific we want to do if it's
-                 * already attached?
-                 */
-            }
-        } catch
-        (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage();
-            // something went wrong during our check, do something about it
+        if (self::dataNeedsAttaching($chunk)) {
+            self::buildTransactionData($chunk);
+            self::sendToHookNode($chunk);
+        } else {
+            // move on to the next chunk
+            /*
+              * TODO: is there anything specific we want to do if it's
+              * already attached?
+              */
         }
     }
 
@@ -88,13 +82,9 @@ class BrokerNode
         $request->value = IriData::$txValue;
         $request->tag = IriData::$oysterTag;
 
-        try {
-            $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
-            if (!is_null($request->trytes)) {
-                self::getTransactionsToApprove($request);
-            }
-        } catch (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
+        $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
+        if (!is_null($request->trytes)) {
+            self::getTransactionsToApprove($request);
         }
 
         return $request;
