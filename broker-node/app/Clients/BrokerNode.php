@@ -47,11 +47,7 @@ class BrokerNode
             self::buildTransactionData($chunk);
             return self::sendToHookNode($chunk);
         } else {
-            // move on to the next chunk
-            /*
-              * TODO: is there anything specific we want to do if it's
-              * already attached?
-              */
+            return 'already attached';
         }
     }
 
@@ -249,54 +245,5 @@ class BrokerNode
         } else {
             throw new \Exception('getTransactionObjects failed!');
         }
-    }
-
-    /*
-     * We don't need the methods below for anything yet.
-     * Not worried about scalability now.
-     */
-
-    private static function initIfEmpty(&$objectToInit)
-    {
-        if (is_null($objectToInit)) {
-            $objectToInit = new \stdClass();
-        }
-    }
-
-    private static function removeFromObject(&$objectToModify, $key)
-    {
-        if (isset($objectToModify->$key)) {
-            unset($objectToModify->$key);
-        }
-    }
-
-    public static function addChunkToAttach($chunk)
-    {
-        self::initIfEmpty(self::$chunksToAttach);
-
-        $key = $chunk->chunkId;
-
-        self::$chunksToAttach->$key = $chunk;
-
-        self::processNewChunk($chunk);
-    }
-
-    public static function addChunkToVerify($request)
-    {
-        self::initIfEmpty(self::$chunksToVerify);
-
-        $key = $request->chunkId;
-
-        self::$chunksToVerify->$key = $request;
-    }
-
-    public static function removeFromChunksToAttach($chunk)
-    {
-        self::removeFromObject(self::$chunksToAttach, $chunk->chunkId);
-    }
-
-    public static function removeFromChunksToVerify($chunk)
-    {
-        self::removeFromObject(self::$chunksToVerify, $chunk->chunkId);
     }
 }

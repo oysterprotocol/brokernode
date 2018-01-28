@@ -33,7 +33,7 @@ class UploadSessionController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
     public function store(Request $request)
@@ -59,7 +59,7 @@ class UploadSessionController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function show($id)
@@ -70,7 +70,7 @@ class UploadSessionController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function edit($id)
@@ -81,8 +81,8 @@ class UploadSessionController extends Controller
     /**
      * Update the specified resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \Illuminate\Http\Request $request
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, $id)
@@ -123,23 +123,27 @@ class UploadSessionController extends Controller
 
         $updatedChunk = BrokerNode::processNewChunk($brokerReq);
 
-        // Updates datamap with hooknode url, status, and chunk.
-        $data_map->hooknode_id = $updatedChunk->hooknodeUrl;
-        $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
-        $data_map->branchTransaction = $updatedChunk->branchTransaction;
-        $data_map->address = $shortened_hash;
-        $data_map->message = $message_in_tryte_format;
-        $data_map->chunk = $chunk["data"];
-        $data_map->status = DataMap::status['pending'];
-        $data_map->save();
+        if (!is_null($updatedChunk) && is_string($updatedChunk) &&
+            $updatedChunk == 'already attached') {
+            return response('Not Accepted.', 204);
+        } else if (!is_null($updatedChunk)) {
+            $data_map->hooknode_id = $updatedChunk->hookNodeUrl;
+            $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
+            $data_map->branchTransaction = $updatedChunk->branchTransaction;
+            $data_map->address = $shortened_hash;
+            $data_map->message = $message_in_tryte_format;
+            $data_map->chunk = $chunk["data"];
+            $data_map->status = DataMap::status['pending'];
+            $data_map->save();
 
-        return response('Success.', 204);
+            return response('Success.', 204);
+        }
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  int $id
      * @return \Illuminate\Http\Response
      */
     public function destroy($id)
@@ -159,7 +163,7 @@ class UploadSessionController extends Controller
      * Gets the status of a chunk. This will be polled until status  is complete
      * or error.
      *
-     * @param  int  $body => { genesis_hash, chunk: { idx, hash } }
+     * @param  int $body => { genesis_hash, chunk: { idx, hash } }
      * @return \Illuminate\Http\Response
      */
     public function chunkStatus(Request $request)
@@ -175,7 +179,7 @@ class UploadSessionController extends Controller
             ->first();
 
         // Error Responses
-        if (empty($data_map))  return response('Datamap not found', 404);
+        if (empty($data_map)) return response('Datamap not found', 404);
 
 
         // Don't need to check tangle if already detected to be complete.
@@ -210,7 +214,7 @@ class UploadSessionController extends Controller
         ];
 
         try {
-            switch($cmd) {
+            switch ($cmd) {
                 case 'processNewChunk':
                     BrokerNode::processNewChunk($request);
                     return response('Success.', 204);

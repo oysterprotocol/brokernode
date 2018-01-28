@@ -23,10 +23,10 @@ class CreateDataMapsTable extends Migration
 
             $table->binary('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
-            $table->string('address');
-            $table->string('message');
-            $table->string('trunkTransaction');
-            $table->string('branchTransaction');
+            $table->string('address')->nullable();
+            $table->string('message')->nullable();
+            $table->string('trunkTransaction')->nullable();
+            $table->string('branchTransaction')->nullable();
             $table->enum('status', [
                 DataMap::status['unassigned'],
                 DataMap::status['pending'],
@@ -34,7 +34,7 @@ class CreateDataMapsTable extends Migration
                 DataMap::status['complete'],
                 DataMap::status['error']
             ])
-                ->default('unassigned');  // TODO: Use integer mapping.
+                ->default(DataMap::status['unassigned']);  // TODO: Use integer mapping.
 
             $table->timestamps();
 
