@@ -27,7 +27,7 @@ class HookNode extends Model
     }
 
     public static function getHighestScoreNode() {
-        self::where('status', "TODO")
+        self::where('status', "ready")
             ->orderBy('score', 'desc')
             ->firstOrFail();
     }

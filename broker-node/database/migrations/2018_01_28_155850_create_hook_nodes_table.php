@@ -24,11 +24,10 @@ class CreateHookNodesTable extends Migration
             $table->unsignedBigInteger('chunks_processed_count')
                   ->default(0);
             $table->enum('status', [
-                    'TO',
-                    'BE',
-                    'DETERMINED',
+                    'ready',
+                    'processing',
                 ])
-                ->default('unassigned');
+                ->default('ready');
 
             // Indexes
             $table->primary('id');
