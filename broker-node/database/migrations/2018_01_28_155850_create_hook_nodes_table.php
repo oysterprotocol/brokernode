@@ -14,8 +14,24 @@ class CreateHookNodesTable extends Migration
     public function up()
     {
         Schema::create('hook_nodes', function (Blueprint $table) {
-            $table->increments('id');
+            $table->uuid('id');
             $table->timestamps();
+
+            $table->string('ip_address',255)
+                  ->unique();
+            $table->unsignedBigInteger('score')
+                  ->default(0);
+            $table->unsignedBigInteger('chunks_processed_count')
+                  ->default(0);
+            $table->enum('status', [
+                    'TO',
+                    'BE',
+                    'DETERMINED',
+                ])
+                ->default('unassigned');
+
+            // Indexes
+            $table->primary('id');
         });
     }
 

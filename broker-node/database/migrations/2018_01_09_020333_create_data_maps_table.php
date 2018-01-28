@@ -27,7 +27,7 @@ class CreateDataMapsTable extends Migration
                     'pending',
                     'complete',
                 ])
-                ->default('unassigned');  // TODO: Use integer mapping.
+                ->default('unassigned');
 
             $table->timestamps();
 
