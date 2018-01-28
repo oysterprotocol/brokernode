@@ -20,7 +20,6 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
-
             $table->binary('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
             $table->string('address')->nullable();
@@ -33,8 +32,7 @@ class CreateDataMapsTable extends Migration
                 DataMap::status['unverified'],
                 DataMap::status['complete'],
                 DataMap::status['error']
-            ])
-                ->default(DataMap::status['unassigned']);  // TODO: Use integer mapping.
+            ])->default(DataMap::status['unassigned']);  // TODO: Use integer mapping.
 
             $table->timestamps();
 
