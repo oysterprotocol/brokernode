@@ -18,10 +18,9 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 });
 
 Route::group(['prefix' => 'v1'], function() {
-    Route::resources([
-        '/upload-sessions' => 'UploadSessionController',
-        '/hooknodes' => 'HookNodeController'
-    ]);
+    Route::resource('/upload-sessions', 'UploadSessionController');
+    Route::resource('/hooknodes', 'HookNodeController', ['only' => 'store']);
+
     Route::get('/chunk-status', 'UploadSessionController@chunkStatus');
 
     // This is a temporary route used to integrate BrokerNode into
