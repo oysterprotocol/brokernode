@@ -85,7 +85,7 @@ class CheckChunkStatus extends Command
             ->whereNotIn('genesis_hash', $not_complete_gen_hash)
             ->pluck('genesis_hash');
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($completed_gen_hash) {
             DB::table('data_maps')
                 ->whereIn('genesis_hash', $completed_gen_hash)
                 ->delete();
