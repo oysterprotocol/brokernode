@@ -21,6 +21,7 @@ Route::group(['prefix' => 'v1'], function() {
     Route::resource('/upload-sessions', 'UploadSessionController', [
         'only' => ["store", "update", "destroy"]
     ]);
+    Route::post('/upload-sessions/{genesis_hash}/beta', 'UploadSessionController@storeBeta');
     Route::get('/chunk-status', 'UploadSessionController@chunkStatus');
 
     Route::resource('/hooknodes', 'HookNodeController', [

@@ -21,14 +21,47 @@ class UploadSessionController extends Controller
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
 
-        // TODO: Make this an env variable.
+        // TODO: Payments.
+        // TODO: Beta Node.
+
+        $upload_session =
+            self::startSession($genesis_hash, $file_size_bytes);
+
+        return response()->json($upload_session);
+    }
+
+    /**
+     * Store a newly created resource in storage. This is for the beta session
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function storeBeta(Request $request, $genesis_hash)
+    {
+        $file_size_bytes = $request->input('file_size_bytes');
+
+        $upload_session =
+            self::startSession($genesis_hash, $file_size_bytes, "beta");
+
+        return response()->json($upload_session);
+    }
+
+    /**
+     * Private
+     */
+
+    private static function startSession(
+        $genesis_hash, $file_size_bytes, $type="alpha"
+    ) {
+        // TODO: Make 1000 an env variable.
         $file_chunk_count = ceil($file_size_bytes / 1000);
         // This could take a while, but if we make this async, we have a race
         // condition if the client attempts to upload before broker-node
         // can save to DB.
         DataMap::buildMap($genesis_hash, $file_chunk_count);
 
-        $upload_session = UploadSession::firstOrCreate([
+        return UploadSession::firstOrCreate([
+            'type' => $type,
             'genesis_hash' => $genesis_hash,
             'file_size_bytes' => $file_size_bytes
         ]);
