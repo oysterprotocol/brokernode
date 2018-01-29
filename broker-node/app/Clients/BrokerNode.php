@@ -47,9 +47,10 @@ class BrokerNode
         if (self::dataNeedsAttaching($chunk)) {
             self::buildTransactionData($chunk);
             $updated_chunk = self::sendToHookNode($chunk);
+
             return is_null($updated_chunk)
-                ? ['success', $updated_chunk]
-                : ['queued', null];
+                ? ['queued', null]
+                : ['success', $updated_chunk];
 
         } else {
             return ['already_attached', null];
