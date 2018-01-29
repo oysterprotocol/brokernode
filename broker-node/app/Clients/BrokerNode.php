@@ -120,7 +120,7 @@ class BrokerNode
         For now, we have limited nodes so we are just hard-coding nodes
 
         */
-        return "http://165.227.79.113:250";
+        return "https://hook-1.oysternodes.com:250/HookListener.php";
     }
 
     private static function sendToHookNode($modifiedTx)
