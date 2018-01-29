@@ -26,10 +26,10 @@ class HookNode extends Model
         return self::create(['ip_address' => $ip_address]);
     }
 
-    public static function getHighestScoreNode() {
+    public static function getNextReadyNode() {
         self::where('status', "ready")
             ->orderBy('score', 'desc')
-            ->firstOrFail();
+            ->first();
     }
 
     public static function incrementScore($ip_address) {
