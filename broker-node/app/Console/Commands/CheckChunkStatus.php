@@ -56,7 +56,7 @@ class CheckChunkStatus extends Command
         // Mass Update DB.
         DataMap::whereIn('id', $attached_ids)->update(['status' => 'complete']);
 
-        updateHooknodeReputations($attached_datamaps);
+        self::updateHooknodeReputations($attached_datamaps);
     }
 
     private function updateTimedoutDatamaps($thresholdTime) {
@@ -69,7 +69,7 @@ class CheckChunkStatus extends Command
         return true; // placeholder.
     }
 
-    private function updateHooknodeReputations($attached_datamaps) {
+    private static function updateHooknodeReputations($attached_datamaps) {
         // TODO: Increment hooknode reputations for $attached_datamaps.
         return true; // placeholder.
     }
