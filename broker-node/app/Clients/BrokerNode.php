@@ -100,13 +100,13 @@ class BrokerNode
 
         BrokerNode::$iriRequestInProgress = false;
 
-        if (!is_null($result)) {
+        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
             //do we do this randomly or every time?
             $request->trunkTransaction = $result->branchTransaction;
             $request->branchTransaction = $result->trunkTransaction;
         } else {
-            throw new \Exception('getTransactionToApprove failed!');
+            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
         }
     }
 

@@ -9,11 +9,11 @@ class DataMap extends Model
 {
 
     const status = array(
-        'unassigned' => 0,
-        'pending' => 1,
-        'unverified' => 2,
-        'complete' => 3,
-        'error' => 4,
+        'unassigned' => 'unassigned',
+        'pending' => 'pending',
+        'unverified' => 'unverified',
+        'complete' => 'complete',
+        'error' => 'error',
     );
 
     /**
