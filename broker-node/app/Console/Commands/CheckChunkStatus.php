@@ -10,8 +10,6 @@ use Illuminate\Console\Command;
 
 class CheckChunkStatus extends Command
 {
-    public static $chunkOut = '';
-
     const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 20;
 
     protected $signature = 'CheckChunkStatus:checkStatus';
@@ -23,15 +21,10 @@ class CheckChunkStatus extends Command
      */
     public static function handle()
     {
-        self::$chunkOut .= "At handle start. \n\n";
-        echo self::$chunkOut;
-
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
-
-        self::$chunkOut .= "Threshold time: " . $thresholdTime . "\n\n";
-
+      
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();
@@ -42,8 +35,6 @@ class CheckChunkStatus extends Command
      * */
     private static function updateUnverifiedDatamaps($thresholdTime)
     {
-        self::$chunkOut .= "In updateUnverifiedDatamaps\n\n";
-
         $datamaps_unverified =
             DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '>=', $thresholdTime)
@@ -73,16 +64,11 @@ class CheckChunkStatus extends Command
             return $is_attached;
         });
 
-        self::$chunkOut .= "datamaps_unverified: " . count($datamaps_unverified) . "\n\n";
-        self::$chunkOut .= "attached_datamaps: " . count($attached_datamaps) . "\n\n";
-
         unset($datamaps_unverified); // Purges unused memory.
 
         $attached_ids = array_map(function ($dmap) {
             return $dmap["id"];
         }, $attached_datamaps);
-
-        self::$chunkOut .= "attached_ids: " . count($attached_ids) . "\n\n";
 
         // Mass Update DB.
         DataMap::whereIn('id', $attached_ids)->update(['status' => DataMap::status['complete']]);
@@ -92,15 +78,10 @@ class CheckChunkStatus extends Command
 
     private static function updateTimedoutDatamaps($thresholdTime)
     {
-
-        self::$chunkOut .= "in updateTimedoutDatamaps.\n\n";
-
         $datamaps_timedout =
             DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '<', $thresholdTime)
                 ->get();
-
-        self::$chunkOut .= "datamaps_timedout: " . count($datamaps_timedout) . "\n\n";
 
         // TODO: Retry with another hooknode.
         return true; // placeholder.
@@ -113,8 +94,6 @@ class CheckChunkStatus extends Command
 
     public static function purgeCompletedSessions()
     {
-        self::$chunkOut .= "in purgeCompletedSessions.\n\n";
-
         $not_complete_gen_hash = DB::table('data_maps')
             ->where('status', '<>', DataMap::status['complete'])
             ->select('genesis_hash', DB::raw('COUNT(genesis_hash) as not_completed'))
@@ -125,9 +104,6 @@ class CheckChunkStatus extends Command
             ->whereNotIn('genesis_hash', $not_complete_gen_hash)
             ->pluck('genesis_hash');
 
-        self::$chunkOut .= "not_complete_gen_hash: " . count($not_complete_gen_hash) . "\n\n";
-        self::$chunkOut .= "completed_gen_hash: " . count($completed_gen_hash) . "\n\n";
-
         DB::transaction(function () use ($completed_gen_hash) {
             DB::table('data_maps')
                 ->whereIn('genesis_hash', $completed_gen_hash)
@@ -136,10 +112,6 @@ class CheckChunkStatus extends Command
             DB::table('upload_sessions')
                 ->whereIn('genesis_hash', $completed_gen_hash)
                 ->delete();
-
-            self::$chunkOut .= "In purge callback\n\n";
         });
-
-        echo self::$chunkOut;
     }
 }
