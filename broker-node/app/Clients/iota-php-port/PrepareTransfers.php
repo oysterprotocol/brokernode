@@ -24,8 +24,15 @@ class PrepareTransfers
         // Also remove the checksum of the address if it's there after validating it
         foreach ($transfers as $thisTransfer) {
 
-            $thisTransfer->message = $thisTransfer->message ? $thisTransfer->message : '';
-            $thisTransfer->obsoleteTag = $thisTransfer->tag ? $thisTransfer->tag : ($thisTransfer->obsoleteTag ? $thisTransfer->obsoleteTag : '');
+            if (!property_exists($thisTransfer, 'message')) {
+                $thisTransfer->message = '';
+            }
+
+            if (property_exists($thisTransfer, 'tag')) {
+                $thisTransfer->obsoleteTag = $thisTransfer->tag;
+            } else if (!property_exists($thisTransfer, 'obsoleteTag')) {
+                $thisTransfer->obsoleteTag = '';
+            }
 
             // If address with checksum, validate it
             if (strlen($thisTransfer->address) === 90) {
@@ -131,7 +138,8 @@ class PrepareTransfers
         return call_user_func($callback, null, array_reverse($bundleTrytes));
     }
 
-    public static function buildTxTrytes($txObject, $seed) {
+    public static function buildTxTrytes($txObject, $seed)
+    {
 
         $transactionObject = new stdClass();
 

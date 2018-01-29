@@ -4,7 +4,7 @@ $GLOBALS['nl'] = "\n";
 
 class IriData
 {
-    public static $nodeUrl = "http://165.227.79.113:14265";
+    public static $nodeUrl = "http://172.17.0.1:14265";
     public static $apiVersion = '1.4';
 
     public static $depthToSearchForTxs = 1;
@@ -13,7 +13,7 @@ class IriData
     public static $minMinWeightMagnitude = 14;
 
     public static $oysterSeed = 'OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL';
-    public static $oysterTag = 'OYSTERPEARL';  //will use this as the 'tag'
+    public static $oysterTag = '';  //will use this as the 'tag'
     public static $txValue = 0;
 
     public static $maxIRICallAttempts = 50;  //we need to discuss this
