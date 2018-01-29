@@ -21,6 +21,11 @@ class CreateUploadSessionsTable extends Migration
             $table->string('genesis_hash', 255)
                   ->unique();
             $table->unsignedBigInteger('file_size_bytes');
+            $table->enum('type', [
+                    'alpha',
+                    'beta'
+                ])
+                ->default('alpha');
 
             $table->timestamps();
 
