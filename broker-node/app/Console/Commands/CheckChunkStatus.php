@@ -106,9 +106,7 @@ class CheckChunkStatus extends Command
         return true; // placeholder.
     }
 
-    private static function updateHooknodeReputations($attached_datamaps)
-    {
-        self::$chunkOut .= "in updateHooknodeReputations stub. \n\n";
+    private static function updateHooknodeReputations($attached_datamaps) {
         // TODO: Increment hooknode reputations for $attached_datamaps.
         return true; // placeholder.
     }
