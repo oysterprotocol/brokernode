@@ -21,13 +21,12 @@ Route::group(['prefix' => 'v1'], function() {
     Route::resource('/upload-sessions', 'UploadSessionController', [
         'only' => ["store", "update", "destroy"]
     ]);
-    Route::post('/upload-sessions/{genesis_hash}/beta', 'UploadSessionController@storeBeta');
+    Route::post('/upload-sessions/beta', 'UploadSessionController@storeBeta');
     Route::get('/chunk-status', 'UploadSessionController@chunkStatus');
 
     Route::resource('/hooknodes', 'HookNodeController', [
         'only' => ['store']
     ]);
-
 
     // This is a temporary route used to integrate BrokerNode into
     // laravel app. This will do exactly what BrokerListener did before.

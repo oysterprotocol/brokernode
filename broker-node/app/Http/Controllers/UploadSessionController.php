@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use \Exception;
 use App\Clients\BrokerNode;
 use App\DataMap;
 use App\UploadSession;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Tuupola\Trytes;
 
@@ -20,14 +22,36 @@ class UploadSessionController extends Controller
     {
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
+        $beta_brokernode_ip = $request->input('beta_brokernode_ip');
 
-        // TODO: Payments.
-        // TODO: Beta Node.
+
+        // TODO: Handle PRL Payments.
+
+        // Starts session with beta.
+        try {
+            $http_client = new Client();
+            $beta_session_res = $http_client
+                ->post(
+                    "{$beta_brokernode_ip}/api/v1/upload-sessions/beta",
+                    [
+                        'form_params' => [
+                            'genesis_hash' => $genesis_hash,
+                            'file_size_bytes' => $file_size_bytes
+                        ]
+                    ]
+                );
+            $beta_session = json_decode($beta_session_res->getBody(), true);
+        } catch (Exception $e) {
+            return response("Error: Beta start session failed: {$e}", 500);
+        }
 
         $upload_session =
             self::startSession($genesis_hash, $file_size_bytes);
 
-        return response()->json($upload_session);
+        $res = clone $upload_session;
+        $res['beta_session_id'] = $beta_session["id"];
+
+        return response()->json($res);
     }
 
     /**
@@ -36,35 +60,15 @@ class UploadSessionController extends Controller
      * @param  \Illuminate\Http\Request $request
      * @return \Illuminate\Http\Response
      */
-    public function storeBeta(Request $request, $genesis_hash)
+    public function storeBeta(Request $request)
     {
+        $genesis_hash = $request->input('genesis_hash');
+        $genesis_hash = "{$genesis_hash}-beta";
+
         $file_size_bytes = $request->input('file_size_bytes');
 
         $upload_session =
             self::startSession($genesis_hash, $file_size_bytes, "beta");
-
-        return response()->json($upload_session);
-    }
-
-    /**
-     * Private
-     */
-
-    private static function startSession(
-        $genesis_hash, $file_size_bytes, $type="alpha"
-    ) {
-        // TODO: Make 1000 an env variable.
-        $file_chunk_count = ceil($file_size_bytes / 1000);
-        // This could take a while, but if we make this async, we have a race
-        // condition if the client attempts to upload before broker-node
-        // can save to DB.
-        DataMap::buildMap($genesis_hash, $file_chunk_count);
-
-        return UploadSession::firstOrCreate([
-            'type' => $type,
-            'genesis_hash' => $genesis_hash,
-            'file_size_bytes' => $file_size_bytes
-        ]);
 
         return response()->json($upload_session);
     }
@@ -222,5 +226,28 @@ class UploadSessionController extends Controller
             return response("Internal Server Error: {$e->getMessage()}", 500);
         }
 
+    }
+
+    /**
+     * Private
+     */
+
+    private static function startSession(
+        $genesis_hash, $file_size_bytes, $type="alpha"
+    ) {
+        // TODO: Make 1000 an env variable.
+        $file_chunk_count = ceil($file_size_bytes / 1000);
+        // This could take a while, but if we make this async, we have a race
+        // condition if the client attempts to upload before broker-node
+        // can save to DB.
+        DataMap::buildMap($genesis_hash, $file_chunk_count);
+
+        return UploadSession::firstOrCreate([
+            'type' => $type,
+            'genesis_hash' => $genesis_hash,
+            'file_size_bytes' => $file_size_bytes
+        ]);
+
+        return response()->json($upload_session);
     }
 }
