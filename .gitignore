@@ -13,6 +13,7 @@ Desktop.ini
 # ignore Composer downloads
 /vendor/*
 /broker-node/vendor/*
+/broker-node/laradock
 
 # keep some hiddens
 !.htaccess

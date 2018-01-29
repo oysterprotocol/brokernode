@@ -13,7 +13,7 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        '\App\Console\Commands\CheckChunkStatus',
+        '\App\Console\Commands\CheckChunkStatus'
     ];
 
     /**
@@ -25,7 +25,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('CheckChunkStatus:checkStatus')
-                 ->everyMinute();
+                 ->everyMinute()
+                 ->sendOutputTo('/var/CHUNKLOG');
     }
 
     /**

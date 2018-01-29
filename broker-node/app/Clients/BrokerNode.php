@@ -45,13 +45,9 @@ class BrokerNode
     {
         if (self::dataNeedsAttaching($chunk)) {
             self::buildTransactionData($chunk);
-            self::sendToHookNode($chunk);
+            return self::sendToHookNode($chunk);
         } else {
-            // move on to the next chunk
-            /*
-              * TODO: is there anything specific we want to do if it's
-              * already attached?
-              */
+            return 'already attached';
         }
     }
 
@@ -104,13 +100,13 @@ class BrokerNode
 
         BrokerNode::$iriRequestInProgress = false;
 
-        if (!is_null($result)) {
+        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
             //do we do this randomly or every time?
             $request->trunkTransaction = $result->branchTransaction;
             $request->branchTransaction = $result->trunkTransaction;
         } else {
-            throw new \Exception('getTransactionToApprove failed!');
+            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
         }
     }
 
@@ -139,7 +135,8 @@ class BrokerNode
         self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 
-        return $hookNodeUrl;
+        $tx->hookNodeUrl = $hookNodeUrl;
+        return $tx;
     }
 
     private static function updateHookNodeDirectory($currentHook, $status)
@@ -172,7 +169,12 @@ class BrokerNode
         }
     }
 
-    public static function verifyChunkMatchesRecord($chunk)
+    public static function verifyChunkMessageMatchesRecord($chunk)
+    {
+        return self::verifyChunkMatchesRecord($chunk, false);
+    }
+
+    public static function verifyChunkMatchesRecord($chunk, $checkBranchAndTrunk = true)
     {
         $command = new \stdClass();
         $command->command = "findTransactions";
@@ -188,30 +190,26 @@ class BrokerNode
             count($result->hashes) != 0) {
             $txObjects = self::getTransactionObjects($result->hashes);
             foreach ($txObjects as $key => $value) {
-                if (self::chunksMatch($value, $chunk)) {
-
-                    echo "CHUNK MATCHED";
-                    /*TODO
-                        update the status and leave the loop
-                    */
-                }
-                else {
-                    echo "CHUNK DID NOT MATCH";
+                if (self::chunksMatch($value, $chunk, $checkBranchAndTrunk)) {
+                    return true;
+                } else {
+                    return false;
                 }
             }
-            /*TODO
-                no matches yet, respond accordingly
-            */
         } else {
             throw new \Exception('verifyChunkMatchesRecord failed!');
         }
     }
 
-    public static function chunksMatch($chunkOnTangle, $chunkOnRecord)
+    public static function chunksMatch($chunkOnTangle, $chunkOnRecord, $checkBranchAndTrunk)
     {
-        return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
-            $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
-            $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
+        if ($checkBranchAndTrunk == true) {
+            return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
+                $chunkOnTangle->trunkTransaction == $chunkOnRecord->trunkTransaction &&
+                $chunkOnTangle->branchTransaction == $chunkOnRecord->branchTransaction;
+        } else {
+            return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message);
+        }
     }
 
     public static function messagesMatch($messageOnTangle, $messageOnRecord)
@@ -243,54 +241,5 @@ class BrokerNode
         } else {
             throw new \Exception('getTransactionObjects failed!');
         }
-    }
-
-    /*
-     * We don't need the methods below for anything yet.
-     * Not worried about scalability now.
-     */
-
-    private static function initIfEmpty(&$objectToInit)
-    {
-        if (is_null($objectToInit)) {
-            $objectToInit = new \stdClass();
-        }
-    }
-
-    private static function removeFromObject(&$objectToModify, $key)
-    {
-        if (isset($objectToModify->$key)) {
-            unset($objectToModify->$key);
-        }
-    }
-
-    public static function addChunkToAttach($chunk)
-    {
-        self::initIfEmpty(self::$chunksToAttach);
-
-        $key = $chunk->chunkId;
-
-        self::$chunksToAttach->$key = $chunk;
-
-        self::processNewChunk($chunk);
-    }
-
-    public static function addChunkToVerify($request)
-    {
-        self::initIfEmpty(self::$chunksToVerify);
-
-        $key = $request->chunkId;
-
-        self::$chunksToVerify->$key = $request;
-    }
-
-    public static function removeFromChunksToAttach($chunk)
-    {
-        self::removeFromObject(self::$chunksToAttach, $chunk->chunkId);
-    }
-
-    public static function removeFromChunksToVerify($chunk)
-    {
-        self::removeFromObject(self::$chunksToVerify, $chunk->chunkId);
     }
 }

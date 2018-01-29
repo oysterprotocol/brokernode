@@ -140,9 +140,6 @@ class PrepareTransfers
         $transactionObject->message = $txObject->message;
         $transactionObject->tag = $txObject->tag;
 
-        var_dump($transactionObject);
-        echo $transactionObject->value;
-
         $result = self::prepareTransfers($seed,
             [$transactionObject],
             null, //where options with inputs array would go, consider removing this and removing param from method
@@ -159,27 +156,3 @@ class PrepareTransfers
         return $result;
     }
 }
-
-//$seed = 'A9YZ9YMXBQRBKKQYLZSDPIBPWLOURJPQHQDSOE9QBAC9XYABCIMNWPWMX9NVCDSWOTMIWSMDJRFWPDSKC';
-//$addressWithoutChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ';
-//$addressWithChecksum = 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQZNXDGNRJE';
-//
-//$transactionObject = new stdClass();
-//
-//$transactionObject->address = $addressWithoutChecksum;
-//$transactionObject->value = 0;
-//$transactionObject->message = 'WBTCGDGDPCVCTC';
-//$transactionObject->tag = 'CCPCVC';
-//
-//PrepareTransfers::prepareTransfers($seed,
-//    [$transactionObject],
-//    null, //where options with inputs array would go, consider removing this and removing param from method
-//    function ($e, $s) {
-//        if ($s != null) {
-//            echo implode(", ", $s);
-//            //do something with $s, which should be an array of transaction trytes
-//        } else {
-//            echo "did not work";
-//            //do something with this error
-//        }
-//    });

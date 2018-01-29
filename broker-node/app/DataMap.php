@@ -7,6 +7,15 @@ use Webpatser\Uuid\Uuid;
 
 class DataMap extends Model
 {
+
+    const status = array(
+        'unassigned' => 'unassigned',
+        'pending' => 'pending',
+        'unverified' => 'unverified',
+        'complete' => 'complete',
+        'error' => 'error',
+    );
+
     /**
      * TODO: Make this a shared trait.
      *  Setup model event hooks
@@ -15,12 +24,21 @@ class DataMap extends Model
     {
         parent::boot();
         self::creating(function ($model) {
-            $model->id = (string) Uuid::generate(4);
+            $model->id = (string)Uuid::generate(4);
         });
     }
 
     protected $table = 'data_maps';
-	protected $fillable = ['genesis_hash', 'hash', 'chunk_idx'];
+    protected $fillable = [
+        'genesis_hash',
+        'hash',
+        'chunk_idx',
+        'address',
+        'message',
+        'trunkTransaction',
+        'branchTransaction',
+        'hooknode_id'
+    ];
     public $incrementing = false;  // UUID
 
     /**
@@ -30,7 +48,8 @@ class DataMap extends Model
      * @param integer $file_chunk_count the number to generate
      * @return boolean $result response code
      */
-    public static function buildMap($genesis_hash, $file_chunk_count) {
+    public static function buildMap($genesis_hash, $file_chunk_count)
+    {
         //we put the first chunk
         $chunk_idx = 0;
         self::create([
@@ -44,14 +63,16 @@ class DataMap extends Model
         $num_groups = ceil(($file_chunk_count) / $hashes_per_db_update);
 
         //start process of getting hashes
-        $hash_generator = self::hashGenerator($genesis_hash,  $file_chunk_count);
+        $hash_generator = self::hashGenerator($genesis_hash, $file_chunk_count);
 
-        for($i = 0; $i < $num_groups; $i++) {
+        for ($i = 0; $i < $num_groups; $i++) {
             $next_group = self::getNextNHashes($hash_generator, $hashes_per_db_update, $chunk_idx);
             $chunk_idx += $hashes_per_db_update;
 
-            foreach($next_group as $chunk_idx_hash) {
-                [$curr_hash, $curr_chunk_idx] = $chunk_idx_hash;
+            foreach ($next_group as $chunk_idx_hash) {
+
+                $curr_hash = $chunk_idx_hash[0];
+                $curr_chunk_idx = $chunk_idx_hash[1];
 
                 self::create([
                     'genesis_hash' => $genesis_hash,
@@ -70,15 +91,16 @@ class DataMap extends Model
      * @param $chunk_idx the chunk id to start at
      * @return array Returns array of [chunk id , hash] pairs
      */
-    private static function getNextNHashes($hash_generator, $n, $chunk_idx) {
+    private static function getNextNHashes($hash_generator, $n, $chunk_idx)
+    {
         $next_group = array();
 
-        for($i = 0; $i < $n; $i++) {
+        for ($i = 0; $i < $n; $i++) {
             $chunk_idx++;
             $hash_generator->next();
             $next_hash = $hash_generator->current();
             //this is returned if the generator is called too many times
-            if($next_hash == -1) {
+            if ($next_hash == -1) {
                 break;
             }
 
@@ -97,15 +119,16 @@ class DataMap extends Model
      * @param integer $n the number to generate
      * @return User Returns User object or null if not found
      */
-    private static function hashGenerator($genesis_hash, $n) {
+    private static function hashGenerator($genesis_hash, $n)
+    {
         $hash = $genesis_hash;
 
-        for($i = 0; $i <= $n; $i++) {
+        for ($i = 0; $i <= $n; $i++) {
             yield $hash;
             $hash = hash("sha256", $hash);
         }
 
-        while(True) {
+        while (True) {
             yield -1;
         }
     }
