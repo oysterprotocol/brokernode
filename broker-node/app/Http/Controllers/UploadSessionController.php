@@ -24,7 +24,6 @@ class UploadSessionController extends Controller
         $file_size_bytes = $request->input('file_size_bytes');
         $beta_brokernode_ip = $request->input('beta_brokernode_ip');
 
-
         // TODO: Handle PRL Payments.
 
         // Starts session with beta.
@@ -45,9 +44,11 @@ class UploadSessionController extends Controller
             return response("Error: Beta start session failed: {$e}", 500);
         }
 
+        // Starts session on self (alpha).
         $upload_session =
             self::startSession($genesis_hash, $file_size_bytes);
 
+        // Appends beta_session_id for client.
         $res = clone $upload_session;
         $res['beta_session_id'] = $beta_session["id"];
 
