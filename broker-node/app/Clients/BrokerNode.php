@@ -171,11 +171,7 @@ class BrokerNode
 
     public static function verifyChunkMessageMatchesRecord($chunk)
     {
-        try {
-            return self::verifyChunkMatchesRecord($chunk, false);
-        } catch (\Exception $e) {
-            echo "Caught exception: " . $e->getMessage() . $GLOBALS['nl'];
-        }
+        return self::verifyChunkMatchesRecord($chunk, false);
     }
 
     public static function verifyChunkMatchesRecord($chunk, $checkBranchAndTrunk = true)
