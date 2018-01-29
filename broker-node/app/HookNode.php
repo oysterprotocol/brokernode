@@ -41,4 +41,9 @@ class HookNode extends Model
         self::where('ip_address', $ip_address)
             ->decrement('score', 1);
     }
+
+    public static function incrementChunksProcessed($ip_address, $chunks_count=1) {
+        self::where('ip_address', $ip_address)
+            ->increment('chunks_processed_count', $chunks_count);
+    }
 }
