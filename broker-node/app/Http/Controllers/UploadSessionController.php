@@ -117,22 +117,26 @@ class UploadSessionController extends Controller
          * may need to return more stuff from processNewChunk
          */
 
-        $updatedChunk = BrokerNode::processNewChunk($brokerReq);
+        [$res_type, $updatedChunk] = BrokerNode::processNewChunk($brokerReq);
 
-        if (!is_null($updatedChunk) && is_string($updatedChunk) &&
-            $updatedChunk == 'already attached') {
-            return response('Not Accepted.', 204);
-        } else if (!is_null($updatedChunk)) {
-            $data_map->hooknode_id = $updatedChunk->hookNodeUrl;
-            $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
-            $data_map->branchTransaction = $updatedChunk->branchTransaction;
-            $data_map->address = $shortened_hash;
-            $data_map->message = $message_in_tryte_format;
-            $data_map->chunk = $chunk["data"];
-            $data_map->status = DataMap::status['pending'];
-            $data_map->save();
+        switch($res_type) {
+            case 'already_attached':
+                return response('Error: Chunk already attached.', 500);
 
-            return response('Success.', 204);
+            case 'queued':
+                return response('Processing: Hooknodes are busy', 102);
+
+            case 'success':
+                $data_map->hooknode_id = $updatedChunk->hookNodeUrl;
+                $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
+                $data_map->branchTransaction = $updatedChunk->branchTransaction;
+                $data_map->address = $shortened_hash;
+                $data_map->message = $message_in_tryte_format;
+                $data_map->chunk = $chunk["data"];
+                $data_map->status = DataMap::status['pending'];
+                $data_map->save();
+
+                return response('Success.', 204);
         }
     }
 

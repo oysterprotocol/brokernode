@@ -26,10 +26,10 @@ class HookNode extends Model
         return self::create(['ip_address' => $ip_address]);
     }
 
-    public static function getHighestScoreNode() {
+    public static function getNextReadyNode() {
         self::where('status', "ready")
             ->orderBy('score', 'desc')
-            ->firstOrFail();
+            ->first();
     }
 
     public static function incrementScore($ip_address) {
@@ -40,5 +40,10 @@ class HookNode extends Model
     public static function decrementScore($ip_address) {
         self::where('ip_address', $ip_address)
             ->decrement('score', 1);
+    }
+
+    public static function incrementChunksProcessed($ip_address, $chunks_count=1) {
+        self::where('ip_address', $ip_address)
+            ->increment('chunks_processed_count', $chunks_count);
     }
 }

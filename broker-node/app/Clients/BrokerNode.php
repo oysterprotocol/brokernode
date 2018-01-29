@@ -15,6 +15,7 @@ use \IriWrapper;
 use \NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
+use App\HookNode;
 
 class BrokerNode
 {
@@ -45,9 +46,14 @@ class BrokerNode
     {
         if (self::dataNeedsAttaching($chunk)) {
             self::buildTransactionData($chunk);
-            return self::sendToHookNode($chunk);
+            $updated_chunk = self::sendToHookNode($chunk);
+
+            return is_null($updated_chunk)
+                ? ['queued', null]
+                : ['success', $updated_chunk];
+
         } else {
-            return 'already attached';
+            return ['already_attached', null];
         }
     }
 
@@ -112,20 +118,20 @@ class BrokerNode
 
     private static function selectHookNode()
     {
-        /*TODO
-
-        remove this method and replace with Arthur's work or put Arthur's
-        work in this method
-
-        For now, we have limited nodes so we are just hard-coding nodes
-
-        */
-        return "https://hook-1.oysternodes.com:250/HookListener.php";
+        return $hooknode = HookNode::getNextReadyNode();
     }
 
     private static function sendToHookNode($modifiedTx)
     {
-        $hookNodeUrl = self::selectHookNode();
+        $hooknode = self::selectHookNode();
+        if (empty($hooknode)) {
+            // TODO: Queue chunk.
+            return null;
+        }
+        $hookNodeUrl = $hooknode['ip_address'];
+
+        // TODO: Use hooknodes in DB instead of this hardcode. Delete this line.
+        $hookNodeUrl = "https://hook-1.oysternodes.com:250/HookListener.php";
 
         $tx = new \stdClass();
         $tx = $modifiedTx;
