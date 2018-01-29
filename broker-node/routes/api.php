@@ -18,10 +18,15 @@ Route::middleware('auth:api')->get('/user', function (Request $request) {
 });
 
 Route::group(['prefix' => 'v1'], function() {
-    Route::resource('/upload-sessions', 'UploadSessionController');
-    Route::resource('/hooknodes', 'HookNodeController', ['only' => 'store']);
-
+    Route::resource('/upload-sessions', 'UploadSessionController', [
+        'only' => ["store", "update", "destroy"]
+    ]);
     Route::get('/chunk-status', 'UploadSessionController@chunkStatus');
+
+    Route::resource('/hooknodes', 'HookNodeController', [
+        'only' => ['store']
+    ]);
+
 
     // This is a temporary route used to integrate BrokerNode into
     // laravel app. This will do exactly what BrokerListener did before.
