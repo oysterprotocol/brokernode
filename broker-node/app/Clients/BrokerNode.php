@@ -46,9 +46,13 @@ class BrokerNode
     {
         if (self::dataNeedsAttaching($chunk)) {
             self::buildTransactionData($chunk);
-            return self::sendToHookNode($chunk);
+            $updated_chunk = self::sendToHookNode($chunk);
+            return is_null($updated_chunk)
+                ? ['success', $updated_chunk]
+                : ['queued', null];
+
         } else {
-            return 'already attached';
+            return ['already_attached', null];
         }
     }
 
@@ -121,6 +125,7 @@ class BrokerNode
         $hooknode = self::selectHookNode();
         if (empty($hooknode)) {
             // TODO: Queue chunk.
+            return null;
         }
         $hookNodeUrl = $hooknode['ip_address'];
 
