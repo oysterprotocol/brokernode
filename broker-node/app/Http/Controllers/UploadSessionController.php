@@ -82,7 +82,7 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $session = UploadSession::where('genesis_hash', $id)->first();
+        $session = UploadSession::find($id);
         if (empty($session)) return response('Session not found.', 404);
 
         $genesis_hash = $session['genesis_hash'];
