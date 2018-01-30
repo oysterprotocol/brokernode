@@ -138,7 +138,6 @@ class UploadSessionController extends Controller
                 $data_map->branchTransaction = $updatedChunk->branchTransaction;
                 $data_map->address = $shortened_hash;
                 $data_map->message = $message_in_tryte_format;
-                $data_map->chunk = $chunk["data"];
                 $data_map->status = DataMap::status['pending'];
                 $data_map->save();
 

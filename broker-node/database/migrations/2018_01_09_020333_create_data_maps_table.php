@@ -20,10 +20,9 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
-            $table->mediumText('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
             $table->string('address')->nullable();
-            $table->string('message')->nullable();
+            $table->binary('message')->nullable();  // ~56kb limit.
             $table->string('trunkTransaction')->nullable();
             $table->string('branchTransaction')->nullable();
             $table->enum('status', [
