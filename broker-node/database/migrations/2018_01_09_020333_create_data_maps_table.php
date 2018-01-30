@@ -20,7 +20,6 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
-            $table->binary('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
             $table->string('address')->nullable();
             $table->string('message')->nullable();
@@ -40,6 +39,9 @@ class CreateDataMapsTable extends Migration
             $table->primary('id');
             $table->unique(['genesis_hash', 'chunk_idx']);
         });
+
+        // Adds MEDIUMBLOB field
+        DB::statement("ALTER TABLE data_maps ADD chunk MEDIUMBLOB");
     }
 
     /**
