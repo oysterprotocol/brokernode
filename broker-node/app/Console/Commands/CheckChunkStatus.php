@@ -89,15 +89,24 @@ class CheckChunkStatus extends Command
 
     private static function updateTimedoutDatamaps($thresholdTime)
     {
-        $datamaps_timedout =
+        $datamaps_timedout_query =
             DataMap::where('status', DataMap::status['unverified'])
-                ->where('updated_at', '<', $thresholdTime)
-                ->get();
+                ->where('updated_at', '<', $thresholdTime);
+        $datamaps_timedout = $datamaps_timedout_query->get();
 
         self::decrementHooknodeReputations($datamaps_timedout);
 
         // TODO: Retry with another hooknode.
-        return true; // placeholder.
+        $datamaps_timedout_query->update([
+            'status' => DataMap::status['unassigned'],
+            'hooknode_id' => null,
+            'branchTransaction' => null,
+            'trunkTransaction' => null,
+        ]);
+        // Note: DB and in memory model are now out of sync, but it should be ok...
+        foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
+            $dmap->processChunk();
+        }
     }
 
     private static function incrementHooknodeReputations($datamaps) {
