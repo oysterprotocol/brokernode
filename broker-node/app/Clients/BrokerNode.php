@@ -49,7 +49,7 @@ class BrokerNode
             $updated_chunk = self::sendToHookNode($chunk);
 
             return is_null($updated_chunk)
-                ? ['queued', null]
+                ? ['hooknode_unavailable', null]
                 : ['success', $updated_chunk];
 
         } else {
@@ -125,7 +125,6 @@ class BrokerNode
     {
         $hooknode = self::selectHookNode();
         if (empty($hooknode)) {
-            // TODO: Queue chunk.
             return null;
         }
         $hookNodeUrl = $hooknode['ip_address'];

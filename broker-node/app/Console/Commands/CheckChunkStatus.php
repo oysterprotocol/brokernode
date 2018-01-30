@@ -24,7 +24,8 @@ class CheckChunkStatus extends Command
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
-      
+
+        self::processUnassignedChunks();
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();
@@ -33,6 +34,15 @@ class CheckChunkStatus extends Command
     /**
      * Private
      * */
+
+    private static function processUnassignedChunks()
+    {
+        $unassigned_datamaps = DataMap::getUnassigned()->all();
+        foreach ($unassigned_datamaps as &$dmap) { // TODO: Concurrent.
+            $dmap->processChunk();
+        }
+    }
+
     private static function updateUnverifiedDatamaps($thresholdTime)
     {
         $datamaps_unverified =
@@ -71,24 +81,41 @@ class CheckChunkStatus extends Command
         }, $attached_datamaps);
 
         // Mass Update DB.
-        DataMap::whereIn('id', $attached_ids)->update(['status' => DataMap::status['complete']]);
+        DataMap::whereIn('id', $attached_ids)
+            ->update(['status' => DataMap::status['complete']]);
 
-        self::updateHooknodeReputations($attached_datamaps);
+        self::incrementHooknodeReputations($attached_datamaps);
     }
 
     private static function updateTimedoutDatamaps($thresholdTime)
     {
-        $datamaps_timedout =
+        $datamaps_timedout_query =
             DataMap::where('status', DataMap::status['unverified'])
-                ->where('updated_at', '<', $thresholdTime)
-                ->get();
+                ->where('updated_at', '<', $thresholdTime);
+        $datamaps_timedout = $datamaps_timedout_query->get();
+
+        self::decrementHooknodeReputations($datamaps_timedout);
 
         // TODO: Retry with another hooknode.
+        $datamaps_timedout_query->update([
+            'status' => DataMap::status['unassigned'],
+            'hooknode_id' => null,
+            'branchTransaction' => null,
+            'trunkTransaction' => null,
+        ]);
+        // Note: DB and in memory model are now out of sync, but it should be ok...
+        foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
+            $dmap->processChunk();
+        }
+    }
+
+    private static function incrementHooknodeReputations($datamaps) {
+        // TODO: Increment hooknode reputations for $datamaps.
         return true; // placeholder.
     }
 
-    private static function updateHooknodeReputations($attached_datamaps) {
-        // TODO: Increment hooknode reputations for $attached_datamaps.
+    private static function decrementHooknodeReputations($datamaps) {
+        // TODO: Increment hooknode reputations for $datamaps.
         return true; // placeholder.
     }
 
