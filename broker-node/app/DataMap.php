@@ -134,7 +134,15 @@ class DataMap extends Model
     }
 
     /**
-     * Instance methods.
+     * Static Methods.
+     */
+
+    public static function getUnassigned() {
+        return DataMap::where('status', DataMap::status['unassigned'])->get();
+    }
+
+    /**
+     * Instance Methods.
      */
 
     public function processChunk() {
@@ -154,7 +162,7 @@ class DataMap extends Model
 
         switch($res_type) {
             case 'already_attached':
-                $this->markAsComplete();
+                // This will be marked as complete in the cron job.
                 return $res_type;
 
             case 'hooknode_unavailable':
@@ -175,15 +183,6 @@ class DataMap extends Model
     /**
      * Private
      */
-
-    private function markAsComplete() {
-        if ($this->status != DataMap::status['complete']) {
-            $this->status = DataMap::status['complete'];
-            $this->save();
-        }
-
-        return $this;
-    }
 
     private function queueForHooknode() {
         $this->status = DataMap::status['unassigned'];
