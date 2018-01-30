@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Clients\BrokerNode;
 use App\DataMap;
+use App\HookNode;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Console\Command;
@@ -37,8 +38,8 @@ class CheckChunkStatus extends Command
 
     private static function processUnassignedChunks()
     {
-        $unassigned_datamaps = DataMap::getUnassigned()->all();
-        foreach ($unassigned_datamaps as &$dmap) { // TODO: Concurrent.
+        $unassigned_datamaps = DataMap::getUnassigned();
+        foreach ($unassigned_datamaps->all() as &$dmap) { // TODO: Concurrent.
             $dmap->processChunk();
         }
     }
@@ -104,19 +105,24 @@ class CheckChunkStatus extends Command
             'trunkTransaction' => null,
         ]);
         // Note: DB and in memory model are now out of sync, but it should be ok...
-        foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
+        foreach ($datamaps_timedout->all() as &$dmap) { // TODO: Concurrent.
             $dmap->processChunk();
         }
     }
 
     private static function incrementHooknodeReputations($datamaps) {
-        // TODO: Increment hooknode reputations for $datamaps.
-        return true; // placeholder.
+        $hooknode_ips = $datamaps->pluck('hooknode_id')->all();
+        HookNode::whereIn('ip_address', $hooknode_ips)
+            ->update([
+                'score' => \DB::raw( 'score + 1' ),
+                'chunks_processed_count' => \DB::raw( 'chunks_processed_count + 1' ),
+            ]);
     }
 
     private static function decrementHooknodeReputations($datamaps) {
-        // TODO: Increment hooknode reputations for $datamaps.
-        return true; // placeholder.
+        $hooknode_ips = $datamaps->pluck('hooknode_id')->all();
+        HookNode::whereIn('ip_address', $hooknode_ips)
+            ->decrement('score', 1);
     }
 
     public static function purgeCompletedSessions()
@@ -125,11 +131,13 @@ class CheckChunkStatus extends Command
             ->where('status', '<>', DataMap::status['complete'])
             ->select('genesis_hash', DB::raw('COUNT(genesis_hash) as not_completed'))
             ->groupBy('genesis_hash')
-            ->pluck('genesis_hash');
+            ->pluck('genesis_hash')
+            ->all();
 
         $completed_gen_hash = DB::table('upload_sessions')
             ->whereNotIn('genesis_hash', $not_complete_gen_hash)
-            ->pluck('genesis_hash');
+            ->pluck('genesis_hash')
+            ->all();
 
         DB::transaction(function () use ($completed_gen_hash) {
             DB::table('data_maps')
