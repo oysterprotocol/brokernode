@@ -154,10 +154,11 @@ class DataMap extends Model
 
         switch($res_type) {
             case 'already_attached':
+                $this->markAsComplete();
                 return $res_type;
 
             case 'hooknode_unavailable':
-                // TODO: Queue datamap.
+                $this->queueForHooknode();
                 return $res_type;
 
             case 'success':
@@ -171,7 +172,23 @@ class DataMap extends Model
         }
     }
 
-    public function queueForHooknode() {
-        return self::status;
+    /**
+     * Private
+     */
+
+    private function markAsComplete() {
+        if ($this->status != DataMap::status['complete']) {
+            $this->status = DataMap::status['complete'];
+            $this->save();
+        }
+
+        return $this;
+    }
+
+    private function queueForHooknode() {
+        $this->status = DataMap::status['unassigned'];
+        $this->save();
+
+        return $this;
     }
 }
