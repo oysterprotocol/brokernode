@@ -24,7 +24,7 @@ class CheckChunkStatus extends Command
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
-      
+
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();

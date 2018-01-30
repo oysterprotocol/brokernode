@@ -129,7 +129,8 @@ class UploadSessionController extends Controller
             case 'already_attached':
                 return response('Error: Chunk already attached.', 500);
 
-            case 'queued':
+            case 'hooknode_unavailable':
+                // TODO: Queue datamap.
                 return response('Processing: Hooknodes are busy', 102);
 
             case 'success':
