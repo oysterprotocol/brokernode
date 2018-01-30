@@ -24,6 +24,12 @@ class UploadSessionController extends Controller
         $file_size_bytes = $request->input('file_size_bytes');
         $beta_brokernode_ip = $request->input('beta_brokernode_ip');
 
+        // TODO: SSL.
+        $beta_broker_path = "http://{$beta_brokernode_ip}/api/v1/upload-sessions/beta";
+        if (!filter_var($beta_broker_path, FILTER_VALIDATE_URL)) {
+            return response("Error: Invalid Beta IP {$beta_brokernode_ip}", 422);
+        }
+
         // TODO: Handle PRL Payments.
 
         // Starts session with beta.
@@ -31,7 +37,7 @@ class UploadSessionController extends Controller
             $http_client = new Client();
             $beta_session_res = $http_client
                 ->post(
-                    "{$beta_brokernode_ip}/api/v1/upload-sessions/beta",
+                    $beta_broker_path,
                     [
                         'form_params' => [
                             'genesis_hash' => $genesis_hash,
