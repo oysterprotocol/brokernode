@@ -24,7 +24,6 @@ class UploadSessionController extends Controller
         $file_size_bytes = $request->input('file_size_bytes');
         $beta_brokernode_ip = $request->input('beta_brokernode_ip');
 
-        // TODO: SSL.
         $beta_broker_path = "{$beta_brokernode_ip}/api/v1/upload-sessions/beta";
         if (!filter_var($beta_broker_path, FILTER_VALIDATE_URL)) {
             return response("Error: Invalid Beta IP {$beta_brokernode_ip}", 422);
@@ -109,39 +108,17 @@ class UploadSessionController extends Controller
         $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
         $shortened_hash = substr($hash_in_tryte_format, 0, 81);
 
-        // Process chunk.
-        $brokerReq = (object)[
-            "responseAddress" =>
-                "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
-            "message" => $message_in_tryte_format,
-            "chunkId" => $chunk["idx"],
-            "address" => $shortened_hash,
-        ];
+        // Save address and message on data_map
+        $data_map->address = $shortened_hash;
+        $data_map->message = $message_in_tryte_format;
+        $data_map->save();
 
-
-        /*TODO
-         * may need to return more stuff from processNewChunk
-         */
-
-        [$res_type, $updatedChunk] = BrokerNode::processNewChunk($brokerReq);
-
-        switch($res_type) {
+        switch($data_map->processChunk()) {
             case 'already_attached':
                 return response('Error: Chunk already attached.', 500);
-
             case 'hooknode_unavailable':
-                // TODO: Queue datamap.
                 return response('Processing: Hooknodes are busy', 102);
-
             case 'success':
-                $data_map->hooknode_id = $updatedChunk->hookNodeUrl;
-                $data_map->trunkTransaction = $updatedChunk->trunkTransaction;
-                $data_map->branchTransaction = $updatedChunk->branchTransaction;
-                $data_map->address = $shortened_hash;
-                $data_map->message = $message_in_tryte_format;
-                $data_map->status = DataMap::status['pending'];
-                $data_map->save();
-
                 return response('Success.', 204);
         }
     }

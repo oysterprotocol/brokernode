@@ -2,12 +2,12 @@
 
 namespace App;
 
+use App\Clients\BrokerNode;
 use Illuminate\Database\Eloquent\Model;
 use Webpatser\Uuid\Uuid;
 
 class DataMap extends Model
 {
-
     const status = array(
         'unassigned' => 'unassigned',
         'pending' => 'pending',
@@ -133,4 +133,45 @@ class DataMap extends Model
         }
     }
 
+    /**
+     * Instance methods.
+     */
+
+    public function processChunk() {
+        $brokerReq = (object)[
+            "responseAddress" =>
+                "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
+            "message" => $this->message,
+            "chunkId" => $this->chunk_idx,
+            "address" => $this->address,
+        ];
+
+        /*TODO
+         * may need to return more stuff from processNewChunk
+         */
+
+        [$res_type, $updatedChunk] = BrokerNode::processNewChunk($brokerReq);
+
+        switch($res_type) {
+            case 'already_attached':
+                return $res_type;
+
+            case 'hooknode_unavailable':
+                // TODO: Queue datamap.
+                return $res_type;
+
+            case 'success':
+                $this->hooknode_id = $updatedChunk->hookNodeUrl;
+                $this->trunkTransaction = $updatedChunk->trunkTransaction;
+                $this->branchTransaction = $updatedChunk->branchTransaction;
+                $this->status = self::status['pending'];
+                $this->save();
+
+                return $res_type;
+        }
+    }
+
+    public function queueForHooknode() {
+        return self::status;
+    }
 }
