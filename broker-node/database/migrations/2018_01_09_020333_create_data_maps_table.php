@@ -22,7 +22,7 @@ class CreateDataMapsTable extends Migration
             $table->string('hash', 255);
             $table->string('hooknode_id')->nullable();
             $table->string('address')->nullable();
-            $table->binary('message')->nullable();  // ~56kb limit.
+            $table->binary('message')->nullable();  // ~65.5kb limit.
             $table->string('trunkTransaction')->nullable();
             $table->string('branchTransaction')->nullable();
             $table->enum('status', [
