@@ -114,8 +114,8 @@ class CheckChunkStatus extends Command
         $hooknode_ips = $datamaps->pluck('hooknode_id')->all();
         HookNode::whereIn('ip_address', $hooknode_ips)
             ->update([
-                'score' => \DB::raw( 'score + 1' ),
-                'chunks_processed_count' => \DB::raw( 'chunks_processed_count + 1' ),
+                'score' => DB::raw( 'score + 1' ),
+                'chunks_processed_count' => DB::raw( 'chunks_processed_count + 1' ),
             ]);
     }
 
