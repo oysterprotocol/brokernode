@@ -20,7 +20,7 @@ class CreateDataMapsTable extends Migration
             $table->string('genesis_hash', 255);
             $table->integer('chunk_idx')->unsigned();
             $table->string('hash', 255);
-            $table->binary('chunk')->nullable();
+            $table->mediumText('chunk')->nullable();
             $table->string('hooknode_id')->nullable();
             $table->string('address')->nullable();
             $table->string('message')->nullable();
