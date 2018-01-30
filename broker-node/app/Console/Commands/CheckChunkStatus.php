@@ -25,6 +25,7 @@ class CheckChunkStatus extends Command
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
 
+        self::processUnassignedChunks();
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();
@@ -33,6 +34,15 @@ class CheckChunkStatus extends Command
     /**
      * Private
      * */
+
+    private static function processUnassignedChunks()
+    {
+        $unassigned_datamaps = DataMap::getUnassigned()->all();
+        foreach ($unassigned_datamaps as &$dmap) { // TODO: Concurrent.
+            $dmap->processChunk();
+        }
+    }
+
     private static function updateUnverifiedDatamaps($thresholdTime)
     {
         $datamaps_unverified =
