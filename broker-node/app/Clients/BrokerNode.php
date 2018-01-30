@@ -118,7 +118,10 @@ class BrokerNode
 
     private static function selectHookNode()
     {
-        return $hooknode = HookNode::getNextReadyNode();
+        // TODO: Use hooknodes in DB instead of this hardcode.
+        // return $hooknode = HookNode::getNextReadyNode();
+
+        return ['ip_address' => "https://hook-1.oysternodes.com:250/HookListener.php"];
     }
 
     private static function sendToHookNode($modifiedTx)
@@ -128,9 +131,6 @@ class BrokerNode
             return null;
         }
         $hookNodeUrl = $hooknode['ip_address'];
-
-        // TODO: Use hooknodes in DB instead of this hardcode. Delete this line.
-        $hookNodeUrl = "https://hook-1.oysternodes.com:250/HookListener.php";
 
         $tx = new \stdClass();
         $tx = $modifiedTx;
