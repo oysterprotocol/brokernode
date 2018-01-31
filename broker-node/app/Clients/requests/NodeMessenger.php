@@ -2,6 +2,8 @@
 
 require_once("IriData.php");
 
+use Exception;
+
 class NodeMessenger
 {
 
@@ -52,11 +54,18 @@ class NodeMessenger
             CURLOPT_CONNECTTIMEOUT => 0,
             CURLOPT_TIMEOUT => 1000
         ));
-
         $response = json_decode(curl_exec($curl));
 
-        curl_close($curl);
 
+        if($errno = curl_errno($curl)) {
+            $err_msg = curl_strerror($errno);
+            curl_close($curl);
+            throw new Exception(
+                "NodeMessenger Error:\n\tcURL error ({$errno}): {$err_msg}\n\tResponse: {$response}"
+            );
+        }
+
+        curl_close($curl);
         return $response;
     }
 }
