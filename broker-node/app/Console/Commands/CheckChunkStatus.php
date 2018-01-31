@@ -25,7 +25,7 @@ class CheckChunkStatus extends Command
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
 
-        self::processUnassignedChunks();
+        // self::processUnassignedChunks();
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();
@@ -97,16 +97,18 @@ class CheckChunkStatus extends Command
         self::decrementHooknodeReputations($datamaps_timedout);
 
         // TODO: Retry with another hooknode.
-        $datamaps_timedout_query->update([
-            'status' => DataMap::status['unassigned'],
-            'hooknode_id' => null,
-            'branchTransaction' => null,
-            'trunkTransaction' => null,
-        ]);
-        // Note: DB and in memory model are now out of sync, but it should be ok...
-        foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
-            $dmap->processChunk();
-        }
+
+        // NOT FOR TESTNET.
+        // $datamaps_timedout_query->update([
+        //     'status' => DataMap::status['unassigned'],
+        //     'hooknode_id' => null,
+        //     'branchTransaction' => null,
+        //     'trunkTransaction' => null,
+        // ]);
+        // // Note: DB and in memory model are now out of sync, but it should be ok...
+        // foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
+        //     $dmap->processChunk();
+        // }
     }
 
     private static function incrementHooknodeReputations($datamaps) {
