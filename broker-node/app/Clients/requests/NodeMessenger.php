@@ -2,8 +2,6 @@
 
 require_once("IriData.php");
 
-use Exception;
-
 class NodeMessenger
 {
 
@@ -60,7 +58,7 @@ class NodeMessenger
         if($errno = curl_errno($curl)) {
             $err_msg = curl_strerror($errno);
             curl_close($curl);
-            throw new Exception(
+            throw new \Exception(
                 "NodeMessenger Error:\n\tcURL error ({$errno}): {$err_msg}\n\tResponse: {$response}"
             );
         }
