@@ -69,8 +69,6 @@ class UploadSessionController extends Controller
     public function storeBeta(Request $request)
     {
         $genesis_hash = $request->input('genesis_hash');
-        $genesis_hash = "{$genesis_hash}-beta";
-
         $file_size_bytes = $request->input('file_size_bytes');
 
         $upload_session =
