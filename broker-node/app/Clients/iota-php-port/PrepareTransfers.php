@@ -83,9 +83,7 @@ class PrepareTransfers
                     $msgCopy = substr($msgCopy, 2187, count($msgCopy));
 
                     // Pad remainder of fragment
-                    while (is_null($fragment) || count($fragment) < 2187) {
-                        $fragment .= '9';
-                    }
+                    $fragment = str_pad($fragment, 2187, "9");
 
                     $signatureFragments[] = $fragment;
                 }
