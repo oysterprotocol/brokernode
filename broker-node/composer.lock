@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "content-hash": "e3a5ffd2aa277691b8c9a0b22168fae0",
+    "content-hash": "64da994fb06f5754a79db0ae2d830109",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -2622,6 +2622,55 @@
             "description": "CssToInlineStyles is a class that enables you to convert HTML-pages/files into HTML-pages/files with inline styles. This is very useful when you're sending emails.",
             "homepage": "https://github.com/tijsverkoyen/CssToInlineStyles",
             "time": "2016-09-20T12:50:39+00:00"
+        },
+        {
+            "name": "tuupola/trytes",
+            "version": "0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tuupola/trytes.git",
+                "reference": "5e128cea11085f457f6034f31164d33ea037f708"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tuupola/trytes/zipball/5e128cea11085f457f6034f31164d33ea037f708",
+                "reference": "5e128cea11085f457f6034f31164d33ea037f708",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.6 || ^7.0"
+            },
+            "require-dev": {
+                "overtrue/phplint": "^0.2.4",
+                "paragonie/random_compat": "^2.0",
+                "phpunit/phpunit": "^5.7",
+                "squizlabs/php_codesniffer": "^3.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tuupola\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mika Tuupola",
+                    "email": "tuupola@appelsiini.net",
+                    "homepage": "https://appelsiini.net/",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Trytes encoder and decoder for arbitrary data",
+            "homepage": "https://github.com/tuupola/trytes",
+            "keywords": [
+                "iota",
+                "trytes"
+            ],
+            "time": "2017-12-10T16:29:03+00:00"
         },
         {
             "name": "vlucas/phpdotenv",
