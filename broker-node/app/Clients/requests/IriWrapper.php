@@ -67,7 +67,11 @@ class IriWrapper
             $err_msg = curl_strerror($errno);
             curl_close($curl);
             throw new \Exception(
-                "IriWrapper Error:\n\tcURL error ({$errno}): {$err_msg}\n\tResponse: {$response}"
+                "IriWrapper Error:" +
+                "\n\tcURL error ({$errno}): {$err_msg}" +
+                "\n\tUrl: {$this->nodeUrl}" +
+                "\n\tPayload: {$payload}" +
+                "\n\tResponse: {$response}"
             );
         }
 
