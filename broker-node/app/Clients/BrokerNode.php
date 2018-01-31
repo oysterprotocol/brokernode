@@ -75,7 +75,9 @@ class BrokerNode
         } else {
             throw new \Exception(
                 "BrokerNode::dataNeedsAttaching failed." +
-                "\n\tIRI.findTransactions result: {$result}"
+                "\n\tIRI.findTransactions" +
+                "\n\t\tcommand: {$command}" +
+                "\n\t\tresult: {$result}"
             );
         }
     }
