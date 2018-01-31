@@ -8,7 +8,6 @@ use App\DataMap;
 use App\UploadSession;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
-use Tuupola\Trytes;
 
 class UploadSessionController extends Controller
 {
@@ -102,16 +101,9 @@ class UploadSessionController extends Controller
         // Error Responses
         if (empty($data_map)) return response('Datamap not found', 404);
 
-        $trytes = new Trytes(["characters" => Trytes::IOTA]);
-
-        $message_in_tryte_format = $trytes->encode($chunk["data"]);
-
-        $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
-        $shortened_hash = substr($hash_in_tryte_format, 0, 81);
-
         // Save address and message on data_map
-        $data_map->address = $shortened_hash;
-        $data_map->message = $message_in_tryte_format;
+        $data_map->address = $data_map["hash"];
+        $data_map->message = $chunk["data"];
         $data_map->save();
 
         switch($data_map->processChunk()) {
