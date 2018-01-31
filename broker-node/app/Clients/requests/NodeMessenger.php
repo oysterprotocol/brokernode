@@ -54,7 +54,6 @@ class NodeMessenger
         ));
         $response = json_decode(curl_exec($curl));
 
-
         if($errno = curl_errno($curl)) {
             $err_msg = curl_strerror($errno);
             curl_close($curl);

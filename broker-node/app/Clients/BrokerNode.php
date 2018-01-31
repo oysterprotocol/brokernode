@@ -73,7 +73,10 @@ class BrokerNode
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
         } else {
-            throw new \Exception('dataNeedsAttaching failed!');
+            throw new \Exception(
+                "BrokerNode::dataNeedsAttaching failed." +
+                "\n\tIRI.findTransactions result: {$result}"
+            );
         }
     }
 
