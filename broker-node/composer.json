@@ -13,7 +13,6 @@
     "laravel/tinker": "~1.0",
     "optimus/heimdal": "^1.5",
     "sentry/sentry": "^1.8",
-    "tuupola/trytes": "^0.1.0",
     "webpatser/laravel-uuid": "^3.0"
   },
   "require-dev": {
