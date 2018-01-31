@@ -52,23 +52,15 @@ class UploadSessionController extends Controller
         }
 
         // Starts session with beta.
-        try {
-            $http_client = new Client();
-            $beta_session_res = $http_client
-                ->post(
-                    $beta_broker_path,
-                    [
-                        'form_params' => [
-                            'genesis_hash' => $genesis_hash,
-                            'file_size_bytes' => $file_size_bytes
-                        ]
-                    ]
-                );
-            $beta_session = json_decode($beta_session_res->getBody(), true);
-            return $beta_session;
-        } catch (Exception $e) {
-            return response("Error: Beta start session failed: {$e}", 500);
-        }
+        $http_client = new Client();
+        $res = $http_client->post($beta_broker_path, [
+            'form_params' => [
+                'genesis_hash' => $genesis_hash,
+                'file_size_bytes' => $file_size_bytes
+            ]
+        ]);
+        $beta_session = json_decode($res->getBody(), true);
+        return $beta_session;
     }
 
     /**
