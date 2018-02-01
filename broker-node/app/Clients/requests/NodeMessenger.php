@@ -5,7 +5,7 @@ require_once("IriData.php");
 class NodeMessenger
 {
 
-    private $headers = array(
+    public $headers = array(
         'Content-Type: application/x-www-form-urlencoded',
     );
     public $nodeUrl;
@@ -54,7 +54,7 @@ class NodeMessenger
         ));
         $response = json_decode(curl_exec($curl));
 
-        if($errno = curl_errno($curl)) {
+        if ($errno = curl_errno($curl)) {
             $err_msg = curl_strerror($errno);
             curl_close($curl);
             throw new \Exception(
@@ -68,6 +68,24 @@ class NodeMessenger
 
         curl_close($curl);
         return $response;
+    }
+
+    public function spamHookNodes($commandObject, $nodeUrl)
+    {
+        $command = json_encode($commandObject);
+
+        for ($i = 0; $i < count($nodeUrl); $i++) {
+
+            //$cmd = "curl " . $nodeUrl . " -X POST ";
+            $cmd = "sudo curl " . "http://104.225.221.42:250/HookListener.php" . " -X POST ";
+            $cmd .= "-H " . "'" . $this->headers[0] . "' ";
+            $cmd .= "-H " . "'" . $this->apiVersionHeaderString . "' ";
+            $cmd .= " -d '" . $command . "' " . "'";
+            $cmd .= " > /dev/null 2>&1 &";
+
+            exec($cmd);
+            //return $exit == 0;
+        }
     }
 }
 
