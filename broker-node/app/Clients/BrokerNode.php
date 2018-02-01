@@ -27,6 +27,9 @@ class BrokerNode
 
     public static $iriRequestInProgress = false;
 
+    // Hack to load balance across hooknodes.
+    private static $hooknode_queue = null; // errors when instantiating here?
+
 
     private static function initIri()
     {
@@ -40,6 +43,38 @@ class BrokerNode
         if (is_null(self::$NodeMessenger)) {
             self::$NodeMessenger = new NodeMessenger();
         }
+    }
+
+    private static function getOrInitHooknodeQueue() {
+        if (!is_null(self::$hooknode_queue)) {
+            return self::$hooknode_queue;
+        }
+
+        // Else instantiate new queue.
+        $nodes = [
+            "18.217.145.236",
+            "13.59.118.50",
+            "18.219.40.184",
+            "18.218.167.170",
+            "18.218.112.47",
+        ];
+        self::$hooknode_queue = new SplQueue();
+        foreach ($nodes as $node) {
+            self::$hooknode_queue->enqueue($node);
+        }
+
+        return self::$hooknode_queue;
+    }
+
+    private static function getNextHooknodeIp() {
+        $hooknode_q = self::getOrInitHooknodeQueue();
+
+        // Round Robin technique. We aren't locking the q because
+        // sending to the same hooknode is not a big deal.
+        $next = $hooknode_q->dequeue();
+        $hooknode_q->enqueue($next);
+
+        return $next;
     }
 
     public static function processNewChunk(&$chunk)
@@ -126,7 +161,7 @@ class BrokerNode
         // TODO: Use hooknodes in DB instead of this hardcode.
         // return $hooknode = HookNode::getNextReadyNode();
 
-        return ['ip_address' => "https://hook-1.oysternodes.com:250/HookListener.php"];
+        return ['ip_address' => self::getNextHooknodeIp()];
     }
 
     private static function sendToHookNode($modifiedTx)
