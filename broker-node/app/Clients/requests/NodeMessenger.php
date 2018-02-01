@@ -58,10 +58,10 @@ class NodeMessenger
             $err_msg = curl_strerror($errno);
             curl_close($curl);
             throw new \Exception(
-                "NodeMessenger Error:" +
-                "\n\tcURL error ({$errno}): {$err_msg}" +
-                "\n\tUrl: {$nodeUrl}" +
-                "\n\tPayload: {$payload}" +
+                "NodeMessenger Error:" .
+                "\n\tcURL error ({$errno}): {$err_msg}" .
+                "\n\tUrl: {$nodeUrl}" .
+                "\n\tPayload: {$payload}" .
                 "\n\tResponse: {$response}"
             );
         }

@@ -109,9 +109,9 @@ class BrokerNode
             return count($result->hashes) == 0;
         } else {
             throw new \Exception(
-                "BrokerNode::dataNeedsAttaching failed." +
-                "\n\tIRI.findTransactions" +
-                "\n\t\tcommand: {$command}" +
+                "BrokerNode::dataNeedsAttaching failed." .
+                "\n\tIRI.findTransactions" .
+                "\n\t\tcommand: {$command}" .
                 "\n\t\tresult: {$result}"
             );
         }
