@@ -60,7 +60,7 @@ class BrokerNode
         ];
         self::$hooknode_queue = new SplQueue();
         foreach ($nodes as $node) {
-            self::$hooknode_queue->enqueue($node);
+            self::$hooknode_queue->enqueue("{$node}:250/HookListener.php");
         }
 
         return self::$hooknode_queue;
