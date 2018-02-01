@@ -61,7 +61,7 @@ class BrokerNode
         ];
         self::$hooknode_queue = new \SplQueue();
         foreach ($nodes as $node) {
-            self::$hooknode_queue->enqueue("{$node}:250/HookListener.php");
+            self::$hooknode_queue->enqueue("http://{$node}:250/HookListener.php");
         }
 
         return self::$hooknode_queue;
@@ -107,7 +107,7 @@ class BrokerNode
 
         $next = array_rand($nodes);
 
-        return $nodes[$next] . ":250/HookListener.php";
+        return "http://" . $nodes[$next] . ":250/HookListener.php";
     }
 
     public static function processNewChunk(&$chunk)
@@ -211,10 +211,22 @@ class BrokerNode
 
         self::initMessenger();
         self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
+
+        $spammedNodes = array();   //temporary solution
+        for ($i = 0; $i <= 5; $i++) {   //temporary solution
+            $spammedNodes[] = self::selectHookNode()['ip_address'];
+        }
+
+        self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
+
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 
         $tx->hookNodeUrl = $hookNodeUrl;
         return $tx;
+    }
+
+    public static function spamHookNodes($chunk) {
+
     }
 
     private static function updateHookNodeDirectory($currentHook, $status)
