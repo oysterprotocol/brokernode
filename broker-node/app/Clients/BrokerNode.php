@@ -58,7 +58,7 @@ class BrokerNode
             "18.218.167.170",
             "18.218.112.47",
         ];
-        self::$hooknode_queue = new SplQueue();
+        self::$hooknode_queue = new \SplQueue();
         foreach ($nodes as $node) {
             self::$hooknode_queue->enqueue("{$node}:250/HookListener.php");
         }
