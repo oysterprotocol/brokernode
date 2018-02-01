@@ -45,18 +45,19 @@ class BrokerNode
         }
     }
 
-    private static function getOrInitHooknodeQueue() {
+    private static function getOrInitHooknodeQueue()
+    {
         if (!is_null(self::$hooknode_queue)) {
             return self::$hooknode_queue;
         }
 
         // Else instantiate new queue.
         $nodes = [
-            "18.217.145.236",
-            "13.59.118.50",
-            "18.219.40.184",
-            "18.218.167.170",
-            "18.218.112.47",
+            "35.183.18.203",
+            "35.182.251.91",
+            "35.182.249.24",
+            "35.182.113.146",
+            "35.182.29.53",
         ];
         self::$hooknode_queue = new \SplQueue();
         foreach ($nodes as $node) {
@@ -66,15 +67,47 @@ class BrokerNode
         return self::$hooknode_queue;
     }
 
-    private static function getNextHooknodeIp() {
-        $hooknode_q = self::getOrInitHooknodeQueue();
+    private static function getNextHooknodeIp()
+    {
+//        $hooknode_q = self::getOrInitHooknodeQueue();
+//
+//        // Round Robin technique. We aren't locking the q because
+//        // sending to the same hooknode is not a big deal.
+//        $next = $hooknode_q->dequeue();
+//        $hooknode_q->enqueue($next);
+//
+//        return $next;
+        $nodes = [
+            "52.69.10.141",
+            "54.168.83.160",
+            "13.230.200.211",
+            "13.113.183.179",
+            "52.198.239.38",
+            "35.183.18.203",
+            "35.182.251.91",
+            "35.182.249.24",
+            "35.182.113.146",
+            "35.182.29.53",
+            "35.183.25.175",
+            "35.182.238.193",
+            "35.183.34.141",
+            "35.183.34.61",
+            "35.182.238.254",
+            "35.183.23.179",
+            "35.182.30.102",
+            "35.182.130.104",
+            "35.183.30.180",
+            "35.182.255.179",
+            "35.182.244.63",
+            "35.182.60.28",
+            "35.182.209.143",
+            "35.182.208.67",
+            "35.182.86.253",
+        ];
 
-        // Round Robin technique. We aren't locking the q because
-        // sending to the same hooknode is not a big deal.
-        $next = $hooknode_q->dequeue();
-        $hooknode_q->enqueue($next);
+        $next = array_rand($nodes);
 
-        return $next;
+        return $nodes[$next] . ":250/HookListener.php";
     }
 
     public static function processNewChunk(&$chunk)
