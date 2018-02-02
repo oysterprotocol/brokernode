@@ -114,7 +114,7 @@ class UploadSessionController extends Controller
 
         switch($data_map->processChunk()) {
             case 'already_attached':
-                return response('Error: Chunk already attached.', 500);
+                return response('Chunk already attached.', 204);
             case 'hooknode_unavailable':
                 return response('Processing: Hooknodes are busy', 102);
             case 'success':
