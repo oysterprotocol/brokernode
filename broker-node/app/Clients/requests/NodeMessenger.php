@@ -76,7 +76,7 @@ class NodeMessenger
 
         for ($i = 0; $i < count($nodeUrl); $i++) {
 
-            $cmd = "curl " . $nodeUrl . " -X POST ";
+            $cmd = "curl " . $nodeUrl[$i] . " -X POST ";
             $cmd .= "-H " . "'" . $this->headers[0] . "' ";
             $cmd .= "-H " . "'" . $this->apiVersionHeaderString . "' ";
             $cmd .= " -d '" . $command . "' ";
