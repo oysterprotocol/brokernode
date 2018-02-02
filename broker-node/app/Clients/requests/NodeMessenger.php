@@ -70,21 +70,19 @@ class NodeMessenger
         return $response;
     }
 
-    public function spamHookNodes($commandObject, $nodeUrl)
+    function spamHookNodes($commandObject, $nodeUrl)
     {
-        $command = json_encode($commandObject);
+        $command = http_build_query($commandObject);
 
         for ($i = 0; $i < count($nodeUrl); $i++) {
 
-            //$cmd = "curl " . $nodeUrl . " -X POST ";
-            $cmd = "sudo curl " . "http://104.225.221.42:250/HookListener.php" . " -X POST ";
+            $cmd = "curl " . $nodeUrl . " -X POST ";
             $cmd .= "-H " . "'" . $this->headers[0] . "' ";
             $cmd .= "-H " . "'" . $this->apiVersionHeaderString . "' ";
-            $cmd .= " -d '" . $command . "' " . "'";
+            $cmd .= " -d '" . $command . "' ";
             $cmd .= " > /dev/null 2>&1 &";
 
             exec($cmd);
-            //return $exit == 0;
         }
     }
 }

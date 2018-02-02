@@ -225,10 +225,6 @@ class BrokerNode
         return $tx;
     }
 
-    public static function spamHookNodes($chunk) {
-
-    }
-
     private static function updateHookNodeDirectory($currentHook, $status)
     {
         /*TODOS
