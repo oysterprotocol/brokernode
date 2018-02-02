@@ -114,7 +114,7 @@ class UploadSessionController extends Controller
 
         switch($data_map->processChunk()) {
             case 'already_attached':
-                return response('Error: Chunk already attached.', 500);
+                return response('Chunk already attached.', 204);
             case 'hooknode_unavailable':
                 return response('Processing: Hooknodes are busy', 102);
             case 'success':
@@ -222,8 +222,8 @@ class UploadSessionController extends Controller
     private static function startSession(
         $genesis_hash, $file_size_bytes, $type="alpha"
     ) {
-        // TODO: Make 1000 an env variable.
-        $file_chunk_count = ceil($file_size_bytes / 1000);
+        // TODO: Make 500 an env variable.
+        $file_chunk_count = ceil($file_size_bytes / 500);
         // This could take a while, but if we make this async, we have a race
         // condition if the client attempts to upload before broker-node
         // can save to DB.
