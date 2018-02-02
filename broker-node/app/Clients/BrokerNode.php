@@ -393,7 +393,7 @@ class BrokerNode
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
         $spammedNodes = array($hookNodeUrl);   //temporary solution
-        for ($i = 0; $i <= 12; $i++) {   //temporary solution
+        for ($i = 0; $i <= 6; $i++) {   //temporary solution
             $spammedNodes[] = self::selectHookNode()['ip_address'];
         }
 
