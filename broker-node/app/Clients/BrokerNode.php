@@ -25,7 +25,6 @@ class BrokerNode
     public static $IriWrapper = null;
     public static $NodeMessenger = null;
 
-    public static $iriRequestInProgress = false;
 
     // Hack to load balance across hooknodes.
     private static $hooknode_queue = null; // errors when instantiating here?
@@ -291,18 +290,16 @@ class BrokerNode
         }
     }
 
-    public static function filterUnattachedChunks($addresses, $chunks)
+    private static function filterUnattachedChunks($addresses, $chunks)
     {
         $command = new \stdClass();
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-        BrokerNode::$iriRequestInProgress = true;
 
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
 
-        BrokerNode::$iriRequestInProgress = false;
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
 
@@ -343,12 +340,10 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = array($request->address);
 
-        BrokerNode::$iriRequestInProgress = true;
 
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
 
-        BrokerNode::$iriRequestInProgress = false;
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
@@ -362,7 +357,7 @@ class BrokerNode
         }
     }
 
-    public static function buildTransactionData($chunks)
+    private static function buildTransactionData($chunks)
     {
         $trytesToBroadcast = NULL;
         $request = new \stdClass();
@@ -380,7 +375,7 @@ class BrokerNode
         return $request;
     }
 
-    public static function getTransactionsToApprove(&$request)
+    private static function getTransactionsToApprove(&$request)
     {
         self::initIri();
 
@@ -388,11 +383,9 @@ class BrokerNode
         $command->command = "getTransactionsToApprove";
         $command->depth = IriData::$depthToSearchForTxs;
 
-        BrokerNode::$iriRequestInProgress = true;
 
         $result = self::$IriWrapper->makeRequest($command);
 
-        BrokerNode::$iriRequestInProgress = false;
 
         if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
@@ -484,11 +477,9 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = array($chunk->address);
 
-        BrokerNode::$iriRequestInProgress = true;
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
 
-        BrokerNode::$iriRequestInProgress = false;
 
         if (!is_null($result) && property_exists($result, 'hashes') &&
             count($result->hashes) != 0) {
@@ -505,7 +496,7 @@ class BrokerNode
         }
     }
 
-    public static function chunksMatch($chunkOnTangle, $chunkOnRecord, $checkBranchAndTrunk)
+    private static function chunksMatch($chunkOnTangle, $chunkOnRecord, $checkBranchAndTrunk)
     {
         if ($checkBranchAndTrunk == true) {
             return self::messagesMatch($chunkOnTangle->signatureMessageFragment, $chunkOnRecord->message) &&
@@ -516,7 +507,7 @@ class BrokerNode
         }
     }
 
-    public static function messagesMatch($messageOnTangle, $messageOnRecord)
+    private static function messagesMatch($messageOnTangle, $messageOnRecord)
     {
         $lengthOfOriginalMessage = strlen($messageOnRecord);
 
@@ -524,16 +515,14 @@ class BrokerNode
             !(strlen(str_replace('9', '', substr($messageOnTangle, $lengthOfOriginalMessage))) > 0);
     }
 
-    public static function getTransactionObjects($hashes)
+    private static function getTransactionObjects($hashes)
     {
         $command = new \stdClass();
         $command->command = "getTrytes";
         $command->hashes = $hashes;
 
-        BrokerNode::$iriRequestInProgress = true;
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
-        BrokerNode::$iriRequestInProgress = false;
 
         if (!is_null($result) && property_exists($result, 'trytes') &&
             count($result->trytes) != 0) {
