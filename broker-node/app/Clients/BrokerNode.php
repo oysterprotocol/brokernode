@@ -261,7 +261,7 @@ class BrokerNode
         return "http://" . $nodes[$next] . ":250/HookListener.php";
     }
 
-    public static function processNewChunks(&$chunks)
+    public static function processChunks(&$chunks)
     {
         if (!is_array($chunks)) {
             $chunks = array($chunks);
