@@ -20,11 +20,22 @@ class UploadSessionControllerV2 extends Controller
         $genesis_hash = $session['genesis_hash'];
         $chunks = $request->input('chunks');
 
+        $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
+
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
           ->map(function($chunk, $idx) {
             // TODO: Adapt to whatever processChunks expects.
-            return $chunk["idx"];
+            $trytes = new Trytes(["characters" => Trytes::IOTA]);
+            $hash_in_trytes = $trytes->encode($chunk["hash"]);
+            $shortened_hash = substr($hash_in_trytes, 0, 81);
+
+            return [
+              'response_address' => $res_addr,
+              'address' => $shortened_hash,
+              'message' => $chunk['data'],
+              'chunk_idx' => $chunk['idx'],
+            ];
           });
 
         // Process chunks in 1000 chunk batches.
@@ -40,8 +51,8 @@ class UploadSessionControllerV2 extends Controller
             DataMap::where('genesis_hash', $genesis_hash)
               ->where('chunk_idx', $req['chunk_idx'])
               ->update([
-                'address' => $req['shortened_hash'],
-                'message' => $req['data'],
+                'address' => $req['address'],
+                'message' => $req['message'],
               ]);
           });
 
