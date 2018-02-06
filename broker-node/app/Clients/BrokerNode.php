@@ -45,38 +45,9 @@ class BrokerNode
         }
     }
 
-    private static function getOrInitHooknodeQueue()
-    {
-        if (!is_null(self::$hooknode_queue)) {
-            return self::$hooknode_queue;
-        }
-
-        // Else instantiate new queue.
-        $nodes = [
-            "35.183.18.203",
-            "35.182.251.91",
-            "35.182.249.24",
-            "35.182.113.146",
-            "35.182.29.53",
-        ];
-        self::$hooknode_queue = new \SplQueue();
-        foreach ($nodes as $node) {
-            self::$hooknode_queue->enqueue("http://{$node}:250/HookListener.php");
-        }
-
-        return self::$hooknode_queue;
-    }
-
     private static function getNextHooknodeIp()
     {
-//        $hooknode_q = self::getOrInitHooknodeQueue();
-//
-//        // Round Robin technique. We aren't locking the q because
-//        // sending to the same hooknode is not a big deal.
-//        $next = $hooknode_q->dequeue();
-//        $hooknode_q->enqueue($next);
-//
-//        return $next;
+
         $nodes = [
             "18.216.181.144",
             "13.59.168.153",
@@ -290,18 +261,79 @@ class BrokerNode
         return "http://" . $nodes[$next] . ":250/HookListener.php";
     }
 
-    public static function processNewChunk(&$chunk)
+    public static function processNewChunks(&$chunks)
     {
-        if (self::dataNeedsAttaching($chunk)) {
-            self::buildTransactionData($chunk);
-            $updated_chunk = self::sendToHookNode($chunk);
+        if (!is_array($chunks)) {
+            $chunks = array($chunks);
+        }
 
-            return is_null($updated_chunk)
+        $addresses = array_map(function ($n) {
+            return $n->address;
+        }, $chunks);
+
+        $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
+
+        /*
+         * TODO: do something with $filteredChunks->attachedChunks?
+        */
+
+        if (count($filteredChunks->unattachedChunks) != 0) {
+            $chunks = $filteredChunks->unattachedChunks;
+            $request = self::buildTransactionData($chunks);
+            $updated_chunks = self::sendToHookNode($chunks, $request);
+
+            return is_null($updated_chunks)
                 ? ['hooknode_unavailable', null]
-                : ['success', $updated_chunk];
+                : ['success', $updated_chunks];
 
         } else {
             return ['already_attached', null];
+        }
+    }
+
+    public static function filterUnattachedChunks($addresses, $chunks)
+    {
+        $command = new \stdClass();
+        $command->command = "findTransactions";
+        $command->addresses = $addresses;
+
+        BrokerNode::$iriRequestInProgress = true;
+
+        self::initIri();
+        $result = self::$IriWrapper->makeRequest($command);
+
+        BrokerNode::$iriRequestInProgress = false;
+
+        if (!is_null($result) && property_exists($result, 'hashes')) {
+
+            $returnVal = new \stdClass();
+            $returnVal->attachedChunks = array();
+            $returnVal->unattachedChunks = array();
+
+            if (count($result->hashes) == 0) {
+                $returnVal->unattachedChunks = $chunks;
+            } else {
+                $txObjects = self::getTransactionObjects($result->hashes);
+
+                $addressesOnTangle = array_map(function ($n) {
+                    return $n->address;
+                }, $txObjects);
+
+                foreach ($chunks as $key => $value) {
+
+                    in_array($value->address, $addressesOnTangle) ?
+                        $returnVal->attachedChunks[] = $value :
+                        $returnVal->unattachedChunks[] = $value;
+                }
+            }
+            return $returnVal;
+        } else {
+            throw new \Exception(
+                "BrokerNode::filterUnattachedChunks failed." .
+                "\n\tIRI.findTransactions" .
+                "\n\t\tcommand: {$command}" .
+                "\n\t\tresult: {$result}"
+            );
         }
     }
 
@@ -330,14 +362,17 @@ class BrokerNode
         }
     }
 
-    public static function buildTransactionData(&$request)
+    public static function buildTransactionData($chunks)
     {
         $trytesToBroadcast = NULL;
+        $request = new \stdClass();
 
-        $request->value = IriData::$txValue;
-        $request->tag = IriData::$oysterTag;
+        foreach ($chunks as $chunk) {
+            $chunk->value = IriData::$txValue;
+            $chunk->tag = IriData::$oysterTag;
+        }
 
-        $request->trytes = PrepareTransfers::buildTxTrytes($request, IriData::$oysterSeed);
+        $request->trytes = PrepareTransfers::buildTxTrytes($chunks, IriData::$oysterSeed);
         if (!is_null($request->trytes)) {
             self::getTransactionsToApprove($request);
         }
@@ -377,7 +412,7 @@ class BrokerNode
         return ['ip_address' => self::getNextHooknodeIp()];
     }
 
-    private static function sendToHookNode($modifiedTx)
+    private static function sendToHookNode(&$chunks, $request)
     {
         $hooknode = self::selectHookNode();
         if (empty($hooknode)) {
@@ -386,7 +421,7 @@ class BrokerNode
         $hookNodeUrl = $hooknode['ip_address'];
 
         $tx = new \stdClass();
-        $tx = $modifiedTx;
+        $tx = $request;
         $tx->command = 'attachToTangle';
 
         self::initMessenger();
@@ -401,8 +436,11 @@ class BrokerNode
 
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 
-        $tx->hookNodeUrl = $hookNodeUrl;
-        return $tx;
+        array_walk($chunks, function ($chunk) use ($hookNodeUrl) {
+            $chunk->hookNodeUrl = $hookNodeUrl;
+        });
+
+        return $chunks;
     }
 
     private static function updateHookNodeDirectory($currentHook, $status)

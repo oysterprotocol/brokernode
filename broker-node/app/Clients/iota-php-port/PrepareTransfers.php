@@ -136,18 +136,14 @@ class PrepareTransfers
         return call_user_func($callback, null, array_reverse($bundleTrytes));
     }
 
-    public static function buildTxTrytes($txObject, $seed)
+    public static function buildTxTrytes($txObjects, $seed)
     {
-
-        $transactionObject = new stdClass();
-
-        $transactionObject->address = $txObject->address;
-        $transactionObject->value = $txObject->value;
-        $transactionObject->message = $txObject->message;
-        $transactionObject->tag = $txObject->tag;
+        if (!is_array($txObjects)) {
+            $txObjects = array($txObjects);
+        }
 
         $result = self::prepareTransfers($seed,
-            [$transactionObject],
+            $txObjects,
             null, //where options with inputs array would go, consider removing this and removing param from method
             function ($e, $s) {
                 if ($s != null) {
