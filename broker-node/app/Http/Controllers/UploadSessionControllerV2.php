@@ -30,8 +30,8 @@ class UploadSessionControllerV2 extends Controller
         // Process chunks in 1000 chunk batches.
         $chunk_reqs
           ->chunk(1000) // Limited by IRI API.
-          ->each(function($req, $idx) {
-            BrokerNode::processChunks($req);
+          ->each(function($req_list, $idx) {
+            BrokerNode::processChunks($req_list);
           });
 
         // Save to DB.
