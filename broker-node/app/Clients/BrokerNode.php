@@ -390,8 +390,9 @@ class BrokerNode
         if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
             //do we do this randomly or every time?
+            $tmp_trunk = $request->trunkTransaction;
             $request->trunkTransaction = $result->branchTransaction;
-            $request->branchTransaction = $result->trunkTransaction;
+            $request->branchTransaction = $tmp_trunk;
         } else {
             throw new \Exception('getTransactionToApprove failed! ' . $result->error);
         }
