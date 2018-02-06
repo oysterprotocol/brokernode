@@ -25,16 +25,11 @@ class UploadSessionControllerV2 extends Controller
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
           ->map(function($chunk, $idx) {
-            // TODO: Adapt to whatever processChunks expects.
-            $trytes = new Trytes(["characters" => Trytes::IOTA]);
-            $hash_in_trytes = $trytes->encode($chunk["hash"]);
-            $shortened_hash = substr($hash_in_trytes, 0, 81);
-
-            return [
-              'response_address' => $res_addr,
-              'address' => $shortened_hash,
+            return (object)[
+              'responseAddress' => $res_addr,
+              'address' => self::hashToAddrTrytes($chunk["hash"]),
               'message' => $chunk['data'],
-              'chunk_idx' => $chunk['idx'],
+              'chunkId' => $chunk['idx'],
             ];
           });
 
@@ -49,13 +44,19 @@ class UploadSessionControllerV2 extends Controller
         $chunk_reqs
           ->each(function($req, $idx) {
             DataMap::where('genesis_hash', $genesis_hash)
-              ->where('chunk_idx', $req['chunk_idx'])
+              ->where('chunk_idx', $req->chunkId)
               ->update([
-                'address' => $req['address'],
-                'message' => $req['message'],
+                'address' => $req->address,
+                'message' => $req->message,
               ]);
           });
 
         return response('Success.', 204);
+    }
+
+    private static function hashToAddrTrytes($hash) {
+      $trytes = new Trytes(["characters" => Trytes::IOTA]);
+      $hash_in_trytes = $trytes->encode($hash);
+      return substr($hash_in_trytes, 0, 81);
     }
 }
