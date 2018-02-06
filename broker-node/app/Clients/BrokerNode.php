@@ -47,15 +47,13 @@ class BrokerNode
 
     private static function getNextXHookNodes($numberOfHooks)
     {
-        $arrayQueue = file('HookNodes.txt', FILE_IGNORE_NEW_LINES);
+        $arrayQueue = file(__DIR__ . "/" . "HookNodes.txt", FILE_IGNORE_NEW_LINES);
 
         $newArray = array_splice($arrayQueue, 0, $numberOfHooks);
 
         $arrayQueue = array_merge($arrayQueue, $newArray);
 
-        file_put_contents('HookNodes.txt', implode("\n", $arrayQueue));
-
-        unset($arrayQueue);
+        file_put_contents(__DIR__ . "/" . "HookNodes.txt", implode("\n", $arrayQueue));
 
         for ($i = 0; $i < count($newArray); $i++) {
             $newArray[$i] =  "http://" . $newArray[$i] . ":250/HookListener.php";
@@ -148,7 +146,9 @@ class BrokerNode
         // TODO: Use hooknodes in DB instead of this hardcode.
         // return $hooknode = HookNode::getNextReadyNode();
 
-        return ['ip_address' => self::getNextXHookNodes(1)[0]];
+        $nextHooks = self::getNextXHookNodes(1);
+
+        return ['ip_address' => $nextHooks[0]];
     }
 
     private static function sendToHookNode($modifiedTx)
