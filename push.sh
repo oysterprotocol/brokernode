@@ -4,7 +4,7 @@ git add $(git rev-parse --show-toplevel)
 git commit -a 
 git checkout -b host
 git push -u origin host
-ssh oyster@192.168.56.20 'cd brokernode && git merge master host && git branch -D host' #change host if you want another branch name
+ssh oyster@192.168.56.20 'cd brokernode && git stash && git merge master host && git stash pop && git branch -D host' #change host if you want another branch name
 git checkout master
 git pull origin master
 git branch -D host
