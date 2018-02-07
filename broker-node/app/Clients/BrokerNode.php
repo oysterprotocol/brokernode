@@ -16,6 +16,7 @@ use \NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
+use App\ChunkEvents;
 
 class BrokerNode
 {
