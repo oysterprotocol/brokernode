@@ -89,37 +89,38 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $session = UploadSession::find($id);
-        if (empty($session)) return response('Session not found.', 404);
+        return response('Deprecated: Use /api/v2/upload-sessions', 410);
+        // $session = UploadSession::find($id);
+        // if (empty($session)) return response('Session not found.', 404);
 
-        $genesis_hash = $session['genesis_hash'];
-        $chunk = $request->input('chunk');
+        // $genesis_hash = $session['genesis_hash'];
+        // $chunk = $request->input('chunk');
 
-        $data_map = DataMap::where('genesis_hash', $genesis_hash)
-            ->where('chunk_idx', $chunk['idx'])
-            ->first();
+        // $data_map = DataMap::where('genesis_hash', $genesis_hash)
+        //     ->where('chunk_idx', $chunk['idx'])
+        //     ->first();
 
-        // Error Responses
-        if (empty($data_map)) return response('Datamap not found', 404);
+        // // Error Responses
+        // if (empty($data_map)) return response('Datamap not found', 404);
 
-        // Convert hash to trytes to be used as an address.
-        $trytes = new Trytes(["characters" => Trytes::IOTA]);
-        $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
-        $shortened_hash = substr($hash_in_tryte_format, 0, 81);
+        // // Convert hash to trytes to be used as an address.
+        // $trytes = new Trytes(["characters" => Trytes::IOTA]);
+        // $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
+        // $shortened_hash = substr($hash_in_tryte_format, 0, 81);
 
-        // Save address and message on data_map
-        $data_map->address = $shortened_hash;
-        $data_map->message = $chunk["data"];
-        $data_map->save();
+        // // Save address and message on data_map
+        // $data_map->address = $shortened_hash;
+        // $data_map->message = $chunk["data"];
+        // $data_map->save();
 
-        switch($data_map->processChunk()) {
-            case 'already_attached':
-                return response('Chunk already attached.', 204);
-            case 'hooknode_unavailable':
-                return response('Processing: Hooknodes are busy', 102);
-            case 'success':
-                return response('Success.', 204);
-        }
+        // switch($data_map->processChunk()) {
+        //     case 'already_attached':
+        //         return response('Chunk already attached.', 204);
+        //     case 'hooknode_unavailable':
+        //         return response('Processing: Hooknodes are busy', 102);
+        //     case 'success':
+        //         return response('Success.', 204);
+        // }
     }
 
     /**
