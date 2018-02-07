@@ -10,7 +10,7 @@ class NodeMessenger
     );
     public $nodeUrl;
     private $userAgent = 'Codular Sample cURL Request';
-    private $apiVersionHeaderString = 'X-IOTA-API-Version: ';
+    private $apiVersionHeaderString = 'X-IOTA-API-Version: 1.4';
 
     public function __construct()
     {
@@ -72,18 +72,28 @@ class NodeMessenger
 
     function spamHookNodes($commandObject, $nodeUrl)
     {
-        $command = http_build_query($commandObject);
+       // $command = http_build_query($commandObject);
+        $command = json_encode($commandObject);
+        //$cleanedCommand = preg_replace('/%5B(\d+?)%5D/', '', $command);
 
         for ($i = 0; $i < count($nodeUrl); $i++) {
 
             $cmd = "curl " . $nodeUrl[$i] . " -X POST ";
-            $cmd .= "-H " . "'" . $this->headers[0] . "' ";
+            //$cmd .= "-H " . "'" . $this->headers[0] . "' ";
+            $cmd .= "-H " . "'" . 'Content-Type: application/json' . "' ";
             $cmd .= "-H " . "'" . $this->apiVersionHeaderString . "' ";
+            //$cmd .= " -d '" . $cleanedCommand . "' ";
             $cmd .= " -d '" . $command . "' ";
             $cmd .= " > /dev/null 2>&1 &";
 
+            echo $cmd;
+
             exec($cmd);
         }
+
+//        var_dump($commandObject);
+//        echo "\n". $command . "\n";
+//        echo "\n" . $cmd;
     }
 }
 
