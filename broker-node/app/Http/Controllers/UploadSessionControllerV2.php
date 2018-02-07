@@ -24,39 +24,41 @@ class UploadSessionControllerV2 extends Controller
 
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
-          ->map(function($chunk, $idx) use ($res_addr) {
-            return (object)[
-              'responseAddress' => $res_addr,
-              'address' => self::hashToAddrTrytes($chunk["hash"]),
-              'message' => $chunk['data'],
-              'chunkId' => $chunk['idx'],
-            ];
-          });
+            ->map(function ($chunk, $idx) use ($res_addr) {
+                return (object)[
+                    'responseAddress' => $res_addr,
+                    'address' => self::hashToAddrTrytes($chunk["hash"]),
+                    'message' => $chunk['data'],
+                    'chunkId' => $chunk['idx'],
+                ];
+            });
 
         // Process chunks in 1000 chunk batches.
         $chunk_reqs
-          ->chunk(1000) // Limited by IRI API.
-          ->each(function($req_list, $idx) {
-            BrokerNode::processChunks($req_list);
-          });
+            ->chunk(1000)// Limited by IRI API.
+            ->each(function ($req_list, $idx) {
+                $chunks_array = $req_list->all();
+                BrokerNode::processChunks($chunks_array);
+            });
 
         // Save to DB.
         $chunk_reqs
-          ->each(function($req, $idx) use ($genesis_hash) {
-            DataMap::where('genesis_hash', $genesis_hash)
-              ->where('chunk_idx', $req->chunkId)
-              ->update([
-                'address' => $req->address,
-                'message' => $req->message,
-              ]);
-          });
+            ->each(function ($req, $idx) use ($genesis_hash) {
+                DataMap::where('genesis_hash', $genesis_hash)
+                    ->where('chunk_idx', $req->chunkId)
+                    ->update([
+                        'address' => $req->address,
+                        'message' => $req->message,
+                    ]);
+            });
 
         return response('Success.', 204);
     }
 
-    private static function hashToAddrTrytes($hash) {
-      $trytes = new Trytes(["characters" => Trytes::IOTA]);
-      $hash_in_trytes = $trytes->encode($hash);
-      return substr($hash_in_trytes, 0, 81);
+    private static function hashToAddrTrytes($hash)
+    {
+        $trytes = new Trytes(["characters" => Trytes::IOTA]);
+        $hash_in_trytes = $trytes->encode($hash);
+        return substr($hash_in_trytes, 0, 81);
     }
 }
