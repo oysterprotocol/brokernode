@@ -267,6 +267,7 @@ class BrokerNode
         }
 
         $addresses = array_map(function ($n) {
+            var_dump($n);
             return $n->address;
         }, $chunks);
 
@@ -313,6 +314,7 @@ class BrokerNode
                 $txObjects = self::getTransactionObjects($result->hashes);
 
                 $addressesOnTangle = array_map(function ($n) {
+                    var_dump($n);
                     return $n->address;
                 }, $txObjects);
 
@@ -391,7 +393,7 @@ class BrokerNode
             //switching trunk and branch
             //do we do this randomly or every time?
             $request->trunkTransaction = $result->branchTransaction;
--           $request->branchTransaction = $result->trunkTransaction;
+            $request->branchTransaction = $result->trunkTransaction;
         } else {
             throw new \Exception('getTransactionToApprove failed! ' . $result->error);
         }

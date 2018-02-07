@@ -42,7 +42,7 @@ class UploadSessionControllerV2 extends Controller
 
         // Save to DB.
         $chunk_reqs
-          ->each(function($req, $idx) {
+          ->each(function($req, $idx) use ($genesis_hash) {
             DataMap::where('genesis_hash', $genesis_hash)
               ->where('chunk_idx', $req->chunkId)
               ->update([
