@@ -24,10 +24,16 @@ class UploadSessionControllerV2 extends Controller
 
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
-          ->map(function($chunk, $idx) use ($res_addr) {
+          ->map(function($chunk, $idx) use ($genesis_hash, $res_addr) {
+            // TODO: N queries, optimize later.
+            $data_map = DataMap::where('genesis_hash', $genesis_hash)
+              ->where('chunk_idx', $chunk['idx'])
+              ->select('hash')
+              ->first();
+
             return (object)[
               'responseAddress' => $res_addr,
-              'address' => self::hashToAddrTrytes($chunk["hash"]),
+              'address' => self::hashToAddrTrytes($data_map["hash"]),
               'message' => $chunk['data'],
               'chunkId' => $chunk['idx'],
             ];
