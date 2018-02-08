@@ -36,31 +36,31 @@ class UploadSessionControllerV2 extends Controller
 
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
-            ->map(function($chunk, $idx) use ($genesis_hash, $res_addr, $idx_to_hash) {
-                // $hash = $idx_to_hash[$chunk['idx']];
+            ->map(function ($chunk, $idx) use ($genesis_hash, $res_addr) {
+                // TODO: N queries, optimize later.
                 $data_map = DataMap::where('genesis_hash', $genesis_hash)
                     ->where('chunk_idx', $chunk['idx'])
                     ->select('hash')
                     ->first();
-
                 return (object)[
                     'responseAddress' => $res_addr,
                     'address' => self::hashToAddrTrytes($data_map["hash"]),
                     'message' => $chunk['data'],
                     'chunkId' => $chunk['idx'],
                 ];
-        });
+            });
 
         // Process chunks in 1000 chunk batches.
         $chunk_reqs
-            ->chunk(1000) // Limited by IRI API.
-            ->each(function($req_list, $idx) {
-                BrokerNode::processChunks($req_list);
+            ->chunk(1000)// Limited by IRI API.
+            ->each(function ($req_list, $idx) {
+                $chunks_array = $req_list->all();
+                BrokerNode::processChunks($chunks_array);
             });
 
         // Save to DB.
         $chunk_reqs
-            ->each(function($req, $idx) {
+            ->each(function ($req, $idx) use ($genesis_hash) {
                 DataMap::where('genesis_hash', $genesis_hash)
                     ->where('chunk_idx', $req->chunkId)
                     ->update([
@@ -72,7 +72,7 @@ class UploadSessionControllerV2 extends Controller
         return response('Success.', 204);
     }
 
-    private static function hashToAddrTrytes($hash) {
+    private static function hashToAddrTrytes($hash)
     {
         $trytes = new Trytes(["characters" => Trytes::IOTA]);
         $hash_in_trytes = $trytes->encode($hash);
