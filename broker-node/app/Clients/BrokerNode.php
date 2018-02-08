@@ -48,6 +48,8 @@ class BrokerNode
     {
 
         $nodes = [
+//          "165.227.79.113"  // test hooks
+//          "104.225.221.42",
             "18.216.181.144",
             "13.59.168.153",
             "18.221.167.209",
@@ -296,10 +298,8 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
-
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
 
@@ -336,14 +336,14 @@ class BrokerNode
 
     public static function dataNeedsAttaching($request)
     {
+        //this method intended to be used to check a single chunk
+
         $command = new \stdClass();
         $command->command = "findTransactions";
         $command->addresses = array($request->address);
 
-
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
-
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
@@ -359,6 +359,10 @@ class BrokerNode
 
     private static function buildTransactionData($chunks)
     {
+        if (!is_array($chunks)) {
+            $chunks = array($chunks);
+        }
+
         $trytesToBroadcast = NULL;
         $request = new \stdClass();
 
@@ -383,15 +387,13 @@ class BrokerNode
         $command->command = "getTransactionsToApprove";
         $command->depth = IriData::$depthToSearchForTxs;
 
-
         $result = self::$IriWrapper->makeRequest($command);
-
 
         if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
             //do we do this randomly or every time?
             $request->trunkTransaction = $result->branchTransaction;
--           $request->branchTransaction = $result->trunkTransaction;
+            $request->branchTransaction = $result->trunkTransaction;
         } else {
             throw new \Exception('getTransactionToApprove failed! ' . $result->error);
         }
@@ -421,7 +423,7 @@ class BrokerNode
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
         $spammedNodes = array($hookNodeUrl);   //temporary solution
-        for ($i = 0; $i <= 6; $i++) {   //temporary solution
+        for ($i = 0; $i <= 3; $i++) {   //temporary solution
             $spammedNodes[] = self::selectHookNode()['ip_address'];
         }
 
@@ -466,31 +468,53 @@ class BrokerNode
         }
     }
 
-    public static function verifyChunkMessageMatchesRecord($chunk)
+    public static function verifyChunkMessagesMatchRecord($chunks)
     {
-        return self::verifyChunkMatchesRecord($chunk, false);
+        return self::verifyChunksMatchRecord($chunks, false);
     }
 
-    public static function verifyChunkMatchesRecord($chunk, $checkBranchAndTrunk = true)
+    public static function verifyChunksMatchRecord($chunks, $checkBranchAndTrunk = true)
     {
+        if (!is_array($chunks)) {
+            $chunks = array($chunks);
+        }
+
+        $addresses = array_map(function ($n) {
+            return $n->address;
+        }, $chunks);
+
         $command = new \stdClass();
         $command->command = "findTransactions";
-        $command->addresses = array($chunk->address);
+        $command->addresses = $addresses;
 
         self::initIri();
         $result = self::$IriWrapper->makeRequest($command);
 
+        $chunkResults = new \stdClass();
+
+        $chunkResults->matchesTangle = array();
+        $chunkResults->doesNotMatchTangle = array();
 
         if (!is_null($result) && property_exists($result, 'hashes') &&
             count($result->hashes) != 0) {
+
             $txObjects = self::getTransactionObjects($result->hashes);
-            foreach ($txObjects as $key => $value) {
-                if (self::chunksMatch($value, $chunk, $checkBranchAndTrunk)) {
-                    return true;
+
+            foreach ($chunks as $chunk) {
+
+                $matchingTxObjects = array_filter($txObjects, function ($tx) use ($chunk, $checkBranchAndTrunk) {
+                    return $tx->address == $chunk->address && self::chunksMatch($tx, $chunk, $checkBranchAndTrunk);
+                });
+
+                if (count($matchingTxObjects) != 0) {
+                    $chunkResults->matchesTangle[] = $chunk;
                 } else {
-                    return false;
+                    $chunkResults->doesNotMatchTangle[] = $chunk;
                 }
             }
+
+            return $chunkResults;
+
         } else {
             throw new \Exception('verifyChunkMatchesRecord failed!');
         }
@@ -530,7 +554,7 @@ class BrokerNode
             foreach ($result->trytes as $key => $value) {
                 $txObjects[] = \Utils::transactionObject($value);
             }
-            return array_reverse($txObjects);
+            return $txObjects;
         } else {
             throw new \Exception('getTransactionObjects failed!');
         }
