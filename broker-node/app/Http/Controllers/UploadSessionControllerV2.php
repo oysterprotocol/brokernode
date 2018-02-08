@@ -22,17 +22,28 @@ class UploadSessionControllerV2 extends Controller
 
         $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
 
+        // Collect hashes
+        $chunk_idxs = array_map(function ($c) {
+            return $c["idx"];
+        }, $chunks);
+        $data_maps = DataMap::where('genesis_hash', $genesis_hash)
+            ->whereIn('chunk_idx', $chunk_idxs)
+            ->select('chunk_idx', 'hash');
+        unset($chunk_idxs); // Free memory.
+        $idx_to_hash =
+            $data_maps->reduce(function ($acc, $dmap) {
+                return $acc[$dmap['idx']] = $dmap['hash'];
+            }, []);
+        unset($data_maps); // Free memory.
+
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
-            ->map(function ($chunk, $idx) use ($genesis_hash, $res_addr) {
-                // TODO: N queries, optimize later.
-                $data_map = DataMap::where('genesis_hash', $genesis_hash)
-                    ->where('chunk_idx', $chunk['idx'])
-                    ->select('hash')
-                    ->first();
+            ->map(function ($chunk, $idx) use ($genesis_hash, $res_addr, $idx_to_hash) {
+                $hash = $idx_to_hash[$chunk['idx']];
+
                 return (object)[
                     'responseAddress' => $res_addr,
-                    'address' => self::hashToAddrTrytes($data_map["hash"]),
+                    'address' => self::hashToAddrTrytes($hash),
                     'message' => $chunk['data'],
                     'chunkId' => $chunk['idx'],
                 ];
@@ -42,8 +53,7 @@ class UploadSessionControllerV2 extends Controller
         $chunk_reqs
             ->chunk(1000)// Limited by IRI API.
             ->each(function ($req_list, $idx) {
-                $chunks_array = $req_list->all();
-                BrokerNode::processChunks($chunks_array);
+                BrokerNode::processChunks($req_list);
             });
 
         // Save to DB.
