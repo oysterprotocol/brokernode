@@ -23,26 +23,29 @@ class UploadSessionControllerV2 extends Controller
         $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
 
         // Collect hashes
-        $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
-        $data_maps = DataMap::where('genesis_hash', $genesis_hash)
-            ->whereIn('chunk_idx', $chunk_idxs)
-            ->select('chunk_idx', 'hash')
-            ->get();
-        unset($chunk_idxs); // Free memory.
-        $idx_to_hash =
-            $data_maps->reduce(function ($acc, $dmap) {
-                return $acc[$dmap['idx']] = $dmap['hash'];
-            }, []);
-        unset($data_maps); // Free memory.
+        // $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
+        // $data_maps = DataMap::where('genesis_hash', $genesis_hash)
+        //     ->whereIn('chunk_idx', $chunk_idxs)
+        //     ->select('chunk_idx', 'hash');
+        // unset($chunk_idxs); // Free memory.
+        // $idx_to_hash =
+        //     $data_maps->reduce(function ($acc, $dmap) {
+        //         return $acc[$dmap['idx']] = $dmap['hash'];
+        //     }, []);
+        // unset($data_maps); // Free memory.
 
         // Adapt chunks to reqs that hooknode expects.
         $chunk_reqs = collect($chunks)
             ->map(function($chunk, $idx) use ($genesis_hash, $res_addr, $idx_to_hash) {
-                $hash = $idx_to_hash[$chunk['idx']];
+                // $hash = $idx_to_hash[$chunk['idx']];
+                $data_map = DataMap::where('genesis_hash', $genesis_hash)
+                    ->where('chunk_idx', $chunk['idx'])
+                    ->select('hash')
+                    ->first();
 
                 return (object)[
                     'responseAddress' => $res_addr,
-                    'address' => self::hashToAddrTrytes($hash),
+                    'address' => self::hashToAddrTrytes($data_map["hash"]),
                     'message' => $chunk['data'],
                     'chunkId' => $chunk['idx'],
                 ];
