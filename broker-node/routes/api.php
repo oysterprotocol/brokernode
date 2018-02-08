@@ -32,9 +32,3 @@ Route::group(['prefix' => 'v1'], function() {
     // laravel app. This will do exactly what BrokerListener did before.
     Route::post('/broker-node-listener', 'UploadSessionController@brokerNodeListener');
 });
-
-Route::group(['prefix' => 'v2'], function() {
-    Route::resource('/upload-sessions', 'UploadSessionControllerV2', [
-        'only' => ["update"]
-    ]);
-});

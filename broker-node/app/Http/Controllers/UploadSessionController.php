@@ -8,6 +8,7 @@ use App\DataMap;
 use App\UploadSession;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Tuupola\Trytes;
 
 class UploadSessionController extends Controller
@@ -89,38 +90,62 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        return response('Deprecated: Use /api/v2/upload-sessions', 410);
-        // $session = UploadSession::find($id);
-        // if (empty($session)) return response('Session not found.', 404);
+        $session = UploadSession::find($id);
+        if (empty($session)) return response('Session not found.', 404);
 
-        // $genesis_hash = $session['genesis_hash'];
-        // $chunk = $request->input('chunk');
+        $genesis_hash = $session['genesis_hash'];
+        $chunks = $request->input('chunks');
 
-        // $data_map = DataMap::where('genesis_hash', $genesis_hash)
-        //     ->where('chunk_idx', $chunk['idx'])
-        //     ->first();
+        $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
 
-        // // Error Responses
-        // if (empty($data_map)) return response('Datamap not found', 404);
+        // Collect hashes
+        // $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
+        // $data_maps = DataMap::where('genesis_hash', $genesis_hash)
+        //     ->whereIn('chunk_idx', $chunk_idxs)
+        //     ->select('chunk_idx', 'hash');
+        // unset($chunk_idxs); // Free memory.
+        // $idx_to_hash =
+        //     $data_maps->reduce(function ($acc, $dmap) {
+        //         return $acc[$dmap['idx']] = $dmap['hash'];
+        //     }, []);
+        // unset($data_maps); // Free memory.
 
-        // // Convert hash to trytes to be used as an address.
-        // $trytes = new Trytes(["characters" => Trytes::IOTA]);
-        // $hash_in_tryte_format = $trytes->encode($data_map["hash"]);
-        // $shortened_hash = substr($hash_in_tryte_format, 0, 81);
+        // Adapt chunks to reqs that hooknode expects.
+        $chunk_reqs = collect($chunks)
+            ->map(function ($chunk, $idx) use ($genesis_hash, $res_addr) {
+                // TODO: N queries, optimize later.
+                $data_map = DataMap::where('genesis_hash', $genesis_hash)
+                    ->where('chunk_idx', $chunk['idx'])
+                    ->select('hash')
+                    ->first();
+                return (object)[
+                    'responseAddress' => $res_addr,
+                    'address' => self::hashToAddrTrytes($data_map["hash"]),
+                    'message' => $chunk['data'],
+                    'chunkId' => $chunk['idx'],
+                ];
+            });
 
-        // // Save address and message on data_map
-        // $data_map->address = $shortened_hash;
-        // $data_map->message = $chunk["data"];
-        // $data_map->save();
+        // Process chunks in 1000 chunk batches.
+        $chunk_reqs
+            ->chunk(1000)// Limited by IRI API.
+            ->each(function ($req_list, $idx) {
+                $chunks_array = $req_list->all();
+                BrokerNode::processChunks($chunks_array);
+            });
 
-        // switch($data_map->processChunk()) {
-        //     case 'already_attached':
-        //         return response('Chunk already attached.', 204);
-        //     case 'hooknode_unavailable':
-        //         return response('Processing: Hooknodes are busy', 102);
-        //     case 'success':
-        //         return response('Success.', 204);
-        // }
+        // Save to DB.
+        $chunk_reqs
+            ->each(function ($req, $idx) use ($genesis_hash) {
+                DataMap::where('genesis_hash', $genesis_hash)
+                    ->where('chunk_idx', $req->chunkId)
+                    ->update([
+                        'address' => $req->address,
+                        'message' => $req->message,
+                    ]);
+            });
+
+        return response('Success.', 204);
     }
 
     /**
@@ -237,5 +262,12 @@ class UploadSessionController extends Controller
         ]);
 
         return response()->json($upload_session);
+    }
+
+    private static function hashToAddrTrytes($hash)
+    {
+        $trytes = new Trytes(["characters" => Trytes::IOTA]);
+        $hash_in_trytes = $trytes->encode($hash);
+        return substr($hash_in_trytes, 0, 81);
     }
 }
