@@ -26,7 +26,8 @@ class UploadSessionControllerV2 extends Controller
         $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
         $data_maps = DataMap::where('genesis_hash', $genesis_hash)
             ->whereIn('chunk_idx', $chunk_idxs)
-            ->select('chunk_idx', 'hash');
+            ->select('chunk_idx', 'hash')
+            ->get();
         unset($chunk_idxs); // Free memory.
         $idx_to_hash =
             $data_maps->reduce(function ($acc, $dmap) {
