@@ -61,15 +61,21 @@ class CheckChunkStatus extends Command
                 "hooknode_id" => $dmap["hooknode_id"],
             ];
 
-            $is_attached = BrokerNode::verifyChunkMessageMatchesRecord($req);
+            $chunkResult = BrokerNode::verifyChunkMessagesMatchRecord($req);
+            $is_attached = count($chunkResult->matchesTangle) != 0;
+
             //$is_attached = !BrokerNode::dataNeedsAttaching($req);
             /*
-             * replace with 'verifyChunkMatchesRecord' if we also want to check
+             * replace with 'verifyChunksMatchRecord' if we also want to check
              * branch and trunk match the record.
              *
-             * verifyChunkMessageMatchesRecord and verifyChunkMatchesRecord both
+             * verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
              * check tangle for the address and makes sure the message matches,
-             * verifyChunkMatchesRecord also checks trunk and branch.
+             * verifyChunksMatchRecord also checks trunk and branch.
+             *
+             * TODO:  BrokerNode::verifyChunkMessagesMatchRecord($req) in this file does
+             * not currently take advantage of the fact that you can pass an array
+             * to BrokerNode::verifyChunkMessagesMatchRecord.  Modify this
              */
             return $is_attached;
         });
