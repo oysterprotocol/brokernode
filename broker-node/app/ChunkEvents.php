@@ -42,11 +42,11 @@ class ChunkEvents extends Model
     
 
 	
-	public static function addChunkEvent($event_name, $hook_node_id, $session_id, $value){
+	public static function addChunkEvent($event_name, $hooknode_id, $session_id, $value){
 	
 		self::create([
 
-		    'hook_node_id' => $hook_node_id,
+		    'hooknode_id' => $hooknode_id,
 		    
 		    'session_id' => $session_id,
 
