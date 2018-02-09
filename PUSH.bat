@@ -1,0 +1,1 @@
+start "" "%PROGRAMFILES%\Git\bin\sh.exe" --login -i -c "./push.sh"
