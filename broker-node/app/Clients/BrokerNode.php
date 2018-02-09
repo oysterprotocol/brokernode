@@ -16,7 +16,6 @@ use \NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
-use App\ChunkEvents;
 
 class BrokerNode
 {
@@ -27,9 +26,6 @@ class BrokerNode
     public static $NodeMessenger = null;
 
 
-	    
-    public static $ChunkEventsRecord  = null;
-    
     // Hack to load balance across hooknodes.
     private static $hooknode_queue = null; // errors when instantiating here?
 
@@ -40,14 +36,6 @@ class BrokerNode
             self::$IriWrapper = new IriWrapper();
         }
     }
-	
-	    private static function initEventRecord()
-    {
-        if (is_null(self::$ChunkEventsRecord)) {
-            self::$ChunkEventsRecord = new ChunkEvents();
-        }
-    }
-
 
     private static function initMessenger()
     {
@@ -442,10 +430,6 @@ class BrokerNode
         self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
 
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
-		        
-		self::initEventRecord();
-		
-        self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl) {
             $chunk->hookNodeUrl = $hookNodeUrl;
