@@ -59,30 +59,8 @@ class ChunkEvents extends Model
 		//$this->save();
 
 	}
-	
-	//refactor   setting the hook id to be the ip.  
-	//TODO:  add session id
-	public function addChunkSentToHookNodeEvent($hook_ip){
-	    
-	    $event_name = "chunk_sent_to_hook";
-	     
-	    self::addChunkEvent($event_name, $hook_ip, "", "" );
-	}
-	
-	public function addHookNodeFinishedChunkEvent($hook_ip){
-	    
-	    $event_name = "chunk_finished_by_hook";
-	    
-	    self::addChunkEvent($event_name, $hook_ip, "", "" );
-	}
-	
-	public function addChunkSentFromClientEvent(){
-	    
-	    $event_name = "chunk_sent_by_client";
-	    
-	    self::addChunkEvent($event_name, "na", "", "" );
-	}
-	
+
+
 }
 
 

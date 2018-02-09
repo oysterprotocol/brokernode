@@ -414,7 +414,8 @@ class BrokerNode
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
 		        
 		self::initEventRecord();
-        self::$ChunkEventsRecord->addChunkSentToHookNodeEvent($hooknode['ip_address']);
+		
+        self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
 
         $tx->hookNodeUrl = $hookNodeUrl;
         return $tx;

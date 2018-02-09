@@ -16,7 +16,7 @@ class CreateChunkEventsTable extends Migration
        Schema::create('chunk_events', function (Blueprint $table) {
            $table->uuid('id');
            $table->timestamps();
-           $table->string('hook_node_id');
+           $table->string('hooknode_id');
            $table->string('session_id');
            $table->string('event_name');
            $table->string('value');
