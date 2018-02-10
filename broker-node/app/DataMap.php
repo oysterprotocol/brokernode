@@ -152,7 +152,12 @@ class DataMap extends Model
                     'hooknode_id' => $chunk->hookNodeUrl,
                     'trunkTransaction' => $chunk->trunkTransaction,
                     'branchTransaction' => $chunk->branchTransaction,
-                    'status' => self::status['pending']
+                    //'status' => self::status['pending']
+                    'status' => self::status['unverified'] // TODO this needs to be 'pending' but right now
+                                                           // the hooknode doesn't notify the broker node
+                                                           // that it did the POW and I need to work on the cron
+                                                           // job, so I'm just setting this to unverified
+                                                           // here
                 ]);
         }
     }

@@ -229,6 +229,7 @@ class BrokerNode
         //record event
         self::initEventRecord();
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
+        HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;
