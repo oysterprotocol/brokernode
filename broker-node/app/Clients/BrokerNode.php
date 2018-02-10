@@ -27,7 +27,6 @@ class BrokerNode
     public static $IriWrapper = null;
     public static $NodeMessenger = null;
     public static $ChunkEventsRecord = null;
-    public static $DataMap = null;
 
     // Hack to load balance across hooknodes.
     private static $hooknode_queue = null; // errors when instantiating here?
@@ -43,13 +42,6 @@ class BrokerNode
     {
         if (is_null(self::$ChunkEventsRecord)) {
             self::$ChunkEventsRecord = new ChunkEvents();
-        }
-    }
-
-    private static function initDataMap()
-    {
-        if (is_null(self::$DataMap)) {
-            self::$DataMap = new DataMap();
         }
     }
 
@@ -280,8 +272,6 @@ class BrokerNode
 
     public static function processChunks(&$chunks)
     {
-        self::initDataMap();
-
         if (!is_array($chunks)) {
             $chunks = array($chunks);
         }
