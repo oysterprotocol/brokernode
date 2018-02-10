@@ -23,13 +23,13 @@ class CreateHookNodesTable extends Migration
                 ->default(0);
             $table->unsignedBigInteger('chunks_processed_count')
                 ->default(0);
-            $table->unsignedBigInteger('time_of_last_chunk')
+            $table->unsignedBigInteger('time_of_last_contact')
                 ->default(0);
-            $table->enum('status', [
-                'ready',
-                'processing',
-            ])
-                ->default('ready');
+//            $table->enum('status', [  // instead will just ask the hooknode for its status
+//                'ready',
+//                'processing',
+//            ])
+//                ->default('ready');
 
             // Indexes
             $table->primary('id');

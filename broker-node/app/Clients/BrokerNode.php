@@ -28,9 +28,6 @@ class BrokerNode
     public static $NodeMessenger = null;
     public static $ChunkEventsRecord = null;
 
-    // Hack to load balance across hooknodes.
-    private static $hooknode_queue = null; // errors when instantiating here?
-
     private static function initIri()
     {
         if (is_null(self::$IriWrapper)) {
@@ -193,7 +190,13 @@ class BrokerNode
 
     private static function selectHookNode()
     {
-        return ['ip_address' => HookNode::getNextReadyNode()];
+        $ready = false;
+
+        while ($ready == false) {
+            [$ready, $nextNode] = HookNode::getNextReadyNode();
+        }
+
+        return ['ip_address' => $nextNode];
         // "165.227.79.113"  // test hooks
         // "104.225.221.42",
     }
