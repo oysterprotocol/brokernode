@@ -48,7 +48,7 @@ class CheckChunkStatus extends Command
     {
         $datamaps_unverified =
             DataMap::where('status', DataMap::status['unverified'])
-                //->where('updated_at', '>=', $thresholdTime)
+                ->where('updated_at', '>=', $thresholdTime)
                 ->get()
                 ->toArray();
 

@@ -322,11 +322,15 @@ class BrokerNode
 
         $chunkResults->matchesTangle = array();
         $chunkResults->doesNotMatchTangle = array();
+        $chunkResults->notAttached = array();
 
         if (!is_null($result) && property_exists($result, 'hashes') &&
             count($result->hashes) != 0) {
 
             $txObjects = self::getTransactionObjects($result->hashes);
+            $foundAddresses = array_map(function ($n) {
+                return $n->address;
+            }, $chunks);
 
             foreach ($chunks as $chunk) {
 
@@ -336,22 +340,31 @@ class BrokerNode
 
                 if (count($matchingTxObjects) != 0) {
                     $chunkResults->matchesTangle[] = $chunk;
-                } else {
+                } else if (in_array($chunk->address, $foundAddresses)) {
+                    //found address on tangle but not a match
                     $chunkResults->doesNotMatchTangle[] = $chunk;
+                } else {
+                    $chunkResults->notAttached[] = $chunk;
                 }
             }
 
             return $chunkResults;
 
+        } else if (!is_null($result) && property_exists($result, 'hashes') &&
+            count($result->hashes) == 0) {
+
+            $chunkResults->notAttached = $chunks;
+
+            return $chunkResults;
         } else {
             $error = '';
             foreach ($result as $key => $value) {
                 if (is_array($value)) {
-                    $error .= $key . ': \n' . implode("\n", $value) . "\n\n";
+                    $error .= $key . ": \n" . implode("\n", $value) . "\n\n";
                 } else {
                     $error .= $key . ': ' . $value . "\n";
                 }
-                $error .= '\n';
+                $error .= "\n";
             }
             throw new \Exception('verifyChunkMatchesRecord failed!' . $error);
         }
