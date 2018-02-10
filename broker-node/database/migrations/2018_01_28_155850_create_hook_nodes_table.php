@@ -31,7 +31,6 @@ class CreateHookNodesTable extends Migration
 
             // Indexes
             $table->primary('id');
-            $table->unique(['ip_address']);
         });
     }
 
