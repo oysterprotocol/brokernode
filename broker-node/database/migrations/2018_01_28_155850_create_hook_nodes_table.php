@@ -17,16 +17,18 @@ class CreateHookNodesTable extends Migration
             $table->uuid('id');
             $table->timestamps();
 
-            $table->string('ip_address',255)
-                  ->unique();
+            $table->string('ip_address', 255)
+                ->unique();
             $table->unsignedBigInteger('score')
-                  ->default(0);
+                ->default(0);
             $table->unsignedBigInteger('chunks_processed_count')
-                  ->default(0);
+                ->default(0);
+            $table->unsignedBigInteger('time_of_last_chunk')
+                ->default(0);
             $table->enum('status', [
-                    'ready',
-                    'processing',
-                ])
+                'ready',
+                'processing',
+            ])
                 ->default('ready');
 
             // Indexes
