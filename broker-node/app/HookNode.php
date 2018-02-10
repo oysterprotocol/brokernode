@@ -3,6 +3,7 @@
 namespace App;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Webpatser\Uuid\Uuid;
 
@@ -31,10 +32,13 @@ class HookNode extends Model
 
     public static function getNextReadyNode()
     {
-        self::where('status', "ready")
+        $nextNode = DB::table('hook_nodes')
+            ->where('status', "ready")
             ->orderBy('score', 'desc')
             ->oldest('time_of_last_chunk')
             ->first();
+
+        return $nextNode;
     }
 
     public static function incrementScore($ip_address)
