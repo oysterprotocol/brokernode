@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 
 class CheckChunkStatus extends Command
 {
-    const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 1;
+    const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 2;
 
     protected $signature = 'CheckChunkStatus:checkStatus';
     protected $description =
