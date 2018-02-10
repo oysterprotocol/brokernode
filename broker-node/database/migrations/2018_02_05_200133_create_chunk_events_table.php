@@ -13,16 +13,19 @@ class CreateChunkEventsTable extends Migration
      */
     public function up()
     {
-       Schema::create('chunk_events', function (Blueprint $table) {
-           $table->uuid('id');
-           $table->timestamps();
-           $table->string('hooknode_id');
-           $table->string('session_id');
-           $table->string('event_name');
-           $table->string('value');
-         });
+        Schema::create('chunk_events', function (Blueprint $table) {
+            $table->uuid('id');
+            $table->timestamps();
+            $table->string('hooknode_id');
+            $table->string('session_id');
+            $table->string('event_name');
+            $table->string('value');
 
-      }
+            // Indexes
+            $table->primary('id');
+            $table->unique(['id']);
+        });
+    }
 
     /**
      * Reverse the migrations.
@@ -34,3 +37,4 @@ class CreateChunkEventsTable extends Migration
         Schema::dropIfExists('chunk_events');
     }
 }
+
