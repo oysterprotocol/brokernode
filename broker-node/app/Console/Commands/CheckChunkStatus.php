@@ -67,25 +67,31 @@ class CheckChunkStatus extends Command
 
             unset($datamaps_unverified); // Purges unused memory.
 
-            $attached_ids = array_map(function ($dmap) {
-                return $dmap->id;
-            }, $filteredChunks->matchesTangle);
+            if (count($filteredChunks->matchesTangle)) {
+                $attached_ids = array_map(function ($dmap) {
+                    return $dmap->id;
+                }, $filteredChunks->matchesTangle);
 
-            // Mass Update DB.
-            DataMap::whereIn('id', $attached_ids)
-                ->update(['status' => DataMap::status['complete']]);
+                // Mass Update DB.
+                DataMap::whereIn('id', $attached_ids)
+                    ->update(['status' => DataMap::status['complete']]);
 
-            $not_matching_ids = array_map(function ($dmap) {
-                return $dmap->id;
-            }, $filteredChunks->doesNotMatchTangle);
+                self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+            }
 
-            // Mass Update DB.
-            DataMap::whereIn('id', $not_matching_ids)
-                ->update(['status' => DataMap::status['unassigned']]);
+            if (count($filteredChunks->doesNotMatchTangle)) {
+                $not_matching_ids = array_map(function ($dmap) {
+                    return $dmap->id;
+                }, $filteredChunks->doesNotMatchTangle);
 
-            BrokerNode::processChunks($filteredChunks->doesNotMatchTangle);
+                // Mass Update DB.
+                DataMap::whereIn('id', $not_matching_ids)
+                    ->update(['status' => DataMap::status['unassigned']]);
 
-            self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+                BrokerNode::processChunks($filteredChunks->doesNotMatchTangle);
+
+                self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
+            }
         }
     }
 
