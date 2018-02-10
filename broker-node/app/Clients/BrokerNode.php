@@ -444,7 +444,7 @@ class BrokerNode
         //record event
         self::initEventRecord();
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
-
+        HookNode::setTimeOfLastChunk($hookNodeUrl);
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;

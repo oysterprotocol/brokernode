@@ -4,6 +4,7 @@ namespace App;
 
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Webpatser\Uuid\Uuid;
 
 class HookNode extends Model
 {
