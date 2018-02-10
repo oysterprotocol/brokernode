@@ -20,7 +20,7 @@ class CreateHookNodesTable extends Migration
 
             $table->string('ip_address', 255)
                 ->unique();
-            $table->unsignedBigInteger('score')
+            $table->bigInteger('score')
                 ->default(0);
             $table->unsignedBigInteger('chunks_processed_count')
                 ->default(0);
