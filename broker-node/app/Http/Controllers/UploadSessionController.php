@@ -207,40 +207,6 @@ class UploadSessionController extends Controller
         return response()->json(['status' => $data_map['status']]);
     }
 
-    public function brokerNodeListener(Request $request)
-    {
-        $cmd = $request->input('command');
-        $resAddress = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
-        // This is a hack to cast an associative array to an object.
-        // I don't know how to use PHP properly :(
-        $req = (object)[
-            "command" => $cmd,
-            "responseAddress" => $resAddress,
-            "message" => $request->input('message'),
-            "chunkId" => $request->input('chunkId'),
-            "address" => "WHLOOOOOOAAAAAAAAAAAAAAAAALAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-        ];
-
-        try {
-            switch ($cmd) {
-                case 'processNewChunk':
-                    BrokerNode::processNewChunk($request);
-                    return response('Success.', 204);
-
-                case 'verifyTx':
-                    $dataIsAttached = !BrokerNode::dataNeedsAttaching($request);
-                    // TODO: Figure out what client expects.
-                    return response()->json(["dataIsAttached" => $dataIsAttached]);
-
-                default:
-                    return response("Unrecognized command: {$cmd}", 404);
-            }
-        } catch (Exception $e) {
-            return response("Internal Server Error: {$e->getMessage()}", 500);
-        }
-
-    }
-
     /**
      * Private
      */
