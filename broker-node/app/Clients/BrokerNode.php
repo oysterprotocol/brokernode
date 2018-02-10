@@ -196,7 +196,7 @@ class BrokerNode
             [$ready, $nextNode] = HookNode::getNextReadyNode();
         }
 
-        return ['ip_address' => $nextNode];
+        return ['ip_address' => $nextNode->ip_address];
         // "165.227.79.113"  // test hooks
         // "104.225.221.42",
     }
@@ -211,7 +211,6 @@ class BrokerNode
 
         $hookNodeUrl = $hooknode['ip_address'];
 
-        $tx = new \stdClass();
         $tx = $request;
         $tx->command = 'attachToTangle';
 
@@ -230,7 +229,6 @@ class BrokerNode
         //record event
         self::initEventRecord();
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
-        HookNode::setTimeOfLastChunk($hookNodeUrl);
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;

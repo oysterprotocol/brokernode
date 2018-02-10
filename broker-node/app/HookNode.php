@@ -32,14 +32,14 @@ class HookNode extends Model
 
     public static function getNextReadyNode()
     {
-        $nextNode =
+        $nextNode = DB::table('hook_nodes')
             // ->where('status', "ready")  don't want to do this, we want to just ask
             // the hooknode its status
-            HookNode::orderBy('score', 'desc')
-                ->oldest('time_of_last_contact')
-                ->first();
+            ->orderBy('score', 'desc')
+            ->oldest('time_of_last_contact')
+            ->first();
 
-        if (self::isHookNodeAvailable($nextNode->ip_address)) {
+        if (HookNode::isHookNodeAvailable($nextNode->ip_address) == true) {
             return [true, $nextNode];
         } else {
             return [false, null];
@@ -48,7 +48,7 @@ class HookNode extends Model
 
     private static function isHookNodeAvailable($ip_address)
     {
-        self::setTimeOfLastContact($ip_address);
+        HookNode::setTimeOfLastContact($ip_address);
 
         // For this method we need to call the hooknode and ask it if it is
         // available for work.  I don't think that's implemented yet on the hooknodes,
@@ -69,25 +69,31 @@ class HookNode extends Model
 
     public static function incrementScore($ip_address)
     {
-        HookNode::where('ip_address', $ip_address)
+        DB::table('hook_nodes')
+            ->where('ip_address', $ip_address)
             ->increment('score', 1);
     }
 
     public static function decrementScore($ip_address)
     {
-        HookNode::where('ip_address', $ip_address)
+        DB::table('hook_nodes')
+            ->where('ip_address', $ip_address)
             ->decrement('score', 1);
     }
 
     public static function incrementChunksProcessed($ip_address, $chunks_count = 1)
     {
-        HookNode::where('ip_address', $ip_address)
+        DB::table('hook_nodes')
+            ->where('ip_address', $ip_address)
             ->increment('chunks_processed_count', $chunks_count);
     }
 
     public static function setTimeOfLastContact($ip_address)
     {
-        HookNode::where('ip_address', $ip_address)
-            ->update('time_of_last_contact', Carbon::now());
+        DB::table('hook_nodes')
+            ->where('ip_address', $ip_address)
+            ->update([
+                'time_of_last_contact' => Carbon::now()
+            ]);
     }
 }

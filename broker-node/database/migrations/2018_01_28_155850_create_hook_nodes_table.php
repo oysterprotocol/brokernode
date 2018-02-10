@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Carbon\Carbon;
 
 class CreateHookNodesTable extends Migration
 {
@@ -23,8 +24,8 @@ class CreateHookNodesTable extends Migration
                 ->default(0);
             $table->unsignedBigInteger('chunks_processed_count')
                 ->default(0);
-            $table->unsignedBigInteger('time_of_last_contact')
-                ->default(0);
+            $table->timestamp('time_of_last_contact')
+                ->default(Carbon::now());
 //            $table->enum('status', [  // instead will just ask the hooknode for its status
 //                'ready',
 //                'processing',
