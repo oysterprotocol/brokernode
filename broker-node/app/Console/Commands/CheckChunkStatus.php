@@ -75,6 +75,16 @@ class CheckChunkStatus extends Command
             DataMap::whereIn('id', $attached_ids)
                 ->update(['status' => DataMap::status['complete']]);
 
+            $not_matching_ids = array_map(function ($dmap) {
+                return $dmap->id;
+            }, $filteredChunks->doesNotMatchTangle);
+
+            // Mass Update DB.
+            DataMap::whereIn('id', $not_matching_ids)
+                ->update(['status' => DataMap::status['unassigned']]);
+
+            BrokerNode::processChunks($filteredChunks->doesNotMatchTangle);
+
             self::incrementHooknodeReputations($filteredChunks->matchesTangle);
         }
     }
