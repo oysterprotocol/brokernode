@@ -55,9 +55,20 @@ class BrokerNode
             $chunks = array($chunks);
         }
 
-        $addresses = array_map(function ($n) {
-            return $n->address;
-        }, $chunks);
+        $addresses = array();
+
+        if (is_array($chunks[0])) {
+            // in case this is coming from CheckChunkStatus which
+            // will send an array of arrays
+            foreach ($chunks as $key => $value) {
+                $chunks[$key] = (object)$value;
+                $addresses[] = $chunks[$key]->address;
+            }
+        } else {
+            $addresses = array_map(function ($n) {
+                return $n->address;
+            }, $chunks);
+        }
 
         $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
 
@@ -281,9 +292,24 @@ class BrokerNode
             $chunks = array($chunks);
         }
 
-        $addresses = array_map(function ($n) {
-            return $n->address;
-        }, $chunks);
+        $addresses = array();
+
+        // this seems inefficient but I tried other ways and they didn't work
+        // if you replace this with something better please test that the hook node
+        // scores in the db still update
+
+        if (is_array($chunks[0])) {
+            // in case this is coming from CheckChunkStatus which
+            // will send an array of arrays
+            foreach ($chunks as $key => $value) {
+                $chunks[$key] = (object)$value;
+                $addresses[] = $chunks[$key]->address;
+            }
+        } else {
+            $addresses = array_map(function ($n) {
+                return $n->address;
+            }, $chunks);
+        }
 
         $command = new \stdClass();
         $command->command = "findTransactions";
@@ -318,7 +344,16 @@ class BrokerNode
             return $chunkResults;
 
         } else {
-            throw new \Exception('verifyChunkMatchesRecord failed!');
+            $error = '';
+            foreach ($result as $key => $value) {
+                if (is_array($value)) {
+                    $error .= $key . ': \n' . implode("\n", $value) . "\n\n";
+                } else {
+                    $error .= $key . ': ' . $value . "\n";
+                }
+                $error .= '\n';
+            }
+            throw new \Exception('verifyChunkMatchesRecord failed!' . $error);
         }
     }
 

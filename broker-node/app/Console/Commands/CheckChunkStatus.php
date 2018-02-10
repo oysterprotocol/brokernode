@@ -48,52 +48,35 @@ class CheckChunkStatus extends Command
     {
         $datamaps_unverified =
             DataMap::where('status', DataMap::status['unverified'])
-                ->where('updated_at', '>=', $thresholdTime)
-                ->get();
+                //->where('updated_at', '>=', $thresholdTime)
+                ->get()
+                ->toArray();
 
-        $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($datamaps_unverified);
+        if (count($datamaps_unverified)) {
 
-//        $attached_datamaps = array_filter($datamaps_unverified->toArray(), function ($dmap) {
-//            // TODO: Make these concurrent.
-//            $req = (object)[
-//                "address" => $dmap["address"],
-//                "message" => $dmap["message"],
-//                "trunkTransaction" => $dmap["trunkTransaction"],
-//                "branchTransaction" => $dmap["branchTransaction"],
-//                "chunk_idx" => $dmap["chunk_idx"],
-//                "hooknode_id" => $dmap["hooknode_id"],
-//            ];
-//
-//            $chunkResult = BrokerNode::verifyChunkMessagesMatchRecord($req);
-//            $is_attached = count($chunkResult->matchesTangle) != 0;
-//
-//            //$is_attached = !BrokerNode::dataNeedsAttaching($req);
-//            /*
-//             * replace with 'verifyChunksMatchRecord' if we also want to check
-//             * branch and trunk match the record.
-//             *
-//             * verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
-//             * check tangle for the address and makes sure the message matches,
-//             * verifyChunksMatchRecord also checks trunk and branch.
-//             *
-//             * TODO:  BrokerNode::verifyChunkMessagesMatchRecord($req) in this file does
-//             * not currently take advantage of the fact that you can pass an array
-//             * to BrokerNode::verifyChunkMessagesMatchRecord.  Modify this
-//             */
-//            return $is_attached;
-//        });
+            $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($datamaps_unverified);
 
-        unset($datamaps_unverified); // Purges unused memory.
+            /*
+            replace with 'verifyChunksMatchRecord' if we also want to check
+            branch and trunk match the record.
 
-        $attached_ids = array_map(function ($dmap) {
-            return $dmap["id"];
-        }, $filteredChunks->matchesTangle);
+            verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
+            check tangle for the address and makes sure the message matches,
+            verifyChunksMatchRecord also checks trunk and branch.
+            */
 
-        // Mass Update DB.
-        DataMap::whereIn('id', $attached_ids)
-            ->update(['status' => DataMap::status['complete']]);
+            unset($datamaps_unverified); // Purges unused memory.
 
-        self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+            $attached_ids = array_map(function ($dmap) {
+                return $dmap->id;
+            }, $filteredChunks->matchesTangle);
+
+            // Mass Update DB.
+            DataMap::whereIn('id', $attached_ids)
+                ->update(['status' => DataMap::status['complete']]);
+
+            self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+        }
     }
 
     private static function updateTimedoutDatamaps($thresholdTime)
@@ -101,36 +84,35 @@ class CheckChunkStatus extends Command
         $datamaps_timedout =
             DataMap::where('status', DataMap::status['unverified'])
                 ->where('updated_at', '<', $thresholdTime)
-                ->get();
+                ->get()
+                ->toArray();
 
-        self::decrementHooknodeReputations($datamaps_timedout);
+        if (count($datamaps_timedout)) {
 
-        BrokerNode::processChunks($datamaps_timedout);
-        //will this work?
+            self::decrementHooknodeReputations($datamaps_timedout);
 
-        // TODO: Retry with another hooknode.
+            BrokerNode::processChunks($datamaps_timedout);
+            //will this work?
 
-        // NOT FOR TESTNET.
-        // $datamaps_timedout_query->update([
-        //     'status' => DataMap::status['unassigned'],
-        //     'hooknode_id' => null,
-        //     'branchTransaction' => null,
-        //     'trunkTransaction' => null,
-        // ]);
-        // // Note: DB and in memory model are now out of sync, but it should be ok...
-        // foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
-        //     $dmap->processChunk();
-        // }
+            // TODO: Retry with another hooknode.
+
+            // NOT FOR TESTNET.
+            // $datamaps_timedout_query->update([
+            //     'status' => DataMap::status['unassigned'],
+            //     'hooknode_id' => null,
+            //     'branchTransaction' => null,
+            //     'trunkTransaction' => null,
+            // ]);
+            // // Note: DB and in memory model are now out of sync, but it should be ok...
+            // foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
+            //     $dmap->processChunk();
+            // }
+        }
     }
 
     private static function incrementHooknodeReputations($datamaps)
     {
-        $hooknode_ids = array();
-        foreach ($datamaps as $datamap) {
-            $hooknode_ids[] = $datamap->hooknode_id;
-        }
-
-        $unique_hooks = array_unique($hooknode_ids);
+        $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
             HookNode::incrementScore($hook);
@@ -139,16 +121,23 @@ class CheckChunkStatus extends Command
 
     private static function decrementHooknodeReputations($datamaps)
     {
-        $hooknode_ids = array();
-        foreach ($datamaps as $datamap) {
-            $hooknode_ids[] = $datamap->hooknode_id;
-        }
-
-        $unique_hooks = array_unique($hooknode_ids);
+        $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
             HookNode::decrementScore($hook);
         }
+    }
+
+    private static function getUniqueHooks($datamaps)
+    {
+        $hooknode_ids = array();
+
+        foreach ($datamaps as $datamap) {
+            $hooknode_ids[] = is_object($datamap) ?
+                $datamap->hooknode_id : $datamap['hooknode_id'];
+        }
+
+        return array_unique($hooknode_ids);
     }
 
     public static function purgeCompletedSessions()
