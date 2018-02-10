@@ -25,11 +25,9 @@ class BrokerNode
 
     public static $IriWrapper = null;
     public static $NodeMessenger = null;
-    
-    
-    
-    public static $ChunkEventsRecord  = null;
-    
+
+
+    public static $ChunkEventsRecord = null;
 
 
     // Hack to load balance across hooknodes.
@@ -42,14 +40,14 @@ class BrokerNode
             self::$IriWrapper = new IriWrapper();
         }
     }
-    
+
     private static function initEventRecord()
     {
         if (is_null(self::$ChunkEventsRecord)) {
             self::$ChunkEventsRecord = new ChunkEvents();
         }
     }
-    
+
 
     private static function initMessenger()
     {
@@ -273,7 +271,7 @@ class BrokerNode
 
         $next = array_rand($nodes);
 
-        return "http://" . $nodes[$next] . ":250/HookListener.php";
+        return $nodes[$next];
     }
 
     public static function processChunks(&$chunks)
@@ -436,19 +434,19 @@ class BrokerNode
         self::initMessenger();
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
-        $spammedNodes = array($hookNodeUrl);   //temporary solution
+        $spammedNodes = array("http://" . $hookNodeUrl . ":250/HookListener.php");   //temporary solution
         for ($i = 0; $i <= 1; $i++) {   //temporary solution
-            $spammedNodes[] = self::selectHookNode()['ip_address'];
+            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":250/HookListener.php";
         }
 
         self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
 
         self::updateHookNodeDirectory($hookNodeUrl, "request_made");
-        
+
         //record event
         self::initEventRecord();
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
-        
+
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl) {
             $chunk->hookNodeUrl = $hookNodeUrl;
