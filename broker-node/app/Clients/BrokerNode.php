@@ -17,6 +17,7 @@ use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
 use App\ChunkEvents;
+use App\DataMap;
 
 class BrokerNode
 {
@@ -25,14 +26,11 @@ class BrokerNode
 
     public static $IriWrapper = null;
     public static $NodeMessenger = null;
-
-
     public static $ChunkEventsRecord = null;
-
+    public static $DataMap = null;
 
     // Hack to load balance across hooknodes.
     private static $hooknode_queue = null; // errors when instantiating here?
-
 
     private static function initIri()
     {
@@ -48,6 +46,12 @@ class BrokerNode
         }
     }
 
+    private static function initDataMap()
+    {
+        if (is_null(self::$DataMap)) {
+            self::$DataMap = new DataMap();
+        }
+    }
 
     private static function initMessenger()
     {
@@ -276,6 +280,8 @@ class BrokerNode
 
     public static function processChunks(&$chunks)
     {
+        self::initDataMap();
+
         if (!is_array($chunks)) {
             $chunks = array($chunks);
         }
@@ -294,6 +300,8 @@ class BrokerNode
             $chunks = $filteredChunks->unattachedChunks;
             $request = self::buildTransactionData($chunks);
             $updated_chunks = self::sendToHookNode($chunks, $request);
+
+            DataMap::updateChunksPending($updated_chunks);
 
             return is_null($updated_chunks)
                 ? ['hooknode_unavailable', null]
@@ -448,8 +456,10 @@ class BrokerNode
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
 
 
-        array_walk($chunks, function ($chunk) use ($hookNodeUrl) {
+        array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;
+            $chunk->trunkTransaction = $request->trunkTransaction;
+            $chunk->branchTransaction = $request->branchTransaction;
         });
 
         return $chunks;
