@@ -49,7 +49,7 @@ class BrokerNode
         }
     }
 
-    public static function processChunks(&$chunks)
+    public static function processChunks(&$chunks, $attachIfAlreadyAttached = false)
     {
         if (!is_array($chunks)) {
             $chunks = array($chunks);
@@ -70,16 +70,18 @@ class BrokerNode
             }, $chunks);
         }
 
-        $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
+        if ($attachIfAlreadyAttached == false) {
+            $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
+            $chunksToSend = $filteredChunks->unattachedChunks;
+            unset($filteredChunks);
+        }
+        else {
+            $chunksToSend = $chunks;
+        }
 
-        /*
-         * TODO: do something with $filteredChunks->attachedChunks?
-        */
-
-        if (count($filteredChunks->unattachedChunks) != 0) {
-            $chunks = $filteredChunks->unattachedChunks;
-            $request = self::buildTransactionData($chunks);
-            $updated_chunks = self::sendToHookNode($chunks, $request);
+        if (count($chunksToSend) != 0) {
+            $request = self::buildTransactionData($chunksToSend);
+            $updated_chunks = self::sendToHookNode($chunksToSend, $request);
 
             DataMap::updateChunksPending($updated_chunks);
 
@@ -299,6 +301,7 @@ class BrokerNode
         // scores in the db still update
 
         if (is_array($chunks[0])) {
+
             // in case this is coming from CheckChunkStatus which
             // will send an array of arrays
             foreach ($chunks as $key => $value) {
@@ -330,7 +333,7 @@ class BrokerNode
             $txObjects = self::getTransactionObjects($result->hashes);
             $foundAddresses = array_map(function ($n) {
                 return $n->address;
-            }, $chunks);
+            }, $txObjects);
 
             foreach ($chunks as $chunk) {
 
@@ -339,11 +342,14 @@ class BrokerNode
                 });
 
                 if (count($matchingTxObjects) != 0) {
+
                     $chunkResults->matchesTangle[] = $chunk;
                 } else if (in_array($chunk->address, $foundAddresses)) {
+
                     //found address on tangle but not a match
                     $chunkResults->doesNotMatchTangle[] = $chunk;
                 } else {
+
                     $chunkResults->notAttached[] = $chunk;
                 }
             }
@@ -354,10 +360,8 @@ class BrokerNode
             count($result->hashes) == 0) {
 
             $chunkResults->notAttached = $chunks;
-
             return $chunkResults;
         } else {
-            $error = '';
             foreach ($result as $key => $value) {
                 if (is_array($value)) {
                     $error .= $key . ": \n" . implode("\n", $value) . "\n\n";
@@ -366,6 +370,7 @@ class BrokerNode
                 }
                 $error .= "\n";
             }
+
             throw new \Exception('verifyChunkMatchesRecord failed!' . $error);
         }
     }

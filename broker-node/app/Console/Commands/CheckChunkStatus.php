@@ -26,7 +26,7 @@ class CheckChunkStatus extends Command
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
 
-        // self::processUnassignedChunks();
+        self::processUnassignedChunks($thresholdTime);
         self::updateUnverifiedDatamaps($thresholdTime);
         self::updateTimedoutDatamaps($thresholdTime);
         self::purgeCompletedSessions();
@@ -36,11 +36,18 @@ class CheckChunkStatus extends Command
      * Private
      * */
 
-    private static function processUnassignedChunks()
+    private static function processUnassignedChunks($thresholdTime)
     {
-        $unassigned_datamaps = DataMap::getUnassigned()->all();
-        foreach ($unassigned_datamaps as &$dmap) { // TODO: Concurrent.
-            $dmap->processChunk();
+        $datamaps_unassigned =
+            DataMap::where('status', DataMap::status['unassigned'])
+                ->where('message', '<>', null)
+                ->where('updated_at', '>=', $thresholdTime)
+                ->get()
+                ->toArray();
+
+        if (count($datamaps_unassigned)) {
+
+            BrokerNode::processChunks($datamaps_unassigned, true);
         }
     }
 
@@ -48,6 +55,7 @@ class CheckChunkStatus extends Command
     {
         $datamaps_unverified =
             DataMap::where('status', DataMap::status['unverified'])
+                ->where('message', '<>', null)
                 ->where('updated_at', '>=', $thresholdTime)
                 ->get()
                 ->toArray();
@@ -80,6 +88,7 @@ class CheckChunkStatus extends Command
             }
 
             if (count($filteredChunks->doesNotMatchTangle)) {
+
                 $not_matching_ids = array_map(function ($dmap) {
                     return $dmap->id;
                 }, $filteredChunks->doesNotMatchTangle);
@@ -88,7 +97,7 @@ class CheckChunkStatus extends Command
                 DataMap::whereIn('id', $not_matching_ids)
                     ->update(['status' => DataMap::status['unassigned']]);
 
-                BrokerNode::processChunks($filteredChunks->doesNotMatchTangle);
+                BrokerNode::processChunks($filteredChunks->doesNotMatchTangle, true);
 
                 self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
             }
@@ -98,8 +107,9 @@ class CheckChunkStatus extends Command
     private static function updateTimedoutDatamaps($thresholdTime)
     {
         $datamaps_timedout =
-            DataMap::where('status', DataMap::status['unverified'])
-                ->where('updated_at', '<', $thresholdTime)
+            DataMap::where('updated_at', '<', $thresholdTime)
+                ->where('status', '<>', DataMap::status['complete'])
+                ->where('message', '<>', null)
                 ->get()
                 ->toArray();
 
@@ -107,22 +117,23 @@ class CheckChunkStatus extends Command
 
             self::decrementHooknodeReputations($datamaps_timedout);
 
+            $timed_out_ids = array_map(function ($dmap) {
+                return $dmap['id'];
+            }, $datamaps_timedout);
+
+            // Mass Update DB.
+            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
+                ->update([
+                    'status' => DataMap::status['unassigned'],
+                    'hooknode_id' => null,
+                    'branchTransaction' => null,
+                    'trunkTransaction' => null])
+                ->get()
+                ->toArray();
+
+            var_dump($datamaps_timedout);
+
             BrokerNode::processChunks($datamaps_timedout);
-            //will this work?
-
-            // TODO: Retry with another hooknode.
-
-            // NOT FOR TESTNET.
-            // $datamaps_timedout_query->update([
-            //     'status' => DataMap::status['unassigned'],
-            //     'hooknode_id' => null,
-            //     'branchTransaction' => null,
-            //     'trunkTransaction' => null,
-            // ]);
-            // // Note: DB and in memory model are now out of sync, but it should be ok...
-            // foreach ($datamaps_timedout as &$dmap) { // TODO: Concurrent.
-            //     $dmap->processChunk();
-            // }
         }
     }
 
@@ -153,7 +164,8 @@ class CheckChunkStatus extends Command
                 $datamap->hooknode_id : $datamap['hooknode_id'];
         }
 
-        return array_unique($hooknode_ids);
+        // array_filter removes empty values when not provided a callback
+        return array_unique(array_filter($hooknode_ids));
     }
 
     public static function purgeCompletedSessions()

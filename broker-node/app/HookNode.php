@@ -33,9 +33,7 @@ class HookNode extends Model
     public static function getNextReadyNode()
     {
         $nextNode = DB::table('hook_nodes')
-            // ->where('status', "ready")  don't want to do this, we want to just ask
-            // the hooknode its status
-            //->orderBy('score', 'desc')  /*TODO re-enable score as a criteria in the future*/
+            ->orderBy('score', 'desc')
             ->oldest('time_of_last_contact')
             ->first();
 
