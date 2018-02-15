@@ -41,7 +41,7 @@ class UploadSessionController extends Controller
 
         // Appends beta_session_id for client.
         $res = clone $upload_session;
-        // $res['beta_session_id'] = $beta_session["id"];
+        $res['beta_session_id'] = $beta_session["id"];
 
         return response()->json($res);
     }
