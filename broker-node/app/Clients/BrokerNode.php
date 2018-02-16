@@ -229,11 +229,11 @@ class BrokerNode
 
         self::initMessenger();
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
-
-        $spammedNodes = array("http://" . $hookNodeUrl . ":250/HookListener.php");   //temporary solution
+      
+        $spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
 
         for ($i = 0; $i <= 1; $i++) {   //temporary solution
-            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":250/HookListener.php";
+            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":3000/";
         }
 
         self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
