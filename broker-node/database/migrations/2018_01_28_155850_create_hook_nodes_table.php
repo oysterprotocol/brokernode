@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
+use Carbon\Carbon;
 
 class CreateHookNodesTable extends Migration
 {
@@ -17,17 +18,19 @@ class CreateHookNodesTable extends Migration
             $table->uuid('id');
             $table->timestamps();
 
-            $table->string('ip_address',255)
-                  ->unique();
-            $table->unsignedBigInteger('score')
-                  ->default(0);
+            $table->string('ip_address', 255)
+                ->unique();
+            $table->bigInteger('score')
+                ->default(0);
             $table->unsignedBigInteger('chunks_processed_count')
-                  ->default(0);
-            $table->enum('status', [
-                    'ready',
-                    'processing',
-                ])
-                ->default('ready');
+                ->default(0);
+            $table->timestamp('time_of_last_contact')
+                ->default(Carbon::now());
+//            $table->enum('status', [  // instead will just ask the hooknode for its status
+//                'ready',
+//                'processing',
+//            ])
+//                ->default('ready');
 
             // Indexes
             $table->primary('id');

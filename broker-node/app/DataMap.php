@@ -137,15 +137,37 @@ class DataMap extends Model
      * Static Methods.
      */
 
-    public static function getUnassigned() {
+    public static function getUnassigned()
+    {
         return DataMap::where('status', DataMap::status['unassigned'])->get();
+    }
+
+
+    public static function updateChunksPending($chunks)
+    {
+        //replace with something more efficient
+        foreach ($chunks as $chunk) {
+            DataMap::where('chunk_idx', $chunk->chunkId)
+                ->update([
+                    'hooknode_id' => $chunk->hookNodeUrl,
+                    'trunkTransaction' => $chunk->trunkTransaction,
+                    'branchTransaction' => $chunk->branchTransaction,
+                    //'status' => self::status['pending']
+                    'status' => self::status['unverified'] // TODO this needs to be 'pending' but right now
+                                                           // the hooknode doesn't notify the broker node
+                                                           // that it did the POW and I need to work on the cron
+                                                           // job, so I'm just setting this to unverified
+                                                           // here
+                ]);
+        }
     }
 
     /**
      * Instance Methods.
      */
 
-    public function processChunk() {
+    public function processChunk()
+    {
         $brokerReq = (object)[
             "responseAddress" =>
                 "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
@@ -160,7 +182,7 @@ class DataMap extends Model
 
         [$res_type, $updatedChunk] = BrokerNode::processNewChunk($brokerReq);
 
-        switch($res_type) {
+        switch ($res_type) {
             case 'already_attached':
                 // This will be marked as complete in the cron job.
                 return $res_type;
@@ -184,7 +206,8 @@ class DataMap extends Model
      * Private
      */
 
-    private function queueForHooknode() {
+    private function queueForHooknode()
+    {
         $this->status = DataMap::status['unassigned'];
         $this->save();
 
