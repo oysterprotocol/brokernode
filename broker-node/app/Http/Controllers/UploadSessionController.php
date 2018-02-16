@@ -23,17 +23,17 @@ class UploadSessionController extends Controller
     {
         $genesis_hash = $request->input('genesis_hash');
         $file_size_bytes = $request->input('file_size_bytes');
-        // $beta_brokernode_ip = $request->input('beta_brokernode_ip');
+        $beta_brokernode_ip = $request->input('beta_brokernode_ip');
 
         // TODO: Handle PRL Payments.
 
-        // // Starts session with beta.
-        // try {
-        //     $beta_session =
-        //         self::startSessionBeta($genesis_hash, $file_size_bytes, $beta_brokernode_ip);
-        // } catch (Exception $e) {
-        //     return response("Error: Beta start session failed: {$e}", 500);
-        // }
+        // Starts session with beta.
+        try {
+            $beta_session =
+                self::startSessionBeta($genesis_hash, $file_size_bytes, $beta_brokernode_ip);
+        } catch (Exception $e) {
+            return response("Error: Beta start session failed: {$e}", 500);
+        }
 
         // Starts session on self (alpha).
         $upload_session =
@@ -41,7 +41,7 @@ class UploadSessionController extends Controller
 
         // Appends beta_session_id for client.
         $res = clone $upload_session;
-        // $res['beta_session_id'] = $beta_session["id"];
+        $res['beta_session_id'] = $beta_session["id"];
 
         return response()->json($res);
     }
