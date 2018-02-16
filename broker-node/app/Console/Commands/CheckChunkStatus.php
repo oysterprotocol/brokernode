@@ -117,21 +117,24 @@ class CheckChunkStatus extends Command
 
             self::decrementHooknodeReputations($datamaps_timedout);
 
-            $timed_out_ids = array_map(function ($dmap) {
-                return $dmap['id'];
-            }, $datamaps_timedout);
+            /*TODO: test this logic when broker node is working*/
 
-            // Mass Update DB.
-            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
-                ->update([
-                    'status' => DataMap::status['unassigned'],
-                    'hooknode_id' => null,
-                    'branchTransaction' => null,
-                    'trunkTransaction' => null])
-                ->get()
-                ->toArray();
-
-            var_dump($datamaps_timedout);
+//            $timed_out_ids = array_map(function ($dmap) {
+//                return $dmap['id'];
+//            }, $datamaps_timedout);
+//
+//            // Mass Update DB.
+//            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
+//                ->update([
+//                    'status' => DataMap::status['unassigned'],
+//                    'hooknode_id' => null,
+//                    'branchTransaction' => null,
+//                    'trunkTransaction' => null])
+//                ->get()
+//                ->toArray();
+//
+//            echo "IN DATA MAPS TIMEDOUT";
+//            var_dump($datamaps_timedout);
 
             BrokerNode::processChunks($datamaps_timedout);
         }

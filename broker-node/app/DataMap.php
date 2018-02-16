@@ -147,7 +147,7 @@ class DataMap extends Model
     {
         //replace with something more efficient
         foreach ($chunks as $chunk) {
-            DataMap::where('chunk_idx', $chunk->chunk_idx)
+            DataMap::where('chunk_idx', $chunk->chunkId)
                 ->update([
                     'hooknode_id' => $chunk->hookNodeUrl,
                     'trunkTransaction' => $chunk->trunkTransaction,

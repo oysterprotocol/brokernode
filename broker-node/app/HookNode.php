@@ -33,8 +33,8 @@ class HookNode extends Model
     public static function getNextReadyNode()
     {
         $nextNode = DB::table('hook_nodes')
-            ->orderBy('score', 'desc')
             ->oldest('time_of_last_contact')
+            ->orderBy('score', 'desc')
             ->first();
 
         if (HookNode::isHookNodeAvailable($nextNode->ip_address) == true) {

@@ -231,6 +231,7 @@ class BrokerNode
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
         $spammedNodes = array("http://" . $hookNodeUrl . ":250/HookListener.php");   //temporary solution
+
         for ($i = 0; $i <= 1; $i++) {   //temporary solution
             $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":250/HookListener.php";
         }

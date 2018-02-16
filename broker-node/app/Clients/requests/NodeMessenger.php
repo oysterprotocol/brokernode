@@ -14,7 +14,6 @@ class NodeMessenger
 
     public function __construct()
     {
-
         array_push($this->headers, $this->apiVersionHeaderString . IriData::$apiVersion);
     }
 
