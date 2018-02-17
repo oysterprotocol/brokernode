@@ -15,16 +15,6 @@ class CreateDataMapsTable extends Migration
     public function up()
     {
         Schema::create('data_maps', function (Blueprint $table) {
-            $table->uuid('id');
-
-            $table->string('genesis_hash', 255);
-            $table->integer('chunk_idx')->unsigned();
-            $table->string('hash', 255);
-            $table->string('hooknode_id')->nullable();
-            $table->string('address')->nullable();
-            $table->mediumText('message')->nullable();  // ~16mb limit.
-            $table->string('trunkTransaction')->nullable();
-            $table->string('branchTransaction')->nullable();
             $table->enum('status', [
                 DataMap::status['unassigned'],
                 DataMap::status['pending'],
@@ -32,6 +22,15 @@ class CreateDataMapsTable extends Migration
                 DataMap::status['complete'],
                 DataMap::status['error']
             ])->default(DataMap::status['unassigned']);  // TODO: Use integer mapping.
+            $table->string('hooknode_id')->nullable();
+            $table->mediumText('message')->nullable();  // ~16mb limit.
+            $table->string('trunkTransaction')->nullable();
+            $table->string('branchTransaction')->nullable();
+            $table->uuid('id');
+            $table->string('genesis_hash', 255);
+            $table->integer('chunk_idx')->unsigned();
+            $table->string('hash', 255);
+            $table->string('address')->nullable();
 
             $table->timestamps();
 
