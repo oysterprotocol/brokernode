@@ -22,6 +22,8 @@ class CheckChunkStatus extends Command
      */
     public static function handle()
     {
+        echo "Running CheckChunkStatus at: " . Carbon::now() . "\n";
+
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();

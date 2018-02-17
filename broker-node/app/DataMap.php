@@ -147,7 +147,7 @@ class DataMap extends Model
     {
         //replace with something more efficient
         foreach ($chunks as $chunk) {
-            DataMap::where('chunk_idx', $chunk->chunkId)
+            DataMap::where('chunk_idx', $chunk->chunk_idx)
                 ->update([
                     'hooknode_id' => $chunk->hookNodeUrl,
                     'trunkTransaction' => $chunk->trunkTransaction,
@@ -172,7 +172,7 @@ class DataMap extends Model
             "responseAddress" =>
                 "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}",
             "message" => $this->message,
-            "chunkId" => $this->chunk_idx,
+            "chunk_idx" => $this->chunk_idx,
             "address" => $this->address,
         ];
 
