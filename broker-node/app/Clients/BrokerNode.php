@@ -229,7 +229,7 @@ class BrokerNode
 
         self::initMessenger();
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
-      
+
         $spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
 
         for ($i = 0; $i <= 1; $i++) {   //temporary solution
