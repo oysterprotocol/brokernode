@@ -130,7 +130,7 @@ class BrokerNode
             throw new \Exception(
                 "BrokerNode::filterUnattachedChunks failed." .
                 "\n\tIRI.findTransactions" .
-                "\n\t\tcommand: {$command}" .
+                "\n\t\tcommand: {$command->command}" .
                 "\n\t\tresult: {$result}"
             );
         }
@@ -153,7 +153,7 @@ class BrokerNode
             throw new \Exception(
                 "BrokerNode::dataNeedsAttaching failed." .
                 "\n\tIRI.findTransactions" .
-                "\n\t\tcommand: {$command}" .
+                "\n\t\tcommand: {$command->command}" .
                 "\n\t\tresult: {$result}"
             );
         }
