@@ -33,7 +33,7 @@ class HookNode extends Model
     public static function getNextReadyNode()
     {
         $nextNode = DB::table('hook_nodes')
-            ->oldest('time_of_last_contact')
+            ->oldest('contacted_at')
             ->orderBy('score', 'desc')
             ->first();
 
@@ -51,7 +51,7 @@ class HookNode extends Model
         // For this method we need to call the hooknode and ask it if it is
         // available for work.  I don't think that's implemented yet on the hooknodes,
         // so for now just giving a random 1 in 5 chance that the hooknode will say it is
-        // busy.  Changed 'time_of_last_chunk' to 'time_of_last_contact'.  This
+        // busy.  Changed 'time_of_last_chunk' to 'contacted_at'.  This
         // will set the timestamp regardless of whether we ultimately send the hook
         // a chunk or not, we don't want to keep asking the same hooknode over and
         // over if it is available.
@@ -91,7 +91,7 @@ class HookNode extends Model
         DB::table('hook_nodes')
             ->where('ip_address', $ip_address)
             ->update([
-                'time_of_last_contact' => Carbon::now()
+                'contacted_at' => Carbon::now()
             ]);
     }
 }
