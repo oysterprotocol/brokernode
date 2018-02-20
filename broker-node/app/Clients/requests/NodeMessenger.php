@@ -19,6 +19,8 @@ class NodeMessenger
 
     public function sendMessageToNode($commandObject, $nodeUrl)
     {
+        // use this method when you want to send a message to one node and await the response
+
         $payload = json_encode($commandObject);
 
         $curl = curl_init();
@@ -52,13 +54,21 @@ class NodeMessenger
         return $response;
     }
 
-    function spamHookNodes($commandObject, $nodeUrl)
+    function sendMessageToNodesAndContinue($commandObject, $nodeUrls)
     {
+        // use this method when you want to send a message to one or many nodes
+        // and not wait for the response
+
+        if (!is_array($nodeUrls)) {
+            $nodeUrls = array($nodeUrls);
+        }
+
         $command = json_encode($commandObject);
 
-        for ($i = 0; $i < count($nodeUrl); $i++) {
 
-            $cmd = "curl " . $nodeUrl[$i] . " -X POST ";
+        foreach ($nodeUrls as $nodeUrl) {
+
+            $cmd = "curl " . $nodeUrl . " -X POST ";
             $cmd .= "-H " . "'" . $this->headers[0] . "' ";
             $cmd .= "-H " . "'" . $this->headers[1] . "' ";
             $cmd .= " -d '" . $command . "' ";

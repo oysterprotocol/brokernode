@@ -210,8 +210,6 @@ class BrokerNode
         }
 
         return ['ip_address' => $nextNode->ip_address];
-        // "165.227.79.113"  // test hooks
-        // "104.225.221.42",
     }
 
     private static function sendToHookNode(&$chunks, $request)
@@ -228,17 +226,10 @@ class BrokerNode
         $tx->command = 'attachToTangle';
 
         self::initMessenger();
-        //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
-        $spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
+        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
 
-        for ($i = 0; $i <= 1; $i++) {   //temporary solution
-            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":3000/";
-        }
-
-        self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
-
-        self::updateHookNodeDirectory($hookNodeUrl, "request_made");
+        self::$NodeMessenger->sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
         self::initEventRecord();
@@ -252,36 +243,6 @@ class BrokerNode
         });
 
         return $chunks;
-    }
-
-    private static function updateHookNodeDirectory($currentHook, $status)
-    {
-        /*TODOS
-
-        remove this method and replace with Arthur's work or put Arthur's
-        work in this method
-        */
-        switch ($status) {
-            case 'request_made':
-                //we made a request
-                break;
-            case 'request_rejected':
-                //the hooknode node declined, it doesn't know us
-                //don't ask that hooknode node again
-                break;
-            case 'attach_completed':
-                //the hooknode node says it did the POW
-                break;
-            case 'attach_verified':
-                //we confirmed the hooknode node did the POW
-                break;
-            case 'attach_failed':
-                //the hooknode node didn't do the POW
-                //or didn't do it in time
-                break;
-            default:
-                break;
-        }
     }
 
     public static function verifyChunkMessagesMatchRecord($chunks)
