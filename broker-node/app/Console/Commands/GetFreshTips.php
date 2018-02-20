@@ -41,7 +41,7 @@ class GetFreshTips extends Command
             ->toDateTimeString();
 
         self::getFreshTipsFromSelf();
-        self::getFreshTipsFromHookNodes($processThresholdTime);
+        //self::getFreshTipsFromHookNodes($processThresholdTime);
         self::purgeOldTips($tipsThresholdTime);
     }
 
