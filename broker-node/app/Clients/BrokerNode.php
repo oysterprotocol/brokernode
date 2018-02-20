@@ -203,12 +203,7 @@ class BrokerNode
 
     private static function selectHookNode()
     {
-        $ready = false;
-
-        while ($ready == false) {
-            [$ready, $nextNode] = HookNode::getNextReadyNode();
-        }
-
+        $nextNode = HookNode::getNextReadyNode();
         return ['ip_address' => $nextNode->ip_address];
     }
 

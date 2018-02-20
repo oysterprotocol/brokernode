@@ -37,32 +37,7 @@ class HookNode extends Model
             ->orderBy('score', 'desc')
             ->first();
 
-        if (HookNode::isHookNodeAvailable($nextNode->ip_address) == true) {
-            return [true, $nextNode];
-        } else {
-            return [false, null];
-        }
-    }
-
-    private static function isHookNodeAvailable($ip_address)
-    {
-        HookNode::setTimeOfLastContact($ip_address);
-
-        // For this method we need to call the hooknode and ask it if it is
-        // available for work.  I don't think that's implemented yet on the hooknodes,
-        // so for now just giving a random 1 in 5 chance that the hooknode will say it is
-        // busy.  Changed 'time_of_last_chunk' to 'contacted_at'.  This
-        // will set the timestamp regardless of whether we ultimately send the hook
-        // a chunk or not, we don't want to keep asking the same hooknode over and
-        // over if it is available.
-
-        $randomChance = rand(1, 5);
-
-        if ($randomChance == 5) {
-            return false;
-        } else {
-            return true;
-        }
+        return $nextNode;
     }
 
     public static function incrementScore($ip_address)
