@@ -9,6 +9,9 @@ use Webpatser\Uuid\Uuid;
 
 class HookNode extends Model
 {
+    const SCORE_WEIGHT = 1;
+    const TIME_WEIGHT = 1;
+
     /**
      * TODO: Make this a shared trait.
      *  Setup model event hooks
@@ -22,7 +25,7 @@ class HookNode extends Model
     }
 
     protected $table = 'hook_nodes';
-    protected $fillable = ['ip_address'];
+    protected $fillable = ['ip_address', 'score', 'contacted_at'];
     public $incrementing = false; // UUID
 
     public static function insertNode($ip_address)
@@ -30,39 +33,23 @@ class HookNode extends Model
         return self::create(['ip_address' => $ip_address]);
     }
 
-    public static function getNextReadyNode()
+    public static function getNextReadyNode($opts = [])
     {
+        $score_weight = isset($opts['score_weight']) ? $opts['score_weight'] : self::SCORE_WEIGHT;
+        $time_weight = isset($opts['time_weight']) ? $opts['time_weight'] : self::TIME_WEIGHT;
+        $now = Carbon::now()->toDateTimeString();
+
         $nextNode = DB::table('hook_nodes')
-            ->oldest('time_of_last_contact')
-            ->orderBy('score', 'desc')
+            ->select(DB::raw("
+                *,
+                $score_weight * score
+                    + $time_weight * TIMESTAMPDIFF(SECOND, contacted_at, '$now')
+                    AS selection_score
+            "))
+            ->orderBy('selection_score', 'desc')
             ->first();
 
-        if (HookNode::isHookNodeAvailable($nextNode->ip_address) == true) {
-            return [true, $nextNode];
-        } else {
-            return [false, null];
-        }
-    }
-
-    private static function isHookNodeAvailable($ip_address)
-    {
-        HookNode::setTimeOfLastContact($ip_address);
-
-        // For this method we need to call the hooknode and ask it if it is
-        // available for work.  I don't think that's implemented yet on the hooknodes,
-        // so for now just giving a random 1 in 5 chance that the hooknode will say it is
-        // busy.  Changed 'time_of_last_chunk' to 'time_of_last_contact'.  This
-        // will set the timestamp regardless of whether we ultimately send the hook
-        // a chunk or not, we don't want to keep asking the same hooknode over and
-        // over if it is available.
-
-        $randomChance = rand(1, 5);
-
-        if ($randomChance == 5) {
-            return false;
-        } else {
-            return true;
-        }
+        return $nextNode;
     }
 
     public static function incrementScore($ip_address)
@@ -91,7 +78,7 @@ class HookNode extends Model
         DB::table('hook_nodes')
             ->where('ip_address', $ip_address)
             ->update([
-                'time_of_last_contact' => Carbon::now()
+                'contacted_at' => Carbon::now()
             ]);
     }
 }
