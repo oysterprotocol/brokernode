@@ -20,6 +20,22 @@ class HookNodeTest extends TestCase
         $this->assertEquals($node->ip_address, 'A');
     }
 
+    public function testgetReadyNode_scoreBias()
+    {
+        self::setupDb();
+        $node = HookNode::getNextReadyNode(['time_weight' => 0]);
+
+        $this->assertEquals($node->ip_address, 'A');
+    }
+
+    public function testgetReadyNode_timeBias()
+    {
+        self::setupDb();
+        $node = HookNode::getNextReadyNode(['score_weight' => 0]);
+
+        $this->assertEquals($node->ip_address, 'B');
+    }
+
     /**
      * Private
      * */
