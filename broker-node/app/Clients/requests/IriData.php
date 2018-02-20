@@ -1,6 +1,6 @@
 <?php
 
-$GLOBALS['nl'] = "\n";
+namespace App\Clients\requests;
 
 class IriData
 {

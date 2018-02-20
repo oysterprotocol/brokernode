@@ -1,51 +1,29 @@
 <?php
-require_once("IriData.php");
+
+namespace App\Clients\requests;
 
 class IriWrapper
 {
 
-    private $headers = array(
+    private static $headers = array(
         'Content-Type: application/json',
     );
-    public $nodeUrl;
-    private $userAgent = 'Codular Sample cURL Request';
-    private $apiVersionHeaderString = 'X-IOTA-API-Version: ';
+    public static $nodeUrl = '';
+    private static $userAgent = 'Codular Sample cURL Request';
+    private static $apiVersionHeaderString = 'X-IOTA-API-Version: ';
 
-    public function __construct()
+    private static function initIri()
     {
-        /*$nodeUrl is expected in the following format:
-            http://1.2.3.4:14265  (if using IP)
-                or
-            http://host:14265  (if using host)
-        */
-        try {
-            $this->validateUrl(IriData::$nodeUrl);
-            array_push($this->headers, $this->apiVersionHeaderString . IriData::$apiVersion);
-            $this->nodeUrl = IriData::$nodeUrl;
-        } catch (Exception $e) {
-            echo 'Caught exception: ' . $e->getMessage() . $GLOBALS['nl'];
-        }
+        self::$headers[] = self::$apiVersionHeaderString . IriData::$apiVersion;
+        self::$nodeUrl = IriData::$nodeUrl;
     }
 
-    private function validateUrl($nodeUrl)
+    public static function makeRequest($commandObject)
     {
-        $http = "((http)\:\/\/)"; // starts with http://
-        $port = "(\:[0-9]{2,5})"; // ends with :(port)
-
-        /*TODOS
-        If we decide to add authentication to urls, add auth tokens to regex test.
-        Probably not needed for testnet A.
-        */
-
-        if (preg_match("/^$http/", $nodeUrl) && preg_match("/$port$/", $nodeUrl)) {
-            return true;
-        } else {
-            throw new Exception('Invalid URL.');
+        if (self::$nodeUrl == '') {
+            self::initIri();
         }
-    }
 
-    public function makeRequest($commandObject)
-    {
         $payload = json_encode($commandObject);
 
         $curl = curl_init();
@@ -53,23 +31,23 @@ class IriWrapper
         curl_setopt_array($curl, array(
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_POST => 1,
-            CURLOPT_URL => $this->nodeUrl,
-            CURLOPT_USERAGENT => $this->userAgent,
+            CURLOPT_URL => self::$nodeUrl,
+            CURLOPT_USERAGENT => self::$userAgent,
             CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_HTTPHEADER => $this->headers,
+            CURLOPT_HTTPHEADER => self::$headers,
             CURLOPT_CONNECTTIMEOUT => 0,
             CURLOPT_TIMEOUT => 1000
         ));
 
         $response = json_decode(curl_exec($curl));
 
-        if($errno = curl_errno($curl)) {
+        if ($errno = curl_errno($curl)) {
             $err_msg = curl_strerror($errno);
             curl_close($curl);
             throw new \Exception(
                 "IriWrapper Error:" .
                 "\n\tcURL error ({$errno}): {$err_msg}" .
-                "\n\tUrl: {$this->nodeUrl}" .
+                "\n\tUrl: " . self::$nodeUrl .
                 "\n\tPayload: {$payload}" .
                 "\n\tResponse: {$response}"
             );

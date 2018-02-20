@@ -24,16 +24,8 @@ class BrokerNode
     public static $chunksToAttach = null;
     public static $chunksToVerify = null;
 
-    public static $IriWrapper = null;
     public static $NodeMessenger = null;
     public static $ChunkEventsRecord = null;
-
-    private static function initIri()
-    {
-        if (is_null(self::$IriWrapper)) {
-            self::$IriWrapper = new IriWrapper();
-        }
-    }
 
     private static function initEventRecord()
     {
@@ -99,8 +91,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
 
@@ -143,8 +134,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = array($request->address);
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
@@ -182,13 +172,11 @@ class BrokerNode
 
     private static function getTransactionsToApprove(&$request)
     {
-        self::initIri();
-
         $command = new \stdClass();
         $command->command = "getTransactionsToApprove";
         $command->depth = IriData::$depthToSearchForTxs;
 
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'branchTransaction')) {
             //switching trunk and branch
@@ -317,8 +305,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         $chunkResults = new \stdClass();
 
@@ -390,24 +377,8 @@ class BrokerNode
     {
         $lengthOfOriginalMessage = strlen($messageOnRecord);
 
-        $result = (substr($messageOnTangle, 0, $lengthOfOriginalMessage) == $messageOnRecord) &&
+        return (substr($messageOnTangle, 0, $lengthOfOriginalMessage) == $messageOnRecord) &&
             !(strlen(str_replace('9', '', substr($messageOnTangle, $lengthOfOriginalMessage))) > 0);
-
-        echo "\n____________________________________________\n";
-
-        echo "\nmessageOnTangle: \n" . $messageOnTangle . "\n";
-        echo "\nmessageOnRecord: \n" . $messageOnRecord . "\n";
-
-        if ($result == true) {
-            echo "\nmessages Match!\n";
-        }
-        else {
-            echo "\nmessages don't match\n";
-        }
-
-        echo "\n____________________________________________\n";
-
-        return $result;
     }
 
     private static function getTransactionObjects($hashes)
@@ -416,8 +387,7 @@ class BrokerNode
         $command->command = "getTrytes";
         $command->hashes = $hashes;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'trytes') &&
             count($result->trytes) != 0) {
