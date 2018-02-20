@@ -210,8 +210,6 @@ class BrokerNode
         }
 
         return ['ip_address' => $nextNode->ip_address];
-        // "165.227.79.113"  // test hooks
-        // "104.225.221.42",
     }
 
     private static function sendToHookNode(&$chunks, $request)
@@ -363,6 +361,7 @@ class BrokerNode
             $chunkResults->notAttached = $chunks;
             return $chunkResults;
         } else {
+            $error = '';
             foreach ($result as $key => $value) {
                 if (is_array($value)) {
                     $error .= $key . ": \n" . implode("\n", $value) . "\n\n";

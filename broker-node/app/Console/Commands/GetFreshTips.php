@@ -9,34 +9,60 @@ use Carbon\Carbon;
 use DB;
 use Illuminate\Console\Command;
 
-class CheckChunkStatus extends Command
+class GetFreshTips extends Command
 {
-    const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 1;
+    const MINS_TO_RUN_PROCESS = 1;
+    const TIPS_THRESHOLD_MINUTES = 1.5;
+    const NUM_HOOKS_TO_QUERY = 2;
 
-    protected $signature = 'CheckChunkStatus:checkStatus';
+    protected $signature = 'GetFreshTips:getTips';
     protected $description =
-        'Polls the status of chunks that have been sent to hook nodes';
+        'Gets a batch of tips that need approving';
 
     /**
      * Execute the console command.
      */
     public static function handle()
     {
-        echo "Running CheckChunkStatus at: " . Carbon::now() . "\n";
+        echo "Running GetFreshTips at: " . Carbon::now() . "\n";
 
-        $thresholdTime = Carbon::now()
-            ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
+        $tipsThresholdTime = Carbon::now()
+            ->subMinutes(self::TIPS_THRESHOLD_MINUTES)
             ->toDateTimeString();
 
-        self::processUnassignedChunks($thresholdTime);
-        self::updateUnverifiedDatamaps($thresholdTime);
-        self::updateTimedoutDatamaps($thresholdTime);
-        self::purgeCompletedSessions();
+        $processThresholdTime = Carbon::now()
+            ->addMinutes(self::MINS_TO_RUN_PROCESS)
+            ->toDateTimeString();
+
+        self::getFreshTipsFromSelf();
+        self::getFreshTipsFromHookNodes();
+        self::purgeOldTips();
     }
 
     /**
      * Private
      * */
+
+    private static function getFreshTipsFromSelf($thresholdTime)
+    {
+        //logic to getBulkTransactionsToApprove
+
+        /*TODO: remove all this*/
+        $arrayOfTips = array();
+
+
+        $datamaps_unassigned =
+            DataMap::where('status', DataMap::status['unassigned'])
+                ->where('message', '<>', null)
+                ->where('updated_at', '>=', $thresholdTime)
+                ->get()
+                ->toArray();
+
+        if (count($datamaps_unassigned)) {
+
+            BrokerNode::processChunks($datamaps_unassigned, true);
+        }
+    }
 
     private static function processUnassignedChunks($thresholdTime)
     {
@@ -62,6 +88,8 @@ class CheckChunkStatus extends Command
                 ->get()
                 ->toArray();
 
+        echo "There were " . count($datamaps_unverified) . " datamaps unverified\n";
+
         if (count($datamaps_unverified)) {
 
             $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($datamaps_unverified);
@@ -77,7 +105,12 @@ class CheckChunkStatus extends Command
 
             unset($datamaps_unverified); // Purges unused memory.
 
+            echo "There were " . count($filteredChunks->matchesTangle) . " that did match the tangle\n";
+            echo "There were " . count($filteredChunks->doesNotMatchTangle) . " that did NOT match the tangle\n";
+            echo "There were " . count($filteredChunks->notAttached) . " that were not attached\n";
+
             if (count($filteredChunks->matchesTangle)) {
+
                 $attached_ids = array_map(function ($dmap) {
                     return $dmap->id;
                 }, $filteredChunks->matchesTangle);
@@ -121,9 +154,13 @@ class CheckChunkStatus extends Command
                 ->get()
                 ->toArray();
 
+        echo "There were " . count($datamaps_timedout) . " datamaps timed out\n";
+
         if (count($datamaps_timedout)) {
 
             self::decrementHooknodeReputations($datamaps_timedout);
+
+            /*TODO: test this logic when broker node is working*/
 
             $timed_out_ids = array_map(function ($dmap) {
                 return $dmap['id'];
@@ -138,6 +175,9 @@ class CheckChunkStatus extends Command
                     'trunkTransaction' => null])
                 ->get()
                 ->toArray();
+
+            echo "IN DATA MAPS TIMEDOUT";
+            var_dump($datamaps_timedout);
 
             BrokerNode::processChunks($datamaps_timedout);
         }
