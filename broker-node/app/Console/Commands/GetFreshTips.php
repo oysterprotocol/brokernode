@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Clients\BrokerNode;
 use App\DataMap;
+use App\Tips;
 use App\HookNode;
 use Carbon\Carbon;
 use DB;
@@ -35,205 +36,56 @@ class GetFreshTips extends Command
             ->toDateTimeString();
 
         self::getFreshTipsFromSelf();
-        self::getFreshTipsFromHookNodes();
-        self::purgeOldTips();
+        self::getFreshTipsFromHookNodes($processThresholdTime);
+        self::purgeOldTips($tipsThresholdTime);
     }
 
     /**
      * Private
      * */
 
-    private static function getFreshTipsFromSelf($thresholdTime)
+    private static function getFreshTipsFromSelf()
     {
         //logic to getBulkTransactionsToApprove
 
         /*TODO: remove all this*/
         $arrayOfTips = array();
+        //put actual logic in here
 
-
-        $datamaps_unassigned =
-            DataMap::where('status', DataMap::status['unassigned'])
-                ->where('message', '<>', null)
-                ->where('updated_at', '>=', $thresholdTime)
-                ->get()
-                ->toArray();
-
-        if (count($datamaps_unassigned)) {
-
-            BrokerNode::processChunks($datamaps_unassigned, true);
-        }
+        Tips::addTips($arrayOfTips);
     }
 
-    private static function processUnassignedChunks($thresholdTime)
+    private static function getFreshTipsFromHookNodes($thresholdTime)
     {
-        $datamaps_unassigned =
-            DataMap::where('status', DataMap::status['unassigned'])
-                ->where('message', '<>', null)
-                ->where('updated_at', '>=', $thresholdTime)
-                ->get()
-                ->toArray();
+        $numHookNodesQueried = 0;
 
-        if (count($datamaps_unassigned)) {
+        while ($thresholdTime->gt(Carbon::now()) && $numHookNodesQueried <= self::NUM_HOOKS_TO_QUERY) {
 
-            BrokerNode::processChunks($datamaps_unassigned, true);
-        }
-    }
+            /*TODO: remove all this*/
 
-    private static function updateUnverifiedDatamaps($thresholdTime)
-    {
-        $datamaps_unverified =
-            DataMap::where('status', DataMap::status['unverified'])
-                ->where('message', '<>', null)
-                ->where('updated_at', '>=', $thresholdTime)
-                ->get()
-                ->toArray();
+            $ready = false;
 
-        echo "There were " . count($datamaps_unverified) . " datamaps unverified\n";
-
-        if (count($datamaps_unverified)) {
-
-            $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($datamaps_unverified);
-
-            /*
-            replace with 'verifyChunksMatchRecord' if we also want to check
-            branch and trunk match the record.
-
-            verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
-            check tangle for the address and makes sure the message matches,
-            verifyChunksMatchRecord also checks trunk and branch.
-            */
-
-            unset($datamaps_unverified); // Purges unused memory.
-
-            echo "There were " . count($filteredChunks->matchesTangle) . " that did match the tangle\n";
-            echo "There were " . count($filteredChunks->doesNotMatchTangle) . " that did NOT match the tangle\n";
-            echo "There were " . count($filteredChunks->notAttached) . " that were not attached\n";
-
-            if (count($filteredChunks->matchesTangle)) {
-
-                $attached_ids = array_map(function ($dmap) {
-                    return $dmap->id;
-                }, $filteredChunks->matchesTangle);
-
-                // Mass Update DB.
-                DataMap::whereIn('id', $attached_ids)
-                    ->update(['status' => DataMap::status['complete']]);
-
-                self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+            while ($ready == false) {
+                [$ready, $next_node] = HookNode::getNextReadyNode();
             }
 
-            if (count($filteredChunks->doesNotMatchTangle)) {
+            $node_address = $next_node->ip_address;
 
-                self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
+            //put actual logic here to get the tips
+            $arrayOfTips = array();
+            //put actual logic in here
 
-                $not_matching_ids = array_map(function ($dmap) {
-                    return $dmap->id;
-                }, $filteredChunks->doesNotMatchTangle);
+            HookNode::setTimeOfLastContact($node_address);
+            HookNode::incrementScore($node_address);
 
-                // Mass Update DB.
-                $updatedChunks = DataMap::whereIn('id', $not_matching_ids)
-                    ->update([
-                        'status' => DataMap::status['unassigned'],
-                        'hooknode_id' => null,
-                        'branchTransaction' => null,
-                        'trunkTransaction' => null])
-                    ->get()
-                    ->toArray();
-
-                BrokerNode::processChunks($updatedChunks, true);
-            }
+            $numHookNodesQueried++;
+            Tips::addTips($arrayOfTips, $node_address);
         }
     }
 
-    private static function updateTimedoutDatamaps($thresholdTime)
+    private static function purgeOldTips($tipsThresholdTime)
     {
-        $datamaps_timedout =
-            DataMap::where('updated_at', '<', $thresholdTime)
-                ->where('status', '<>', DataMap::status['complete'])
-                ->where('message', '<>', null)
-                ->get()
-                ->toArray();
-
-        echo "There were " . count($datamaps_timedout) . " datamaps timed out\n";
-
-        if (count($datamaps_timedout)) {
-
-            self::decrementHooknodeReputations($datamaps_timedout);
-
-            /*TODO: test this logic when broker node is working*/
-
-            $timed_out_ids = array_map(function ($dmap) {
-                return $dmap['id'];
-            }, $datamaps_timedout);
-
-            // Mass Update DB.
-            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
-                ->update([
-                    'status' => DataMap::status['unassigned'],
-                    'hooknode_id' => null,
-                    'branchTransaction' => null,
-                    'trunkTransaction' => null])
-                ->get()
-                ->toArray();
-
-            echo "IN DATA MAPS TIMEDOUT";
-            var_dump($datamaps_timedout);
-
-            BrokerNode::processChunks($datamaps_timedout);
-        }
-    }
-
-    private static function incrementHooknodeReputations($datamaps)
-    {
-        $unique_hooks = self::getUniqueHooks($datamaps);
-
-        foreach ($unique_hooks as $hook) {
-            HookNode::incrementScore($hook);
-        }
-    }
-
-    private static function decrementHooknodeReputations($datamaps)
-    {
-        $unique_hooks = self::getUniqueHooks($datamaps);
-
-        foreach ($unique_hooks as $hook) {
-            HookNode::decrementScore($hook);
-        }
-    }
-
-    private static function getUniqueHooks($datamaps)
-    {
-        $hooknode_ids = array();
-
-        foreach ($datamaps as $datamap) {
-            $hooknode_ids[] = is_object($datamap) ?
-                $datamap->hooknode_id : $datamap['hooknode_id'];
-        }
-
-        // array_filter removes empty values when not provided a callback
-        return array_unique(array_filter($hooknode_ids));
-    }
-
-    public static function purgeCompletedSessions()
-    {
-        $not_complete_gen_hash = DB::table('data_maps')
-            ->where('status', '<>', DataMap::status['complete'])
-            ->select('genesis_hash', DB::raw('COUNT(genesis_hash) as not_completed'))
-            ->groupBy('genesis_hash')
-            ->pluck('genesis_hash');
-
-        $completed_gen_hash = DB::table('upload_sessions')
-            ->whereNotIn('genesis_hash', $not_complete_gen_hash)
-            ->pluck('genesis_hash');
-
-        DB::transaction(function () use ($completed_gen_hash) {
-            DB::table('data_maps')
-                ->whereIn('genesis_hash', $completed_gen_hash)
-                ->delete();
-
-            DB::table('upload_sessions')
-                ->whereIn('genesis_hash', $completed_gen_hash)
-                ->delete();
-        });
+        Tips::where('updated_at', '<', $tipsThresholdTime)
+            ->delete();
     }
 }
