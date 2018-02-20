@@ -120,7 +120,7 @@ class BrokerNode
             throw new \Exception(
                 "BrokerNode::filterUnattachedChunks failed." .
                 "\n\tIRI.findTransactions" .
-                "\n\t\tcommand: {$command}" .
+                "\n\t\tcommand: {$command->command}" .
                 "\n\t\tresult: {$result}"
             );
         }
@@ -142,7 +142,7 @@ class BrokerNode
             throw new \Exception(
                 "BrokerNode::dataNeedsAttaching failed." .
                 "\n\tIRI.findTransactions" .
-                "\n\t\tcommand: {$command}" .
+                "\n\t\tcommand: {$command->command}" .
                 "\n\t\tresult: {$result}"
             );
         }
@@ -190,12 +190,7 @@ class BrokerNode
 
     private static function selectHookNode()
     {
-        $ready = false;
-
-        while ($ready == false) {
-            [$ready, $nextNode] = HookNode::getNextReadyNode();
-        }
-
+        $nextNode = HookNode::getNextReadyNode();
         return ['ip_address' => $nextNode->ip_address];
     }
 
@@ -213,18 +208,10 @@ class BrokerNode
         $tx->command = 'attachToTangle';
 
         self::initMessenger();
-        //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
 
-        //$spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
-        $spammedNodes = array("http://" . $hookNodeUrl . ":250/HookListener.php");   //temporary solution
+        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
 
-//        for ($i = 0; $i <= 1; $i++) {   //temporary solution
-//            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":3000/";
-//        }
-
-        self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
-
-        self::updateHookNodeDirectory($hookNodeUrl, "request_made");
+        self::$NodeMessenger->sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
         self::initEventRecord();
@@ -238,36 +225,6 @@ class BrokerNode
         });
 
         return $chunks;
-    }
-
-    private static function updateHookNodeDirectory($currentHook, $status)
-    {
-        /*TODOS
-
-        remove this method and replace with Arthur's work or put Arthur's
-        work in this method
-        */
-        switch ($status) {
-            case 'request_made':
-                //we made a request
-                break;
-            case 'request_rejected':
-                //the hooknode node declined, it doesn't know us
-                //don't ask that hooknode node again
-                break;
-            case 'attach_completed':
-                //the hooknode node says it did the POW
-                break;
-            case 'attach_verified':
-                //we confirmed the hooknode node did the POW
-                break;
-            case 'attach_failed':
-                //the hooknode node didn't do the POW
-                //or didn't do it in time
-                break;
-            default:
-                break;
-        }
     }
 
     public static function verifyChunkMessagesMatchRecord($chunks)

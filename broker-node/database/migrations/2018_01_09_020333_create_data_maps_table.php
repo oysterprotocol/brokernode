@@ -17,7 +17,6 @@ class CreateDataMapsTable extends Migration
         Schema::create('data_maps', function (Blueprint $table) {
             $table->enum('status', [
                 DataMap::status['unassigned'],
-                DataMap::status['pending'],
                 DataMap::status['unverified'],
                 DataMap::status['complete'],
                 DataMap::status['error']

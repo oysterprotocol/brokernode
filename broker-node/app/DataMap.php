@@ -10,7 +10,6 @@ class DataMap extends Model
 {
     const status = array(
         'unassigned' => 'unassigned',
-        'pending' => 'pending',
         'unverified' => 'unverified',
         'complete' => 'complete',
         'error' => 'error',
@@ -152,12 +151,7 @@ class DataMap extends Model
                     'hooknode_id' => $chunk->hookNodeUrl,
                     'trunkTransaction' => $chunk->trunkTransaction,
                     'branchTransaction' => $chunk->branchTransaction,
-                    //'status' => self::status['pending']
-                    'status' => self::status['unverified'] // TODO this needs to be 'pending' but right now
-                                                           // the hooknode doesn't notify the broker node
-                                                           // that it did the POW and I need to work on the cron
-                                                           // job, so I'm just setting this to unverified
-                                                           // here
+                    'status' => self::status['unverified']
                 ]);
         }
     }
@@ -195,7 +189,7 @@ class DataMap extends Model
                 $this->hooknode_id = $updatedChunk->hookNodeUrl;
                 $this->trunkTransaction = $updatedChunk->trunkTransaction;
                 $this->branchTransaction = $updatedChunk->branchTransaction;
-                $this->status = self::status['pending'];
+                $this->status = self::status['unverified'];
                 $this->save();
 
                 return $res_type;
