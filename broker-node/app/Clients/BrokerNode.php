@@ -74,8 +74,7 @@ class BrokerNode
             $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
             $chunksToSend = $filteredChunks->unattachedChunks;
             unset($filteredChunks);
-        }
-        else {
+        } else {
             $chunksToSend = $chunks;
         }
 
@@ -227,12 +226,13 @@ class BrokerNode
 
         self::initMessenger();
         //self::$NodeMessenger->sendMessageToNode($tx, $hookNodeUrl);
-      
-        $spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
 
-        for ($i = 0; $i <= 1; $i++) {   //temporary solution
-            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":3000/";
-        }
+        //$spammedNodes = array("http://" . $hookNodeUrl . ":3000/");   //temporary solution
+        $spammedNodes = array("http://" . $hookNodeUrl . ":250/HookListener.php");   //temporary solution
+
+//        for ($i = 0; $i <= 1; $i++) {   //temporary solution
+//            $spammedNodes[] = "http://" . self::selectHookNode()['ip_address'] . ":3000/";
+//        }
 
         self::$NodeMessenger->spamHookNodes($tx, $spammedNodes);  // remove this, temporary solution
 
@@ -390,8 +390,24 @@ class BrokerNode
     {
         $lengthOfOriginalMessage = strlen($messageOnRecord);
 
-        return (substr($messageOnTangle, 0, $lengthOfOriginalMessage) == $messageOnRecord) &&
+        $result = (substr($messageOnTangle, 0, $lengthOfOriginalMessage) == $messageOnRecord) &&
             !(strlen(str_replace('9', '', substr($messageOnTangle, $lengthOfOriginalMessage))) > 0);
+
+        echo "\n____________________________________________\n";
+
+        echo "\nmessageOnTangle: \n" . $messageOnTangle . "\n";
+        echo "\nmessageOnRecord: \n" . $messageOnRecord . "\n";
+
+        if ($result == true) {
+            echo "\nmessages Match!\n";
+        }
+        else {
+            echo "\nmessages don't match\n";
+        }
+
+        echo "\n____________________________________________\n";
+
+        return $result;
     }
 
     private static function getTransactionObjects($hashes)
