@@ -51,7 +51,8 @@
       "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
       "@php artisan package:discover"
     ],
-    "test": "vendor/bin/phpunit"
+    "test": "DB_HOST=127.0.0.1 DB_DATABASE=test vendor/bin/phpunit -c ./",
+    "test-migrate": "DB_HOST=127.0.0.1 DB_DATABASE=test php artisan migrate:refresh"
   },
   "config": {
     "preferred-install": "dist",
