@@ -167,7 +167,7 @@ class BrokerNode
     {
         $tips = Tips::getNextTips();
 
-        if ($tips != null) {
+        if ($tips != null && $tips[0] != null && $tips[1] != null) {
             $request->trunkTransaction = $tips[1];
             $request->branchTransaction = $tips[0];
         } else {
