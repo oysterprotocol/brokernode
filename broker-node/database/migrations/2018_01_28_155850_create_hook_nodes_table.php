@@ -26,6 +26,11 @@ class CreateHookNodesTable extends Migration
                 ->default(0);
             $table->timestamp('contacted_at')
                 ->default(Carbon::now());
+//            $table->enum('status', [  // instead will just ask the hooknode for its status
+//                'ready',
+//                'processing',
+//            ])
+//                ->default('ready');
 
             // Indexes
             $table->primary('id');
