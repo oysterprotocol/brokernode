@@ -19,14 +19,18 @@ class Kernel extends ConsoleKernel
     /**
      * Define the application's command schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @param  \Illuminate\Console\Scheduling\Schedule $schedule
      * @return void
      */
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('CheckChunkStatus:checkStatus')
-                 ->everyMinute()
-                 ->sendOutputTo('/var/CHUNKLOG');
+            ->everyMinute()
+            ->sendOutputTo('/var/CHUNKLOG');
+
+        $schedule->command('GetFreshTips:getTips')
+            ->everyMinute()
+            ->sendOutputTo('/var/TIPSLOG');
     }
 
     /**
@@ -36,7 +40,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands()
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }

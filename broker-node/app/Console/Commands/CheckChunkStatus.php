@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
 
 class CheckChunkStatus extends Command
 {
-    const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 2;
+    const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 1;
 
     protected $signature = 'CheckChunkStatus:checkStatus';
     protected $description =
@@ -89,17 +89,23 @@ class CheckChunkStatus extends Command
 
             if (count($filteredChunks->doesNotMatchTangle)) {
 
+                self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
+
                 $not_matching_ids = array_map(function ($dmap) {
                     return $dmap->id;
                 }, $filteredChunks->doesNotMatchTangle);
 
                 // Mass Update DB.
-                DataMap::whereIn('id', $not_matching_ids)
-                    ->update(['status' => DataMap::status['unassigned']]);
+                $updatedChunks = DataMap::whereIn('id', $not_matching_ids)
+                    ->update([
+                        'status' => DataMap::status['unassigned'],
+                        'hooknode_id' => null,
+                        'branchTransaction' => null,
+                        'trunkTransaction' => null])
+                    ->get()
+                    ->toArray();
 
-                BrokerNode::processChunks($filteredChunks->doesNotMatchTangle, true);
-
-                self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
+                BrokerNode::processChunks($updatedChunks, true);
             }
         }
     }
@@ -117,24 +123,21 @@ class CheckChunkStatus extends Command
 
             self::decrementHooknodeReputations($datamaps_timedout);
 
-            /*TODO: test this logic when broker node is working*/
+            $timed_out_ids = array_map(function ($dmap) {
+                return $dmap['id'];
+            }, $datamaps_timedout);
 
-//            $timed_out_ids = array_map(function ($dmap) {
-//                return $dmap['id'];
-//            }, $datamaps_timedout);
-//
-//            // Mass Update DB.
-//            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
-//                ->update([
-//                    'status' => DataMap::status['unassigned'],
-//                    'hooknode_id' => null,
-//                    'branchTransaction' => null,
-//                    'trunkTransaction' => null])
-//                ->get()
-//                ->toArray();
-//
-//            echo "IN DATA MAPS TIMEDOUT";
-//            var_dump($datamaps_timedout);
+            // Mass Update DB.
+            DataMap::whereIn('id', $timed_out_ids)
+                ->update([
+                    'status' => DataMap::status['unassigned'],
+                    'hooknode_id' => null,
+                    'branchTransaction' => null,
+                    'trunkTransaction' => null]);
+
+            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
+                ->get()
+                ->toArray();
 
             BrokerNode::processChunks($datamaps_timedout);
         }

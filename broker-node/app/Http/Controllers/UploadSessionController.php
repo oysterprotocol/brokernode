@@ -122,7 +122,7 @@ class UploadSessionController extends Controller
                     'responseAddress' => $res_addr,
                     'address' => self::hashToAddrTrytes($data_map["hash"]),
                     'message' => $chunk['data'],
-                    'chunkId' => $chunk['idx'],
+                    'chunk_idx' => $chunk['idx'],
                 ];
             });
 
@@ -138,7 +138,7 @@ class UploadSessionController extends Controller
         $chunk_reqs
             ->each(function ($req) use ($genesis_hash) {
                 DataMap::where('genesis_hash', $genesis_hash)
-                    ->where('chunk_idx', $req->chunkId)
+                    ->where('chunk_idx', $req->chunk_idx)
                     ->update([
                         'address' => $req->address,
                         'message' => $req->message,

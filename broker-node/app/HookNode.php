@@ -49,6 +49,8 @@ class HookNode extends Model
             ->orderBy('selection_score', 'desc')
             ->first();
 
+        self::setTimeOfLastContact($nextNode->ip_address);
+
         return $nextNode;
     }
 

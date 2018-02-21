@@ -10,42 +10,27 @@ require_once("requests/NodeMessenger.php");
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
 use \Exception;
-use \IriData;
-use \IriWrapper;
-use \NodeMessenger;
+use App\Clients\requests\IriData;
+use App\Clients\requests\IriWrapper;
+use App\Clients\requests\NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
 use App\ChunkEvents;
 use App\DataMap;
+use App\Tips;
 
 class BrokerNode
 {
     public static $chunksToAttach = null;
     public static $chunksToVerify = null;
 
-    public static $IriWrapper = null;
-    public static $NodeMessenger = null;
     public static $ChunkEventsRecord = null;
-
-    private static function initIri()
-    {
-        if (is_null(self::$IriWrapper)) {
-            self::$IriWrapper = new IriWrapper();
-        }
-    }
 
     private static function initEventRecord()
     {
         if (is_null(self::$ChunkEventsRecord)) {
             self::$ChunkEventsRecord = new ChunkEvents();
-        }
-    }
-
-    private static function initMessenger()
-    {
-        if (is_null(self::$NodeMessenger)) {
-            self::$NodeMessenger = new NodeMessenger();
         }
     }
 
@@ -74,8 +59,7 @@ class BrokerNode
             $filteredChunks = self::filterUnattachedChunks($addresses, $chunks);
             $chunksToSend = $filteredChunks->unattachedChunks;
             unset($filteredChunks);
-        }
-        else {
+        } else {
             $chunksToSend = $chunks;
         }
 
@@ -100,8 +84,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
 
@@ -144,8 +127,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = array($request->address);
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'hashes')) {
             return count($result->hashes) == 0;
@@ -183,21 +165,26 @@ class BrokerNode
 
     private static function getTransactionsToApprove(&$request)
     {
-        self::initIri();
+        $tips = Tips::getNextTips();
 
-        $command = new \stdClass();
-        $command->command = "getTransactionsToApprove";
-        $command->depth = IriData::$depthToSearchForTxs;
-
-        $result = self::$IriWrapper->makeRequest($command);
-
-        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
-            //switching trunk and branch
-            //do we do this randomly or every time?
-            $request->trunkTransaction = $result->branchTransaction;
-            $request->branchTransaction = $result->trunkTransaction;
+        if ($tips != null && $tips[0] != null && $tips[1] != null) {
+            $request->trunkTransaction = $tips[1];
+            $request->branchTransaction = $tips[0];
         } else {
-            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+            $command = new \stdClass();
+            $command->command = "getTransactionsToApprove";
+            $command->depth = IriData::$depthToSearchForTxs;
+
+            $result = IriWrapper::makeRequest($command);
+
+            if (!is_null($result) && property_exists($result, 'branchTransaction')) {
+                //switching trunk and branch
+                //do we do this randomly or every time?
+                $request->trunkTransaction = $result->branchTransaction;
+                $request->branchTransaction = $result->trunkTransaction;
+            } else {
+                throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+            }
         }
     }
 
@@ -220,11 +207,9 @@ class BrokerNode
         $tx = $request;
         $tx->command = 'attachToTangle';
 
-        self::initMessenger();
-
         $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
 
-        self::$NodeMessenger->sendMessageToNodesAndContinue($tx, $hookNodes);
+        NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
         self::initEventRecord();
@@ -275,8 +260,7 @@ class BrokerNode
         $command->command = "findTransactions";
         $command->addresses = $addresses;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         $chunkResults = new \stdClass();
 
@@ -319,6 +303,7 @@ class BrokerNode
             $chunkResults->notAttached = $chunks;
             return $chunkResults;
         } else {
+            $error = '';
             foreach ($result as $key => $value) {
                 if (is_array($value)) {
                     $error .= $key . ": \n" . implode("\n", $value) . "\n\n";
@@ -357,8 +342,7 @@ class BrokerNode
         $command->command = "getTrytes";
         $command->hashes = $hashes;
 
-        self::initIri();
-        $result = self::$IriWrapper->makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
         if (!is_null($result) && property_exists($result, 'trytes') &&
             count($result->trytes) != 0) {
