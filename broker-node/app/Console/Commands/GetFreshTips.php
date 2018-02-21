@@ -30,8 +30,6 @@ class GetFreshTips extends Command
      */
     public static function handle()
     {
-        echo "Running GetFreshTips at: " . Carbon::now() . "\n";
-
         $tipsThresholdTime = Carbon::now()
             ->subMinutes(self::TIPS_THRESHOLD_MINUTES)
             ->toDateTimeString();
@@ -43,6 +41,7 @@ class GetFreshTips extends Command
         self::getFreshTipsFromSelf();
         //self::getFreshTipsFromHookNodes($processThresholdTime);
         self::purgeOldTips($tipsThresholdTime);
+
     }
 
     /**

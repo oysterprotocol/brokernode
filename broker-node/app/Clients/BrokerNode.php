@@ -10,14 +10,15 @@ require_once("requests/NodeMessenger.php");
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
 use \Exception;
-use \IriData;
-use \IriWrapper;
-use \NodeMessenger;
+use App\Clients\requests\IriData;
+use App\Clients\requests\IriWrapper;
+use App\Clients\requests\NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
 use App\ChunkEvents;
 use App\DataMap;
+use App\Tips;
 
 class BrokerNode
 {
@@ -164,19 +165,26 @@ class BrokerNode
 
     private static function getTransactionsToApprove(&$request)
     {
-        $command = new \stdClass();
-        $command->command = "getTransactionsToApprove";
-        $command->depth = IriData::$depthToSearchForTxs;
+        $tips = Tips::getNextTips();
 
-        $result = IriWrapper::makeRequest($command);
-
-        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
-            //switching trunk and branch
-            //do we do this randomly or every time?
-            $request->trunkTransaction = $result->branchTransaction;
-            $request->branchTransaction = $result->trunkTransaction;
+        if ($tips != null) {
+            $request->trunkTransaction = $tips[1];
+            $request->branchTransaction = $tips[0];
         } else {
-            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+            $command = new \stdClass();
+            $command->command = "getTransactionsToApprove";
+            $command->depth = IriData::$depthToSearchForTxs;
+
+            $result = IriWrapper::makeRequest($command);
+
+            if (!is_null($result) && property_exists($result, 'branchTransaction')) {
+                //switching trunk and branch
+                //do we do this randomly or every time?
+                $request->trunkTransaction = $result->branchTransaction;
+                $request->branchTransaction = $result->trunkTransaction;
+            } else {
+                throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+            }
         }
     }
 

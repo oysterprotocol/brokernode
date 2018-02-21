@@ -2,8 +2,8 @@
 
 namespace App;
 
-use App\Clients\BrokerNode;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Webpatser\Uuid\Uuid;
 
 class Tips extends Model
@@ -37,15 +37,26 @@ class Tips extends Model
 
     public static function getNextTips()
     {
-        $tips = DB::table('tips')
-            ->pluck('tip')
-            ->take(2);
+        if (DB::table('tips')->count() < 2) {
+            return null;
+        }
 
-        echo 'getting next tips';
-        var_dump($tips);
+        $tipObjs = DB::table('tips')
+            ->orderBy('node_id')
+            ->take(2)
+            ->get()
+            ->toArray();
+
+        $tips = array($tipObjs[0]->tip, $tipObjs[1]->tip);
 
         DB::table('tips')
             ->whereIn('tip', $tips)
             ->delete();
+
+        if ($tipObjs[0]->node_id != $tipObjs[0]->node_id) {
+            return self::getNextTips();
+        } else {
+            return $tips;
+        }
     }
 }

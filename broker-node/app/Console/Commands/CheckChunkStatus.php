@@ -130,12 +130,14 @@ class CheckChunkStatus extends Command
             }, $datamaps_timedout);
 
             // Mass Update DB.
-            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
+            DataMap::whereIn('id', $timed_out_ids)
                 ->update([
                     'status' => DataMap::status['unassigned'],
                     'hooknode_id' => null,
                     'branchTransaction' => null,
-                    'trunkTransaction' => null])
+                    'trunkTransaction' => null]);
+
+            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
                 ->get()
                 ->toArray();
 

@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Clients\requests;
+
 require_once("IriData.php");
 
 class NodeMessenger
@@ -58,7 +60,7 @@ class NodeMessenger
         return $response;
     }
 
-    function sendMessageToNodesAndContinue($commandObject, $nodeUrls)
+    public static function sendMessageToNodesAndContinue($commandObject, $nodeUrls)
     {
         self::initMessenger();
 
