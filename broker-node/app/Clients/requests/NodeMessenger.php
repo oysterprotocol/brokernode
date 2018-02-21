@@ -5,20 +5,24 @@ require_once("IriData.php");
 class NodeMessenger
 {
 
-    public $headers = array(
+    public static $headers = array(
         'Content-Type: application/json',
     );
-    public $nodeUrl;
-    private $userAgent = 'Codular Sample cURL Request';
-    private $apiVersionHeaderString = 'X-IOTA-API-Version: ';
 
-    public function __construct()
+    private static $userAgent = 'Codular Sample cURL Request';
+    private static $apiVersionHeaderString = 'X-IOTA-API-Version: ';
+
+    private static function initMessenger()
     {
-        array_push($this->headers, $this->apiVersionHeaderString . IriData::$apiVersion);
+        if (count(self::$headers) == 1) {
+            self::$headers[] = self::$apiVersionHeaderString . IriData::$apiVersion;
+        }
     }
 
-    public function sendMessageToNode($commandObject, $nodeUrl)
+    public static function sendMessageToNode($commandObject, $nodeUrl)
     {
+        self::initMessenger();
+
         // use this method when you want to send a message to one node and await the response
 
         $payload = json_encode($commandObject);
@@ -29,9 +33,9 @@ class NodeMessenger
             CURLOPT_RETURNTRANSFER => 1,
             CURLOPT_POST => 1,
             CURLOPT_URL => $nodeUrl,
-            CURLOPT_USERAGENT => $this->userAgent,
+            CURLOPT_USERAGENT => self::$userAgent,
             CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_HTTPHEADER => $this->headers,
+            CURLOPT_HTTPHEADER => self::$headers,
             CURLOPT_CONNECTTIMEOUT => 0,
             CURLOPT_TIMEOUT => 1000
         ));
@@ -56,6 +60,8 @@ class NodeMessenger
 
     function sendMessageToNodesAndContinue($commandObject, $nodeUrls)
     {
+        self::initMessenger();
+
         // use this method when you want to send a message to one or many nodes
         // and not wait for the response
 
@@ -65,12 +71,11 @@ class NodeMessenger
 
         $command = json_encode($commandObject);
 
-
         foreach ($nodeUrls as $nodeUrl) {
 
             $cmd = "curl " . $nodeUrl . " -X POST ";
-            $cmd .= "-H " . "'" . $this->headers[0] . "' ";
-            $cmd .= "-H " . "'" . $this->headers[1] . "' ";
+            $cmd .= "-H " . "'" . self::$headers[0] . "' ";
+            $cmd .= "-H " . "'" . self::$headers[1] . "' ";
             $cmd .= " -d '" . $command . "' ";
             $cmd .= " > /dev/null 2>&1 &";
 

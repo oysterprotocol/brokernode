@@ -83,11 +83,7 @@ class GetFreshTips extends Command
 
             /*TODO: remove all this*/
 
-            $ready = false;
-
-            while ($ready == false) {
-                [$ready, $next_node] = HookNode::getNextReadyNode();
-            }
+            $next_node = HookNode::getNextReadyNode();
 
             $node_address = $next_node->ip_address;
 

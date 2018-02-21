@@ -24,20 +24,12 @@ class BrokerNode
     public static $chunksToAttach = null;
     public static $chunksToVerify = null;
 
-    public static $NodeMessenger = null;
     public static $ChunkEventsRecord = null;
 
     private static function initEventRecord()
     {
         if (is_null(self::$ChunkEventsRecord)) {
             self::$ChunkEventsRecord = new ChunkEvents();
-        }
-    }
-
-    private static function initMessenger()
-    {
-        if (is_null(self::$NodeMessenger)) {
-            self::$NodeMessenger = new NodeMessenger();
         }
     }
 
@@ -207,11 +199,9 @@ class BrokerNode
         $tx = $request;
         $tx->command = 'attachToTangle';
 
-        self::initMessenger();
-
         $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
 
-        self::$NodeMessenger->sendMessageToNodesAndContinue($tx, $hookNodes);
+        NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
         self::initEventRecord();
