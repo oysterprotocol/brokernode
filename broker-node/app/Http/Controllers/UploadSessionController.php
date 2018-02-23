@@ -214,8 +214,8 @@ class UploadSessionController extends Controller
     private static function startSession(
         $genesis_hash, $file_size_bytes, $type="alpha"
     ) {
-        // TODO: Make 500 an env variable.
-        $file_chunk_count = ceil($file_size_bytes / 500);
+        // TODO: Make 2187 an env variable.
+        $file_chunk_count = ceil($file_size_bytes / 2187);
         // This could take a while, but if we make this async, we have a race
         // condition if the client attempts to upload before broker-node
         // can save to DB.
