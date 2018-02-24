@@ -30,6 +30,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('GetFreshTips:getTips')
             ->everyMinute()
+            ->withoutOverlapping()
             ->sendOutputTo('/var/TIPSLOG');
     }
 
