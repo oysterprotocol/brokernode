@@ -6,16 +6,15 @@ use \Exception;
 use App\Clients\requests\IriData;
 use App\Clients\requests\IriWrapper;
 use App\Tips;
-use App\HookNode;
-use App\ChunkEvents;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class GetFreshTips extends Command
 {
-    const TIPS_THRESHOLD_MINUTES = .5;
+    const TIPS_THRESHOLD_SECONDS = 5;
+    const PROCESS_RUN_TIME_SECONDS = 295;
+
     const TIPS_QUANTITY = 100;
-    const PROCESS_RUN_TIME = .75;
 
     protected $signature = 'GetFreshTips:getTips';
     protected $description =
@@ -26,27 +25,16 @@ class GetFreshTips extends Command
      */
     public static function handle()
     {
-        self::initEventRecord();
-
         $tipsThresholdTime = Carbon::now()
-            ->subMinutes(self::TIPS_THRESHOLD_MINUTES)
+            ->subSeconds(self::TIPS_THRESHOLD_SECONDS)
             ->toDateTimeString();
 
         $processStopTime = Carbon::now()
-            ->addMinutes(self::PROCESS_RUN_TIME)
-            ->toDateTimeString();
+            ->addSeconds(self::PROCESS_RUN_TIME_SECONDS);
 
-        while (Carbon::now()->toDateTimeString() < $processStopTime) {
-            self::$ChunkEventsRecord->addChunkEvent("re-running getFreshTips", "filler", "todo", "todo");
+        while (Carbon::now()->lt($processStopTime)) {
             self::getFreshTipsFromSelf();
             self::purgeOldTips($tipsThresholdTime);
-        }
-    }
-
-    private static function initEventRecord()
-    {
-        if (is_null(self::$ChunkEventsRecord)) {
-            self::$ChunkEventsRecord = new ChunkEvents();
         }
     }
 
