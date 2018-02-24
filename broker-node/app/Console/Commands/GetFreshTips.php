@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 
 class GetFreshTips extends Command
 {
-    const TIPS_THRESHOLD_MINUTES = 1.5;
+    const TIPS_THRESHOLD_MINUTES = .5;
     const TIPS_QUANTITY = 100;
 
     protected $signature = 'GetFreshTips:getTips';
