@@ -14,7 +14,7 @@ class GetFreshTips extends Command
     const TIPS_THRESHOLD_SECONDS = 5;
     const PROCESS_RUN_TIME_SECONDS = 295;
 
-    const TIPS_QUANTITY = 100;
+    const TIPS_QUANTITY = 50;
 
     protected $signature = 'GetFreshTips:getTips';
     protected $description =
@@ -35,6 +35,7 @@ class GetFreshTips extends Command
         while (Carbon::now()->lt($processStopTime)) {
             self::getFreshTipsFromSelf();
             self::purgeOldTips($tipsThresholdTime);
+            sleep(5);
         }
     }
 

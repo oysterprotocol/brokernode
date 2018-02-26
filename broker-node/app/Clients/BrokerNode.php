@@ -165,12 +165,12 @@ class BrokerNode
 
     private static function getTransactionsToApprove(&$request)
     {
-        $tips = Tips::getNextTips();
-
-        if ($tips != null && $tips[0] != null && $tips[1] != null) {
-            $request->trunkTransaction = $tips[1];
-            $request->branchTransaction = $tips[0];
-        } else {
+//        $tips = Tips::getNextTips();
+//
+//        if ($tips != null && $tips[0] != null && $tips[1] != null) {
+//            $request->trunkTransaction = $tips[1];
+//            $request->branchTransaction = $tips[0];
+//        } else {
             $command = new \stdClass();
             $command->command = "getTransactionsToApprove";
             $command->depth = IriData::$depthToSearchForTxs;
@@ -185,13 +185,27 @@ class BrokerNode
             } else {
                 throw new \Exception('getTransactionToApprove failed! ' . $result->error);
             }
-        }
+        //}
     }
 
     private static function selectHookNode()
     {
         $nextNode = HookNode::getNextReadyNode();
         return ['ip_address' => $nextNode->ip_address];
+    }
+
+    private static function getBroadcastingHookNodes()
+    {
+        $ip_addresses = array();
+
+        $broadcastingNodes =
+            HookNode::getBroadcastingHookNodes(['score_weight' => .5]);
+
+        foreach ($broadcastingNodes as $node) {
+            $ip_addresses[] = $node->ip_address;
+        }
+
+        return $ip_addresses;
     }
 
     private static function sendToHookNode(&$chunks, $request)
@@ -203,11 +217,13 @@ class BrokerNode
         }
 
         $hookNodeUrl = $hooknode['ip_address'];
+        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
+
+        $broadcastingNodes = self::getBroadcastingHookNodes();
 
         $tx = $request;
         $tx->command = 'attachToTangle';
-
-        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
+        $tx->broadcastingNodes = $broadcastingNodes;
 
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 

@@ -28,9 +28,9 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->sendOutputTo('/var/CHUNKLOG');
 
-        $schedule->command('GetFreshTips:getTips')
-            ->everyFiveMinutes()
-            ->sendOutputTo('/var/TIPSLOG');
+//        $schedule->command('GetFreshTips:getTips')
+//            ->everyFiveMinutes()
+//            ->sendOutputTo('/var/TIPSLOG');
     }
 
     /**
