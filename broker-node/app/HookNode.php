@@ -12,6 +12,8 @@ class HookNode extends Model
     const SCORE_WEIGHT = 1;
     const TIME_WEIGHT = 1;
 
+    const NUM_HOOKS_TO_BROADCAST = 10;
+
     /**
      * TODO: Make this a shared trait.
      *  Setup model event hooks
@@ -52,6 +54,32 @@ class HookNode extends Model
         self::setTimeOfLastContact($nextNode->ip_address);
 
         return $nextNode;
+    }
+
+    public static function getBroadcastingHookNodes($opts = [])
+    {
+        $score_weight = isset($opts['score_weight']) ? $opts['score_weight'] : self::SCORE_WEIGHT;
+        $time_weight = isset($opts['time_weight']) ? $opts['time_weight'] : self::TIME_WEIGHT;
+        $now = Carbon::now()->toDateTimeString();
+
+        $broadcastingNodes = DB::table('hook_nodes')
+            ->select(DB::raw("
+                *,
+                $score_weight * score
+                    + $time_weight * TIMESTAMPDIFF(SECOND, contacted_at, '$now')
+                    AS selection_score
+            "))
+            ->orderBy('selection_score', 'desc')
+            ->take(self::NUM_HOOKS_TO_BROADCAST)
+            ->get()
+            ->toArray();
+
+        // not updating 'contacted_at' here
+        // don't want to hurt hook's chances of
+        // getting picked for doing work that it
+        // does not get rewarded for
+
+        return $broadcastingNodes;
     }
 
     public static function incrementScore($ip_address)

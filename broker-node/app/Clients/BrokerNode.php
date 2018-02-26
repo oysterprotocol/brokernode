@@ -194,6 +194,20 @@ class BrokerNode
         return ['ip_address' => $nextNode->ip_address];
     }
 
+    private static function getBroadcastingHookNodes()
+    {
+        $ip_addresses = array();
+
+        $broadcastingNodes =
+            HookNode::getBroadcastingHookNodes(['score_weight' => .5]);
+
+        foreach ($broadcastingNodes as $node) {
+            $ip_addresses[] = $node->ip_address;
+        }
+
+        return $ip_addresses;
+    }
+
     private static function sendToHookNode(&$chunks, $request)
     {
         $hooknode = self::selectHookNode();
@@ -203,11 +217,19 @@ class BrokerNode
         }
 
         $hookNodeUrl = $hooknode['ip_address'];
+        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
+
+        $broadcastingNodes = self::getBroadcastingHookNodes();
 
         $tx = $request;
         $tx->command = 'attachToTangle';
+        $tx->broadcastingNodes = $broadcastingNodes;
 
-        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
+        var_dump($broadcastingNodes);
+
+        $cmd = json_encode($tx);
+
+        echo $cmd;
 
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
