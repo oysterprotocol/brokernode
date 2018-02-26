@@ -165,12 +165,12 @@ class BrokerNode
 
     private static function getTransactionsToApprove(&$request)
     {
-        $tips = Tips::getNextTips();
-
-        if ($tips != null && $tips[0] != null && $tips[1] != null) {
-            $request->trunkTransaction = $tips[1];
-            $request->branchTransaction = $tips[0];
-        } else {
+//        $tips = Tips::getNextTips();
+//
+//        if ($tips != null && $tips[0] != null && $tips[1] != null) {
+//            $request->trunkTransaction = $tips[1];
+//            $request->branchTransaction = $tips[0];
+//        } else {
             $command = new \stdClass();
             $command->command = "getTransactionsToApprove";
             $command->depth = IriData::$depthToSearchForTxs;
@@ -185,7 +185,7 @@ class BrokerNode
             } else {
                 throw new \Exception('getTransactionToApprove failed! ' . $result->error);
             }
-        }
+        //}
     }
 
     private static function selectHookNode()
