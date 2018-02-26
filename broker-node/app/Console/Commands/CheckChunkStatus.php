@@ -12,6 +12,7 @@ use Illuminate\Console\Command;
 class CheckChunkStatus extends Command
 {
     const HOOKNODE_TIMEOUT_THRESHOLD_MINUTES = 1;
+    const CHUNKS_PER_REQUEST = 10;
 
     protected $signature = 'CheckChunkStatus:checkStatus';
     protected $description =
@@ -47,7 +48,11 @@ class CheckChunkStatus extends Command
 
         if (count($datamaps_unassigned)) {
 
-            BrokerNode::processChunks($datamaps_unassigned, true);
+            $chunkedChunkArrays = array_chunk($datamaps_unassigned, self::CHUNKS_PER_REQUEST);
+
+            foreach ($chunkedChunkArrays as $chunkedChunkArray) {
+                BrokerNode::processChunks($chunkedChunkArray, true);
+            }
         }
     }
 
@@ -62,50 +67,56 @@ class CheckChunkStatus extends Command
 
         if (count($datamaps_unverified)) {
 
-            $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($datamaps_unverified);
+            $chunkedChunkArrays = array_chunk($datamaps_unverified, self::CHUNKS_PER_REQUEST);
 
-            /*
-            replace with 'verifyChunksMatchRecord' if we also want to check
-            branch and trunk match the record.
+            foreach ($chunkedChunkArrays as $chunkedChunkArray) {
 
-            verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
-            check tangle for the address and makes sure the message matches,
-            verifyChunksMatchRecord also checks trunk and branch.
-            */
+                $filteredChunks = BrokerNode::verifyChunkMessagesMatchRecord($chunkedChunkArray);
 
-            unset($datamaps_unverified); // Purges unused memory.
+                /*
+                replace with 'verifyChunksMatchRecord' if we also want to check
+                branch and trunk match the record.
 
-            if (count($filteredChunks->matchesTangle)) {
-                $attached_ids = array_map(function ($dmap) {
-                    return $dmap->id;
-                }, $filteredChunks->matchesTangle);
+                verifyChunkMessagesMatchRecord and verifyChunksMatchRecord both
+                check tangle for the address and makes sure the message matches,
+                verifyChunksMatchRecord also checks trunk and branch.
+                */
 
-                // Mass Update DB.
-                DataMap::whereIn('id', $attached_ids)
-                    ->update(['status' => DataMap::status['complete']]);
+                unset($chunkedChunkArray); // Purges unused memory.
 
-                self::incrementHooknodeReputations($filteredChunks->matchesTangle);
-            }
+                if (count($filteredChunks->matchesTangle)) {
+                    $attached_ids = array_map(function ($dmap) {
+                        return $dmap->id;
+                    }, $filteredChunks->matchesTangle);
 
-            if (count($filteredChunks->doesNotMatchTangle)) {
+                    // Mass Update DB.
+                    DataMap::whereIn('id', $attached_ids)
+                        ->update(['status' => DataMap::status['complete']]);
 
-                self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
+                    self::incrementHooknodeReputations($filteredChunks->matchesTangle);
+                }
 
-                $not_matching_ids = array_map(function ($dmap) {
-                    return $dmap->id;
-                }, $filteredChunks->doesNotMatchTangle);
+                if (count($filteredChunks->doesNotMatchTangle)) {
 
-                // Mass Update DB.
-                $updatedChunks = DataMap::whereIn('id', $not_matching_ids)
-                    ->update([
-                        'status' => DataMap::status['unassigned'],
-                        'hooknode_id' => null,
-                        'branchTransaction' => null,
-                        'trunkTransaction' => null])
-                    ->get()
-                    ->toArray();
+                    self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
 
-                BrokerNode::processChunks($updatedChunks, true);
+                    $not_matching_ids = array_map(function ($dmap) {
+                        return $dmap->id;
+                    }, $filteredChunks->doesNotMatchTangle);
+
+                    DataMap::whereIn('id', $not_matching_ids)
+                        ->update([
+                            'status' => DataMap::status['unassigned'],
+                            'hooknode_id' => null,
+                            'branchTransaction' => null,
+                            'trunkTransaction' => null]);
+
+                    $updatedChunks = DataMap::whereIn('id', $not_matching_ids)
+                        ->get()
+                        ->toArray();
+
+                    BrokerNode::processChunks($updatedChunks, true);
+                }
             }
         }
     }
@@ -121,25 +132,32 @@ class CheckChunkStatus extends Command
 
         if (count($datamaps_timedout)) {
 
-            self::decrementHooknodeReputations($datamaps_timedout);
+            $chunkedChunkArrays = array_chunk($datamaps_timedout, self::CHUNKS_PER_REQUEST);
 
-            $timed_out_ids = array_map(function ($dmap) {
-                return $dmap['id'];
-            }, $datamaps_timedout);
+            foreach ($chunkedChunkArrays as $chunkedChunkArray) {
 
-            // Mass Update DB.
-            DataMap::whereIn('id', $timed_out_ids)
-                ->update([
-                    'status' => DataMap::status['unassigned'],
-                    'hooknode_id' => null,
-                    'branchTransaction' => null,
-                    'trunkTransaction' => null]);
+                self::decrementHooknodeReputations($chunkedChunkArray);
 
-            $datamaps_timedout = DataMap::whereIn('id', $timed_out_ids)
-                ->get()
-                ->toArray();
+                $timed_out_ids = array_map(function ($dmap) {
+                    return $dmap['id'];
+                }, $chunkedChunkArray);
 
-            BrokerNode::processChunks($datamaps_timedout);
+                // Mass Update DB.
+                DataMap::whereIn('id', $timed_out_ids)
+                    ->update([
+                        'status' => DataMap::status['unassigned'],
+                        'hooknode_id' => null,
+                        'branchTransaction' => null,
+                        'trunkTransaction' => null]);
+
+                $updatedChunks = DataMap::whereIn('id', $timed_out_ids)
+                    ->get()
+                    ->toArray();
+
+                unset($chunkedChunkArray);
+
+                BrokerNode::processChunks($updatedChunks);
+            }
         }
     }
 

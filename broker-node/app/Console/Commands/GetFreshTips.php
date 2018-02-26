@@ -35,6 +35,7 @@ class GetFreshTips extends Command
         while (Carbon::now()->lt($processStopTime)) {
             self::getFreshTipsFromSelf();
             self::purgeOldTips($tipsThresholdTime);
+            sleep(5);
         }
     }
 
