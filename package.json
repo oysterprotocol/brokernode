@@ -4,10 +4,11 @@
   "description": "NodeJS and PHP code for the broker node.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate"
   },
   "dependencies": {
-    "body-parser": "~1.18.2",
+    "body-parsergit": "~1.18.2",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
     "express": "~4.15.5",
