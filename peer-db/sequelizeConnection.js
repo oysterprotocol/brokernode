@@ -2,6 +2,9 @@ const Sequelize = require('sequelize');
 const sequelize = new Sequelize('default', 'root', 'root', {
     host: 'localhost',
     dialect: 'mysql',
+    define: {
+        timestamps: true
+    },
     operatorsAliases: false,
 
     pool: {

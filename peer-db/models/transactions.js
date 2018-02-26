@@ -8,19 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         need_requested: DataTypes.STRING,
         work: DataTypes.STRING,
         transaction_status: DataTypes.ENUM,
-        createdAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            defaultValue: sequelize.literal('NOW()')
-        },
-        updatedAt: {
-            type: DataTypes.DATE,
-            allowNull: true,
-            defaultValue: sequelize.literal('NOW()')
-        }
-    }, {
-        timestamps: true
-    });
+    }, {timestamps: true});
     Transactions.associate = function (models) {
         // associations can be defined here
     };
