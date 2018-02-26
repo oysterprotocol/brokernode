@@ -24,14 +24,10 @@ module.exports = {
                     'TRANSACTION_COMPLETE'],
                 defaultValue: 'WAITING_FOR_ITEM_SELECTION'
             },
-            createdAt: {
-                allowNull: false,
-                type: Sequelize.DATE
-            },
-            updatedAt: {
-                allowNull: false,
-                type: Sequelize.DATE
-            }
+
+            // Timestamps
+            createdAt: Sequelize.DATE(),
+            updatedAt: Sequelize.DATE(),
         });
     },
     down: (queryInterface, Sequelize) => {
