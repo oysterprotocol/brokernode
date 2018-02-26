@@ -225,12 +225,6 @@ class BrokerNode
         $tx->command = 'attachToTangle';
         $tx->broadcastingNodes = $broadcastingNodes;
 
-        var_dump($broadcastingNodes);
-
-        $cmd = json_encode($tx);
-
-        echo $cmd;
-
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
