@@ -5,7 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "migrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate"
+    "migrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate",
+    "undoLastMigration": "cd peer-db && ../node_modules/.bin/sequelize db:migrate:undo",
+    "undoAllMigrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate:undo:all",
+    "seeders": "cd peer-db && ../node_modules/.bin/sequelize db:seed:all",
+    "undoLastSeeder": "cd peer-db && ../node_modules/.bin/sequelize db:seed:undo",
+    "undoAllSeeders": "cd peer-db && ../node_modules/.bin/sequelize db:seed:undo:all"
   },
   "dependencies": {
     "body-parsergit": "~1.18.2",
