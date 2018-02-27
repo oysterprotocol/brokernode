@@ -17,9 +17,7 @@ use App\Clients\requests\NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
-use App\ChunkEvents;
 use App\DataMap;
-use App\Tips;
 
 class BrokerNode
 {
@@ -30,6 +28,8 @@ class BrokerNode
 
     public static function processChunks(&$chunks, $attachIfAlreadyAttached = false)
     {
+        BrokerNode::getOwnIP();
+
         if (!is_array($chunks)) {
             $chunks = array($chunks);
         }
@@ -226,7 +226,7 @@ class BrokerNode
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             //record event
             Segment::track([
-                "userId" => "Oyster",
+                "userId" => $GLOBALS['ip_address'],
                 "event" => "chunk_sent_to_hook",
                 "properties" => [
                     "hooknode_url" => $hookNodeUrl,
@@ -369,6 +369,24 @@ class BrokerNode
             return $txObjects;
         } else {
             throw new \Exception('getTransactionObjects failed!');
+        }
+    }
+
+    public static function getOwnIP() {
+
+        if (!isset($GLOBALS['ip_address'])) {
+            // Pull contents from ip6.me
+            $file = file_get_contents('http://ip6.me/');
+
+            // Trim IP based on HTML formatting
+            $pos = strpos( $file, '+3' ) + 3;
+            $ip = substr( $file, $pos, strlen( $file ) );
+
+            // Trim IP based on HTML formatting
+            $pos = strpos( $ip, '</' );
+            $ip = substr( $ip, 0, $pos );
+
+            $GLOBALS['ip_address'] = $ip;
         }
     }
 }

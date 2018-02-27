@@ -92,6 +92,8 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
+        BrokerNode::getOwnIP();
+
         $session = UploadSession::find($id);
         if (empty($session)) return response('Session not found.', 404);
 
@@ -122,7 +124,7 @@ class UploadSessionController extends Controller
                     ->first();
 
                 Segment::track([
-                    "userId" => "Oyster",
+                    "userId" => $GLOBALS['ip_address'],
                     "event" => "chunk_sent_from_client",
                     "properties" => [
                         "client_address" => $_SERVER['REMOTE_ADDR'],

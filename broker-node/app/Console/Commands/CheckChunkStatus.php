@@ -24,6 +24,8 @@ class CheckChunkStatus extends Command
      */
     public static function handle()
     {
+        BrokerNode::getOwnIP();
+
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
@@ -93,7 +95,7 @@ class CheckChunkStatus extends Command
                     array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
                         //record event
                         Segment::track([
-                            "userId" => "Oyster",
+                            "userId" => $GLOBALS['ip_address'],
                             "event" => "chunk_matches_tangle",
                             "properties" => ["hooknode_url" => $dmap->hooknode_id,
                                 "chunk_idx" => $dmap->chunk_idx
@@ -118,7 +120,7 @@ class CheckChunkStatus extends Command
                     array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
                         //record event
                         Segment::track([
-                            "userId" => "Oyster",
+                            "userId" => $GLOBALS['ip_address'],
                             "event" => "chunk_does_not_match_tangle",
                             "properties" => [
                                 "hooknode_url" => $dmap->hooknode_id,
@@ -163,7 +165,7 @@ class CheckChunkStatus extends Command
                 array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
                     //record event
                     Segment::track([
-                        "userId" => "Oyster",
+                        "userId" => $GLOBALS['ip_address'],
                         "event" => "resending_chunk",
                         "properties" => [
                             "hooknode_url" => $dmap['hooknode_id'],
@@ -193,7 +195,7 @@ class CheckChunkStatus extends Command
         foreach ($unique_hooks as $hook) {
             //record event
             Segment::track([
-                "userId" => "Oyster",
+                "userId" => $GLOBALS['ip_address'],
                 "event" => "hooknode_score_increment",
                 "properties" => [
                     "hooknode_url" => $hook
@@ -210,7 +212,7 @@ class CheckChunkStatus extends Command
         foreach ($unique_hooks as $hook) {
             //record event
             Segment::track([
-                "userId" => "Oyster",
+                "userId" => $GLOBALS['ip_address'],
                 "event" => "hooknode_score_decrement",
                 "properties" => [
                     "hooknode_url" => $hook
