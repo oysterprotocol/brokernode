@@ -2,13 +2,13 @@
 
 namespace App\Console\Commands;
 
+use Segment;
 use App\Clients\BrokerNode;
 use App\DataMap;
 use App\HookNode;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Console\Command;
-use App\ChunkEvents;
 
 class CheckChunkStatus extends Command
 {
@@ -19,18 +19,26 @@ class CheckChunkStatus extends Command
     protected $description =
         'Polls the status of chunks that have been sent to hook nodes';
 
-    public static $ChunkEventsRecord = null;
+    private static $SegmentStarted = null;
+
+    private static function initSegment()
+    {
+        if (is_null(self::$SegmentStarted )) {
+            Segment::init("SrQ0wxvc7jp2XDjZiEJTrkLAo4FC2XdD");
+            self::$SegmentStarted = true;
+        }
+    }
 
     /**
      * Execute the console command.
      */
     public static function handle()
     {
+        self::initSegment();
+
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
-
-        self::initEventRecord();
 
         self::processUnassignedChunks($thresholdTime);
         self::updateUnverifiedDatamaps($thresholdTime);
@@ -94,7 +102,14 @@ class CheckChunkStatus extends Command
                     $attached_ids = [];
 
                     array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
-                        self::$ChunkEventsRecord->addChunkEvent("chunk_matches_tangle", $dmap->hooknode_id, "todo", $dmap->chunk_idx);
+                        //record event
+                        Segment::track([
+                            "userId" => "Oyster",
+                            "event" => "chunk_matches_tangle",
+                            "properties" => ["hooknode_url" => $dmap->hooknode_id,
+                                "chunk_idx" => $dmap->chunk_idx
+                            ]
+                        ]);
                         $attached_ids[] = $dmap->id;
                     });
 
@@ -112,7 +127,15 @@ class CheckChunkStatus extends Command
                     $not_matching_ids = [];
 
                     array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
-                        self::$ChunkEventsRecord->addChunkEvent("chunk_does_not_match_tangle", $dmap->hooknode_id, "todo", $dmap->chunk_idx);
+                        //record event
+                        Segment::track([
+                            "userId" => "Oyster",
+                            "event" => "chunk_does_not_match_tangle",
+                            "properties" => [
+                                "hooknode_url" => $dmap->hooknode_id,
+                                "chunk_idx" => $dmap->chunk_idx
+                            ]
+                        ]);
                         $not_matching_ids[] = $dmap->id;
                     });
 
@@ -153,7 +176,15 @@ class CheckChunkStatus extends Command
                 $timed_out_ids = [];
 
                 array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
-                    self::$ChunkEventsRecord->addChunkEvent("resending_chunk", $dmap['hooknode_id'], "todo", $dmap['chunk_idx']);
+                    //record event
+                    Segment::track([
+                        "userId" => "Oyster",
+                        "event" => "resending_chunk",
+                        "properties" => [
+                            "hooknode_url" => $dmap['hooknode_id'],
+                            "chunk_idx" => $dmap['chunk_idx']
+                        ]
+                    ]);
                     $timed_out_ids[] = $dmap['id'];
                 });
 
@@ -181,7 +212,14 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
-            self::$ChunkEventsRecord->addChunkEvent("hooknode_score_increment", $hook, "todo", "N/A");
+            //record event
+            Segment::track([
+                "userId" => "Oyster",
+                "event" => "hooknode_score_increment",
+                "properties" => [
+                    "hooknode_url" => $hook
+                ]
+            ]);
             HookNode::incrementScore($hook);
         }
     }
@@ -191,7 +229,14 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
-            self::$ChunkEventsRecord->addChunkEvent("hooknode_score_decrement", $hook, "todo", "N/A");
+            //record event
+            Segment::track([
+                "userId" => "Oyster",
+                "event" => "hooknode_score_decrement",
+                "properties" => [
+                    "hooknode_url" => $hook
+                ]
+            ]);
             HookNode::decrementScore($hook);
         }
     }
@@ -230,12 +275,5 @@ class CheckChunkStatus extends Command
                 ->whereIn('genesis_hash', $completed_gen_hash)
                 ->delete();
         });
-    }
-
-    private static function initEventRecord()
-    {
-        if (is_null(self::$ChunkEventsRecord)) {
-            self::$ChunkEventsRecord = new ChunkEvents();
-        }
     }
 }

@@ -9,6 +9,7 @@ require_once("requests/NodeMessenger.php");
 
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
+use Segment;
 use \Exception;
 use App\Clients\requests\IriData;
 use App\Clients\requests\IriWrapper;
@@ -27,10 +28,13 @@ class BrokerNode
 
     public static $ChunkEventsRecord = null;
 
-    private static function initEventRecord()
+    private static $SegmentStarted = null;
+
+    private static function initSegment()
     {
-        if (is_null(self::$ChunkEventsRecord)) {
-            self::$ChunkEventsRecord = new ChunkEvents();
+        if (is_null(self::$SegmentStarted )) {
+            Segment::init("SrQ0wxvc7jp2XDjZiEJTrkLAo4FC2XdD");
+            self::$SegmentStarted = true;
         }
     }
 
@@ -171,20 +175,20 @@ class BrokerNode
 //            $request->trunkTransaction = $tips[1];
 //            $request->branchTransaction = $tips[0];
 //        } else {
-            $command = new \stdClass();
-            $command->command = "getTransactionsToApprove";
-            $command->depth = IriData::$depthToSearchForTxs;
+        $command = new \stdClass();
+        $command->command = "getTransactionsToApprove";
+        $command->depth = IriData::$depthToSearchForTxs;
 
-            $result = IriWrapper::makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
-            if (!is_null($result) && property_exists($result, 'branchTransaction')) {
-                //switching trunk and branch
-                //do we do this randomly or every time?
-                $request->trunkTransaction = $result->branchTransaction;
-                $request->branchTransaction = $result->trunkTransaction;
-            } else {
-                throw new \Exception('getTransactionToApprove failed! ' . $result->error);
-            }
+        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
+            //switching trunk and branch
+            //do we do this randomly or every time?
+            $request->trunkTransaction = $result->branchTransaction;
+            $request->branchTransaction = $result->trunkTransaction;
+        } else {
+            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+        }
         //}
     }
 
@@ -227,21 +231,20 @@ class BrokerNode
 
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
-        //record event
-        Segment::track([
-            "event" => "chunk_sent_to_hook",
-            "properties" => [
-                "broker_url" => $_SERVER['REMOTE_ADDR'],
-                "hooknode_url" => $hookNodeUrl,
-            ]
-        ]);
-
-        // DEPRECATED. This will be replaced with segment.io
-        self::initEventRecord();
         HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
 
+        self::initSegment();
+
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
-            self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", $chunk->chunk_idx);
+            //record event
+            Segment::track([
+                "userId" => "Oyster",
+                "event" => "chunk_sent_to_hook",
+                "properties" => [
+                    "hooknode_url" => $hookNodeUrl,
+                    "chunk_idx" => $chunk->chunk_idx
+                ]
+            ]);
             $chunk->hookNodeUrl = $hookNodeUrl;
             $chunk->trunkTransaction = $request->trunkTransaction;
             $chunk->branchTransaction = $request->branchTransaction;
