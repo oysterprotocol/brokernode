@@ -233,12 +233,12 @@ class BrokerNode
 
         HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
 
-        self::initSegment();
+        //self::initSegment();
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             //record event
             Segment::track([
-                "userId" => "Oyster",
+                "userId" => $_SERVER['SERVER_ADDR'],
                 "event" => "chunk_sent_to_hook",
                 "properties" => [
                     "hooknode_url" => $hookNodeUrl,

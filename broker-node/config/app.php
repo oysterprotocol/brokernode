@@ -168,6 +168,7 @@ return [
          * Package Service Providers...
          */
         Optimus\Heimdal\Provider\LaravelServiceProvider::class,
+        AltThree\Segment\SegmentServiceProvider::class,
 
         /*
          * Application Service Providers...
@@ -177,7 +178,6 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
-        AltThree\Segment\SegmentServiceProvider::class
 
     ],
 
