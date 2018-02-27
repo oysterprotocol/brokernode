@@ -28,16 +28,6 @@ class BrokerNode
 
     public static $ChunkEventsRecord = null;
 
-    private static $SegmentStarted = null;
-
-    private static function initSegment()
-    {
-        if (is_null(self::$SegmentStarted )) {
-            Segment::init("SrQ0wxvc7jp2XDjZiEJTrkLAo4FC2XdD");
-            self::$SegmentStarted = true;
-        }
-    }
-
     public static function processChunks(&$chunks, $attachIfAlreadyAttached = false)
     {
         if (!is_array($chunks)) {
@@ -233,12 +223,10 @@ class BrokerNode
 
         HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
 
-        //self::initSegment();
-
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             //record event
             Segment::track([
-                "userId" => $_SERVER['SERVER_ADDR'],
+                "userId" => "Oyster",
                 "event" => "chunk_sent_to_hook",
                 "properties" => [
                     "hooknode_url" => $hookNodeUrl,

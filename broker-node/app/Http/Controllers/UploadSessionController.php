@@ -14,8 +14,6 @@ use Tuupola\Trytes;
 
 class UploadSessionController extends Controller
 {
-    private static $SegmentStarted = null;
-
     /**
      * Store a newly created resource in storage.
      *
@@ -94,8 +92,6 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //self::initSegment();
-
         $session = UploadSession::find($id);
         if (empty($session)) return response('Session not found.', 404);
 
@@ -126,7 +122,7 @@ class UploadSessionController extends Controller
                     ->first();
 
                 Segment::track([
-                    "userId" => $_SERVER['SERVER_ADDR'],
+                    "userId" => "Oyster",
                     "event" => "chunk_sent_from_client",
                     "properties" => [
                         "client_address" => $_SERVER['REMOTE_ADDR'],
@@ -252,13 +248,5 @@ class UploadSessionController extends Controller
         $trytes = new Trytes(["characters" => Trytes::IOTA]);
         $hash_in_trytes = $trytes->encode($hash);
         return substr($hash_in_trytes, 0, 81);
-    }
-
-    private static function initSegment()
-    {
-        if (is_null(self::$SegmentStarted)) {
-            Segment::init("SrQ0wxvc7jp2XDjZiEJTrkLAo4FC2XdD");
-            self::$SegmentStarted = true;
-        }
     }
 }

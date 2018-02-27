@@ -19,23 +19,11 @@ class CheckChunkStatus extends Command
     protected $description =
         'Polls the status of chunks that have been sent to hook nodes';
 
-    private static $SegmentStarted = null;
-
-    private static function initSegment()
-    {
-        if (is_null(self::$SegmentStarted )) {
-            Segment::init("SrQ0wxvc7jp2XDjZiEJTrkLAo4FC2XdD");
-            self::$SegmentStarted = true;
-        }
-    }
-
     /**
      * Execute the console command.
      */
     public static function handle()
     {
-        //self::initSegment();
-
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
@@ -105,7 +93,7 @@ class CheckChunkStatus extends Command
                     array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
                         //record event
                         Segment::track([
-                            "userId" => $_SERVER['SERVER_ADDR'],
+                            "userId" => "Oyster",
                             "event" => "chunk_matches_tangle",
                             "properties" => ["hooknode_url" => $dmap->hooknode_id,
                                 "chunk_idx" => $dmap->chunk_idx
@@ -130,7 +118,7 @@ class CheckChunkStatus extends Command
                     array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
                         //record event
                         Segment::track([
-                            "userId" => $_SERVER['SERVER_ADDR'],
+                            "userId" => "Oyster",
                             "event" => "chunk_does_not_match_tangle",
                             "properties" => [
                                 "hooknode_url" => $dmap->hooknode_id,
@@ -175,7 +163,7 @@ class CheckChunkStatus extends Command
                 array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
                     //record event
                     Segment::track([
-                        "userId" => $_SERVER['SERVER_ADDR'],
+                        "userId" => "Oyster",
                         "event" => "resending_chunk",
                         "properties" => [
                             "hooknode_url" => $dmap['hooknode_id'],
@@ -205,7 +193,7 @@ class CheckChunkStatus extends Command
         foreach ($unique_hooks as $hook) {
             //record event
             Segment::track([
-                "userId" => $_SERVER['SERVER_ADDR'],
+                "userId" => "Oyster",
                 "event" => "hooknode_score_increment",
                 "properties" => [
                     "hooknode_url" => $hook
@@ -222,7 +210,7 @@ class CheckChunkStatus extends Command
         foreach ($unique_hooks as $hook) {
             //record event
             Segment::track([
-                "userId" => $_SERVER['SERVER_ADDR'],
+                "userId" => "Oyster",
                 "event" => "hooknode_score_decrement",
                 "properties" => [
                     "hooknode_url" => $hook
