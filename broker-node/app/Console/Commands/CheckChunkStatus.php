@@ -8,6 +8,7 @@ use App\HookNode;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Console\Command;
+use App\ChunkEvents;
 
 class CheckChunkStatus extends Command
 {
@@ -18,6 +19,8 @@ class CheckChunkStatus extends Command
     protected $description =
         'Polls the status of chunks that have been sent to hook nodes';
 
+    public static $ChunkEventsRecord = null;
+
     /**
      * Execute the console command.
      */
@@ -26,6 +29,8 @@ class CheckChunkStatus extends Command
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
+
+        self::initEventRecord();
 
         self::processUnassignedChunks($thresholdTime);
         self::updateUnverifiedDatamaps($thresholdTime);
@@ -85,9 +90,13 @@ class CheckChunkStatus extends Command
                 unset($chunkedChunkArray); // Purges unused memory.
 
                 if (count($filteredChunks->matchesTangle)) {
-                    $attached_ids = array_map(function ($dmap) {
-                        return $dmap->id;
-                    }, $filteredChunks->matchesTangle);
+
+                    $attached_ids = [];
+
+                    array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
+                        self::$ChunkEventsRecord->addChunkEvent("chunk_matches_tangle", $dmap->hooknode_id, "todo", $dmap->chunk_idx);
+                        $attached_ids[] = $dmap->id;
+                    });
 
                     // Mass Update DB.
                     DataMap::whereIn('id', $attached_ids)
@@ -100,9 +109,12 @@ class CheckChunkStatus extends Command
 
                     self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
 
-                    $not_matching_ids = array_map(function ($dmap) {
-                        return $dmap->id;
-                    }, $filteredChunks->doesNotMatchTangle);
+                    $not_matching_ids = [];
+
+                    array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
+                        self::$ChunkEventsRecord->addChunkEvent("chunk_does_not_match_tangle", $dmap->hooknode_id, "todo", $dmap->chunk_idx);
+                        $not_matching_ids[] = $dmap->id;
+                    });
 
                     DataMap::whereIn('id', $not_matching_ids)
                         ->update([
@@ -138,9 +150,12 @@ class CheckChunkStatus extends Command
 
                 self::decrementHooknodeReputations($chunkedChunkArray);
 
-                $timed_out_ids = array_map(function ($dmap) {
-                    return $dmap['id'];
-                }, $chunkedChunkArray);
+                $timed_out_ids = [];
+
+                array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
+                    self::$ChunkEventsRecord->addChunkEvent("resending_chunk", $dmap['hooknode_id'], "todo", $dmap['chunk_idx']);
+                    $timed_out_ids[] = $dmap['id'];
+                });
 
                 // Mass Update DB.
                 DataMap::whereIn('id', $timed_out_ids)
@@ -166,6 +181,7 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
+            self::$ChunkEventsRecord->addChunkEvent("hooknode_score_increment", $hook, "todo", "N/A");
             HookNode::incrementScore($hook);
         }
     }
@@ -175,6 +191,7 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
+            self::$ChunkEventsRecord->addChunkEvent("hooknode_score_decrement", $hook, "todo", "N/A");
             HookNode::decrementScore($hook);
         }
     }
@@ -213,5 +230,12 @@ class CheckChunkStatus extends Command
                 ->whereIn('genesis_hash', $completed_gen_hash)
                 ->delete();
         });
+    }
+
+    private static function initEventRecord()
+    {
+        if (is_null(self::$ChunkEventsRecord)) {
+            self::$ChunkEventsRecord = new ChunkEvents();
+        }
     }
 }
