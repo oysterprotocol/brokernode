@@ -228,6 +228,15 @@ class BrokerNode
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
         //record event
+        Segment::track([
+            "event" => "chunk_sent_to_hook",
+            "properties" => [
+                "broker_url" => $_SERVER['REMOTE_ADDR'],
+                "hooknode_url" => $hookNodeUrl,
+            ]
+        ]);
+
+        // DEPRECATED. This will be replaced with segment.io
         self::initEventRecord();
         self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
         HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
