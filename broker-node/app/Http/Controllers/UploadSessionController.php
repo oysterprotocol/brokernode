@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Segment;
 use \Exception;
 use App\Clients\BrokerNode;
 use App\DataMap;
@@ -46,7 +47,8 @@ class UploadSessionController extends Controller
         return response()->json($res);
     }
 
-    private static function startSessionBeta($genesis_hash, $file_size_bytes, $beta_brokernode_ip) {
+    private static function startSessionBeta($genesis_hash, $file_size_bytes, $beta_brokernode_ip)
+    {
         $beta_broker_path = "{$beta_brokernode_ip}/api/v1/upload-sessions/beta";
         if (!filter_var($beta_broker_path, FILTER_VALIDATE_URL)) {
             return response("Error: Invalid Beta IP {$beta_brokernode_ip}", 422);
@@ -90,6 +92,8 @@ class UploadSessionController extends Controller
      */
     public function update(Request $request, $id)
     {
+        BrokerNode::getOwnIP();
+
         $session = UploadSession::find($id);
         if (empty($session)) return response('Session not found.', 404);
 
@@ -97,6 +101,17 @@ class UploadSessionController extends Controller
         $chunks = $request->input('chunks');
 
         $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
+
+        Segment::track([
+            "userId" => $GLOBALS['ip_address'],
+            "event" => "chunk_sent_from_client",
+            "properties" => [
+                "client_address" => $_SERVER['REMOTE_ADDR'],
+                "chunk_idx" => array_map(function ($chunk) {
+                    return $chunk['idx'];
+                }, $chunks)
+            ]
+        ]);
 
         // Collect hashes
         // $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
@@ -118,6 +133,7 @@ class UploadSessionController extends Controller
                     ->where('chunk_idx', $chunk['idx'])
                     ->select('hash')
                     ->first();
+
                 return (object)[
                     'responseAddress' => $res_addr,
                     'address' => self::hashToAddrTrytes($data_map["hash"]),
@@ -212,8 +228,9 @@ class UploadSessionController extends Controller
      */
 
     private static function startSession(
-        $genesis_hash, $file_size_bytes, $type="alpha"
-    ) {
+        $genesis_hash, $file_size_bytes, $type = "alpha"
+    )
+    {
         // TODO: Make 2187 an env variable.
         $file_chunk_count = ceil($file_size_bytes / 2187);
         // This could take a while, but if we make this async, we have a race

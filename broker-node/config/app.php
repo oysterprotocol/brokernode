@@ -168,6 +168,7 @@ return [
          * Package Service Providers...
          */
         Optimus\Heimdal\Provider\LaravelServiceProvider::class,
+        AltThree\Segment\SegmentServiceProvider::class,
 
         /*
          * Application Service Providers...

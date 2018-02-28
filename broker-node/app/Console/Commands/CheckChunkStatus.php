@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use Segment;
 use App\Clients\BrokerNode;
 use App\DataMap;
 use App\HookNode;
@@ -23,6 +24,8 @@ class CheckChunkStatus extends Command
      */
     public static function handle()
     {
+        BrokerNode::getOwnIP();
+
         $thresholdTime = Carbon::now()
             ->subMinutes(self::HOOKNODE_TIMEOUT_THRESHOLD_MINUTES)
             ->toDateTimeString();
@@ -51,6 +54,7 @@ class CheckChunkStatus extends Command
             $chunkedChunkArrays = array_chunk($datamaps_unassigned, self::CHUNKS_PER_REQUEST);
 
             foreach ($chunkedChunkArrays as $chunkedChunkArray) {
+
                 BrokerNode::processChunks($chunkedChunkArray, true);
             }
         }
@@ -85,9 +89,20 @@ class CheckChunkStatus extends Command
                 unset($chunkedChunkArray); // Purges unused memory.
 
                 if (count($filteredChunks->matchesTangle)) {
-                    $attached_ids = array_map(function ($dmap) {
-                        return $dmap->id;
-                    }, $filteredChunks->matchesTangle);
+
+                    $attached_ids = [];
+
+                    array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
+                        //record event
+                        Segment::track([
+                            "userId" => $GLOBALS['ip_address'],
+                            "event" => "chunk_matches_tangle",
+                            "properties" => ["hooknode_url" => $dmap->hooknode_id,
+                                "chunk_idx" => $dmap->chunk_idx
+                            ]
+                        ]);
+                        $attached_ids[] = $dmap->id;
+                    });
 
                     // Mass Update DB.
                     DataMap::whereIn('id', $attached_ids)
@@ -100,9 +115,20 @@ class CheckChunkStatus extends Command
 
                     self::decrementHooknodeReputations($filteredChunks->doesNotMatchTangle);
 
-                    $not_matching_ids = array_map(function ($dmap) {
-                        return $dmap->id;
-                    }, $filteredChunks->doesNotMatchTangle);
+                    $not_matching_ids = [];
+
+                    array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
+                        //record event
+                        Segment::track([
+                            "userId" => $GLOBALS['ip_address'],
+                            "event" => "chunk_does_not_match_tangle",
+                            "properties" => [
+                                "hooknode_url" => $dmap->hooknode_id,
+                                "chunk_idx" => $dmap->chunk_idx
+                            ]
+                        ]);
+                        $not_matching_ids[] = $dmap->id;
+                    });
 
                     DataMap::whereIn('id', $not_matching_ids)
                         ->update([
@@ -111,11 +137,7 @@ class CheckChunkStatus extends Command
                             'branchTransaction' => null,
                             'trunkTransaction' => null]);
 
-                    $updatedChunks = DataMap::whereIn('id', $not_matching_ids)
-                        ->get()
-                        ->toArray();
-
-                    BrokerNode::processChunks($updatedChunks, true);
+                    BrokerNode::processChunks($filteredChunks->doesNotMatchTangle, true);
                 }
             }
         }
@@ -138,9 +160,20 @@ class CheckChunkStatus extends Command
 
                 self::decrementHooknodeReputations($chunkedChunkArray);
 
-                $timed_out_ids = array_map(function ($dmap) {
-                    return $dmap['id'];
-                }, $chunkedChunkArray);
+                $timed_out_ids = [];
+
+                array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
+                    //record event
+                    Segment::track([
+                        "userId" => $GLOBALS['ip_address'],
+                        "event" => "resending_chunk",
+                        "properties" => [
+                            "hooknode_url" => $dmap['hooknode_id'],
+                            "chunk_idx" => $dmap['chunk_idx']
+                        ]
+                    ]);
+                    $timed_out_ids[] = $dmap['id'];
+                });
 
                 // Mass Update DB.
                 DataMap::whereIn('id', $timed_out_ids)
@@ -150,13 +183,7 @@ class CheckChunkStatus extends Command
                         'branchTransaction' => null,
                         'trunkTransaction' => null]);
 
-                $updatedChunks = DataMap::whereIn('id', $timed_out_ids)
-                    ->get()
-                    ->toArray();
-
-                unset($chunkedChunkArray);
-
-                BrokerNode::processChunks($updatedChunks);
+                BrokerNode::processChunks($chunkedChunkArray);
             }
         }
     }
@@ -166,6 +193,14 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
+            //record event
+            Segment::track([
+                "userId" => $GLOBALS['ip_address'],
+                "event" => "hooknode_score_increment",
+                "properties" => [
+                    "hooknode_url" => $hook
+                ]
+            ]);
             HookNode::incrementScore($hook);
         }
     }
@@ -175,6 +210,14 @@ class CheckChunkStatus extends Command
         $unique_hooks = self::getUniqueHooks($datamaps);
 
         foreach ($unique_hooks as $hook) {
+            //record event
+            Segment::track([
+                "userId" => $GLOBALS['ip_address'],
+                "event" => "hooknode_score_decrement",
+                "properties" => [
+                    "hooknode_url" => $hook
+                ]
+            ]);
             HookNode::decrementScore($hook);
         }
     }

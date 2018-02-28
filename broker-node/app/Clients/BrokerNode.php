@@ -9,6 +9,7 @@ require_once("requests/NodeMessenger.php");
 
 // This is a temporary hack to make the above required files work in this
 // namespace. We can clean this up after testnet.
+use Segment;
 use \Exception;
 use App\Clients\requests\IriData;
 use App\Clients\requests\IriWrapper;
@@ -16,9 +17,7 @@ use App\Clients\requests\NodeMessenger;
 use \PrepareTransfers;
 use \stdClass;
 use App\HookNode;
-use App\ChunkEvents;
 use App\DataMap;
-use App\Tips;
 
 class BrokerNode
 {
@@ -27,15 +26,10 @@ class BrokerNode
 
     public static $ChunkEventsRecord = null;
 
-    private static function initEventRecord()
-    {
-        if (is_null(self::$ChunkEventsRecord)) {
-            self::$ChunkEventsRecord = new ChunkEvents();
-        }
-    }
-
     public static function processChunks(&$chunks, $attachIfAlreadyAttached = false)
     {
+        BrokerNode::getOwnIP();
+
         if (!is_array($chunks)) {
             $chunks = array($chunks);
         }
@@ -171,20 +165,20 @@ class BrokerNode
 //            $request->trunkTransaction = $tips[1];
 //            $request->branchTransaction = $tips[0];
 //        } else {
-            $command = new \stdClass();
-            $command->command = "getTransactionsToApprove";
-            $command->depth = IriData::$depthToSearchForTxs;
+        $command = new \stdClass();
+        $command->command = "getTransactionsToApprove";
+        $command->depth = IriData::$depthToSearchForTxs;
 
-            $result = IriWrapper::makeRequest($command);
+        $result = IriWrapper::makeRequest($command);
 
-            if (!is_null($result) && property_exists($result, 'branchTransaction')) {
-                //switching trunk and branch
-                //do we do this randomly or every time?
-                $request->trunkTransaction = $result->branchTransaction;
-                $request->branchTransaction = $result->trunkTransaction;
-            } else {
-                throw new \Exception('getTransactionToApprove failed! ' . $result->error);
-            }
+        if (!is_null($result) && property_exists($result, 'branchTransaction')) {
+            //switching trunk and branch
+            //do we do this randomly or every time?
+            $request->trunkTransaction = $result->branchTransaction;
+            $request->branchTransaction = $result->trunkTransaction;
+        } else {
+            throw new \Exception('getTransactionToApprove failed! ' . $result->error);
+        }
         //}
     }
 
@@ -227,19 +221,21 @@ class BrokerNode
 
         NodeMessenger::sendMessageToNodesAndContinue($tx, $hookNodes);
 
+        HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
+
         //record event
         Segment::track([
+            "userId" => $GLOBALS['ip_address'],
             "event" => "chunk_sent_to_hook",
             "properties" => [
-                "broker_url" => $_SERVER['REMOTE_ADDR'],
                 "hooknode_url" => $hookNodeUrl,
+                "chunk_idx" => array_map(function ($chunk) {
+                    return $chunk->chunk_idx;
+                }, $chunks)
             ]
         ]);
 
-        // DEPRECATED. This will be replaced with segment.io
-        self::initEventRecord();
-        self::$ChunkEventsRecord->addChunkEvent("chunk_sent_to_hook", $hookNodeUrl, "todo", "todo");
-        HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
+        var_dump($chunks);
 
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;
@@ -378,6 +374,25 @@ class BrokerNode
             return $txObjects;
         } else {
             throw new \Exception('getTransactionObjects failed!');
+        }
+    }
+
+    public static function getOwnIP()
+    {
+
+        if (!isset($GLOBALS['ip_address'])) {
+            // Pull contents from ip6.me
+            $file = file_get_contents('http://ip6.me/');
+
+            // Trim IP based on HTML formatting
+            $pos = strpos($file, '+3') + 3;
+            $ip = substr($file, $pos, strlen($file));
+
+            // Trim IP based on HTML formatting
+            $pos = strpos($ip, '</');
+            $ip = substr($ip, 0, $pos);
+
+            $GLOBALS['ip_address'] = $ip;
         }
     }
 }
