@@ -223,16 +223,21 @@ class BrokerNode
 
         HookNode::incrementChunksProcessed($hookNodeUrl, count($chunks));
 
+        //record event
+        Segment::track([
+            "userId" => $GLOBALS['ip_address'],
+            "event" => "chunk_sent_to_hook",
+            "properties" => [
+                "hooknode_url" => $hookNodeUrl,
+                "chunk_idx" => array_map(function ($chunk) {
+                    return $chunk->chunk_idx;
+                }, $chunks)
+            ]
+        ]);
+
+        var_dump($chunks);
+
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
-            //record event
-            Segment::track([
-                "userId" => $GLOBALS['ip_address'],
-                "event" => "chunk_sent_to_hook",
-                "properties" => [
-                    "hooknode_url" => $hookNodeUrl,
-                    "chunk_idx" => $chunk->chunk_idx
-                ]
-            ]);
             $chunk->hookNodeUrl = $hookNodeUrl;
             $chunk->trunkTransaction = $request->trunkTransaction;
             $chunk->branchTransaction = $request->branchTransaction;
@@ -372,19 +377,20 @@ class BrokerNode
         }
     }
 
-    public static function getOwnIP() {
+    public static function getOwnIP()
+    {
 
         if (!isset($GLOBALS['ip_address'])) {
             // Pull contents from ip6.me
             $file = file_get_contents('http://ip6.me/');
 
             // Trim IP based on HTML formatting
-            $pos = strpos( $file, '+3' ) + 3;
-            $ip = substr( $file, $pos, strlen( $file ) );
+            $pos = strpos($file, '+3') + 3;
+            $ip = substr($file, $pos, strlen($file));
 
             // Trim IP based on HTML formatting
-            $pos = strpos( $ip, '</' );
-            $ip = substr( $ip, 0, $pos );
+            $pos = strpos($ip, '</');
+            $ip = substr($ip, 0, $pos);
 
             $GLOBALS['ip_address'] = $ip;
         }

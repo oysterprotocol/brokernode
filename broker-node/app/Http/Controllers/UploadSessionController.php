@@ -102,6 +102,17 @@ class UploadSessionController extends Controller
 
         $res_addr = "{$_SERVER['REMOTE_ADDR']}:{$_SERVER['REMOTE_PORT']}";
 
+        Segment::track([
+            "userId" => $GLOBALS['ip_address'],
+            "event" => "chunk_sent_from_client",
+            "properties" => [
+                "client_address" => $_SERVER['REMOTE_ADDR'],
+                "chunk_idx" => array_map(function ($chunk) {
+                    return $chunk['idx'];
+                }, $chunks)
+            ]
+        ]);
+
         // Collect hashes
         // $chunk_idxs = array_map(function ($c) { return $c["idx"]; }, $chunks);
         // $data_maps = DataMap::where('genesis_hash', $genesis_hash)
@@ -122,15 +133,6 @@ class UploadSessionController extends Controller
                     ->where('chunk_idx', $chunk['idx'])
                     ->select('hash')
                     ->first();
-
-                Segment::track([
-                    "userId" => $GLOBALS['ip_address'],
-                    "event" => "chunk_sent_from_client",
-                    "properties" => [
-                        "client_address" => $_SERVER['REMOTE_ADDR'],
-                        "chunk_idx" => $chunk['idx']
-                    ]
-                ]);
 
                 return (object)[
                     'responseAddress' => $res_addr,
