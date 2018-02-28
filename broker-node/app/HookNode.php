@@ -12,7 +12,7 @@ class HookNode extends Model
     const SCORE_WEIGHT = 1;
     const TIME_WEIGHT = 1;
 
-    const NUM_HOOKS_TO_BROADCAST = 10;
+    const NUM_HOOKS_TO_BROADCAST = 6;
 
     /**
      * TODO: Make this a shared trait.
