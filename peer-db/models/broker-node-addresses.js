@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-    var Broker_node_address = sequelize.define('Broker_node_address', {
+    var Broker_node_address = sequelize.define('BrokerNodeAddresses', {
         id: {
             type: DataTypes.INTEGER,
             primaryKey: true

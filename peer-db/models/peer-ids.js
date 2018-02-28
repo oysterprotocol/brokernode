@@ -1,6 +1,6 @@
 'use strict';
 module.exports = (sequelize, DataTypes) => {
-  var Peer_id = sequelize.define('Peer_id', {
+  var Peer_id = sequelize.define('PeerIds', {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true
