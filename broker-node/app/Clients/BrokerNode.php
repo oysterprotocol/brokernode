@@ -235,8 +235,6 @@ class BrokerNode
             ]
         ]);
 
-        var_dump($chunks);
-
         array_walk($chunks, function ($chunk) use ($hookNodeUrl, $request) {
             $chunk->hookNodeUrl = $hookNodeUrl;
             $chunk->trunkTransaction = $request->trunkTransaction;
