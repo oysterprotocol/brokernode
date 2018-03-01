@@ -211,7 +211,7 @@ class BrokerNode
         }
 
         $hookNodeUrl = $hooknode['ip_address'];
-        $hookNodes = array("http://" . $hookNodeUrl . ":3000/");
+        $hookNodes = array("http://" . $hookNodeUrl . ":3000/attach/");
 
         $broadcastingNodes = self::getBroadcastingHookNodes();
 
