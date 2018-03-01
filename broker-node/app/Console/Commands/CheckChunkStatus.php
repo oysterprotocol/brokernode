@@ -86,13 +86,11 @@ class CheckChunkStatus extends Command
                 verifyChunksMatchRecord also checks trunk and branch.
                 */
 
-                unset($chunkedChunkArray); // Purges unused memory.
-
                 if (count($filteredChunks->matchesTangle)) {
 
                     $attached_ids = [];
 
-                    array_walk($filteredChunks->matchesTangle, function ($dmap) use ($attached_ids) {
+                    array_walk($filteredChunks->matchesTangle, function ($dmap) use (&$attached_ids) {
                         //record event
                         Segment::track([
                             "userId" => $GLOBALS['ip_address'],
@@ -117,11 +115,11 @@ class CheckChunkStatus extends Command
 
                     $not_matching_ids = [];
 
-                    array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use ($not_matching_ids) {
+                    array_walk($filteredChunks->doesNotMatchTangle, function ($dmap) use (&$not_matching_ids) {
                         //record event
                         Segment::track([
                             "userId" => $GLOBALS['ip_address'],
-                            "event" => "chunk_does_not_match_tangle",
+                            "event" => "resend_chunk_tangle_mismatch",
                             "properties" => [
                                 "hooknode_url" => $dmap->hooknode_id,
                                 "chunk_idx" => $dmap->chunk_idx
@@ -139,6 +137,8 @@ class CheckChunkStatus extends Command
 
                     BrokerNode::processChunks($filteredChunks->doesNotMatchTangle, true);
                 }
+
+                unset($chunkedChunkArray); // Purges unused memory.
             }
         }
     }
@@ -162,11 +162,11 @@ class CheckChunkStatus extends Command
 
                 $timed_out_ids = [];
 
-                array_walk($chunkedChunkArray, function ($dmap) use ($timed_out_ids) {
+                array_walk($chunkedChunkArray, function ($dmap) use (&$timed_out_ids) {
                     //record event
                     Segment::track([
                         "userId" => $GLOBALS['ip_address'],
-                        "event" => "resending_chunk",
+                        "event" => "resend_chunk_timeout",
                         "properties" => [
                             "hooknode_url" => $dmap['hooknode_id'],
                             "chunk_idx" => $dmap['chunk_idx']
