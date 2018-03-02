@@ -87,12 +87,14 @@ class Bundle
                     $timestampTrits[] = 0;
                 }
 
-                $currentIndexTrits = Converter::trytes_to_trits($this->bundle[$i]->currentIndex = $i);
+                $this->bundle[$i]->currentIndex = $i;
+                $currentIndexTrits = Converter::trytes_to_trits($i);
                 while (is_null($currentIndexTrits) || count($currentIndexTrits) < 27) {
                     $currentIndexTrits[] = 0;
                 }
 
-                $lastIndexTrits = Converter::trytes_to_trits($this->bundle[$i]->lastIndex = count($this->bundle) - 1);
+                $this->bundle[$i]->lastIndex = count($this->bundle) - 1;
+                $lastIndexTrits = Converter::trytes_to_trits($this->bundle[$i]->lastIndex);
                 while (is_null($lastIndexTrits) || count($lastIndexTrits) < 27) {
                     $lastIndexTrits[] = 0;
                 }
