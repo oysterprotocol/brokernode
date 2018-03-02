@@ -143,14 +143,17 @@ class BrokerNode
 
         $trytesToBroadcast = NULL;
         $request = new \stdClass();
+        $request->transfers = array();
 
-        foreach ($chunks as $chunk) {
-            $chunk->value = IriData::$txValue;
-            $chunk->tag = IriData::$oysterTag;
+        foreach ($chunks as $key => $chunk) {
+            $request->transfers[$key] = new \stdClass();
+            $request->transfers[$key]->Value = IriData::$txValue;
+            $request->transfers[$key]->Tag = IriData::$oysterTag;
+            $request->transfers[$key]->Address = $chunk->address;
+            $request->transfers[$key]->Message = $chunk->message;
         }
 
-        $request->trytes = PrepareTransfers::buildTxTrytes($chunks, IriData::$oysterSeed);
-        if (!is_null($request->trytes)) {
+        if (!is_null($request->transfers)) {
             self::getTransactionsToApprove($request);
         }
 
