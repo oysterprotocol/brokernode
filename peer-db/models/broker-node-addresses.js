@@ -1,11 +1,18 @@
 'use strict';
-module.exports = (sequelize, DataTypes) => {
+const Sequelize = require('sequelize');
+
+module.exports = (sequelize, DataTypes, Sequelize) => {
     var Broker_node_address = sequelize.define('BrokerNodeAddresses', {
         id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true
+            type: Sequelize.UUID,
+            defaultValue: Sequelize.UUIDV4,
+            unique: true,
+            primaryKey: true,
         },
-        address: DataTypes.STRING
+        address: {
+            type: DataTypes.STRING,
+            unique: true
+        },
     }, {});
     Broker_node_address.associate = function (models) {
         // associations can be defined here
