@@ -1,11 +1,10 @@
 'use strict';
-const Sequelize = require('sequelize');
 
-module.exports = (sequelize, DataTypes, Sequelize) => {
+module.exports = (sequelize, DataTypes) => {
     var Peer_id = sequelize.define('PeerIds', {
         id: {
-            type: Sequelize.UUID,
-            defaultValue: Sequelize.UUIDV4,
+            type: DataTypes.UUID,
+            defaultValue: DataTypes.UUIDV4,
             unique: true,
             primaryKey: true,
         },

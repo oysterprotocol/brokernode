@@ -2,7 +2,7 @@
 //'use strict';
 
 //refactor later
-var mysql = require('mysql');
+var mysql = require('mysql2');
 var mariaSQL = require('mariasql');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize('default', 'root', 'root', {
@@ -12,6 +12,12 @@ const sequelize = new Sequelize('default', 'root', 'root', {
         timestamps: true
     },
 });
+
+const Transactions = require('../../../peer-db/models/transactions.js')(sequelize, Sequelize);
+
+//console.log(Transactions);
+
+confirm_work();
 
 //create table of ids
 exports.add_peer_id = function(req, res) {
@@ -139,13 +145,36 @@ exports.need_selected = function(req, res) {
 };
 
 
-exports.confirm_work = function(req, res) {
+//var confirm_work = function(req, res) {
+function confirm_work() {
 
     //look up user in row
-    var txid = req.query.txid;
+    //var txid = req.query.txid;
 
     console.log("in confirm_work");
+
+    // Quick example
+    // sequelize.query("SELECT * FROM Transactions").then(transactions => {
+    //     console.log(transactions)
+    // });
+
+    Transactions.findAll().then(result => {
+        console.log('findAll');
+        console.log(result);
+        console.log(result[0].dataValues);
+        console.log('findAll');
+    });
+
+    Transactions.findOne().then(result => {
+        console.log('findOne');
+        console.log(result.get('transaction_id'));
+        console.log('findOne');
+    });
+
+    return;
 };
+
+exports.confirm_work = confirm_work;
 
 
 function connect(){
