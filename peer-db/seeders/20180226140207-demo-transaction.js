@@ -5,7 +5,8 @@ module.exports = {
         return queryInterface.bulkInsert('Transactions', [{
             transaction_id: 6,
             need_requested: 'genesis_hash',
-            work: 'TODO',
+            address: 'TODO',
+            message: 'TODO',
             transaction_status: 'WAITING_FOR_ITEM_SELECTION',
             createdAt: new Date(),
             updatedAt: new Date()

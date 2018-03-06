@@ -6,7 +6,8 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true
         },
         need_requested: DataTypes.STRING,
-        work: DataTypes.STRING,
+        address: DataTypes.STRING,
+        message: DataTypes.STRING,
         transaction_status: DataTypes.ENUM,
     }, {timestamps: true});
     Transactions.associate = function (models) {
