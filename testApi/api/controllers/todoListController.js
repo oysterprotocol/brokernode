@@ -97,7 +97,7 @@ exports.item_selected = function(req, res) {
   
   //var webnodes = getWebnodeAddresses();
 
-  console.log(webnodes);
+  //console.log(webnodes);
   console.log("here");
 
   con.query( sql, function(err, result){
@@ -109,23 +109,6 @@ exports.item_selected = function(req, res) {
     console.log(result[0].need_requested);
 
     //get webnode addresses
-//    var con2 = connect();
-//
-//    var sql = "SELECT * FROM default.PeerIds;";
-//    var webnode_array = [];
-//    con2.query( sql, function(err, result){
-//      //get txid
-//      console.log("listing webnodes " );
-//
-//      console.log(result);
-//      result.forEach(function(element) {
-//         webnode_array.push(element.peer_id);
-//      });
-//
-//      //console.log(result);
-//      console.log(webnode_array);
-    //  console.log(result.insertId.toString());
-
       
     //we then update the SQL
     
@@ -136,7 +119,6 @@ exports.item_selected = function(req, res) {
     
     another.connection.query(update_transaction_sql, function(err, result){
     	
-    	//another callback!
     	console.log("Purchaser has selected an item.  The transaction has been updated.");
     	
     	//TODO: GET AND RETURN SOME WORK 
@@ -153,6 +135,54 @@ exports.item_selected = function(req, res) {
 exports.report_work_finished = function(req, res) {
 
 	  //TODO
+	
+	  var txid = req.query.txid;
+	  
+	  var con = connect();
+
+	  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
+	  
+	
+	  con.query( sql, function(err, result){
+		    
+		    //we were dealing with the index of the need.  I want to change it so the web node passes the hash rather than
+		    //index though that also requires additional cpu cycles.
+		 
+			//this is the need requested  LATER WE WILL SWITCH TO GET THE CUSTOMER'S LIST BASED ON ITEM TYPE.
+		    console.log(result[0].need_requested);
+		    console.log(result[0].item_selected_index)
+		    
+		    
+
+		    // TODO:  CONFIRM
+		    
+		    
+		    
+		    var addresses = getWebnodeAddresses();
+		    //get webnode addresses
+		      
+		    var item = addresses[result[0].item_selected_index];
+		    
+		    console.log(item);
+		    
+		    
+		    //we then update the SQL
+		    
+		    
+		    var update_transaction_sql = "UPDATE default.Transactions SET transaction_status  = \"TRANSACTION_COMPLETE\" WHERE transaction_id = "+txid+";"
+		    
+		    var another_connection = connect();
+		    
+		    another.connection.query(update_transaction_sql, function(err, result){
+		    	
+		    	console.log("Purchaser has finished work.  The item is being sent.");
+		    	
+		    	//Send item
+		    	res.send(item);
+		    	});
+		      
+		    });
+	  
 	  
 	  //  get message and address from table
 	  
