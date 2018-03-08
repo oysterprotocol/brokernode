@@ -12,6 +12,9 @@ module.exports = {
             need_requested: {
                 type: Sequelize.STRING
             },
+            item_selected_index: {
+            	type: Sequelize.INTEGER
+            }
             address: {
                 type: Sequelize.STRING
             },

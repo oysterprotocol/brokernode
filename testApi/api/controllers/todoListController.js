@@ -1,37 +1,19 @@
 
 //'use strict';
 
-//refactor later
-const IOTA = require('iota.lib.js');
-const mysql = require('mysql2');
-const Sequelize = require('sequelize');
-const sequelize = new Sequelize('default', 'root', 'root', {
-    host: 'localhost',
-    dialect: 'mysql',
-    define: {
-        timestamps: true
-    },
-});
+var mysql = require('mysql');
 
-const iota = new IOTA({
-    'provider': 'http://localhost:14265'
-});
-
-const Transactions = require('../../../peer-db/models/transactions.js')(sequelize, Sequelize);
-
-
-
-confirm_work();
-
-//create table of ids
+//API CALL 1:  ADD A PEER ID.
 exports.add_peer_id = function(req, res) {
 
   //get peer id
   var peer_id = req.query.peerid;
 
+  //move into DB object
   var con = connect();
 
-  
+  //the way the table is set up we are required to manually add the timestamps.
+  //laravel adds them automatically.  Currently not using.
   var date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
   var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
   //add peer sql
@@ -46,15 +28,17 @@ exports.add_peer_id = function(req, res) {
 
 var tid = -1;
 
-
+//API CALL 2:  REQUEST TO START A TRANSACTION
 exports.start_transaction = function(req, res) {
   var need = req.query.need;
   //FOR NOW WE JUST DO WEBNODES, SO WE GET THE LIST OF PEER IDS HERE.
-
+  var date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
   var con = connect();
 
   //add transaction and get txid
-  var sql = "INSERT INTO testdb.transactions (need_requested) VALUES (\"" + need + "\");";
+  var sql = "INSERT INTO default.Transactions (need_requested, createdAt, updatedAt) VALUES (\"" + need + "\",\"" +
+  		date1 + "\",\""+ date2 + "\");";
   con.query( sql, function(err, result){
     //get txid
 
@@ -66,8 +50,13 @@ exports.start_transaction = function(req, res) {
     //get items
     var con2 = connect();
 
-    //add transaction and get txid
-    var sql = "SELECT * FROM testdb.peer_ids;";
+    //get list of peers to send  We are not hashing yet.
+    //move this into the function outlined below
+    //though we might move this all to go in which case we would want '
+    //to go through it again real fast after defining the parameters and return values for different api 
+    //calls
+    
+    var sql = "SELECT * FROM default.PeerIds;";
     var webnode_array = [];
     con2.query( sql, function(err, result){
       //get txid
@@ -95,7 +84,8 @@ exports.start_transaction = function(req, res) {
 };
 
 
-exports.need_selected = function(req, res) {
+//API CALL 3:  TELL SELLER WHICH ITEM AND GET WORK
+exports.item_selected = function(req, res) {
 
   //look up user in row
   var txid = req.query.txid;
@@ -103,102 +93,76 @@ exports.need_selected = function(req, res) {
 
   var con = connect();
 
-  var sql = "SELECT * FROM testdb.transactions WHERE id =\""+ txid + "\";";
-
-  var webnodes = getWebnodeAddresses();
+  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
+  
+  //var webnodes = getWebnodeAddresses();
 
   console.log(webnodes);
   console.log("here");
 
   con.query( sql, function(err, result){
-    //get txid
-    console.log("Need has been selected");
-
-    console.log(sql);
-
+    
+    //we were dealing with the index of the need.  I want to change it so the web node passes the hash rather than
+    //index though that also requires additional cpu cycles.
+ 
+	//this is the need requested  LATER WE WILL SWITCH TO GET THE CUSTOMER'S LIST BASED ON ITEM TYPE.
     console.log(result[0].need_requested);
 
-    //get webnode ADDRESSES
-    var con2 = connect();
-
-    //add transaction and get txid
-    var sql = "SELECT * FROM testdb.peer_ids;";
-    var webnode_array = [];
-    con2.query( sql, function(err, result){
-      //get txid
-      console.log("listing webnodes " );
-
-      console.log(result);
-      result.forEach(function(element) {
-         webnode_array.push(element.peer_id);
-      });
-
-      //console.log(result);
-      console.log(webnode_array);
+    //get webnode addresses
+//    var con2 = connect();
+//
+//    var sql = "SELECT * FROM default.PeerIds;";
+//    var webnode_array = [];
+//    con2.query( sql, function(err, result){
+//      //get txid
+//      console.log("listing webnodes " );
+//
+//      console.log(result);
+//      result.forEach(function(element) {
+//         webnode_array.push(element.peer_id);
+//      });
+//
+//      //console.log(result);
+//      console.log(webnode_array);
     //  console.log(result.insertId.toString());
 
-      res.send(webnode_array[ind]);
-      //return webnode_array;
+      
+    //we then update the SQL
+    
+    
+    var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \""+ ind + "\" WHERE transaction_id = "+txid+";"
+    
+    var another_connection = connect();
+    
+    another.connection.query(update_transaction_sql, function(err, result){
+    	
+    	//another callback!
+    	console.log("Purchaser has selected an item.  The transaction has been updated.");
+    	
+    	//TODO: GET AND RETURN SOME WORK 
+    	res.send({ message: 'somemessage', address: 'testaddress'});
+    	});
+      
     });
 
 
-  });
+  
 
-//FOR NOW WE ARE ONLY DOING WEBNODE ADDRESSES SO WE DON'T NEED TO ADD.
-//I AM GOING TO SEND THE INDEX OF THE ITEM FOR NOW
 };
 
+exports.report_work_finished = function(req, res) {
 
-//var confirm_work = function(req, res) {
-function confirm_work() {
+	  //TODO
+	  
+	  //  get message and address from table
+	  
+	  //  confirm work was finished
+	
+	  //  look up index of item selected
+	
+	  //  send them the item.  (WE MIGHT CHANGE THIS.  THE OTHER WAY IS TO SEND THE HASH, BUT THEN A LOT OF REHASHING OCCURS)
+	};
 
-    //look up user in row
-    let txFromWebNode = {
-        // transaction_id: req.query.txid,
-        // address: req.query.address,
-        // message: req.query.message
-
-        transaction_id: 'cd6e7190-06d1-4c70-9593-32cda3134ab3',
-        address: 'ABSCUCQCXAPCCBUAZAXATCCBSCZAZATCCBTCSCABTCPCYAUCRCRCTCABZATCYAYABBZABBSCRCQCXAQCR',
-        message: 'DXCADSCACVAPBWCPAVABDWAUBRCEDACNBZANBWCABCDZCZCTCWBCCKBFDBCBDRBDCKDEDVCPBTBICDCQCWCXBLDEDNDTCYBQBNDJDUCNBUBQCPAHCACRC9DTAICWATBRCVBEDRBWCFCVCPCUBTBEDSCLBYAGCCDTANBZBBCCCCCKDICLBZBADICSCTBBDYBYBDCDDACTCTBRBCCHCUCCDJDTBECMDVCXBNDADCCECWCHCSCWBUCZBUAVBRBTAACBBNB9CVCSBWBED9DIDLBNBYCUBPAZBKBUCMDNDZAGDNBPCYCXBVCHDGCUAGCPAUAABMBBBQCDDSBWBBDUAFCQB9C9BACZCGCWBKBFCRBBBACZCQCPAXBTACDADADYC9CBBGCRCUADCCBZCPAADNBFC9CKBZCLDVAICHCCBAC9BXCRCXCGDICNDYCNBHCZCOBEDZCUCWAJDQCUBPAYCPBADDDRBKBYCXAPC9DUAPADDZATAZBCCMBPAICZAZCPCWCZAUBKBMDUCGCMBHCWCYBXBPCNDTCTBEDKBHCWAZAMDJDYBYCQCTAJDYCWARCABFDQCLDYAZBUCSC9DMD9CXATBBDWANBACZBNBWATCXAPB9DYCPBJDADXBADGCTBECUCNDTAYBUCFCGDVAADBCFCLDABSBRC9BPCYCBDLBBDDCYBZBIDPAYBOBIDEDXADDICPBQBICWCTAWCNDNBRB9BPAJDLBTBECADCBRCECFCABRBUCKBICZARCOBZANBECBBCBWBZBHCUAMDWAPCFCWCJDDCWCLBICDCUBPASBHDABHCPCXAZAFCEDDCCBPBKBZBCCOBVBIDCCXCBCFCMDSBLBIDZCOBMDSCBBMDYAKDQBXBZCSBXBSCVAQBVCVAYAPBACECNDQCLBZBJDCDPCMBWCIDLBZCNDDDWBLDDDKDFDXBACPCHDYBABSCXBADPANBVBUBWCHCFDLDOBACBDYCTBHDWAVBNBLBBDKBUCGCQCYCPCTBZCKBDCCBZCMBECADQBZCECTATAUCLBPCWAZAXBADPAHDDCACCDXAECGCKBRBCBKBXBYATCSBECFDMDZBLD9BGCFCCBFCVAICYCHCWACCNDSBYADDCCCDECEDNDECTAVCMDYARCACUATBFDFDABCBQCSCGCWCXCBCPAMBWCICTCFDKDSCRBNBVCACUBBDBCZBPBADJDZACCHCIDYCUABBHDJDMDRCECBDXAXBSBCBWAYBKBFCDCUBZCVBHCBCDDWCYAKBRBKDUAEDTBACABDDZAVBYBSCECDCEDBBICRCECRCXBACRBECUATBBBICLDGD9CRCUBYABBOBXBVCPBKDPCWCBBTCKBLBKDHDHCQBBCGCNBSBXBGCYCABKDJDXCVCJDCDVBYBOBSCLBPAUC9BYBAC9BZBABVADDPCPBSBNB9DUCZAFCYAZBUBHCUATAFDGCYBWBCCFC9DKDNBJDCCVBRCLDCDICPCBBNBHDKBADWADDOBKBMBRBZCFCWBLDNDABOBYBSCTCYCYBCDBDRBUCVARCCDCDVCFDQCHDACFDFCYCMDEDZCOBDC9BPCQCBDOBVBMBXBPCVCVCWCYBXCEDLBICTCDDUBLBWAGDWCABPCECLDZA9CVCTAGCXBFDRCPCQCVAFDCCXA9BVCWCLBCDADADADHDYAMBGCPBCBLBWACBHDCDIDRCYBGDTBCBZCWAXAADWCTC9BKDECNDCBLDPCECGCPCBBBDYCVCQBIDXCCDKB9BABTBVCCBWCFCCBBCWBVAPAEDXBJDGDWAVCDDSCWBYBZADCEDNDZCYCIDFCHCKBOBHCXCKDOBCBWCKBOBRBZCYBFDPBVCUACBCCOBLBTBBC9BJDMDBCTAPATBADZAGCMBPBSBXCTBJDHDNDGCBCLBOB9BND9DADXATBLBRCXBXBDDSBWBBCCDYBJDCBNDYBSBTCZBPBGC9CMDMBRCCD9BXC9BACPCPADDEDXAHCTCNBWCUAHCRCGDVBWCTBBDZBXAPBWABDRCSCFD9DWAUAXBUALBSCTBYC9DUALDZCCBQBJDUCXCZAQBTBRBJDBDGCDDICGDBCNBCDLBMBFDKDACMDDCKDMDKDDDUAVCVCYBDDCBACWCBDHCBDBBKDXCIDZBADWBOBQBQCND9BECYAPAEDVA9BGCLDICNDCDVASBPC'
-    };
-
-    let txInDB = {
-        transaction_id: '',
-        address: '',
-        message: ''
-    };
-
-    Transactions.findOne({
-        where: {
-            transaction_id: txFromWebNode.transaction_id
-        }
-    }).then(result => {
-        txInDB.transaction_id = result.get('transaction_id');
-        txInDB.address = result.get('address');
-        txInDB.message = result.get('message');
-        check_tangle_for_work(txInDB);
-    });
-
-    return;
-};
-
-function check_tangle_for_work(txInDB) {
-
-    let searchValues = {
-        addresses: [txInDB.address]
-    };
-
-    console.log(searchValues);
-
-    iota.api.findTransactionObjects(searchValues, function(result, result2) {
-        console.log('in findTransactionObjects callback');
-        console.log(result);
-        console.log(result2);
-    })
-}
-
-exports.confirm_work = confirm_work;
 
 
 function connect(){
@@ -213,11 +177,12 @@ function connect(){
   return con;
 }
 
+//use this in the functions above
 function getWebnodeAddresses(){
   var con2 = connect();
 
   //add transaction and get txid
-  var sql = "SELECT * FROM testdb.peer_ids;";
+  var sql = "SELECT * FROM default.PeerIds;";
   var webnode_array = [];
   con2.query( sql, function(err, result){
     //get txid

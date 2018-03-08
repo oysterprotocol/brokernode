@@ -9,8 +9,8 @@ module.exports = function (app) {
         .post(exchangeController.add_peer_id);
     app.route('/startTransaction')
         .post(exchangeController.start_transaction);
-    app.route('/selectNeed')
-        .post(exchangeController.need_selected);
+    app.route('/selectItem')
+        .post(exchangeController.item_selected);
     app.route('/confirmWork')
         .post(exchangeController.confirm_work);
 };

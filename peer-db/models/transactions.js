@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
             primaryKey: true,
         },
         need_requested: DataTypes.STRING,
+        item_selected_index:  DataTypes.INTEGER,
         address: DataTypes.STRING,
         message: DataTypes.TEXT('medium'),
         transaction_status: {
