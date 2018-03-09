@@ -43,6 +43,8 @@ exports.start_transaction = function(req, res) {
     //get txid
 
 
+	console.log(err);
+	console.log(result);
     tid = result.insertId;
 
     console.log("Created transaction with id ", tid);
