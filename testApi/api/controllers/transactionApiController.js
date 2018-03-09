@@ -142,17 +142,33 @@ exports.report_work_finished = function(req, res) {
 			//this is the need requested  LATER WE WILL SWITCH TO GET THE CUSTOMER'S LIST BASED ON ITEM TYPE.
 		    var need_type = result[0].need_requested;
 		    var item_selected_index = result[0].item_selected_index;
-//		    
+		    var webnode_array = [];
 //		    items = null;
 //		    
 //		    //TODO:  Add other item types, for now we can sell other webnode addresses
 //		    //this means that each time someone logs in everyone else can purchase their items.
-		    switch(need_type){
-		    	case "webnode_address":
-		    		var items = getWebnodeAddresses();
-		    }
+		    //switch(need_type){
+		    	//case "webnode_address":
+		    		  var connection = connect();
+
+		    		  var sql = "SELECT * FROM default.PeerIds;";
+		    		  
+		    		  var webnode_array = [];
+		    		  
+		    		  connection.query( sql, function(err, result){
+		    		  
+		    		    result.forEach(function(element) {
+		    		       webnode_array.push(element.peer_id);
+		    		    });
+		    		    
+		    		    //return(webnode_array);
+		    		    var item = items[item_selected_index];
+		    			res.send(item);
+		    		    
+		    		  });
+		    //}
 //		      
-		    var item = items[item_selected_index];
+		    
 //		    
 //		    
 //		    var update_transaction_sql = "UPDATE default.Transactions SET transaction_status  = \"TRANSACTION_COMPLETE\" WHERE transaction_id = "+txid+";"
@@ -170,7 +186,7 @@ exports.report_work_finished = function(req, res) {
 //		      
 //		    });
 		  
-		  res.send(item);
+
 		});
 	}
 
