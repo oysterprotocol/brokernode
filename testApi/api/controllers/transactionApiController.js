@@ -131,7 +131,7 @@ exports.report_work_finished = function(req, res) {
 //	  
 	  var con = connect();
 //
-	  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
+	  var sql = "SELECT * FROM default.Transactions WHERE transaction_id =\""+ txid + "\";";
 //	  
 //	
 	  con.query( sql, function(err, result){
