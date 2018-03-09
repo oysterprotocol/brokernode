@@ -100,22 +100,22 @@ exports.item_selected = function(req, res) {
   //console.log(webnodes);
   console.log("here");
 
-  con.query( sql, function(err, result){
-    
-   
-    var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \""+ ind + "\" WHERE transaction_id = "+txid+";"
-    
-    var another_connection = connect();
-    
-    another_connection.query(update_transaction_sql, function(err, result){
-    	
-    	console.log("Purchaser has selected an item.  The transaction has been updated.");
-    	
-    	//TODO: GET SOME WORK FROM THE DATA MAP. 
-    	res.send({ message: 'somemessage', address: 'testaddress'});
-    	});
-      
-    });
+//  con.query( sql, function(err, result){
+//    
+//   
+//    var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \""+ ind + "\" WHERE transaction_id = "+txid+";"
+//    
+//    var another_connection = connect();
+//    
+//    another_connection.query(update_transaction_sql, function(err, result){
+//    	
+//    	console.log("Purchaser has selected an item.  The transaction has been updated.");
+//    	
+//    	//TODO: GET SOME WORK FROM THE DATA MAP. 
+//    	res.send({ message: 'somemessage', address: 'testaddress'});
+//    	});
+//      
+//    });
 
 };
 
