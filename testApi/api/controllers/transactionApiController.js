@@ -47,7 +47,7 @@ exports.start_transaction = function(req, res) {
 
 	console.log(err);
 	console.log(result);
-    tid = result.insertId;
+    tid = id;
 
     console.log("Created transaction with id ", tid);
 
