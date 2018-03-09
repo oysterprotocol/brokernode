@@ -88,12 +88,12 @@ exports.start_transaction = function(req, res) {
 exports.item_selected = function(req, res) {
 
   //look up user in row
-  var txid = req.query.txid;
-  var ind = req.query.itemIndex;
+  //var txid = req.query.txid;
+  //var ind = req.query.itemIndex;
 
-  var con = connect();
+  //var con = connect();
 
-  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
+ // var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
   
   //var webnodes = getWebnodeAddresses();
 
