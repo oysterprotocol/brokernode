@@ -167,8 +167,8 @@ exports.report_work_finished = function(req, res) {
 //		    });
 		  
 		  res.send(item);
-	});
-
+		});
+	}
 
 
 function connect(){
