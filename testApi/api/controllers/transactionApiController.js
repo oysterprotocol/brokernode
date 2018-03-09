@@ -107,7 +107,7 @@ exports.item_selected = function(req, res) {
     
     var another_connection = connect();
     
-    another.connection.query(update_transaction_sql, function(err, result){
+    another_connection.query(update_transaction_sql, function(err, result){
     	
     	console.log("Purchaser has selected an item.  The transaction has been updated.");
     	
