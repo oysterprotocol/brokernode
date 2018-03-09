@@ -156,7 +156,7 @@ exports.report_work_finished = function(req, res) {
 		    var another_connection = connect();
 		    
 		    //clunky programming,refactor into some sort of await thing.
-		    another.connection.query(update_transaction_sql, function(err, result){
+		    another_connection.query(update_transaction_sql, function(err, result){
 		    	
 		    	console.log("Purchaser has finished work.  The item is being sent.");
 		    	
