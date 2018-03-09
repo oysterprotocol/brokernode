@@ -107,7 +107,7 @@ exports.item_selected = function(req, res) {
   con.query( sql, function(err, result){
     
    
-    var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \""+ ind + "\" WHERE transaction_id = "+txid+";"
+    var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \""+ ind + "\" WHERE transaction_id = \""+txid+"\";"
     
     var another_connection = connect();
     
