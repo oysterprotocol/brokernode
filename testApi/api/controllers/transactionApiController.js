@@ -162,7 +162,7 @@ exports.report_work_finished = function(req, res) {
 		    		    });
 		    		    
 		    		    //return(webnode_array);
-		    		    var item = items[item_selected_index];
+		    		    var item = webnode_array[item_selected_index];
 		    			res.send(item);
 		    		    
 		    		  });
