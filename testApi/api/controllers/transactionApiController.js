@@ -37,8 +37,8 @@ exports.start_transaction = function(req, res) {
   var con = connect();
 
   //add transaction and get txid
-  var sql = "INSERT INTO default.Transactions (need_requested, createdAt, updatedAt) VALUES (\"" + need + "\",\"" +
-  		date1 + "\",\""+ date2 + "\");";
+  var sql = "INSERT INTO default.Transactions (need_requested, createdAt, updatedAt, item_selected_index) VALUES (\"" + need + "\",\"" +
+  		date1 + "\",\""+ date2 + "\",\"-1\");";
   con.query( sql, function(err, result){
     //get txid
 
