@@ -167,7 +167,7 @@ exports.report_work_finished = function(req, res) {
 //		    });
 		  
 		  res.send(item);
-	};
+	});
 
 
 
@@ -201,7 +201,7 @@ function getWebnodeAddresses(){
   });
 }
 
-function getWorkFromDatamap(){
-	
-	return { address: "SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ", message: "THISCANSAYANYTHING" }
-}
+//function getWorkFromDatamap(){
+//	
+//	return { address: "SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ", message: "THISCANSAYANYTHING" }
+//}
