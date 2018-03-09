@@ -36,8 +36,10 @@ exports.start_transaction = function(req, res) {
   var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
   var con = connect();
 
+  const uuidv4 = require('uuid/v4');
+  var id = uuidv4();
   //add transaction and get txid
-  var sql = "INSERT INTO default.Transactions (need_requested, createdAt, updatedAt, item_selected_index) VALUES (\"" + need + "\",\"" +
+  var sql = "INSERT INTO default.Transactions (transaction_id, need_requested, createdAt, updatedAt, item_selected_index) VALUES (\""+id+"\",\"" + need + "\",\"" +
   		date1 + "\",\""+ date2 + "\",\"-1\");";
   con.query( sql, function(err, result){
     //get txid
