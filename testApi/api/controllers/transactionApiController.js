@@ -123,32 +123,32 @@ exports.report_work_finished = function(req, res) {
 
 	  //TODO Confirm work is done.
 	
-//	  var txid = req.query.txid;
+	  var txid = req.query.txid;
 //	  
-//	  var con = connect();
+	  var con = connect();
 //
-//	  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
+	  var sql = "SELECT * FROM default.Transactions WHERE id =\""+ txid + "\";";
 //	  
 //	
-//	  con.query( sql, function(err, result){
+	  con.query( sql, function(err, result){
 		    
 		    //we were dealing with the index of the need.  I want to change it so the web node passes the hash rather than
 		    //index though that also requires additional cpu cycles.
 		 
 			//this is the need requested  LATER WE WILL SWITCH TO GET THE CUSTOMER'S LIST BASED ON ITEM TYPE.
-//		    var need_type = result[0].need_requested;
-//		    var item_selected_index = result[0].item_selected_index;
+		    var need_type = result[0].need_requested;
+		    var item_selected_index = result[0].item_selected_index;
 //		    
 //		    items = null;
 //		    
 //		    //TODO:  Add other item types, for now we can sell other webnode addresses
 //		    //this means that each time someone logs in everyone else can purchase their items.
-//		    switch(need_type){
-//		    	case "webnode_address":
-//		    		var items = getWebnodeAddresses();
-//		    }
+		    switch(need_type){
+		    	case "webnode_address":
+		    		var items = getWebnodeAddresses();
+		    }
 //		      
-//		    var item = items[item_selected_index];
+		    var item = items[item_selected_index];
 //		    
 //		    
 //		    var update_transaction_sql = "UPDATE default.Transactions SET transaction_status  = \"TRANSACTION_COMPLETE\" WHERE transaction_id = "+txid+";"
@@ -166,7 +166,7 @@ exports.report_work_finished = function(req, res) {
 //		      
 //		    });
 		  
-		  res.send("THISISWHEREIWOULDRETURNANITEM");
+		  res.send(item);
 	};
 
 
