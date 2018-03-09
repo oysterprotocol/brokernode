@@ -12,5 +12,5 @@ module.exports = function (app) {
     app.route('/selectItem')
         .post(exchangeController.item_selected);
     app.route('/confirmWork')
-        .post(exchangeController.confirm_work);
+        .post(exchangeController.report_work_finished);
 };
