@@ -100,6 +100,7 @@ exports.item_selected = function(req, res) {
   //console.log(webnodes);
   console.log("here");
 
+  res.send("hmm");
 //  con.query( sql, function(err, result){
 //    
 //   
