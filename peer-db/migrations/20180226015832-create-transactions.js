@@ -14,7 +14,7 @@ module.exports = {
             },
             item_selected_index: {
             	type: Sequelize.INTEGER
-            }
+            },
             address: {
                 type: Sequelize.STRING
             },
