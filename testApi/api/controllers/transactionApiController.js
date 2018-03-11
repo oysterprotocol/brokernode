@@ -1,6 +1,6 @@
 //refactor later
 const IOTA = require('iota.lib.js');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize('default', 'root', 'root', {
     host: 'localhost',
