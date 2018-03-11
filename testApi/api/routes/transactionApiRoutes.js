@@ -3,7 +3,7 @@
 module.exports = function (app) {
 
 
-    var exchangeController = require('../controllers/todoListController');
+    var exchangeController = require('../controllers/transactionApiController');
 
     app.route('/givePeerId')
         .post(exchangeController.add_peer_id);
