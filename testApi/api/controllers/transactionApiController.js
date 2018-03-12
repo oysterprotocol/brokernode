@@ -10,6 +10,10 @@ const sequelize = new Sequelize('default', 'root', 'root', {
         timestamps: true
     },
 });
+const Analytics = require('analytics-node');
+const analytics = new Analytics(process.env.SEGMENT_WRITE_KEY, { flushAt: 1 });
+//flushAt means sending a request every 1 message
+//we can change this
 
 const iota = new IOTA({
     'provider': 'http://localhost:14265'
@@ -32,6 +36,15 @@ exports.add_peer_id = function (req, res) {
     var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
     var id = uuidv4();
+
+    analytics.track({
+        userId: req.headers.host.split(":")[0],
+        event: 'add_peer_id',
+        properties: {
+            request_origin: req.headers.origin,
+            peer_id: peer_id,
+        }
+    });
 
     //add peer sql
     var sql = "INSERT INTO default.PeerIds (id, peer_id, createdAt, updatedAt) VALUES (\"" + id + "\",\"" + peer_id + "\",\"" +
@@ -58,6 +71,7 @@ exports.start_transaction = function (req, res) {
     //add transaction and get txid
     var sql = "INSERT INTO default.Transactions (transaction_id, need_requested, createdAt, updatedAt, item_selected_index) VALUES (\"" + id + "\",\"" + need + "\",\"" +
         date1 + "\",\"" + date2 + "\",\"-1\");";
+
     con.query(sql, function (err, result) {
         //get txid
 
@@ -92,6 +106,17 @@ exports.start_transaction = function (req, res) {
             console.log(webnode_array);
             //  console.log(result.insertId.toString());
 
+            analytics.track({
+                userId: req.headers.host.split(":")[0],
+                event: 'start_transaction',
+                properties: {
+                    request_origin: req.headers.origin,
+                    need: need,
+                    tx_id: tid,
+                    webnode_array: webnode_array
+                }
+            });
+
             res.send({txid: tid, items: webnode_array});
             //return webnode_array;
         });
@@ -100,8 +125,6 @@ exports.start_transaction = function (req, res) {
         //console.log(possibleWebnodes);
 
     });
-
-
 };
 
 
@@ -133,6 +156,22 @@ exports.item_selected = function (req, res) {
 
             iota.api.getTransactionsToApprove(4, undefined, function (error, result) {
                 if (error === undefined) {
+
+                    analytics.track({
+                        userId: req.headers.host.split(":")[0],
+                        event: 'item_selected',
+                        properties: {
+                            message: 'THISCANSAYANYTHING',
+                            address: 'SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ',
+                            trunkTransaction: result.trunkTransaction,
+                            branchTransaction: result.branchTransaction,
+                            broadcastingNodes: ['This is not done yet'],
+                            request_origin: req.headers.origin,
+                            tx_id: txid,
+                            item_index: ind,
+                        }
+                    });
+
                     //TODO: GET SOME WORK FROM THE DATA MAP.
                     res.send({
                         message: 'THISCANSAYANYTHING',
@@ -191,6 +230,19 @@ exports.report_work_finished = function (req, res) {
 
             //return(webnode_array);
             var item = webnode_array[item_selected_index];
+
+            analytics.track({
+                userId: req.headers.host.split(":")[0],
+                event: 'report_work_finished',
+                properties: {
+                    request_origin: req.headers.origin,
+                    tx_id: txid,
+                    item_index: item_selected_index,
+                    need: need_type,
+                    item: item
+                }
+            });
+
             res.send(item);
 
         });
@@ -216,7 +268,7 @@ exports.report_work_finished = function (req, res) {
 
 
     });
-}
+};
 
 
 function connect() {
@@ -242,6 +294,15 @@ function getWebnodeAddresses() {
 
         result.forEach(function (element) {
             webnode_array.push(element.peer_id);
+        });
+
+        analytics.track({
+            userId: req.headers.host.split(":")[0],
+            event: 'getWebnodeAddresses',
+            properties: {
+                request_origin: req.headers.origin,
+                webnode_array: webnode_array
+            }
         });
 
         return (webnode_array);
