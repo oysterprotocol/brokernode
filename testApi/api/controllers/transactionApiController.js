@@ -10,8 +10,9 @@ const sequelize = new Sequelize('default', 'root', 'root', {
         timestamps: true
     },
 });
+const Raven = require('raven');
 const Analytics = require('analytics-node');
-const analytics = new Analytics(process.env.SEGMENT_WRITE_KEY, { flushAt: 1 });
+const analytics = new Analytics(process.env.SEGMENT_WRITE_KEY, {flushAt: 1});
 //flushAt means sending a request every 1 message
 //we can change this
 
@@ -19,62 +20,75 @@ const iota = new IOTA({
     'provider': 'http://localhost:14265'
 });
 
+Raven.config(
+    process.env.SENTRY_DSN
+).install();
+
 const Transactions = require('../../../peer-db/models/transactions.js')(sequelize, Sequelize);
 
 //API CALL 1:  ADD A PEER ID.
 exports.add_peer_id = function (req, res) {
 
     //get peer id
-    var peer_id = req.body.peerid;
+    let peer_id = req.body.peerid;
 
     //move into DB object
-    var con = connect();
+    let con = connect();
 
     //the way the table is set up we are required to manually add the timestamps.
     //laravel adds them automatically.  Currently not using.
-    var date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    let date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    let date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
 
-    var id = uuidv4();
-
-    analytics.track({
-        userId: req.headers.host.split(":")[0],
-        event: 'add_peer_id',
-        properties: {
-            request_origin: req.headers.origin,
-            peer_id: peer_id,
-        }
-    });
+    let id = uuidv4();
 
     //add peer sql
-    var sql = "INSERT INTO default.PeerIds (id, peer_id, createdAt, updatedAt) VALUES (\"" + id + "\",\"" + peer_id + "\",\"" +
+    let sql = "INSERT INTO default.PeerIds (id, peer_id, createdAt, updatedAt) VALUES (\"" + id + "\",\"" + peer_id + "\",\"" +
         date1 + "\",\"" + date2 + "\");";
     con.query(sql, function (err, result) {
+
+        if (err) {
+            Raven.captureException(err);
+        }
+
         console.log(err);
         console.log("Added new peer id.");
+
+        analytics.track({
+            userId: req.headers.host.split(":")[0],
+            event: 'add_peer_id',
+            properties: {
+                request_origin: req.headers.origin,
+                peer_id: peer_id,
+            }
+        });
+
         res.send("accepted");
     });
 };
 
-var tid = -1;
+let tid = -1;
 
 //API CALL 2:  REQUEST TO START A TRANSACTION
 exports.start_transaction = function (req, res) {
-    var need = req.body.need_requested;
+    let need = req.body.need_requested;
 
     //FOR NOW WE JUST DO WEBNODES, SO WE GET THE LIST OF PEER IDS HERE.
-    var date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    var date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    var con = connect();
+    let date1 = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    let date2 = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    let con = connect();
 
-    var id = uuidv4();
+    let id = uuidv4();
     //add transaction and get txid
-    var sql = "INSERT INTO default.Transactions (transaction_id, need_requested, createdAt, updatedAt, item_selected_index) VALUES (\"" + id + "\",\"" + need + "\",\"" +
+    let sql = "INSERT INTO default.Transactions (transaction_id, need_requested, createdAt, updatedAt, item_selected_index) VALUES (\"" + id + "\",\"" + need + "\",\"" +
         date1 + "\",\"" + date2 + "\",\"-1\");";
 
     con.query(sql, function (err, result) {
         //get txid
 
+        if (err) {
+            Raven.captureException(err);
+        }
 
         console.log(err);
         console.log(result);
@@ -83,7 +97,7 @@ exports.start_transaction = function (req, res) {
         console.log("Created transaction with id ", tid);
 
         //get items
-        var con2 = connect();
+        let con2 = connect();
 
         //get list of peers to send  We are not hashing yet.
         //move this into the function outlined below
@@ -91,10 +105,15 @@ exports.start_transaction = function (req, res) {
         //to go through it again real fast after defining the parameters and return values for different api
         //calls
 
-        var sql = "SELECT * FROM default.PeerIds;";
-        var webnode_array = [];
+        let sql = "SELECT * FROM default.PeerIds;";
+        let webnode_array = [];
         con2.query(sql, function (err, result) {
             //get txid
+
+            if (err) {
+                Raven.captureException(err);
+            }
+
             console.log("listing webnodes ");
 
             console.log(result);
@@ -118,12 +137,8 @@ exports.start_transaction = function (req, res) {
             });
 
             res.send({txid: tid, items: webnode_array});
-            //return webnode_array;
         });
         console.log("possibleWebnodes");
-
-        //console.log(possibleWebnodes);
-
     });
 };
 
@@ -132,30 +147,35 @@ exports.start_transaction = function (req, res) {
 exports.item_selected = function (req, res) {
 
     //look up user in row
-    var txid = req.body.txid;
-    var ind = req.body.itemIndex;
+    let txid = req.body.txid;
+    let ind = req.body.itemIndex;
 
-    var con = connect();
+    let con = connect();
 
-    var sql = "SELECT * FROM default.Transactions WHERE id =\"" + txid + "\";";
+    let sql = "SELECT * FROM default.Transactions WHERE transaction_id =\"" + txid + "\";";
 
-    //var webnodes = getWebnodeAddresses();
-
-    //console.log(webnodes);
-    console.log("here");
+    //let webnodes = getWebnodeAddresses();
 
     con.query(sql, function (err, result) {
 
-        var update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \"" + ind + "\" WHERE transaction_id = \"" + txid + "\";";
+        if (err) {
+            Raven.captureException(err);
+        }
 
-        var another_connection = connect();
+        let update_transaction_sql = "UPDATE default.Transactions SET item_selected_index = \"" + ind + "\" WHERE transaction_id = \"" + txid + "\";";
+
+        let another_connection = connect();
 
         another_connection.query(update_transaction_sql, function (err, result) {
 
+            if (err) {
+                Raven.captureException(err);
+            }
+
             console.log("Purchaser has selected an item.  The transaction has been updated.");
 
-            iota.api.getTransactionsToApprove(4, undefined, function (error, result) {
-                if (error === undefined) {
+            iota.api.getTransactionsToApprove(4, undefined, function (err, result) {
+                if (err === undefined) {
 
                     analytics.track({
                         userId: req.headers.host.split(":")[0],
@@ -166,11 +186,16 @@ exports.item_selected = function (req, res) {
                             trunkTransaction: result.trunkTransaction,
                             branchTransaction: result.branchTransaction,
                             broadcastingNodes: ['This is not done yet'],
+                            /*TODO replace this with real hooknodes*/
                             request_origin: req.headers.origin,
                             tx_id: txid,
                             item_index: ind,
                         }
                     });
+
+                    /*TODO SUGGESTION:  Make one object with everything in it (address, messsage, broadcasting nodes,
+                    etc., and pass that object to both analytics and res.send
+                     */
 
                     //TODO: GET SOME WORK FROM THE DATA MAP.
                     res.send({
@@ -182,6 +207,8 @@ exports.item_selected = function (req, res) {
 
                         //Return the broadcasting nodes as well ^
                     });
+                } else {
+                    Raven.captureException(err);
                 }
             });
         });
@@ -194,42 +221,48 @@ exports.report_work_finished = function (req, res) {
 
     //TODO Confirm work is done.
 
-    var txid = req.body.txid;
+    let txid = req.body.txid;
 //	  
-    var con = connect();
+    let con = connect();
 //
-    var sql = "SELECT * FROM default.Transactions WHERE transaction_id =\"" + txid + "\";";
+    let sql = "SELECT * FROM default.Transactions WHERE transaction_id =\"" + txid + "\";";
 //	  
 //	
     con.query(sql, function (err, result) {
+
+        if (err) {
+            Raven.captureException(err);
+        }
 
         //we were dealing with the index of the need.  I want to change it so the web node passes the hash rather than
         //index though that also requires additional cpu cycles.
 
         //this is the need requested  LATER WE WILL SWITCH TO GET THE CUSTOMER'S LIST BASED ON ITEM TYPE.
-        var need_type = result[0].need_requested;
-        var item_selected_index = result[0].item_selected_index;
-        var webnode_array = [];
+        let need_type = result[0].need_requested;
+        let item_selected_index = result[0].item_selected_index;
+        let webnode_array = [];
 //		    items = null;
 //		    
 //		    //TODO:  Add other item types, for now we can sell other webnode addresses
 //		    //this means that each time someone logs in everyone else can purchase their items.
         //switch(need_type){
         //case "webnode_address":
-        var connection = connect();
+        let connection = connect();
 
-        var sql = "SELECT * FROM default.PeerIds;";
-
-        var webnode_array = [];
+        let sql = "SELECT * FROM default.PeerIds;";
 
         connection.query(sql, function (err, result) {
+
+            if (err) {
+                Raven.captureException(err);
+            }
 
             result.forEach(function (element) {
                 webnode_array.push(element.peer_id);
             });
 
             //return(webnode_array);
-            var item = webnode_array[item_selected_index];
+            let item = webnode_array[item_selected_index];
 
             analytics.track({
                 userId: req.headers.host.split(":")[0],
@@ -251,9 +284,9 @@ exports.report_work_finished = function (req, res) {
 
 //		    
 //		    
-//		    var update_transaction_sql = "UPDATE default.Transactions SET transaction_status  = \"TRANSACTION_COMPLETE\" WHERE transaction_id = "+txid+";"
+//		    let update_transaction_sql = "UPDATE default.Transactions SET transaction_status  = \"TRANSACTION_COMPLETE\" WHERE transaction_id = "+txid+";"
 //		    
-//		    var another_connection = connect();
+//		    let another_connection = connect();
 //		    
 //		    //clunky programming,refactor into some sort of await thing.
 //		    another_connection.query(update_transaction_sql, function(err, result){
@@ -272,7 +305,7 @@ exports.report_work_finished = function (req, res) {
 
 
 function connect() {
-    var con = mysql.createConnection({
+    let con = mysql.createConnection({
         host: "127.0.0.1",
         port: 3306,
         user: "root",
@@ -284,17 +317,21 @@ function connect() {
 }
 
 function getWebnodeAddresses() {
-    var connection = connect();
+    let connection = connect();
 
-    var sql = "SELECT * FROM default.PeerIds;";
+    let sql = "SELECT * FROM default.PeerIds;";
 
-    var webnode_array = [];
+    let webnode_array = [];
 
     connection.query(sql, function (err, result) {
 
         result.forEach(function (element) {
             webnode_array.push(element.peer_id);
         });
+
+        if (err) {
+            Raven.captureException(err);
+        }
 
         analytics.track({
             userId: req.headers.host.split(":")[0],
