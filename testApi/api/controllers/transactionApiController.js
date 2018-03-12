@@ -177,36 +177,27 @@ exports.item_selected = function (req, res) {
             iota.api.getTransactionsToApprove(4, undefined, function (err, result) {
                 if (err === undefined) {
 
+                    result.address = 'SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ';
+                    result.message = 'THISCANSAYANYTHING';
+                    result.broadcastingNodes = [
+                        '13.124.107.48',
+                        '35.183.23.179',
+                        '35.178.32.118',
+                        '54.168.83.160',
+                        '54.95.4.132'
+                    ];
+                    result.request_origin = req.headers.origin;
+                    result.tx_id = txid;
+                    result.item_index = ind;
+
                     analytics.track({
                         userId: req.headers.host.split(":")[0],
                         event: 'item_selected',
-                        properties: {
-                            message: 'THISCANSAYANYTHING',
-                            address: 'SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ',
-                            trunkTransaction: result.trunkTransaction,
-                            branchTransaction: result.branchTransaction,
-                            broadcastingNodes: ['This is not done yet'],
-                            /*TODO replace this with real hooknodes*/
-                            request_origin: req.headers.origin,
-                            tx_id: txid,
-                            item_index: ind,
-                        }
+                        properties: result
                     });
-
-                    /*TODO SUGGESTION:  Make one object with everything in it (address, messsage, broadcasting nodes,
-                    etc., and pass that object to both analytics and res.send
-                     */
 
                     //TODO: GET SOME WORK FROM THE DATA MAP.
-                    res.send({
-                        message: 'THISCANSAYANYTHING',
-                        address: 'SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ',
-                        trunkTransaction: result.trunkTransaction,
-                        branchTransaction: result.branchTransaction,
-                        broadcastingNodes: ['This is not done yet']
-
-                        //Return the broadcasting nodes as well ^
-                    });
+                    res.send(result);
                 } else {
                     Raven.captureException(err);
                 }
