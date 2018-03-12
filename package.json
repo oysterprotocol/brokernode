@@ -14,9 +14,11 @@
     "undoAllSeeders": "cd peer-db && ../node_modules/.bin/sequelize db:seed:undo:all"
   },
   "dependencies": {
+    "analytics-node": "^3.2.0",
     "body-parser": "^1.18.2",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
+    "dotenv": "^5.0.1",
     "express": "~4.15.5",
     "iota.lib.js": "^0.4.7",
     "mariasql": "^0.2.6",
@@ -24,6 +26,7 @@
     "morgan": "~1.9.0",
     "mysql2": "^1.5.2",
     "pug": "2.0.0-beta11",
+    "raven": "^2.4.2",
     "sequelize": "^4.34.0",
     "sequelize-cli": "^4.0.0",
     "serve-favicon": "~2.4.5",
