@@ -4,15 +4,22 @@ module.exports = {
         return queryInterface.createTable('Transactions', {
             transaction_id: {
                 allowNull: false,
-                autoIncrement: true,
                 primaryKey: true,
-                type: Sequelize.INTEGER
+                type: Sequelize.UUID,
+                defaultValue: Sequelize.UUIDV4,
+                unique: true
             },
             need_requested: {
                 type: Sequelize.STRING
             },
-            work: {
+            item_selected_index: {
+            	type: Sequelize.INTEGER
+            },
+            address: {
                 type: Sequelize.STRING
+            },
+            message: {
+                type: Sequelize.TEXT('medium')
             },
             transaction_status: {
                 type: Sequelize.ENUM,
@@ -27,11 +34,11 @@ module.exports = {
 
             // Timestamps
             createdAt: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.DATE
             },
             updatedAt: {
-                allowNull: false,
+                allowNull: true,
                 type: Sequelize.DATE
             }
         });

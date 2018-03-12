@@ -4,6 +4,7 @@
   "description": "NodeJS and PHP code for the broker node.",
   "main": "index.js",
   "scripts": {
+    "start": "cd testApi && nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate",
     "undoLastMigration": "cd peer-db && ../node_modules/.bin/sequelize db:migrate:undo",
@@ -13,18 +14,20 @@
     "undoAllSeeders": "cd peer-db && ../node_modules/.bin/sequelize db:seed:undo:all"
   },
   "dependencies": {
-    "body-parsergit": "~1.18.2",
+    "body-parser": "^1.18.2",
     "cookie-parser": "~1.4.3",
     "debug": "~2.6.9",
     "express": "~4.15.5",
+    "iota.lib.js": "^0.4.7",
     "mariasql": "^0.2.6",
+    "mongoose": "^5.0.7",
     "morgan": "~1.9.0",
-    "pug": "2.0.0-beta11",
-    "serve-favicon": "~2.4.5",
-    "uuid": "^3.2.1",
     "mysql2": "^1.5.2",
+    "pug": "2.0.0-beta11",
     "sequelize": "^4.34.0",
-    "sequelize-cli": "^4.0.0"
+    "sequelize-cli": "^4.0.0",
+    "serve-favicon": "~2.4.5",
+    "uuid": "^3.2.1"
   },
   "devDependencies": {
     "nodemon": "^1.15.1"
