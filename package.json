@@ -4,7 +4,7 @@
   "description": "NodeJS and PHP code for the broker node.",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon ./testApi/server.js",
+    "start": "cd testApi && nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrations": "cd peer-db && ../node_modules/.bin/sequelize db:migrate",
     "undoLastMigration": "cd peer-db && ../node_modules/.bin/sequelize db:migrate:undo",
