@@ -1,0 +1,22 @@
+language: go
+
+go:
+  - 1.8.x
+
+env:
+  - GO_ENV=test
+
+services:
+  - postgresql
+
+before_script:
+  - psql -c 'create database brokernode_test;' -U postgres
+  - mkdir -p $TRAVIS_BUILD_DIR/public/assets
+
+go_import_path: github.com/oysterprotocol/brokernode
+
+install:
+  - go get github.com/gobuffalo/buffalo/buffalo
+  - go get $(go list ./... | grep -v /vendor/)
+
+script: buffalo test
