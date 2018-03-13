@@ -1,3 +1,0 @@
-[submodule "broker-node/laradock"]
-	path = broker-node/laradock
-	url = https://github.com/oysterprotocol/laradock

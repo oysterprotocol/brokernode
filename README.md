@@ -1,30 +1,34 @@
-Oyster Web Storage
-Broker Node README
+# Welcome to Buffalo!
 
-## Installation (Mac)
+Thank you for choosing Buffalo for your web development needs.
 
-Install PHP v7.0+ and composer using Homebrew (tutorial here: https://gist.github.com/shashankmehta/6ff13acd60f449eea6311cba4aae900a)
+## Database Setup
 
-    xcode-select --install
-    brew update
-    brew tap homebrew/dupes
-    brew tap homebrew/php
-    brew install php70
-    brew install mcrypt php70-mcrypt
-    brew install composer
-    export PATH="$(brew --prefix homebrew/php/php70)/bin:$PATH"
-    php --version
+It looks like you chose to set up your application using a postgres database! Fantastic!
 
-Install Docker
-https://docs.docker.com/docker-for-mac/
+The first thing you need to do is open up the "database.yml" file and edit it to use the correct usernames, passwords, hosts, etc... that are appropriate for your environment.
 
-Go to the broker-node subfolder, install the dependencies, run migrations on the database, and then start the server
+You will also need to make sure that **you** start/install the database of your choice. Buffalo **won't** install and start postgres for you.
 
-    composer install // installs dependencies
-    php artisan migrate // run database migrations
+### Create Your Databases
 
-*Note: for me I had to update DB_HOST=127.0.0.1 in broker-node/.env to run the migration command successfully. Change it back to DB_HOST=mariadb after you do this.*
+Ok, so you've edited the "database.yml" file and started postgres, now Buffalo can create the databases in that file for you:
 
-    composer start // start the server
+	$ buffalo db create -a
+## Starting the Application
 
-You can now make requests to the server at: http://localhost:8000
+Buffalo ships with a command that will watch your application and automatically rebuild the Go binary and any assets for you. To do that run the "buffalo dev" command:
+
+	$ buffalo dev
+
+If you point your browser to [http://127.0.0.1:3000](http://127.0.0.1:3000) you should see a "Welcome to Buffalo!" page.
+
+**Congratulations!** You now have your Buffalo application up and running.
+
+## What Next?
+
+We recommend you heading over to [http://gobuffalo.io](http://gobuffalo.io) and reviewing all of the great documentation there.
+
+Good luck!
+
+[Powered by Buffalo](http://gobuffalo.io)
