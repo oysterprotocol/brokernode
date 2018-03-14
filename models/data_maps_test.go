@@ -5,8 +5,6 @@ import (
 )
 
 func (ms *ModelSuite) Test_BuilDataMaps() {
-	ms.True(true)
-
 	genHash := "genHashTest"
 	fileBytesCount := 9000
 
