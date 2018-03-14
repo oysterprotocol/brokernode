@@ -1,5 +1,4 @@
 create_table("data_maps", func(t) {
-	t.Column("id", "string", {"primary": true, "default_raw": "uuid_generate_v4()"})
 	t.Column("genesis_hash", "string", {})
 	t.Column("chunk_idx", "integer", {})
 	t.Column("hash", "string", {})

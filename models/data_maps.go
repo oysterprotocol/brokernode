@@ -1,7 +1,10 @@
 package models
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -9,8 +12,10 @@ import (
 	"github.com/gobuffalo/validate/validators"
 )
 
+const fileBytesChunkSize = float64(2817)
+
 type DataMap struct {
-	ID          string    `json:"id" db:"id"`
+	ID          int       `json:"id" db:"id"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 	Status      int       `json:"status" db:"status"`
@@ -43,13 +48,9 @@ func (d DataMaps) String() string {
 // This method is not required and may be deleted.
 func (d *DataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: d.HooknodeIp, Name: "HooknodeIp"},
-		&validators.StringIsPresent{Field: d.Message, Name: "Message"},
-		&validators.StringIsPresent{Field: d.TrunkTx, Name: "TrunkTx"},
-		&validators.StringIsPresent{Field: d.ID, Name: "ID"},
 		&validators.StringIsPresent{Field: d.GenesisHash, Name: "GenesisHash"},
+		&validators.IntIsGreaterThan{Field: d.ChunkIdx, Name: "ChunkIdx", Compared: -1},
 		&validators.StringIsPresent{Field: d.Hash, Name: "Hash"},
-		&validators.StringIsPresent{Field: d.Address, Name: "Address"},
 	), nil
 }
 
@@ -63,4 +64,30 @@ func (d *DataMap) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
 // This method is not required and may be deleted.
 func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
+}
+
+// BuildDataMaps builds the datamap and inserts them into the DB.
+func BuildDataMaps(genHash string, fileBytesCount int) (err error) {
+	fileChunksCount := int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
+
+	currHash := genHash
+	for i := 0; i <= fileChunksCount; i++ {
+		// TODO: Batch these inserts.
+		_, err = DB.ValidateAndCreate(&DataMap{
+			GenesisHash: genHash,
+			ChunkIdx:    i,
+			Hash:        currHash,
+		})
+
+		currHash = hashString(currHash)
+	}
+
+	return
+}
+
+func hashString(str string) (h string) {
+	shaHash := sha256.New()
+	shaHash.Write([]byte(str))
+	h = hex.EncodeToString(shaHash.Sum(nil))
+	return
 }
