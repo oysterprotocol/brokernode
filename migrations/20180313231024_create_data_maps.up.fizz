@@ -1,0 +1,14 @@
+create_table("data_maps", func(t) {
+	t.Column("id", "string", {"primary": true, "default_raw": "uuid_generate_v4()"})
+	t.Column("genesis_hash", "string", {})
+	t.Column("chunk_idx", "integer", {})
+	t.Column("hash", "string", {})
+	t.Column("status", "integer", {})
+	t.Column("hooknode_ip", "string", {"null": true})
+	t.Column("message", "text", {"null": true})
+	t.Column("trunk_tx", "string", {"null": true})
+	t.Column("branch_tx", "string", {"null": true})
+	t.Column("address", "string", {"null": true})
+})
+
+add_index("data_maps", ["genesis_hash", "chunk_idx"], {})
