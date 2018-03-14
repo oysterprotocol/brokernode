@@ -12,7 +12,6 @@ func (ms *ModelSuite) Test_BuilDataMaps() {
 
 	models.BuildDataMaps(genHash, fileBytesCount)
 
-	// []string([]string{"genHashTest", "a973bb9fbbbdb35ff0c918e2eb017ee599b9135382cf1ffabf4daf8247a42a64", "8ea51f148b6ca31e48825453290e9087dbbea5c58bcd13442f5b6610990b3290", "85b29c4787c5af60002584d9d985d69b1d4fe8022927803692ca323922bd3228"})
 	expectedHashes := []string{
 		"genHashTest",
 		"a973bb9fbbbdb35ff0c918e2eb017ee599b9135382cf1ffabf4daf8247a42a64",
