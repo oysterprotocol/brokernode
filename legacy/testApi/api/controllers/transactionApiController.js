@@ -136,7 +136,7 @@ exports.item_selected = function (req, res) {
                     //TODO: GET SOME WORK FROM THE DATA MAP.
                     res.send({
                         message: 'THISCANSAYANYTHING',
-                        address: 'SEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ',
+                        address: 'SSEWOZSDXOVIURQRBTBDLQXWIXOLEUXHYBGAVASVPZ9HBTYJJEWBR9PDTGMXZGKPTGSUDW9QLFPJHTIEQ',
                         trunkTransaction: result.trunkTransaction,
                         branchTransaction: result.branchTransaction,
                         broadcastingNodes: ['This is not done yet']
