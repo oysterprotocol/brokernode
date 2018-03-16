@@ -19,7 +19,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 	uSession := models.UploadSession{}
 	ms.DB.Where("genesis_hash = ?", genHash).First(&uSession)
 
-	ms.Equal(uSession.GenesisHash, genHash)
-	ms.Equal(uSession.FileSizeBytes, fileSizeBytes)
-	ms.Equal(uSession.Type, models.SessionTypeAlpha)
+	ms.Equal(genHash, uSession.GenesisHash)
+	ms.Equal(fileSizeBytes, uSession.FileSizeBytes)
+	ms.Equal(models.SessionTypeAlpha, uSession.Type)
 }

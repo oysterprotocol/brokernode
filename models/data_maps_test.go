@@ -23,6 +23,6 @@ func (ms *ModelSuite) Test_BuilDataMaps() {
 	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
 	for i, dMap := range dMaps {
-		ms.Equal(dMap.Hash, expectedHashes[i])
+		ms.Equal(expectedHashes[i], dMap.Hash)
 	}
 }
