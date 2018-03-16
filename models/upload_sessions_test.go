@@ -13,8 +13,9 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 		FileSizeBytes: fileSizeBytes,
 	}
 
-	err := u.StartUploadSession()
+	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
 	uSession := models.UploadSession{}
 	ms.DB.Where("genesis_hash = ?", genHash).First(&uSession)
