@@ -26,7 +26,7 @@ type uploadSessionCreateRes struct {
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
-	ParseReqBody(c.Request(), &req)
+	parseReqBody(c.Request(), &req)
 
 	// TODO: Handle PRL Payments
 	// TODO: Start session with beta.
