@@ -8,7 +8,8 @@ func (ms *ModelSuite) Test_BuilDataMaps() {
 	genHash := "genHashTest"
 	fileBytesCount := 9000
 
-	models.BuildDataMaps(genHash, fileBytesCount)
+	err := models.BuildDataMaps(genHash, fileBytesCount)
+	ms.Nil(err)
 
 	expectedHashes := []string{
 		"genHashTest",

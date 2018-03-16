@@ -1,0 +1,8 @@
+create_table("upload_sessions", func(t) {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("genesis_hash", "string", {})
+	t.Column("file_size_bytes", "integer", {})
+	t.Column("type", "integer", {})
+})
+
+add_index("upload_sessions", "genesis_hash", {"unique": true})
