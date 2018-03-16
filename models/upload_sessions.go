@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -65,16 +64,12 @@ func (u *UploadSession) ValidateUpdate(tx *pop.Connection) (*validate.Errors, er
 
 // StartUploadSession will generate dataMaps and save the session and dataMaps
 // to the DB.
-func (u *UploadSession) StartUploadSession() (err error) {
+func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
 	// Defaults to alpha session.
 	if u.Type != SessionTypeBeta {
 		u.Type = SessionTypeAlpha
 	}
-	vErr, err := DB.ValidateAndCreate(u)
-	if err != nil {
-		return
-	}
-	fmt.Println(vErr)
+	vErr, err = DB.ValidateAndCreate(u)
 
 	err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
 	return
