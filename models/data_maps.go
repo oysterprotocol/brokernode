@@ -67,13 +67,13 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileBytesCount int) (err error) {
+func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
 	fileChunksCount := int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
 
 	currHash := genHash
 	for i := 0; i <= fileChunksCount; i++ {
 		// TODO: Batch these inserts.
-		_, err = DB.ValidateAndCreate(&DataMap{
+		vErr, err = DB.ValidateAndCreate(&DataMap{
 			GenesisHash: genHash,
 			ChunkIdx:    i,
 			Hash:        currHash,

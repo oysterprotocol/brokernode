@@ -70,7 +70,10 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		u.Type = SessionTypeAlpha
 	}
 	vErr, err = DB.ValidateAndCreate(u)
+	if err != nil || len(vErr.Errors) > 0 {
+		return
+	}
 
-	err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
+	vErr, err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
 	return
 }
