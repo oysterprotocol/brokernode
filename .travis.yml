@@ -5,8 +5,19 @@ env:
 - GO_ENV=test
 services:
 - mysql
+addons:
+  apt:
+    sources:
+      - mysql-5.7-trusty
+    packages:
+      - mysql-server
+      - mysql-client
+      - mysql-common
+before_install:
+- sudo mysql -u root -e "use mysql; update user set authentication_string=PASSWORD('root') where User='root'; update user set plugin='mysql_native_password';FLUSH PRIVILEGES;"
+- sudo service mysql restart
+- mysql -u root -proot -e 'CREATE DATABASE IF NOT EXISTS brokernode_test;'
 before_script:
-- psql -c 'create database brokernode_test;' -U mysql
 - mkdir -p $TRAVIS_BUILD_DIR/public/assets
 go_import_path: github.com/oysterprotocol/brokernode
 install:
