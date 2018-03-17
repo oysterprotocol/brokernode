@@ -1,13 +1,13 @@
 development:
-  dialect: postgres
-  database: brokernode_development
-  user: postgres
-  password: postgres
-  host: 127.0.0.1
-  pool: 5
+  dialect: "mysql"
+  database: "brokernode_development"
+  host: "localhost"
+  port: "3306"
+  user: "root"
+  password: "root"
 
 test:
-  url: {{envOr "TEST_DATABASE_URL" "postgres://postgres:postgres@127.0.0.1:5432/brokernode_test?sslmode=disable"}}
+  url: {{envOr "TEST_DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_test?parseTime=true&multiStatements=true&readTimeout=1s"}}
 
 production:
-  url: {{envOr "DATABASE_URL" "postgres://postgres:postgres@127.0.0.1:5432/brokernode_production?sslmode=disable"}}
+  url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}
