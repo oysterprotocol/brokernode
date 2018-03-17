@@ -8,7 +8,9 @@ func (ms *ModelSuite) Test_BuilDataMaps() {
 	genHash := "genHashTest"
 	fileBytesCount := 9000
 
-	models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
 	expectedHashes := []string{
 		"genHashTest",
@@ -22,6 +24,6 @@ func (ms *ModelSuite) Test_BuilDataMaps() {
 	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
 	for i, dMap := range dMaps {
-		ms.Equal(dMap.Hash, expectedHashes[i])
+		ms.Equal(expectedHashes[i], dMap.Hash)
 	}
 }

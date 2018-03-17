@@ -24,6 +24,7 @@ func App() *buffalo.App {
 	if app == nil {
 		app = buffalo.New(buffalo.Options{
 			Env:          ENV,
+			LooseSlash:   true,
 			SessionStore: sessions.Null{},
 			PreWares: []buffalo.PreWare{
 				cors.Default().Handler,
@@ -49,6 +50,9 @@ func App() *buffalo.App {
 		app.Use(middleware.PopTransaction(models.DB))
 
 		app.GET("/", HomeHandler)
+
+		apiV2 := app.Group("/api/v2")
+		apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
 
 	}
 

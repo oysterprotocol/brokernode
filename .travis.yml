@@ -1,22 +1,19 @@
 language: go
-
 go:
-  - 1.8.x
-
+- 1.10.x
 env:
-  - GO_ENV=test
-
+- GO_ENV=test
 services:
-  - postgresql
-
+- mysql
 before_script:
-  - psql -c 'create database brokernode_test;' -U postgres
-  - mkdir -p $TRAVIS_BUILD_DIR/public/assets
-
+- psql -c 'create database brokernode_test;' -U mysql
+- mkdir -p $TRAVIS_BUILD_DIR/public/assets
 go_import_path: github.com/oysterprotocol/brokernode
-
 install:
-  - go get github.com/gobuffalo/buffalo/buffalo
-  - go get $(go list ./... | grep -v /vendor/)
-
+- go get -u github.com/gobuffalo/buffalo/buffalo
+- go get -u $(go list ./... | grep -v /vendor/)
+- go get -t ./...
 script: buffalo test
+notifications:
+  slack:
+    secure: mS3pPxC7VvODv5GWAcJjVrlpz8SjdjaD0oGEpwhZt4XTanjLh46yZXwvSHCES3U7b/4Ihy5cC8qeIaujOQrJjXynTtR8HBaAVQbUyAbZhMh/ZKkb/FQFkpBr1TKTTcanQA4ip+6SvobcdcLb9UfmXlOvNYJK3pYq/tb8IbYCVk6X1f+oZ19grJ9arJ+LmmJkb0QpEKluiXkfTtqrX4PEDZ5WQzX7XuK+Uv2JSmtSxtB5CgHoY9NG1EKiQ79491+m3HP6Mu7hTO+DUTI10yhnfSn8T8UvUDUOJl4ItdjBxCJGgmz8xE6dJkw+6AGcDd0nfZsMzKQuSR4eXhTDbkDFPMz2wOn4jc9reFLjPFYbkeMCDKbEPdBMyeazvyAK/V3wDIWtM5SRekqpf8F+07DN9c8f8v13FWYUkUgXAetYLJx8M2dJJzcuHDrdastFRrfbhcLsiEvJuV6MLFX3BqS5panvZTn7DCAUbZLmWigGUSRbwkkPAOmBx8a1dCEWkyU7AnOb1GGRVkcEYkJZO6+goLGKa/E86JBdUbpsZBqK9/JOM1BTD1sxaLFmAUWH4U3iNjNyehaEW0PeEzafJW5zSAVtGVX/j8EkXT7L8/XkWp+yQL0Cu8anMaha863b8lypBYOOcFZ3lggwfCzLE/f4vyuFMgrOES9E2tkgGMIcvfI=

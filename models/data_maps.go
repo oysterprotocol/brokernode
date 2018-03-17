@@ -16,15 +16,15 @@ const fileBytesChunkSize = float64(2817)
 
 type DataMap struct {
 	ID          int       `json:"id" db:"id"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 	Status      int       `json:"status" db:"status"`
-	HooknodeIp  string    `json:"hooknode_ip" db:"hooknode_ip"`
+	HooknodeIP  string    `json:"hooknodeIP" db:"hooknode_ip"`
 	Message     string    `json:"message" db:"message"`
-	TrunkTx     string    `json:"trunk_tx" db:"trunk_tx"`
-	BranchTx    string    `json:"branch_tx" db:"branch_tx"`
-	GenesisHash string    `json:"genesis_hash" db:"genesis_hash"`
-	ChunkIdx    int       `json:"chunk_idx" db:"chunk_idx"`
+	TrunkTx     string    `json:"trunkTx" db:"trunk_tx"`
+	BranchTx    string    `json:"branchTx" db:"branch_tx"`
+	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
+	ChunkIdx    int       `json:"chunkIdx" db:"chunk_idx"`
 	Hash        string    `json:"hash" db:"hash"`
 	Address     string    `json:"address" db:"address"`
 }
@@ -67,13 +67,13 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileBytesCount int) (err error) {
+func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
 	fileChunksCount := int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
 
 	currHash := genHash
 	for i := 0; i <= fileChunksCount; i++ {
 		// TODO: Batch these inserts.
-		_, err = DB.ValidateAndCreate(&DataMap{
+		vErr, err = DB.ValidateAndCreate(&DataMap{
 			GenesisHash: genHash,
 			ChunkIdx:    i,
 			Hash:        currHash,
