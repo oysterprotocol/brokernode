@@ -17,11 +17,12 @@ import (
 //}
 
 func (ms *ModelSuite) Test_ProcessUnassignedChunks() {
-//func (ms *ModelSuite) Test_ProcessUnassignedChunks(as *ActionSuite) {
-	genHash := "genHashTest"
+	genHash := "someGenHash"
 	fileBytesCount := 9000
 
-	models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
 
 	//fmt.Println(models.BuildDataMaps)
