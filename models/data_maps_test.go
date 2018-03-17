@@ -4,7 +4,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 )
 
-func (ms *ModelSuite) Test_BuilDataMaps() {
+func (ms *ModelSuite) Test_BuildDataMaps() {
 	genHash := "genHashTest"
 	fileBytesCount := 9000
 
