@@ -14,8 +14,7 @@ addons:
       - mysql-client
       - mysql-common
 before_install:
-- sudo mysql -e "use mysql; update user set authentication_string=PASSWORD('') where User='root'; update user set plugin='mysql_native_password';FLUSH PRIVILEGES;"
-- sudo service mysql restart
+- mysql -u root -proot
 - mysql -e 'CREATE DATABASE IF NOT EXISTS brokernode_test;'
 before_script:
 - mkdir -p $TRAVIS_BUILD_DIR/public/assets
