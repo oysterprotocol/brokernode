@@ -5,8 +5,9 @@ env:
 - GO_ENV=test
 services:
 - mysql
+before_install:
+- mysql -e 'CREATE DATABASE IF NOT EXISTS brokernode_test;'
 before_script:
-- psql -c 'create database brokernode_test;' -U mysql
 - mkdir -p $TRAVIS_BUILD_DIR/public/assets
 go_import_path: github.com/oysterprotocol/brokernode
 install:
