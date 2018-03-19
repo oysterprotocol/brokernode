@@ -1,50 +1,74 @@
 package jobs
 
 import (
-	"time"
 	"fmt"
-	//"errors"
 	"github.com/gobuffalo/pop"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"strconv"
 )
 
-func init() {
+var BundleSize = 10
+
+type ProcessChunksFunc func(dataMaps []models.DataMap)
+
+type ChunkProcessor struct {
+	processChunks ProcessChunksFunc
 }
 
-func handle(thresholdTime time.Time) {
-	tx, err := pop.Connect("development")
+func init() {
+	NewChunkProcessor(processChunks)
+}
+
+func NewChunkProcessor(processChunks ProcessChunksFunc) *ChunkProcessor {
+	return &ChunkProcessor{processChunks: processChunks}
+}
+
+func ProcessUnassignedChunks(processChunks ProcessChunksFunc) {
+
+	chunks, err := GetUnassignedChunks()
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+	} else {
+		processChunks(chunks)
+	}
+}
+
+func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
+
+	tx, err := pop.Connect("test")
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}
 
-	query := tx.Where("status = 'unassigned' AND updated_at >= ?", thresholdTime)
-	dataMaps := []models.DataMap{}
+	models.SetChunkStatuses()
+
+	//query := tx.Where("status = ? AND updated_at >= ?", strconv.Itoa(models.ChunkStatus["unassigned"]), thresholdTime)
+	query := tx.Where("status = ?", strconv.Itoa(models.ChunkStatus["unassigned"]))
+	dataMaps = []models.DataMap{}
 	err = query.All(&dataMaps)
 	if err != nil {
-		fmt.Print("ERROR!\n")
+		raven.CaptureError(err, nil)
 		fmt.Printf("%v\n", err)
 	} else {
 		fmt.Print("Success!\n")
-		fmt.Printf("%v\n", dataMaps)
-
-		if len(dataMaps) > 0 {
-
-			chunkSize := 10 // put 10 somewhere else
-
-			for i := 0; i < len(dataMaps); i += chunkSize {
-				end := i + chunkSize
-
-				if end > len(dataMaps) {
-					end = len(dataMaps)
-				}
-
-				processChunks(dataMaps[i:end]);
-			}
-		}
 	}
+
+	return dataMaps, err
 }
 
 func processChunks(dataMaps []models.DataMap) {
-	fmt.Println(dataMaps)
+	if len(dataMaps) > 0 {
+
+		for i := 0; i < len(dataMaps); i += BundleSize {
+			end := i + BundleSize
+
+			if end > len(dataMaps) {
+				end = len(dataMaps)
+			}
+
+			// send to broker code that processes these
+		}
+	}
 }
