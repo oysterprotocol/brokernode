@@ -1,43 +1,52 @@
 package jobs_test
 
 import (
-	//"testing"
-	//"github.com/gobuffalo/suite"
 	"github.com/oysterprotocol/brokernode/models"
-	"fmt"
-	"log"
-	//
-	//"github.com/gobuffalo/envy"
-	//"github.com/gobuffalo/pop"
+	"github.com/oysterprotocol/brokernode/jobs"
 )
 
-//func (as *ActionSuite) Test_ProcessUnassignedChunks() {
-//	as = &ActionSuite{suite.NewAction(ActionSuite.App())}
-//	suite.Run(t, as)
-//}
+func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
+	genHash := "genHashTest"
+	fileBytesCount := 8500
 
-func (ms *ModelSuite) Test_ProcessUnassignedChunks() {
-	genHash := "someGenHash"
-	fileBytesCount := 9000
+	models.SetChunkStatuses()
 
 	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
-	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
 
+	unassignedTimedOut := models.DataMap{}
+	unassignedNotTimedOut := models.DataMap{}
+	notUnassignedTimedOut := models.DataMap{}
+	notUnassignedNotTimedOut := models.DataMap{}
 
-	//fmt.Println(models.BuildDataMaps)
-	fmt.Println(models.DataMap{})
-	fmt.Println(ms)
-	fmt.Println(ms.DB)
+	err = suite.DB.Find(&unassignedTimedOut, 1)
+	unassignedTimedOut.Status = models.ChunkStatus["unassigned"]
+	unassignedTimedOut.Message = "unassignedTimedOut"
+	suite.DB.ValidateAndSave(&unassignedTimedOut)
 
-	dMaps := []models.DataMap{}
-	ms.DB.Where("genesis_hash != NULL").Order("chunk_idx asc").All(&dMaps)
+	err = suite.DB.Find(&notUnassignedTimedOut, 3)
+	notUnassignedTimedOut.Status = models.ChunkStatus["pending"]
+	notUnassignedTimedOut.Message = "notUnassignedTimedOut"
+	suite.DB.ValidateAndSave(&notUnassignedTimedOut)
 
-	fmt.Println(dMaps)
-	fmt.Println("THIS WORKED, fmt")
+	//currentTime := time.Now().Format("2006-01-02T15:04:05Z")
 
-	log.Println(dMaps)
-	log.Println("THIS WORKED< log")
+	err = suite.DB.Find(&unassignedNotTimedOut, 2)
+	unassignedNotTimedOut.Status = models.ChunkStatus["unassigned"]
+	unassignedNotTimedOut.Message = "unassignedNotTimedOut"
+	suite.DB.ValidateAndSave(&unassignedNotTimedOut)
 
-	ms.Equal(1, 1)
+	err = suite.DB.Find(&notUnassignedNotTimedOut, 4)
+	notUnassignedNotTimedOut.Status = models.ChunkStatus["pending"]
+	notUnassignedNotTimedOut.Message = "notUnassignedNotTimedOut"
+	suite.DB.ValidateAndSave(&notUnassignedNotTimedOut)
+
+	result, err := jobs.GetUnassignedChunks()
+
+	suite.Equal(2, len(result))
+
+	for _, dMap := range result {
+		suite.Equal(models.ChunkStatus["unassigned"], dMap.Status)
+	}
 }
