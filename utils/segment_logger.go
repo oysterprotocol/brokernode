@@ -1,24 +1,25 @@
 package oyster_utils
 
 import (
-	"os"
-	"github.com/joho/godotenv"
+	//"os"
+	//"github.com/joho/godotenv"
 	"net"
-	"time"
-	"github.com/segmentio/analytics-go"
+	//"time"
+	//"github.com/segmentio/analytics-go"
+	//"gopkg.in/segmentio/analytics-go.v3"
 )
 
-var SegmentClient analytics.Client
+//var SegmentClient analytics.Client
 
 func init() {
-	// Load ENV variables
-	err := godotenv.Load()
-	if err != nil {
-		//log.Fatal("Error loading .env file")
-	}
-
-	// Setup Segment
-	SegmentClient = analytics.New(os.Getenv("SEGMENT_WRITE_KEY"))
+	//// Load ENV variables
+	//err := godotenv.Load()
+	//if err != nil {
+	//	//log.Fatal("Error loading .env file")
+	//}
+	//
+	//// Setup Segment
+	//SegmentClient = analytics.New(os.Getenv("SEGMENT_WRITE_KEY"))
 }
 
 func GetLocalIP() string {
@@ -37,13 +38,13 @@ func GetLocalIP() string {
 	return ""
 }
 
-func TimeTrack(start time.Time, name string, properties analytics.Properties) {
-	elapsed := time.Since(start).Seconds()
-
-	go SegmentClient.Enqueue(analytics.Track{
-		Event:  name,
-		UserId: GetLocalIP(),
-		Properties: properties.
-			Set("time_elapsed", elapsed),
-	})
-}
+//func TimeTrack(start time.Time, name string, properties analytics.Properties) {
+//	//elapsed := time.Since(start).Seconds()
+//	//
+//	//go SegmentClient.Enqueue(analytics.Track{
+//	//	Event:  name,
+//	//	UserId: GetLocalIP(),
+//	//	Properties: properties.
+//	//		Set("time_elapsed", elapsed),
+//	//})
+//}
