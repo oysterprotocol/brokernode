@@ -3,10 +3,9 @@ package oyster_utils
 import (
 	"os"
 	"github.com/joho/godotenv"
-	"gopkg.in/segmentio/analytics-go.v3"
-	//"log"
 	"net"
 	"time"
+	"github.com/segmentio/analytics-go"
 )
 
 var SegmentClient analytics.Client
