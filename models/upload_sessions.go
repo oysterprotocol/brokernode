@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"time"
-
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"

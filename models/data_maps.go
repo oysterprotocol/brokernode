@@ -6,15 +6,21 @@ import (
 	"encoding/json"
 	"math"
 	"time"
-
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
 )
 
-var ChunkStatus map[string]int
-
 const fileBytesChunkSize = float64(2817)
+
+const (
+	Pending int = iota + 1
+	Unassigned
+	Unverified
+	Complete
+	Confirmed
+	Error
+)
 
 type DataMap struct {
 	ID          int       `json:"id" db:"id"`
@@ -32,17 +38,6 @@ type DataMap struct {
 }
 
 func init() {
-	SetChunkStatuses()
-}
-
-func SetChunkStatuses() {
-	ChunkStatus = make(map[string]int)
-	ChunkStatus["pending"] = 0
-	ChunkStatus["unassigned"] = 1
-	ChunkStatus["unverified"] = 2
-	ChunkStatus["complete"] = 3
-	ChunkStatus["confirmed"] = 4
-	ChunkStatus["error"] = 5
 }
 
 // String is not required by pop and may be deleted
@@ -93,6 +88,7 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 			GenesisHash: genHash,
 			ChunkIdx:    i,
 			Hash:        currHash,
+			Status:		 Pending,
 		})
 
 		currHash = hashString(currHash)

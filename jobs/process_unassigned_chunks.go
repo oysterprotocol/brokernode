@@ -2,10 +2,8 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/gobuffalo/pop"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
-	"strconv"
 )
 
 var BundleSize = 10
@@ -37,15 +35,8 @@ func ProcessUnassignedChunks(processChunks ProcessChunksFunc) {
 
 func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
 
-	tx, err := pop.Connect("test")
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
-
-	models.SetChunkStatuses()
-
-	//query := tx.Where("status = ? AND updated_at >= ?", strconv.Itoa(models.ChunkStatus["unassigned"]), thresholdTime)
-	query := tx.Where("status = ?", strconv.Itoa(models.ChunkStatus["unassigned"]))
+	//query := models.DB.Where("status = ? AND updated_at >= ?", strconv.Itoa(models.ChunkStatus["unassigned"]), thresholdTime)
+	query := models.DB.Where("status = ?", models.Unassigned)
 	dataMaps = []models.DataMap{}
 	err = query.All(&dataMaps)
 	if err != nil {
