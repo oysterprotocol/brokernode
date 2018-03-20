@@ -19,7 +19,7 @@ const (
 	Unverified
 	Complete
 	Confirmed
-	Error
+	Error = -1
 )
 
 type DataMap struct {
