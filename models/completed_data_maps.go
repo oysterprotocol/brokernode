@@ -1,28 +1,14 @@
 package models
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
-	"math"
 	"time"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
 )
 
-const fileBytesChunkSize = float64(2817)
-
-const (
-	Pending int = iota + 1
-	Unassigned
-	Unverified
-	Complete
-	Confirmed
-	Error = -1
-)
-
-type DataMap struct {
+type CompletedDataMap struct {
 	ID          int       `json:"id" db:"id"`
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
@@ -41,23 +27,23 @@ func init() {
 }
 
 // String is not required by pop and may be deleted
-func (d DataMap) String() string {
+func (d CompletedDataMap) String() string {
 	jd, _ := json.Marshal(d)
 	return string(jd)
 }
 
-// DataMaps is not required by pop and may be deleted
-type DataMaps []DataMap
+// CompletedDataMaps is not required by pop and may be deleted
+type CompletedDataMaps []CompletedDataMap
 
 // String is not required by pop and may be deleted
-func (d DataMaps) String() string {
+func (d CompletedDataMaps) String() string {
 	jd, _ := json.Marshal(d)
 	return string(jd)
 }
 
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 // This method is not required and may be deleted.
-func (d *DataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
+func (d *CompletedDataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: d.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsGreaterThan{Field: d.ChunkIdx, Name: "ChunkIdx", Compared: -1},
@@ -67,39 +53,12 @@ func (d *DataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
 // This method is not required and may be deleted.
-func (d *DataMap) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
+func (d *CompletedDataMap) ValidateCreate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
 // ValidateUpdate gets run every time you call "pop.ValidateAndUpdate" method.
 // This method is not required and may be deleted.
-func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
+func (d *CompletedDataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
-}
-
-// BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
-	fileChunksCount := int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
-
-	currHash := genHash
-	for i := 0; i <= fileChunksCount; i++ {
-		// TODO: Batch these inserts.
-		vErr, err = DB.ValidateAndCreate(&DataMap{
-			GenesisHash: genHash,
-			ChunkIdx:    i,
-			Hash:        currHash,
-			Status:		 Pending,
-		})
-
-		currHash = hashString(currHash)
-	}
-
-	return
-}
-
-func hashString(str string) (h string) {
-	shaHash := sha256.New()
-	shaHash.Write([]byte(str))
-	h = hex.EncodeToString(shaHash.Sum(nil))
-	return
 }
