@@ -4,6 +4,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"strconv"
 	"log"
+	"github.com/gobuffalo/pop"
 )
 
 func init() {
@@ -44,19 +45,31 @@ func PurgeCompletedSessions() {
 
 	for _, genesisHash := range allGenesisHashes {
 		if !notComplete[genesisHash] {
-			models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
-			MoveToComplete(moveToComplete)
-			models.DB.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
-			models.DB.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
+
+			models.DB.Transaction(func(tx *pop.Connection) error {
+				tx.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
+				MoveToComplete(tx, moveToComplete) // Passed in the connection
+
+				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
+				if err != nil {
+					return err
+				}
+				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
+				if err != nil {
+					return err
+				}
+				return nil
+			})
 		}
 	}
 }
 
-func MoveToComplete(dataMaps []models.DataMap) {
+func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 
 	for _, dataMap := range dataMaps {
 
 		completedDataMap := models.CompletedDataMap{
+
 			Status:      dataMap.Status,
 			HooknodeIP:  dataMap.HooknodeIP,
 			Message:     dataMap.Message,
@@ -67,7 +80,8 @@ func MoveToComplete(dataMaps []models.DataMap) {
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
 		}
-		_, err := models.DB.ValidateAndSave(&completedDataMap)
+
+		_, err := tx.ValidateAndSave(&completedDataMap)
 		if err != nil {
 			log.Panic(err)
 		}
