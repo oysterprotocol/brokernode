@@ -6,13 +6,21 @@ import (
 	"encoding/json"
 	"math"
 	"time"
-
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
 )
 
 const fileBytesChunkSize = float64(2817)
+
+const (
+	Pending int = iota + 1
+	Unassigned
+	Unverified
+	Complete
+	Confirmed
+	Error = -1
+)
 
 type DataMap struct {
 	ID          int       `json:"id" db:"id"`
@@ -27,6 +35,9 @@ type DataMap struct {
 	ChunkIdx    int       `json:"chunkIdx" db:"chunk_idx"`
 	Hash        string    `json:"hash" db:"hash"`
 	Address     string    `json:"address" db:"address"`
+}
+
+func init() {
 }
 
 // String is not required by pop and may be deleted
@@ -77,6 +88,7 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 			GenesisHash: genHash,
 			ChunkIdx:    i,
 			Hash:        currHash,
+			Status:		 Pending,
 		})
 
 		currHash = hashString(currHash)
