@@ -47,6 +47,7 @@ func processChunks(dataMaps []models.DataMap) {
 			}
 
 			// send to broker code that processes these
+			//dataMaps[i:end]
 		}
 	}
 }

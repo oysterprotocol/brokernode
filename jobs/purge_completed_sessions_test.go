@@ -1,8 +1,8 @@
 package jobs_test
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/jobs"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
@@ -44,10 +44,15 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	err = suite.DB.All(&uploadSessions)
 	suite.Equal(err, nil)
 
+	storedGenHashes := []models.StoredGenesisHash{}
+	err = suite.DB.All(&storedGenHashes)
+	suite.Equal(err, nil)
+
 	// verify initial lengths are what we expected
 	suite.Equal(6, len(allDataMaps))
 	suite.Equal(0, len(completedDataMaps))
 	suite.Equal(3, len(uploadSessions))
+	suite.Equal(0, len(storedGenHashes))
 
 	// set all chunks of first data map to complete or confirmed
 	allDone := []models.DataMap{}
@@ -84,10 +89,15 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	err = suite.DB.All(&uploadSessions)
 	suite.Equal(err, nil)
 
+	storedGenHashes = []models.StoredGenesisHash{}
+	err = suite.DB.All(&storedGenHashes)
+	suite.Equal(err, nil)
+
 	// verify final lengths are what we expected
 	suite.Equal(4, len(allDataMaps))
 	suite.Equal(2, len(completedDataMaps))
 	suite.Equal(2, len(uploadSessions))
+	suite.Equal(1, len(storedGenHashes))
 
 	// for good measure, verify that it's only "genHash1" in completed_data_maps
 	// and that "genHash1" is not in data_maps at all

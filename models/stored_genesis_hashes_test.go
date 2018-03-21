@@ -2,6 +2,6 @@ package models
 
 import "testing"
 
-func Test_CompletedDataMap(t *testing.T) {
+func Test_StoredGenesisHash(t *testing.T) {
 	t.Log("Nothing to test yet")
 }
