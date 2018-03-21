@@ -1,10 +1,10 @@
 package jobs
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
-	"strconv"
-	"log"
 	"github.com/gobuffalo/pop"
+	"github.com/oysterprotocol/brokernode/models"
+	"log"
+	"strconv"
 )
 
 func init() {
@@ -62,7 +62,7 @@ func PurgeCompletedSessions() {
 					return err
 				}
 
-				_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session.GenesisHash, FileSizeBytes: session.FileSizeBytes,})
+				_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session.GenesisHash, FileSizeBytes: session.FileSizeBytes})
 				if err != nil {
 					return err
 				}

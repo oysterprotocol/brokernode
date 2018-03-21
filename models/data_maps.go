@@ -14,12 +14,12 @@ import (
 const fileBytesChunkSize = float64(2817)
 
 const (
-	Pending    int = iota + 1
+	Pending int = iota + 1
 	Unassigned
 	Unverified
 	Complete
 	Confirmed
-	Error      = -1
+	Error = -1
 )
 
 type DataMap struct {

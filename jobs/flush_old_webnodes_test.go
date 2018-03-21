@@ -1,16 +1,14 @@
 package jobs_test
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/jobs"
+	"github.com/oysterprotocol/brokernode/models"
 	"time"
 )
 
 func (suite *JobsSuite) Test_FlushOldWebnodes() {
 
-
 	// Testing that old webnodes get removed
-
 
 	_, err := models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "oldWebnodeC"})
 	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "oldWebnodeD"})
@@ -37,9 +35,7 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	suite.Equal(err, nil)
 	suite.Equal(0, len(webnodes))
 
-
 	// Testing that it doesn't remove new webnodes
-
 
 	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "newWebnodeA"})
 	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "newWebnodeB"})

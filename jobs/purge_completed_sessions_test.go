@@ -1,8 +1,8 @@
 package jobs_test
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/jobs"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {

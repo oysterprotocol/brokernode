@@ -1,16 +1,16 @@
 package oyster_utils
 
 import (
-	//"os"
-	//"github.com/joho/godotenv"
-	//"net"
-	//"time"
-	//"github.com/segmentio/analytics-go"
-	//"gopkg.in/segmentio/analytics-go.v3"
-	//"gopkg.in/segmentio/analytics-go.v3"
-	//"github.com/joho/godotenv"
-	//"log"
-	//"gopkg.in/segmentio/analytics-go.v3"
+//"os"
+//"github.com/joho/godotenv"
+//"net"
+//"time"
+//"github.com/segmentio/analytics-go"
+//"gopkg.in/segmentio/analytics-go.v3"
+//"gopkg.in/segmentio/analytics-go.v3"
+//"github.com/joho/godotenv"
+//"log"
+//"gopkg.in/segmentio/analytics-go.v3"
 )
 
 //var SegmentClient analytics.Client
@@ -43,12 +43,12 @@ func GetLocalIP() string {
 }
 
 //func TimeTrack(start time.Time, name string, properties analytics.Properties) {
-	//elapsed := time.Since(start).Seconds()
-	//
-	//go SegmentClient.Enqueue(analytics.Track{
-	//	Event:  name,
-	//	UserId: GetLocalIP(),
-	//	Properties: properties.
-	//		Set("time_elapsed", elapsed),
-	//})
+//elapsed := time.Since(start).Seconds()
+//
+//go SegmentClient.Enqueue(analytics.Track{
+//	Event:  name,
+//	UserId: GetLocalIP(),
+//	Properties: properties.
+//		Set("time_elapsed", elapsed),
+//})
 //}

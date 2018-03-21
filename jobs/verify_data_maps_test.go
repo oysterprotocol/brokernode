@@ -18,7 +18,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	suite.Equal(12, len(allDataMaps))
 
 	// make half the data maps "Unverified"
-	for i := 0; i < (len(allDataMaps)/2); i++ {
+	for i := 0; i < (len(allDataMaps) / 2); i++ {
 		allDataMaps[i].Status = models.Unverified
 		suite.DB.ValidateAndSave(&allDataMaps[i])
 	}
