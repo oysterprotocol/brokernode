@@ -2,11 +2,11 @@ package models
 
 import (
 	"encoding/json"
-	"time"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"time"
 )
 
 // Enum for upload session type.
