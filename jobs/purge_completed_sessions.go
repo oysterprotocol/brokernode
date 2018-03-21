@@ -54,10 +54,24 @@ func PurgeCompletedSessions() {
 				if err != nil {
 					return err
 				}
+
+				session := models.UploadSession{}
+
+				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).First(&session)
+				if err != nil {
+					return err
+				}
+
+				_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session.GenesisHash, FileSizeBytes: session.FileSizeBytes,})
+				if err != nil {
+					return err
+				}
+
 				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
 				if err != nil {
 					return err
 				}
+
 				return nil
 			})
 		}
@@ -71,8 +85,9 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		completedDataMap := models.CompletedDataMap{
 
 			Status:      dataMap.Status,
-			HooknodeIP:  dataMap.HooknodeIP,
 			Message:     dataMap.Message,
+			NodeID:      dataMap.NodeID,
+			NodeType:    dataMap.NodeType,
 			TrunkTx:     dataMap.TrunkTx,
 			BranchTx:    dataMap.BranchTx,
 			GenesisHash: dataMap.GenesisHash,

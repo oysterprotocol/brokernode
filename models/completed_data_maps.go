@@ -2,10 +2,10 @@ package models
 
 import (
 	"encoding/json"
-	"time"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"time"
 )
 
 type CompletedDataMap struct {
@@ -13,7 +13,8 @@ type CompletedDataMap struct {
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 	Status      int       `json:"status" db:"status"`
-	HooknodeIP  string    `json:"hooknodeIP" db:"hooknode_ip"`
+	NodeID      string    `json:"nodeID" db:"node_id"`
+	NodeType    string    `json:"nodeType" db:"node_type"`
 	Message     string    `json:"message" db:"message"`
 	TrunkTx     string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx    string    `json:"branchTx" db:"branch_tx"`
