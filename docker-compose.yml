@@ -1,21 +1,25 @@
 version: "3"
 
 services:
+
   app:
-    build: .
+    build: "."
+    restart: "always"
     ports:
     - 3000:3000
     env_file:
     - ".env"
-    # depends_on:
-    # - "db"
+    depends_on:
+    - "db"
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
     command: bash -c "buffalo dev"
-  # db:
-  #   image: mysql:5.7
-  #   environment:
-  #   - MYSQL_ROOT_PASSWORD=password
-  #   - MYSQL_DATABASE=brokernode
+
+  db:
+    image: "mysql:5.7"
+    restart: "always"
+    environment:
+    - MYSQL_ROOT_PASSWORD=secret
+    - MYSQL_DATABASE=brokernode
 
