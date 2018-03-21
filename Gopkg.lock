@@ -364,12 +364,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/segmentio/backo-go"
-  packages = ["."]
-  revision = "204274ad699c0983a70203a566887f17a717fef4"
-
-[[projects]]
-  branch = "master"
   name = "github.com/serenize/snaker"
   packages = ["."]
   revision = "a683aaf2d516deecd70cad0c72e3ca773ecfcef0"
@@ -469,12 +463,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/xtgo/uuid"
-  packages = ["."]
-  revision = "a0b114877d4caeffbd7f87e3757c17fce570fea7"
-
-[[projects]]
-  branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -509,12 +497,6 @@
   revision = "2f1e207ee39ff70f3433e49c6eb52677a515e3b5"
 
 [[projects]]
-  name = "gopkg.in/segmentio/analytics-go.v3"
-  packages = ["."]
-  revision = "1178b964a36694a8f9c161b19e6fe28cb37e8482"
-  version = "3.0.0"
-
-[[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
@@ -523,6 +505,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "33ab398f6e03670d7785b0c0e78687ba513e15b1dbb29d0d8f381bf78e9d1f2f"
+  inputs-digest = "fd847686d6d3d21ae8408d0bd85da44b463d69aa22ce47749bea702080a3133b"
   solver-name = "gps-cdcl"
   solver-version = 1
