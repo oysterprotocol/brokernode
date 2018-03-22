@@ -1,0 +1,61 @@
+version: "3"
+
+services:
+
+  app:
+    build: "."
+    restart: "always"
+    ports:
+    - ${APP_PORT:-3000}:3000
+    env_file:
+    - ".env"
+    depends_on:
+    - "db"
+    - "db_test"
+    volumes:
+    - ".:/go/src/github.com/oysterprotocol/brokernode"
+    working_dir: "/go/src/github.com/oysterprotocol/brokernode"
+    command: >
+      bash -c "
+        echo waiting for db...;
+        while ! nc -z db 3306;
+        do
+          sleep 0.5;
+        done;
+
+        echo waiting for db_test...;
+        while ! nc -z db_test 3306;
+        do
+          sleep 0.5;
+        done;
+        buffalo db migrate && buffalo dev
+      "
+
+  db:
+    image: "mysql:5.6"
+    restart: "always"
+    environment:
+    - MYSQL_DATABASE=brokernode
+    - MYSQL_ROOT_USER=root
+    - MYSQL_ROOT_PASSWORD=secret
+    # - MYSQL_DATABASE=${DB_NAME_DEV:-dev}
+    # - MYSQL_ROOT_USER=${DB_USER_DEV:-root}
+    # - MYSQL_ROOT_PASSWORD=${DB_USER_DEV:-secret}
+    volumes:
+    - "./data/mysql/dev:/var/lib/mysql"
+    - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
+
+  # TODO: Figure out a better way to handle multiple envs
+  db_test:
+    image: "mysql:5.6"
+    restart: "always"
+    environment:
+    - MYSQL_DATABASE=brokernode_test
+    - MYSQL_ROOT_USER=root
+    - MYSQL_ROOT_PASSWORD=secret
+    # - MYSQL_DATABASE=${DB_NAME_TEST:-test}
+    # - MYSQL_ROOT_USER=${DB_USER_TEST:-root}
+    # - MYSQL_ROOT_PASSWORD=${DB_USER_TEST:-secret}
+    volumes:
+    - "./data/mysql/test:/var/lib/mysql"
+    - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
