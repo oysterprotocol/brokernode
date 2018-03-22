@@ -1,10 +1,10 @@
 development:
   dialect: "mysql"
-  database: "brokernode_development"
-  host: "localhost"
+  database: "brokernode"
+  host: "db"
   port: "3306"
   user: "root"
-  password: "root"
+  password: "secret"
 
 test:
   dialect: "mysql"
