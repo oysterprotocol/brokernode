@@ -15,10 +15,10 @@ services:
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
-    command: bash -c "buffalo db migrate && buffalo dev"
+    command: bash -c "sleep 20 && buffalo db migrate && buffalo dev"
 
   db:
-    image: "mysql:5.7"
+    image: "mysql:5.6"
     restart: "always"
     environment:
     - MYSQL_DATABASE=brokernode
@@ -30,12 +30,12 @@ services:
 
   # TODO: Figure out a better way to handle multiple envs
   db_test:
-    image: "mysql:5.7"
+    image: "mysql:5.6"
     restart: "always"
     environment:
     - MYSQL_DATABASE=brokernode_test
     - MYSQL_ROOT_USER=root
     - MYSQL_ROOT_PASSWORD=secret
     volumes:
-    - "./data/mysql:/var/lib/mysql"
+    - "./data/mysql-test:/var/lib/mysql"
     - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
