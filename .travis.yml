@@ -17,7 +17,7 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
 
 install:
-  - docker-compose up --build
+  - docker-compose up --build -d
 
 script: docker-compose exec app buffalo test
 
