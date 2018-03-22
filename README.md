@@ -8,6 +8,11 @@ The broker node uses Docker to spin up a go app, mysql, and private iota instanc
 # Starts the brokernode on port 3000
 docker-compose up —build
 
+# Executing commands in the app container
+# Use `docker-compose exec YOUR_COMMAND`
+# Eg: To run buffalo's test suite, run:
+docker-compose exec app buffalo test
+
 # Get a bash shell in the app container
 docker-compose exec app bash
 
