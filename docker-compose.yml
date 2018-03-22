@@ -24,7 +24,7 @@ services:
         done;
 
         echo waiting for db_test...;
-        while ! nc -z db 3306;
+        while ! nc -z db_test 3306;
         do
           sleep 0.5;
         done;
