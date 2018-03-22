@@ -1,6 +1,6 @@
 development:
   dialect: "mysql"
-  database: "brokernode"
+  user: {{envOr "DB_NAME_DEV" "dev"}}
   host: "db"
   port: "3306"
   user: {{envOr "DB_USER_DEV" "root"}}
@@ -8,7 +8,7 @@ development:
 
 test:
   dialect: "mysql"
-  database: "brokernode_test"
+  user: {{envOr "DB_NAME_TEST" "test"}}
   host: "db_test"
   port: "3306"
   user: {{envOr "DB_USER_TEST" "root"}}
