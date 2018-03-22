@@ -3,16 +3,16 @@ development:
   database: "brokernode"
   host: "db"
   port: "3306"
-  user: "root"
-  password: "secret"
+  user: {{envOr "DB_USER_DEV" "root"}}
+  password: {{envOr "DB_PASSWORD_DEV" "secret"}}
 
 test:
   dialect: "mysql"
   database: "brokernode_test"
   host: "db_test"
   port: "3306"
-  user: "root"
-  password: "secret"
+  user: {{envOr "DB_USER_TEST" "root"}}
+  password: {{envOr "DB_PASSWORD_TEST" "secret"}}
 
 production:
   url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}

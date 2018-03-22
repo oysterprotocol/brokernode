@@ -22,10 +22,10 @@ services:
     restart: "always"
     environment:
     - MYSQL_DATABASE=brokernode
-    - MYSQL_ROOT_USER=root
-    - MYSQL_ROOT_PASSWORD=secret
+    - MYSQL_ROOT_USER=${DB_USER_DEV:-root}
+    - MYSQL_ROOT_PASSWORD=${DB_USER_DEV:-secret}
     volumes:
-    - "./data/mysql:/var/lib/mysql"
+    - "./data/mysql/dev:/var/lib/mysql"
     - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
 
   # TODO: Figure out a better way to handle multiple envs
@@ -34,8 +34,8 @@ services:
     restart: "always"
     environment:
     - MYSQL_DATABASE=brokernode_test
-    - MYSQL_ROOT_USER=root
-    - MYSQL_ROOT_PASSWORD=secret
+    - MYSQL_ROOT_USER=${DB_USER_TEST:-root}
+    - MYSQL_ROOT_PASSWORD=${DB_USER_TEST:-secret}
     volumes:
-    - "./data/mysql-test:/var/lib/mysql"
+    - "./data/mysql/test:/var/lib/mysql"
     - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
