@@ -30,10 +30,13 @@
 # CMD exec /bin/app
 
 FROM golang:1.10
+ENV ADDR=0.0.0.0
 
 RUN go version
+
+# Install db client (assumes mysql)
 RUN apt-get update
-ENV ADDR=0.0.0.0
+RUN apt-get install -y -q mysql-client
 
 RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
@@ -42,7 +45,7 @@ RUN go get -u github.com/gobuffalo/buffalo/buffalo
 
 COPY . .
 
-RUN go get -d -v ./...
+RUN go get -t -d -v ./...
 RUN go install -v ./...
 
 RUN buffalo version

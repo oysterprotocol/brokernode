@@ -6,11 +6,12 @@ services:
     build: "."
     restart: "always"
     ports:
-    - ${APP_PORT}:3000
+    - ${APP_PORT:-3000}:3000
     env_file:
     - ".env"
     depends_on:
     - "db"
+    - "db_test"
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
@@ -25,4 +26,16 @@ services:
     - MYSQL_ROOT_PASSWORD=secret
     volumes:
     - "./data/mysql:/var/lib/mysql"
+    - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
 
+  # TODO: Figure out a better way to handle multiple envs
+  db_test:
+    image: "mysql:5.7"
+    restart: "always"
+    environment:
+    - MYSQL_DATABASE=brokernode_test
+    - MYSQL_ROOT_USER=root
+    - MYSQL_ROOT_PASSWORD=secret
+    volumes:
+    - "./data/mysql:/var/lib/mysql"
+    - "./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"

@@ -9,10 +9,10 @@ development:
 test:
   dialect: "mysql"
   database: "brokernode_test"
-  host: "localhost"
+  host: "db_test"
   port: "3306"
   user: "root"
-  password: "root"
+  password: "secret"
 
 production:
   url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}
