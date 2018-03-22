@@ -14,7 +14,7 @@ services:
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
-    command: bash -c "buffalo dev"
+    command: bash -c "buffalo db migrate && buffalo dev"
 
   db:
     image: "mysql:5.7"
