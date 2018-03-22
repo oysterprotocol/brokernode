@@ -37,6 +37,7 @@ RUN go version
 # Install db client (assumes mysql)
 RUN apt-get update
 RUN apt-get install -y -q mysql-client
+RUN apt-get install -y -q netcat
 
 RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode

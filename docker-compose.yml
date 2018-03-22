@@ -15,7 +15,21 @@ services:
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
-    command: bash -c "sleep 20 && buffalo db migrate && buffalo dev"
+    command: >
+      bash -c "
+        echo waiting for db...;
+        while ! nc -z db 3306;
+        do
+          sleep 0.5;
+        done;
+
+        echo waiting for db_test...;
+        while ! nc -z db 3306;
+        do
+          sleep 0.5;
+        done;
+        buffalo db migrate && buffalo dev
+      "
 
   db:
     image: "mysql:5.6"

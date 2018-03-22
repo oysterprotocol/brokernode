@@ -12,6 +12,8 @@ addons:
       - docker-ce
 
 before_install:
+  - sudo apt-get -y netcat
+
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
   - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
   - sudo apt-get update
@@ -24,10 +26,20 @@ before_install:
   - sudo mv docker-compose /usr/local/bin
   - docker-compose --version
 
+install:
   - rm -rf ./data
   - docker-compose up --build -d
 
-script: sleep 30 && docker-compose exec app buffalo test
+before_script: >
+  "
+    echo waiting for docker...;
+    while ! nc -z localhost 3000;
+    do
+      sleep 0.5;
+    done;
+  "
+
+script: docker-compose exec app buffalo test
 
 notifications:
   slack:
