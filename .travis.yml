@@ -27,7 +27,7 @@ before_install:
   - rm -rf ./data
   - docker-compose up --build -d
 
-script: docker-compose exec app buffalo test
+script: sleep 30 && docker-compose exec app buffalo test
 
 notifications:
   slack:
