@@ -31,13 +31,14 @@ install:
   - docker-compose up --build -d
 
 before_script:
-  - "
-      echo waiting for docker...;
-      while ! nc -z localhost 3000;
-      do
-        sleep 0.5;
-      done;
-    "
+  - sleep 30
+  # - "
+  #     echo waiting for docker...;
+  #     while ! nc -z localhost 3000;
+  #     do
+  #       sleep 0.5;
+  #     done;
+  #   "
 
 script: docker-compose exec app buffalo test
 
