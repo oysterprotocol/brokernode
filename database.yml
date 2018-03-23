@@ -1,18 +1,24 @@
 development:
   dialect: "mysql"
-  database: "brokernode_development"
-  host: "localhost"
+  host: "db"
   port: "3306"
+  # database: {{envOr "DB_NAME_DEV" "dev"}}
+  # user: {{envOr "DB_USER_DEV" "root"}}
+  # password: {{envOr "DB_PASSWORD_DEV" "secret"}}
+  database: "brokernode"
   user: "root"
-  password: "root"
+  password: "secret"
 
 test:
   dialect: "mysql"
-  database: "brokernode_test"
-  host: "localhost"
+  host: "db_test"
   port: "3306"
+  # database: {{envOr "DB_NAME_TEST" "test"}}
+  # user: {{envOr "DB_USER_TEST" "root"}}
+  # password: {{envOr "DB_PASSWORD_TEST" "secret"}}
+  database: "brokernode_test"
   user: "root"
-  password: "root"
+  password: "secret"
 
 production:
   url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}

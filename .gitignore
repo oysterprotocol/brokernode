@@ -11,4 +11,4 @@ public/assets/
 brokernode
 .vscode/
 .grifter/
-.env
+data/

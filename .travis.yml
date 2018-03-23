@@ -1,30 +1,47 @@
-language: go
-go:
-- 1.10.x
-env:
-- GO_ENV=test
+sudo: required
+
 services:
-- mysql
+  - docker
+
+env:
+  - DOCKER_COMPOSE_VERSION=1.18.0
+
 addons:
   apt:
-    sources:
-      - mysql-5.7-trusty
     packages:
-      - mysql-server
-      - mysql-client
-      - mysql-common
+      - docker-ce
+
 before_install:
-- sudo mysql -u root -e "use mysql; update user set authentication_string=PASSWORD('root') where User='root'; update user set plugin='mysql_native_password';FLUSH PRIVILEGES;"
-- sudo service mysql restart
-- mysql -u root -proot -e 'CREATE DATABASE IF NOT EXISTS brokernode_test;'
-before_script:
-- mkdir -p $TRAVIS_BUILD_DIR/public/assets
-go_import_path: github.com/oysterprotocol/brokernode
+  - sudo apt-get install -y -q netcat
+
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  - sudo apt-get update
+  - sudo apt-get -y install docker-ce
+  - docker --version
+
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+  - docker-compose --version
+
 install:
-- go get -u github.com/gobuffalo/buffalo/buffalo
-- go get -u $(go list ./... | grep -v /vendor/)
-- go get -t ./...
-script: buffalo test
+  - rm -rf ./data
+  - docker-compose up --build -d
+
+before_script:
+  - sleep 30
+  # - "
+  #     echo waiting for docker...;
+  #     while ! nc -z localhost 3000;
+  #     do
+  #       sleep 0.5;
+  #     done;
+  #   "
+
+script: docker-compose exec app buffalo test
+
 notifications:
   slack:
     secure: mS3pPxC7VvODv5GWAcJjVrlpz8SjdjaD0oGEpwhZt4XTanjLh46yZXwvSHCES3U7b/4Ihy5cC8qeIaujOQrJjXynTtR8HBaAVQbUyAbZhMh/ZKkb/FQFkpBr1TKTTcanQA4ip+6SvobcdcLb9UfmXlOvNYJK3pYq/tb8IbYCVk6X1f+oZ19grJ9arJ+LmmJkb0QpEKluiXkfTtqrX4PEDZ5WQzX7XuK+Uv2JSmtSxtB5CgHoY9NG1EKiQ79491+m3HP6Mu7hTO+DUTI10yhnfSn8T8UvUDUOJl4ItdjBxCJGgmz8xE6dJkw+6AGcDd0nfZsMzKQuSR4eXhTDbkDFPMz2wOn4jc9reFLjPFYbkeMCDKbEPdBMyeazvyAK/V3wDIWtM5SRekqpf8F+07DN9c8f8v13FWYUkUgXAetYLJx8M2dJJzcuHDrdastFRrfbhcLsiEvJuV6MLFX3BqS5panvZTn7DCAUbZLmWigGUSRbwkkPAOmBx8a1dCEWkyU7AnOb1GGRVkcEYkJZO6+goLGKa/E86JBdUbpsZBqK9/JOM1BTD1sxaLFmAUWH4U3iNjNyehaEW0PeEzafJW5zSAVtGVX/j8EkXT7L8/XkWp+yQL0Cu8anMaha863b8lypBYOOcFZ3lggwfCzLE/f4vyuFMgrOES9E2tkgGMIcvfI=
