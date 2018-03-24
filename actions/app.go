@@ -6,9 +6,9 @@ import (
 	"github.com/gobuffalo/buffalo/middleware/ssl"
 	"github.com/gobuffalo/envy"
 	"github.com/unrolled/secure"
-
 	"github.com/gobuffalo/x/sessions"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/rs/cors"
 )
 
@@ -30,6 +30,8 @@ func App() *buffalo.App {
 				cors.Default().Handler,
 			},
 			SessionName: "_brokernode_session",
+			WorkerOff: false,
+			Worker: jobs.OysterWorker,
 		})
 		// Automatically redirect to SSL
 		app.Use(ssl.ForceSSL(secure.Options{

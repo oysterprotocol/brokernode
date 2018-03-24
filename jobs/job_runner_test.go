@@ -27,21 +27,21 @@ func (suite *JobsSuite) SetupSuite() {
 		},
 		VerifyChunkMessagesMatchRecord: func(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
 
-			emtpyChunkArray := []models.DataMap{}
+			emptyChunkArray := []models.DataMap{}
 
 			return services.FilteredChunk{
-				MatchesTangle:      emtpyChunkArray,
-				NotAttached:        emtpyChunkArray,
-				DoesNotMatchTangle: emtpyChunkArray,
+				MatchesTangle:      emptyChunkArray,
+				NotAttached:        emptyChunkArray,
+				DoesNotMatchTangle: emptyChunkArray,
 			}, err
 		},
 		VerifyChunksMatchRecord: func(chunks []models.DataMap, checkChunkAndBranch bool) (filteredChunks services.FilteredChunk, err error) {
-			emtpyChunkArray := []models.DataMap{}
+			emptyChunkArray := []models.DataMap{}
 
 			return services.FilteredChunk{
-				MatchesTangle:      emtpyChunkArray,
-				NotAttached:        emtpyChunkArray,
-				DoesNotMatchTangle: emtpyChunkArray,
+				MatchesTangle:      emptyChunkArray,
+				NotAttached:        emptyChunkArray,
+				DoesNotMatchTangle: emptyChunkArray,
 			}, err
 		},
 		ChunksMatch: func(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {

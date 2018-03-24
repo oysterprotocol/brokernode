@@ -4,25 +4,25 @@ import (
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 func init() {
 }
 
-func ProcessUnassignedChunks(processChunks ProcessChunksFunc) {
+func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
 	chunks, err := GetUnassignedChunks()
 
 	if err != nil {
 		raven.CaptureError(err, nil)
 	} else {
-		processChunks(chunks)
+		iotaWrapper.ProcessChunks(chunks, false)
 	}
 }
 
 func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
 
-	//query := models.DB.Where("status = ? AND updated_at >= ?", strconv.Itoa(models.ChunkStatus["unassigned"]), thresholdTime)
 	query := models.DB.Where("status = ?", models.Unassigned)
 	dataMaps = []models.DataMap{}
 	err = query.All(&dataMaps)
