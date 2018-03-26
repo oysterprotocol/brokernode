@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -17,7 +16,18 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 	if err != nil {
 		raven.CaptureError(err, nil)
 	} else {
-		iotaWrapper.ProcessChunks(chunks, false)
+		if len(chunks) > 0 {
+
+			for i := 0; i < len(chunks); i += BundleSize {
+				end := i + BundleSize
+
+				if end > len(chunks) {
+					end = len(chunks)
+				}
+
+				iotaWrapper.ProcessChunks(chunks[i:end], false)
+			}
+		}
 	}
 }
 
@@ -28,26 +38,8 @@ func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
 	err = query.All(&dataMaps)
 	if err != nil {
 		raven.CaptureError(err, nil)
-		fmt.Printf("%v\n", err)
-	} else {
-		fmt.Print("Success!\n")
 	}
 
 	return dataMaps, err
 }
 
-func processChunks(dataMaps []models.DataMap) {
-	if len(dataMaps) > 0 {
-
-		for i := 0; i < len(dataMaps); i += BundleSize {
-			end := i + BundleSize
-
-			if end > len(dataMaps) {
-				end = len(dataMaps)
-			}
-
-			// send to broker code that processes these
-			//dataMaps[i:end]
-		}
-	}
-}

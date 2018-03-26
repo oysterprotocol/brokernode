@@ -65,7 +65,7 @@ func doWork(oysterWorker *worker.Simple) {
 }
 
 var flushOldWebnodesHandler = func(args worker.Args) error {
-	thresholdTime := time.Now()
+	thresholdTime := time.Now().Add(-20 * time.Minute) // webnodes older than 20 minutes get deleted
 	FlushOldWebNodes(thresholdTime)
 
 	flushOldWebnodesJob := worker.Job{

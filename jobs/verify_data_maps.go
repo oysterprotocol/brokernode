@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -37,7 +36,7 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
 
 	if err != nil {
-		fmt.Println(err)
+		raven.CaptureError(err, nil)
 	}
 
 	if len(filteredChunks.MatchesTangle) > 0 {
