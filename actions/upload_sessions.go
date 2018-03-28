@@ -82,6 +82,14 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	return c.Render(200, r.JSON(res))
 }
 
+// Update uploads a chunk associated with an upload session.
+func (usr *UploadSessionResource) Update(c buffalo.Context) error {
+	req := uploadSessionCreateReq{}
+	parseReqBody(c.Request(), &req)
+
+	return c.Render(200, r.JSON(map[string]string{"it works": "yes"}))
+}
+
 // CreateBeta creates an upload session on the beta broker.
 func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
