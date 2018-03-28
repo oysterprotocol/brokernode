@@ -59,7 +59,7 @@ func App() *buffalo.App {
 		uploadSessionResource := UploadSessionResource{}
 		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
 		apiV2.POST("upload-sessions", uploadSessionResource.Create)
-		apiV2.PUT("upload-sessions", uploadSessionResource.Update)
+		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
 		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
 
 	}
