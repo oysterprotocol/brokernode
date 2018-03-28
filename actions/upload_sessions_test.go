@@ -21,9 +21,9 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	as.Nil(err)
 
 	as.Equal(200, res.Code)
-	as.Equal("genesisHashTest", resParsed.GenesisHash)
-	as.Equal(123, resParsed.FileSizeBytes)
-	as.Equal(models.SessionTypeAlpha, resParsed.Type)
+	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
+	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	as.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
 }
 
 func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
@@ -40,7 +40,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Nil(err)
 
 	as.Equal(200, res.Code)
-	as.Equal("genesisHashTest", resParsed.GenesisHash)
-	as.Equal(123, resParsed.FileSizeBytes)
-	as.Equal(models.SessionTypeBeta, resParsed.Type)
+	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
+	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
 }

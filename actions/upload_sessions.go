@@ -19,8 +19,8 @@ type uploadSessionCreateReq struct {
 }
 
 type uploadSessionCreateRes struct {
-	models.UploadSession
-	// TODO: Add beta session id.
+	UploadSession models.UploadSession `json:"uploadSession"`
+	BetaSessionID string               `json:"betaSessionID"`
 }
 
 // Create creates an upload session.
@@ -45,7 +45,11 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		return err
 	}
 
-	return c.Render(200, r.JSON(u))
+	res := uploadSessionCreateRes{
+		UploadSession: u,
+		BetaSessionID: betaSessionID,
+	}
+	return c.Render(200, r.JSON(res))
 }
 
 // CreateBeta creates an upload session on the beta broker.
@@ -68,5 +72,6 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	return c.Render(200, r.JSON(u))
+	res := uploadSessionCreateRes{UploadSession: u}
+	return c.Render(200, r.JSON(res))
 }
