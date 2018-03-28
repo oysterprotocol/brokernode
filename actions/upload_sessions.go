@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/pkg/errors"
 )
 
 type UploadSessionResource struct {
@@ -87,6 +89,24 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	id := c.Param("id")
 	req := uploadSessionCreateReq{}
 	parseReqBody(c.Request(), &req)
+
+	// Get session
+	tx := c.Value("tx").(*pop.Connection)
+	uploadSession := &models.UploadSession{}
+	err := tx.Find(uploadSession, c.Param("id"))
+	if err != nil || uploadSession == nil {
+		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
+		return err
+	}
+
+	// Get datamaps.
+	dMaps, err := uploadSession.DataMapsForSession()
+	if err != nil || len(*dMaps) <= 0 {
+		c.Render(400, r.JSON(map[string]string{"Error fetching datamaps": errors.WithStack(err).Error()}))
+		return err
+	}
+
+	// Update dMaps to have chunks
 
 	return c.Render(200, r.JSON(map[string]string{"it works": id}))
 }
