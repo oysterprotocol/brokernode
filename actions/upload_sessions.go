@@ -1,9 +1,12 @@
 package actions
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
+	"bytes"
+	"encoding/json"
+	"net/http"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 type UploadSessionResource struct {
@@ -29,7 +32,34 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	parseReqBody(c.Request(), &req)
 
 	// TODO: Handle PRL Payments
-	// TODO: Start session with beta.
+
+	// Start Beta Session.
+
+	var betaSessionID = ""
+	if req.BetaIP != "" {
+		betaReq, err := json.Marshal(req)
+		if err != nil {
+			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
+			return err
+		}
+
+		reqBetaBody := bytes.NewBuffer(betaReq)
+
+		// Should we be hardcoding the port?
+		betaURL := "https://" + req.BetaIP + ":3000/upload-sessions/beta"
+		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
+
+		if err != nil {
+			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
+			return err
+		}
+
+		betaSessionRes := uploadSessionCreateRes{}
+		parseResBody(betaRes, betaSessionRes)
+		betaSessionID = betaSessionRes.UploadSession.ID.String()
+	}
+
+	// Start Alpha Session.
 
 	u := models.UploadSession{
 		GenesisHash:   req.GenesisHash,
