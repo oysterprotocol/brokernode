@@ -47,3 +47,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	return c.Render(200, r.JSON(u))
 }
+
+// CreateBeta creates an upload session on the beta broker.
+func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
+	return c.Render(200, r.JSON(map[string]string{"this-works": "nice"}))
+}
