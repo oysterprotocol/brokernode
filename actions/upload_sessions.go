@@ -8,7 +8,6 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/pkg/errors"
 )
 
@@ -127,10 +126,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 			dMaps[i] = dm
 		}
-
-		// Should we still do this here?
-		iotaService := services.IotaService{}
-		go iotaService.ProcessChunks(dMaps, false)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
