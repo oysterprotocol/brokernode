@@ -93,3 +93,12 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	vErr, err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
 	return
 }
+
+// TODO: Chunk this to smaller batches?
+// DataMapsForSession fetches the datamaps associated with the session.
+func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
+	dMaps = &[]DataMap{}
+	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
+
+	return
+}
