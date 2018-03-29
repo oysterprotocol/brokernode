@@ -2,14 +2,15 @@ package services
 
 import (
 	"fmt"
-	"github.com/iotaledger/giota"
-	"github.com/oysterprotocol/brokernode/models"
+	"math/rand"
+	"runtime"
 	"strings"
 	"sync"
-	"runtime"
-	"github.com/getsentry/raven-go"
 	"time"
-	"math/rand"
+
+	raven "github.com/getsentry/raven-go"
+	"github.com/iotaledger/giota"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 type ChunkTracker struct {
@@ -101,7 +102,7 @@ func makeFakeChunks() {
 	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
 
 	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address = randSeq(81)
+		dataMaps[i].Address, _ = giota.ToTrytes(randSeq(81))
 		dataMaps[i].Message = "TESTMESSAGE"
 		dataMaps[i].Status = models.Unassigned
 
@@ -121,7 +122,7 @@ func makeChannels(powProcs int) {
 
 		jobQueue := make(chan PowJob)
 
-		var err error;
+		var err error
 		newID := randSeq(10)
 
 		channel := models.ChunkChannel{}
@@ -256,8 +257,8 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		} else {
 
 			/*
-			TODO do we need this??
-			 */
+				TODO do we need this??
+			*/
 			//go BroadcastTxs(&trytes, broadcastNodes)
 
 			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
@@ -281,7 +282,7 @@ func processChunks(chunks []models.DataMap, attachIfAlreadyAttached bool) {
 	}
 
 	powJob := PowJob{
-		Chunks: chunks,
+		Chunks:         chunks,
 		BroadcastNodes: make([]string, 1),
 	}
 
