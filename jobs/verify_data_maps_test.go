@@ -1,10 +1,11 @@
 package jobs_test
 
 import (
-	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/jobs"
-	"github.com/oysterprotocol/brokernode/services"
 	"sync"
+
+	"github.com/oysterprotocol/brokernode/jobs"
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 var (
@@ -14,6 +15,8 @@ var (
 )
 
 func (suite *JobsSuite) Test_VerifyDataMaps() {
+	// reset back to generic mocks
+	defer suite.SetupSuite()
 
 	// make suite available inside mock methods
 	Suite = *suite
@@ -21,13 +24,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// assign the mock methods for this test
 	makeMocks(&IotaMock)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		models.MakeChannels(3)
-	}()
-
-	wg.Wait()
+	models.MakeChannels(3)
 
 	// populate data_maps
 	genHash := "someGenHash"
@@ -54,13 +51,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// verify the mock methods were called
 	suite.Equal(true, sendChunksToChannelMockCalled_verify)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)
-
-	// reset back to generic mocks
-	suite.SetupSuite()
 }
 
 func makeMocks(iotaMock *services.IotaService) {
-
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock
 	iotaMock.SendChunksToChannel = sendChunksToChannelMock
 }
