@@ -6,17 +6,18 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 )
 
-var Suite JobsSuite
-var processChunksMockCalled = false
-var verifyChunkMessagesMatchesRecordMockCalled = false
-
 func (suite *JobsSuite) Test_VerifyDataMaps() {
+
+	sendChunksToChannelMockCalled = false
+	verifyChunkMessagesMatchesRecordMockCalled = false
 
 	// make suite available inside mock methods
 	Suite = *suite
 
 	// assign the mock methods for this test
 	makeMocks(&IotaMock)
+
+	models.MakeChannels(6)
 
 	// populate data_maps
 	genHash := "someGenHash"
@@ -41,7 +42,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	jobs.VerifyDataMaps(IotaMock)
 
 	// verify the mock methods were called
-	suite.Equal(true, processChunksMockCalled)
+	suite.Equal(true, sendChunksToChannelMockCalled)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled)
 
 	// reset back to generic mocks
@@ -51,7 +52,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 func makeMocks(iotaMock *services.IotaService) {
 
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock
-	iotaMock.ProcessChunks = processChunksMock
+	iotaMock.SendChunksToChannel = sendChunksToChannelMock
 }
 
 func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
@@ -80,15 +81,21 @@ func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChun
 	}, err
 }
 
-func processChunksMock(chunks []models.DataMap, attachIfAlreadyAttached bool) {
+func sendChunksToChannelMock(chunks []models.DataMap, channel *models.ChunkChannel) {
 
 	// our mock was called
-	processChunksMockCalled = true
+	sendChunksToChannelMockCalled = true
 
 	allDataMaps := []models.DataMap{}
 	var err = Suite.DB.All(&allDataMaps)
 	Suite.Nil(err)
 
-	// ProcessChunks should have gotten called with the index 2 data map from data_maps
-	Suite.Equal(chunks[0], allDataMaps[2])
+	// SendChunksToChannel should have gotten called with the index 2 data map from data_maps
+	// make sure it's the same chunk
+	Suite.Equal(chunks[0].ID, allDataMaps[2].ID)
+	Suite.Equal(chunks[0].GenesisHash, allDataMaps[2].GenesisHash)
+	Suite.Equal(chunks[0].GenesisHash, allDataMaps[2].GenesisHash)
+
+	// status should have changed
+	Suite.NotEqual(chunks[0].Status, allDataMaps[2].Status)
 }

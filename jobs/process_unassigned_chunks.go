@@ -4,12 +4,28 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+
 )
 
 func init() {
 }
 
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
+
+	channels, _ := models.GetReadyChannels()
+
+	if len(channels) > 0 {
+		AssignChunksToChannels(&channels, iotaWrapper)
+	}
+}
+
+func AssignChunksToChannels(channels *[]models.ChunkChannel, iotaWrapper services.IotaService) {
+
+	/*
+	TODO:  More sophisticated chunk grabbing.  I.e. only grab as many as
+	we have ready channels for, and try to grab an equal number per unique
+	genesis hash
+	 */
 
 	chunks, err := GetUnassignedChunks()
 
@@ -18,14 +34,25 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 	} else {
 		if len(chunks) > 0 {
 
-			for i := 0; i < len(chunks); i += BundleSize {
-				end := i + BundleSize
+			j := 0
+
+			for _, channel := range *channels {
+				end := j + BundleSize
 
 				if end > len(chunks) {
 					end = len(chunks)
 				}
 
-				iotaWrapper.ProcessChunks(chunks[i:end], false)
+				if j >= end {
+					break
+				}
+
+				iotaWrapper.SendChunksToChannel(chunks[j:end], &channel)
+
+				j += BundleSize
+				if j > len(chunks) {
+					break
+				}
 			}
 		}
 	}
@@ -42,4 +69,3 @@ func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
 
 	return dataMaps, err
 }
-

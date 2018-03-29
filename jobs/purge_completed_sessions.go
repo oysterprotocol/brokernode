@@ -4,7 +4,6 @@ import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
 	"log"
-	"strconv"
 )
 
 func init() {
@@ -28,8 +27,8 @@ func PurgeCompletedSessions() {
 	}
 
 	err = models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps WHERE status != ? AND status != ?",
-		strconv.Itoa(models.Complete),
-		strconv.Itoa(models.Confirmed)).All(&genesisHashesNotComplete)
+		models.Complete,
+		models.Confirmed).All(&genesisHashesNotComplete)
 
 	if err != nil {
 		log.Panic(err)
@@ -55,16 +54,18 @@ func PurgeCompletedSessions() {
 					return err
 				}
 
-				session := models.UploadSession{}
+				session := []models.UploadSession{}
 
-				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).First(&session)
+				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session)
 				if err != nil {
 					return err
 				}
 
-				_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session.GenesisHash, FileSizeBytes: session.FileSizeBytes})
-				if err != nil {
-					return err
+				if len(session) > 0 {
+					_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session[0].GenesisHash, FileSizeBytes: session[0].FileSizeBytes})
+					if err != nil {
+						return err
+					}
 				}
 
 				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
