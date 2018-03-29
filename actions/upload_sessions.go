@@ -21,12 +21,12 @@ type UploadSessionResource struct {
 type uploadSessionCreateReq struct {
 	GenesisHash   string `json:"genesisHash"`
 	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIP"`
+	BetaIP        string `json:"betaIp"`
 }
 
 type uploadSessionCreateRes struct {
-	UploadSession models.UploadSession `json:"uploadSession"`
-	BetaSessionID string               `json:"betaSessionID"`
+	UploadSession models.UploadSession `json:"id"`
+	BetaSessionID string               `json:"betaSessionId"`
 }
 
 type chunkReq struct {
