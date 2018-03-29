@@ -2,11 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"time"
 )
 
 // Enum for upload session type.
@@ -39,13 +40,16 @@ func (u UploadSessions) String() string {
 	return string(ju)
 }
 
+/**
+ * Validations
+ */
+
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 // This method is not required and may be deleted.
 func (u *UploadSession) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: u.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSizeBytes"},
-		&validators.IntIsPresent{Field: u.Type, Name: "Type"},
 	), nil
 }
 
@@ -61,18 +65,40 @@ func (u *UploadSession) ValidateUpdate(tx *pop.Connection) (*validate.Errors, er
 	return validate.NewErrors(), nil
 }
 
-// StartUploadSession will generate dataMaps and save the session and dataMaps
-// to the DB.
-func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
+/**
+ * Callbacks
+ */
+
+func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to alpha session.
 	if u.Type != SessionTypeBeta {
 		u.Type = SessionTypeAlpha
 	}
+
+	return nil
+}
+
+/**
+ * Methods
+ */
+
+// StartUploadSession will generate dataMaps and save the session and dataMaps
+// to the DB.
+func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
 		return
 	}
 
 	vErr, err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
+	return
+}
+
+// TODO: Chunk this to smaller batches?
+// DataMapsForSession fetches the datamaps associated with the session.
+func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
+	dMaps = &[]DataMap{}
+	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
+
 	return
 }
