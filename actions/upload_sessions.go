@@ -121,7 +121,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				"SELECT * from data_maps WHERE genesis_hash ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.idx).First(&dm)
 
 			// Simple check if hashes match.
-			if chunk.hash == dm.hash {
+			if chunk.hash == dm.Hash {
 				// Updates dmap in DB.
 				dm.Message = chunk.data
 				dm.Status = models.Unassigned
