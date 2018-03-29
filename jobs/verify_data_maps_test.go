@@ -4,12 +4,16 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/services"
+	"sync"
+)
+
+var (
+	sendChunksToChannelMockCalled_verify              = false
+	verifyChunkMessagesMatchesRecordMockCalled_verify = false
+	wg                                                sync.WaitGroup
 )
 
 func (suite *JobsSuite) Test_VerifyDataMaps() {
-
-	sendChunksToChannelMockCalled = false
-	verifyChunkMessagesMatchesRecordMockCalled = false
 
 	// make suite available inside mock methods
 	Suite = *suite
@@ -17,7 +21,13 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// assign the mock methods for this test
 	makeMocks(&IotaMock)
 
-	models.MakeChannels(6)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		models.MakeChannels(3)
+	}()
+
+	wg.Wait()
 
 	// populate data_maps
 	genHash := "someGenHash"
@@ -42,8 +52,8 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	jobs.VerifyDataMaps(IotaMock)
 
 	// verify the mock methods were called
-	suite.Equal(true, sendChunksToChannelMockCalled)
-	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled)
+	suite.Equal(true, sendChunksToChannelMockCalled_verify)
+	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)
 
 	// reset back to generic mocks
 	suite.SetupSuite()
@@ -58,7 +68,7 @@ func makeMocks(iotaMock *services.IotaService) {
 func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
 
 	// our mock was called
-	verifyChunkMessagesMatchesRecordMockCalled = true
+	verifyChunkMessagesMatchesRecordMockCalled_verify = true
 
 	allDataMaps := []models.DataMap{}
 	err = Suite.DB.All(&allDataMaps)
@@ -84,7 +94,7 @@ func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChun
 func sendChunksToChannelMock(chunks []models.DataMap, channel *models.ChunkChannel) {
 
 	// our mock was called
-	sendChunksToChannelMockCalled = true
+	sendChunksToChannelMockCalled_verify = true
 
 	allDataMaps := []models.DataMap{}
 	var err = Suite.DB.All(&allDataMaps)

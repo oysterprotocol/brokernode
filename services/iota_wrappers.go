@@ -67,6 +67,7 @@ var (
 	bestPow giota.PowFunc
 	powName string
 	Channel = map[string]PowChannel{}
+	wg      sync.WaitGroup
 )
 
 func init() {
@@ -86,9 +87,18 @@ func init() {
 		PowProcs--
 	}
 
-	//makeFakeChunks()
+	makeFakeChunks()
 
-	channels, err := models.MakeChannels(PowProcs)
+	channels := []models.ChunkChannel{}
+	var err error
+
+	wg.Add(1)
+	go func(channels *[]models.ChunkChannel, err *error) {
+		defer wg.Done()
+		*channels, *err = models.MakeChannels(PowProcs)
+	}(&channels, &err)
+
+	wg.Wait()
 
 	for _, channel := range channels {
 		chunkTracker := make([]ChunkTracker, 0)
