@@ -21,12 +21,12 @@ type UploadSessionResource struct {
 type uploadSessionCreateReq struct {
 	GenesisHash   string `json:"genesisHash"`
 	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIP"`
+	BetaIP        string `json:"betaIp"`
 }
 
 type uploadSessionCreateRes struct {
-	UploadSession models.UploadSession `json:"uploadSession"`
-	BetaSessionID string               `json:"betaSessionID"`
+	UploadSession models.UploadSession `json:"id"`
+	BetaSessionID string               `json:"betaSessionId"`
 }
 
 type chunkReq struct {
@@ -120,10 +120,13 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			tx.RawQuery(
 				"SELECT * from data_maps WHERE genesis_hash ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.idx).First(&dm)
 
-			// Updates dmap in DB.
-			dm.Message = chunk.data
-			dm.Status = models.Unassigned
-			tx.ValidateAndSave(&dm)
+			// Simple check if hashes match.
+			if chunk.hash == dm.Hash {
+				// Updates dmap in DB.
+				dm.Message = chunk.data
+				dm.Status = models.Unassigned
+				tx.ValidateAndSave(&dm)
+			}
 
 			dMaps[i] = dm
 		}
