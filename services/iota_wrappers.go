@@ -2,14 +2,15 @@ package services
 
 import (
 	"fmt"
-	"github.com/iotaledger/giota"
-	"github.com/oysterprotocol/brokernode/models"
+	"math/rand"
+	"runtime"
 	"strings"
 	"sync"
-	"runtime"
-	"github.com/getsentry/raven-go"
 	"time"
-	"math"
+
+	raven "github.com/getsentry/raven-go"
+	"github.com/iotaledger/giota"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 type ChunkTracker struct {
@@ -123,7 +124,7 @@ func makeFakeChunks() {
 	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
 
 	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address = models.RandSeq(81)
+		dataMaps[i].Address, _ = giota.ToTrytes(randSeq(81))
 		dataMaps[i].Message = "TESTMESSAGE"
 		dataMaps[i].Status = models.Unassigned
 
@@ -228,12 +229,12 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
 			//})
 
-			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		} else {
 
-			fmt.Println("SUCCESS")
-
+			/*
+				TODO do we need this??
+			*/
 			//go BroadcastTxs(&trytes, broadcastNodes)
 
 			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
