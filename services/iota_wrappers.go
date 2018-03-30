@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"math/rand"
 	"runtime"
 	"strings"
 	"sync"
@@ -124,7 +123,7 @@ func makeFakeChunks() {
 	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
 
 	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address, _ = giota.ToTrytes(randSeq(81))
+		dataMaps[i].Address, _ = giota.ToTrytes(models.RandSeq(81))
 		dataMaps[i].Message = "TESTMESSAGE"
 		dataMaps[i].Status = models.Unassigned
 
