@@ -99,7 +99,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 				var err error;
 				channel := ChunkChannel{}
 				channel.ChannelID = RandSeq(10)
-				channel.EstReadyTime = time.Now().Add(-50000)
+				channel.EstReadyTime = time.Now().Add(-5 * time.Minute)
 				channel.ChunksProcessed = 0
 
 				_, err = DB.ValidateAndSave(&channel)

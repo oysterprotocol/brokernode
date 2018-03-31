@@ -1,8 +1,6 @@
 package jobs_test
 
 import (
-	"sync"
-
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -11,7 +9,6 @@ import (
 var (
 	sendChunksToChannelMockCalled_verify              = false
 	verifyChunkMessagesMatchesRecordMockCalled_verify = false
-	wg                                                sync.WaitGroup
 )
 
 func (suite *JobsSuite) Test_VerifyDataMaps() {
