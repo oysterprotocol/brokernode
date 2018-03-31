@@ -7,7 +7,6 @@ import (
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"github.com/iotaledger/giota"
 )
 
 type CompletedDataMap struct {
@@ -23,7 +22,7 @@ type CompletedDataMap struct {
 	GenesisHash string       `json:"genesisHash" db:"genesis_hash"`
 	ChunkIdx    int          `json:"chunkIdx" db:"chunk_idx"`
 	Hash        string       `json:"hash" db:"hash"`
-	Address     giota.Trytes `json:"address" db:"address"`
+	Address     string       `json:"address" db:"address"`
 }
 
 func init() {

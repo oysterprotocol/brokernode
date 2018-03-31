@@ -4,40 +4,41 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+
+	"github.com/oysterprotocol/brokernode/utils"
 	"math"
 	"time"
 
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"github.com/iotaledger/giota"
 )
 
 const fileBytesChunkSize = float64(2817)
 
 const (
-	Pending int = iota + 1
+	Pending    int = iota + 1
 	Unassigned
 	Unverified
 	Complete
 	Confirmed
-	Error = -1
+	Error      = -1
 )
 
 type DataMap struct {
-	ID          int          `json:"id" db:"id"`
-	CreatedAt   time.Time    `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time    `json:"updatedAt" db:"updated_at"`
-	Status      int          `json:"status" db:"status"`
-	NodeID      string       `json:"nodeID" db:"node_id"`
-	NodeType    string       `json:"nodeType" db:"node_type"`
-	Message     string       `json:"message" db:"message"`
-	TrunkTx     string       `json:"trunkTx" db:"trunk_tx"`
-	BranchTx    string       `json:"branchTx" db:"branch_tx"`
-	GenesisHash string       `json:"genesisHash" db:"genesis_hash"`
-	ChunkIdx    int          `json:"chunkIdx" db:"chunk_idx"`
-	Hash        string       `json:"hash" db:"hash"`
-	Address     giota.Trytes `json:"address" db:"address"`
+	ID          int       `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
+	Status      int       `json:"status" db:"status"`
+	NodeID      string    `json:"nodeID" db:"node_id"`
+	NodeType    string    `json:"nodeType" db:"node_type"`
+	Message     string    `json:"message" db:"message"`
+	TrunkTx     string    `json:"trunkTx" db:"trunk_tx"`
+	BranchTx    string    `json:"branchTx" db:"branch_tx"`
+	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
+	ChunkIdx    int       `json:"chunkIdx" db:"chunk_idx"`
+	Hash        string    `json:"hash" db:"hash"`
+	Address     string    `json:"address" db:"address"`
 }
 
 func init() {
@@ -87,7 +88,8 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 	currHash := genHash
 	for i := 0; i <= fileChunksCount; i++ {
 		// TODO: Batch these inserts.
-		currAddr, _ := giota.ToTrytes(currHash)
+		currAddr := string(oyster_utils.MakeAddress(currHash))
+
 		vErr, err = DB.ValidateAndCreate(&DataMap{
 			GenesisHash: genHash,
 			ChunkIdx:    i,

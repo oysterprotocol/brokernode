@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"math"
 	"runtime"
 	"strings"
 	"sync"
@@ -87,7 +88,7 @@ func init() {
 		PowProcs--
 	}
 
-	makeFakeChunks()
+	//makeFakeChunks()
 
 	channels := []models.ChunkChannel{}
 	var err error
@@ -101,6 +102,7 @@ func init() {
 	wg.Wait()
 
 	for _, channel := range channels {
+
 		chunkTracker := make([]ChunkTracker, 0)
 
 		Channel[channel.ChannelID] = PowChannel{
@@ -123,7 +125,7 @@ func makeFakeChunks() {
 	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
 
 	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address, _ = giota.ToTrytes(models.RandSeq(81))
+		dataMaps[i].Address = models.RandSeq(81)
 		dataMaps[i].Message = "TESTMESSAGE"
 		dataMaps[i].Status = models.Unassigned
 
