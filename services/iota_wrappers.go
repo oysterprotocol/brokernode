@@ -64,7 +64,7 @@ var (
 	minDepth     = int64(giota.DefaultNumberOfWalks)
 	minWeightMag = int64(14)
 	//minWeightMag = int64(2)
-	api     = giota.NewAPI(provider, nil)
+	Api     = giota.NewAPI(provider, nil)
 	bestPow giota.PowFunc
 	powName string
 	Channel = map[string]PowChannel{}
@@ -149,7 +149,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
 		}
 
-		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
+		bdl, err := giota.PrepareTransfers(Api, seed, transfersArray, nil, "", 1)
 
 		if err != nil {
 			raven.CaptureError(err, nil)
@@ -157,7 +157,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := Api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
 		if err != nil {
 			raven.CaptureError(err, nil)
 		}
@@ -175,6 +175,18 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		fmt.Println("PowWorker: Leaving")
 		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+	}
+}
+
+func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
+
+	*(channel.ChunkTrackers) = append(*(channel.ChunkTrackers), ChunkTracker{
+		ChunkCount:  numChunks,
+		ElapsedTime: time.Since(startTime),
+	})
+
+	if len(*(channel.ChunkTrackers)) > 10 {
+		*(channel.ChunkTrackers) = (*(channel.ChunkTrackers))[1:11]
 	}
 }
 
@@ -218,7 +230,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	go func(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) {
 
-		err = api.BroadcastTransactions(trytes)
+		err = Api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
@@ -268,6 +280,34 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 	Channel[channel.ChannelID].Channel <- powJob
 }
 
+func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
+
+	var totalTime time.Duration = 0
+	chunksCount := 0
+
+	if len(*(channel.ChunkTrackers)) != 0 {
+
+		for _, timeRecord := range *(channel.ChunkTrackers) {
+			totalTime += timeRecord.ElapsedTime
+			chunksCount += timeRecord.ChunkCount
+		}
+
+		avgTimePerChunk := int(totalTime) / chunksCount
+		expectedDelay := int(math.Floor((float64(avgTimePerChunk * numChunks))))
+
+		return time.Now().Add(time.Duration(expectedDelay))
+	} else {
+
+		// The application just started, we don't have any data yet,
+		// so just set est_ready_time to 10 seconds from now
+
+		/*
+		TODO:  get a more precise estimate of what this default should be
+		 */
+		return time.Now().Add(10 * time.Second)
+	}
+}
+
 func verifyChunkMessagesMatchRecord(chunks []models.DataMap) (filteredChunks FilteredChunk, err error) {
 	filteredChunks, err = verifyChunksMatchRecord(chunks, false)
 	return filteredChunks, err
@@ -286,7 +326,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		Addresses: addresses,
 	}
 
-	response, err := api.FindTransactions(&request)
+	response, err := Api.FindTransactions(&request)
 
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -296,7 +336,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	filteredChunks = FilteredChunk{}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := api.GetTrytes(response.Hashes)
+		trytesArray, err := Api.GetTrytes(response.Hashes)
 		if err != nil {
 			raven.CaptureError(err, nil)
 			return filteredChunks, err
@@ -349,45 +389,5 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 	} else {
 
 		return false
-	}
-}
-
-func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
-
-	var totalTime time.Duration = 0
-	chunksCount := 0
-
-	if len(*(channel.ChunkTrackers)) != 0 {
-
-		for _, timeRecord := range *(channel.ChunkTrackers) {
-			totalTime += timeRecord.ElapsedTime
-			chunksCount += timeRecord.ChunkCount
-		}
-
-		avgTimePerChunk := int(totalTime) / chunksCount
-		expectedDelay := int(math.Floor((float64(avgTimePerChunk * numChunks))))
-
-		return time.Now().Add(time.Duration(expectedDelay))
-	} else {
-
-		// The application just started, we don't have any data yet,
-		// so just set est_ready_time to 10 seconds from now
-
-		/*
-		TODO:  get a more precise estimate of what this default should be
-		 */
-		return time.Now().Add(10 * time.Second)
-	}
-}
-
-func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
-
-	*(channel.ChunkTrackers) = append(*(channel.ChunkTrackers), ChunkTracker{
-		ChunkCount:  numChunks,
-		ElapsedTime: time.Since(startTime),
-	})
-
-	if len(*(channel.ChunkTrackers)) > 10 {
-		*(channel.ChunkTrackers) = (*(channel.ChunkTrackers))[1:11]
 	}
 }

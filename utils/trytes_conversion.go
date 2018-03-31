@@ -68,6 +68,7 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 	return outputString, nil;
 }
 
+//TrytesToBytes and BytesToTrytes written by Chris Warner, thanks!
 func TrytesToBytes(t giota.Trytes) []byte {
 	var output []byte
 	trytesString := string(t)
