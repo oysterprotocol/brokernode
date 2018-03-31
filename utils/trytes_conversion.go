@@ -18,17 +18,15 @@ func AsciiToTrytes(asciiString string) (string, error) {
 	trytes := ""
 	for _, character := range asciiString {
 		var charCode = character
-		//var charString = string(character)
 
 		// If not recognizable ASCII character, return null
 		if (charCode > 255) {
-			//asciiValue = 32
 			return trytes, err
 		}
 
 		var firstValue = charCode % 27
 		var secondValue = (charCode - firstValue) / 27
-		var trytesValue = trytesAlphabet[firstValue] + trytesAlphabet[secondValue]
+		var trytesValue = string(trytesAlphabet[firstValue]) + string(trytesAlphabet[secondValue])
 		trytes += string(trytesValue)
 	}
 
