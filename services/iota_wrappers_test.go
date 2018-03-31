@@ -9,7 +9,6 @@ import (
 )
 
 func Test_Init(t *testing.T) {
-	fmt.Println("SDFSDF")
 
 	//it should have determined the number of PoW processes
 	if services.PowProcs == 0 {
