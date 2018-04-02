@@ -23,6 +23,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register("processUnassignedChunksHandler", processUnassignedChunksHandler)
 	oysterWorker.Register("purgeCompletedSessionsHandler", purgeCompletedSessionsHandler)
 	oysterWorker.Register("verifyDataMapsHandler", verifyDataMapsHandler)
+	oysterWorker.Register("updateTimedOutDataMapsHandler", updateTimedOutDataMapsHandler)
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -30,7 +31,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "flushOldWebnodesHandler",
 		Args: worker.Args{
-			"duration": 1 * time.Minute,
+			"duration": 5 * time.Minute,
 		},
 	}
 
@@ -38,7 +39,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "processUnassignedChunksHandler",
 		Args: worker.Args{
-			"duration": 1 * time.Minute,
+			"duration": 5 * time.Second,
 		},
 	}
 
@@ -46,7 +47,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "purgeCompletedSessionsHandler",
 		Args: worker.Args{
-			"duration": 1 * time.Minute,
+			"duration": 60 * time.Second,
 		},
 	}
 
@@ -54,7 +55,15 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "verifyDataMapsHandler",
 		Args: worker.Args{
-			"duration": 1 * time.Minute,
+			"duration": 60 * time.Second,
+		},
+	}
+
+	updateTimedOutDataMapsJob := worker.Job{
+		Queue:   "default",
+		Handler: "updateTimedOutDataMapsHandler",
+		Args: worker.Args{
+			"duration": 30 * time.Second,
 		},
 	}
 
@@ -62,6 +71,7 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorker.PerformIn(processUnassignedChunksJob, processUnassignedChunksJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(purgeCompletedSessionsJob, purgeCompletedSessionsJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(verifyDataMapsJob, verifyDataMapsJob.Args["duration"].(time.Duration))
+	oysterWorker.PerformIn(updateTimedOutDataMapsJob, updateTimedOutDataMapsJob.Args["duration"].(time.Duration))
 }
 
 var flushOldWebnodesHandler = func(args worker.Args) error {
@@ -113,6 +123,19 @@ var verifyDataMapsHandler = func(args worker.Args) error {
 		Args:    args,
 	}
 	OysterWorker.PerformIn(verifyDataMapsJob, verifyDataMapsJob.Args["duration"].(time.Duration))
+
+	return nil
+}
+
+var updateTimedOutDataMapsHandler = func(args worker.Args) error {
+	UpdateTimeOutDataMaps(time.Now().Add(-1 * time.Minute))
+
+	updateTimedOutDataMapsJob := worker.Job{
+		Queue:   "default",
+		Handler: "updateTimedOutDataMapsHandler",
+		Args:    args,
+	}
+	OysterWorker.PerformIn(updateTimedOutDataMapsJob, updateTimedOutDataMapsJob.Args["duration"].(time.Duration))
 
 	return nil
 }

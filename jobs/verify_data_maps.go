@@ -51,8 +51,8 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 			//		Set("chunk_idx", matchingChunk.ChunkIdx),
 			//})
 
-			models.DB.RawQuery("UPDATE data_maps SET status = ? WHERE genesis_hash = ?",
-				models.Complete, matchingChunk.GenesisHash)
+			matchingChunk.Status = models.Complete
+			models.DB.ValidateAndSave(&matchingChunk)
 		}
 	}
 
@@ -70,10 +70,36 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 			//		Set("chunk_idx", notMatchingChunk.ChunkIdx),
 			//})
 
-			models.DB.RawQuery("UPDATE data_maps SET status = ?, trunk_tx = ?, branch_tx = ?, node_id = ?, WHERE genesis_hash = ?",
-				models.Unassigned, "", "", "", notMatchingChunk.GenesisHash)
+			notMatchingChunk.Status = models.Unassigned
+			notMatchingChunk.TrunkTx = ""
+			notMatchingChunk.BranchTx = ""
+			notMatchingChunk.NodeID = ""
+			models.DB.ValidateAndSave(&notMatchingChunk)
 		}
 
-		IotaWrapper.ProcessChunks(filteredChunks.DoesNotMatchTangle, true)
+		channels, _ := models.GetReadyChannels()
+
+		if len(channels) > 0 {
+			j := 0
+
+			for _, channel := range channels {
+
+				end := j + BundleSize
+
+				if end > len(filteredChunks.DoesNotMatchTangle) {
+					end = len(filteredChunks.DoesNotMatchTangle)
+				}
+
+				if j == end {
+					break
+				}
+
+				IotaWrapper.SendChunksToChannel(filteredChunks.DoesNotMatchTangle[j:end], &channel)
+				j += BundleSize
+				if j > len(filteredChunks.DoesNotMatchTangle) {
+					break
+				}
+			}
+		}
 	}
 }

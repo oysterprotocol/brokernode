@@ -2,9 +2,13 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
+	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -20,6 +24,11 @@ type ChunkChannel struct {
 	CreatedAt       time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at" db:"updated_at"`
 }
+
+var (
+	letters = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	wg      sync.WaitGroup
+)
 
 // String is not required by pop and may be deleted
 func (c ChunkChannel) String() string {
@@ -52,4 +61,83 @@ func (c *ChunkChannel) ValidateCreate(tx *pop.Connection) (*validate.Errors, err
 // This method is not required and may be deleted.
 func (c *ChunkChannel) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
+}
+
+// GetReadyChannels grabs all of the channels that are ready
+func GetReadyChannels() ([]ChunkChannel, error) {
+
+	channels := []ChunkChannel{}
+
+	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
+		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).All(&channels)
+
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
+
+	return channels, err
+}
+
+func MakeChannels(powProcs int) ([]ChunkChannel, error) {
+
+	wg.Add(1)
+	var err error
+
+	go func(err *error) {
+		defer wg.Done()
+		*err = DB.Transaction(func(DB *pop.Connection) error {
+			err := DB.RawQuery("DELETE from chunk_channels;").All(&[]ChunkChannel{})
+			if err != nil {
+				fmt.Println(err)
+				raven.CaptureError(err, nil)
+				return err
+			}
+
+			for i := 0; i < powProcs; i++ {
+
+				var err error;
+				channel := ChunkChannel{}
+				channel.ChannelID = RandSeq(10)
+				channel.EstReadyTime = time.Now().Add(-5 * time.Minute)
+				channel.ChunksProcessed = 0
+
+				_, err = DB.ValidateAndSave(&channel)
+				if err != nil {
+					fmt.Println(err)
+					raven.CaptureError(err, nil)
+					return err
+				}
+			}
+
+			return nil
+		})
+	}(&err)
+
+	wg.Wait()
+
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
+
+	channels := []ChunkChannel{}
+
+	err = DB.RawQuery("SELECT * from chunk_channels;").All(&channels)
+
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
+
+	return channels, err
+}
+
+//TODO:  put this in some utils class
+func RandSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

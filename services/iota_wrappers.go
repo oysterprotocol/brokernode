@@ -2,7 +2,7 @@ package services
 
 import (
 	"fmt"
-	"math/rand"
+	"math"
 	"runtime"
 	"strings"
 	"sync"
@@ -24,23 +24,22 @@ type PowJob struct {
 }
 
 type PowChannel struct {
-	DBChannel     models.ChunkChannel
 	ChannelID     string
-	ChunkTrackers []ChunkTracker
+	ChunkTrackers *[]ChunkTracker
 	Channel       chan PowJob
 }
 
 type IotaService struct {
-	ProcessChunks                  ProcessChunks
+	SendChunksToChannel            SendChunksToChannel
 	VerifyChunkMessagesMatchRecord VerifyChunkMessagesMatchRecord
 	VerifyChunksMatchRecord        VerifyChunksMatchRecord
 	ChunksMatch                    ChunksMatch
 }
 
-type ProcessChunks func(chunks []models.DataMap, attachIfAlreadyAttached bool)
-type VerifyChunkMessagesMatchRecord func(chunks []models.DataMap) (filteredChunks FilteredChunk, err error)
-type VerifyChunksMatchRecord func(chunks []models.DataMap, checkChunkAndBranch bool) (filteredChunks FilteredChunk, err error)
-type ChunksMatch func(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool
+type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
+type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
+type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
+type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -64,11 +63,12 @@ var (
 	provider     = "http://172.21.0.1:14265"
 	minDepth     = int64(giota.DefaultNumberOfWalks)
 	minWeightMag = int64(14)
-	api          = giota.NewAPI(provider, nil)
-	bestPow      giota.PowFunc
-	powName      string
-	letters      = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	Channel      = map[string]PowChannel{}
+	//minWeightMag = int64(2)
+	Api     = giota.NewAPI(provider, nil)
+	bestPow giota.PowFunc
+	powName string
+	Channel = map[string]PowChannel{}
+	wg      sync.WaitGroup
 )
 
 func init() {
@@ -77,7 +77,7 @@ func init() {
 	powName, bestPow = giota.GetBestPoW()
 
 	IotaWrapper = IotaService{
-		ProcessChunks:                  processChunks,
+		SendChunksToChannel:            sendChunksToChannel,
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
@@ -90,19 +90,42 @@ func init() {
 
 	//makeFakeChunks()
 
-	makeChannels(PowProcs)
+	channels := []models.ChunkChannel{}
+	var err error
+
+	wg.Add(1)
+	go func(channels *[]models.ChunkChannel, err *error) {
+		defer wg.Done()
+		*channels, *err = models.MakeChannels(PowProcs)
+	}(&channels, &err)
+
+	wg.Wait()
+
+	for _, channel := range channels {
+
+		chunkTracker := make([]ChunkTracker, 0)
+
+		Channel[channel.ChannelID] = PowChannel{
+			ChannelID:     channel.ChannelID,
+			Channel:       make(chan PowJob),
+			ChunkTrackers: &chunkTracker,
+		}
+
+		// start the worker
+		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
+	}
 }
 
 func makeFakeChunks() {
 
 	dataMaps := []models.DataMap{}
 
-	models.BuildDataMaps("GENHASH2", 100000)
+	models.BuildDataMaps("GENHASH2", 49000)
 
 	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
 
 	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address, _ = giota.ToTrytes(randSeq(81))
+		dataMaps[i].Address = models.RandSeq(81)
 		dataMaps[i].Message = "TESTMESSAGE"
 		dataMaps[i].Status = models.Unassigned
 
@@ -110,82 +133,33 @@ func makeFakeChunks() {
 	}
 }
 
-func makeChannels(powProcs int) {
-
-	err := models.DB.RawQuery("DELETE from chunk_channels;").All(&[]models.ChunkChannel{})
-
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
-
-	for i := 0; i < powProcs; i++ {
-
-		jobQueue := make(chan PowJob)
-
-		var err error
-		newID := randSeq(10)
-
-		channel := models.ChunkChannel{}
-		channel.ChannelID = newID
-		channel.EstReadyTime = time.Now()
-		channel.ChunksProcessed = 0
-
-		_, err = models.DB.ValidateAndSave(&channel)
-		if err != nil {
-			raven.CaptureError(err, nil)
-		}
-		models.DB.RawQuery("SELECT * from chunk_channels where channel_id = ?", newID).First(&channel)
-
-		Channel[newID] = PowChannel{
-			DBChannel: channel,
-			ChannelID: channel.ChannelID,
-			Channel:   jobQueue,
-		}
-
-		// start the worker
-		go PowWorker(Channel[newID].Channel, newID, err)
-	}
-}
-
-func randSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
-
 func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 	for powJobRequest := range jobQueue {
 		// this is where we would call methods to deal with each job request
 		fmt.Println("PowWorker: Starting")
 
-		// do filtering/finding BEFORE chunks ever get send to these channels
+		startTime := time.Now()
 
 		transfersArray := make([]giota.Transfer, len(powJobRequest.Chunks))
-
-		tag := "OYSTERGOLANG"
 
 		for i, chunk := range powJobRequest.Chunks {
 			transfersArray[i].Address = giota.Address(chunk.Address)
 			transfersArray[i].Value = int64(0)
 			transfersArray[i].Message = giota.Trytes(chunk.Message)
-			transfersArray[i].Tag = giota.Trytes(tag)
+			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
 		}
 
-		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
+		bdl, err := giota.PrepareTransfers(Api, seed, transfersArray, nil, "", 1)
 
 		if err != nil {
 			raven.CaptureError(err, nil)
-			return
 		}
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := Api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
 		if err != nil {
 			raven.CaptureError(err, nil)
-			return
 		}
 
 		err = doPowAndBroadcast(
@@ -197,7 +171,22 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			bestPow,
 			powJobRequest.BroadcastNodes)
 
+		channelToChange := Channel[channelID]
+
 		fmt.Println("PowWorker: Leaving")
+		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+	}
+}
+
+func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
+
+	*(channel.ChunkTrackers) = append(*(channel.ChunkTrackers), ChunkTracker{
+		ChunkCount:  numChunks,
+		ElapsedTime: time.Since(startTime),
+	})
+
+	if len(*(channel.ChunkTrackers)) > 10 {
+		*(channel.ChunkTrackers) = (*(channel.ChunkTrackers))[1:11]
 	}
 }
 
@@ -241,7 +230,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	go func(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) {
 
-		err = api.BroadcastTransactions(trytes)
+		err = Api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
@@ -273,13 +262,15 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	return nil
 }
 
-func processChunks(chunks []models.DataMap, attachIfAlreadyAttached bool) {
-	channel := models.ChunkChannel{}
+func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) {
 
-	err := models.DB.RawQuery("SELECT * from chunk_channels WHERE est_ready_time <= ?;", time.Now()).First(&channel)
-	if err != nil {
-		raven.CaptureError(err, nil)
+	for _, chunk := range chunks {
+		chunk.Status = models.Unverified
+		models.DB.ValidateAndSave(&chunk)
 	}
+
+	channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
+	models.DB.ValidateAndSave(channel)
 
 	powJob := PowJob{
 		Chunks:         chunks,
@@ -287,6 +278,34 @@ func processChunks(chunks []models.DataMap, attachIfAlreadyAttached bool) {
 	}
 
 	Channel[channel.ChannelID].Channel <- powJob
+}
+
+func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
+
+	var totalTime time.Duration = 0
+	chunksCount := 0
+
+	if len(*(channel.ChunkTrackers)) != 0 {
+
+		for _, timeRecord := range *(channel.ChunkTrackers) {
+			totalTime += timeRecord.ElapsedTime
+			chunksCount += timeRecord.ChunkCount
+		}
+
+		avgTimePerChunk := int(totalTime) / chunksCount
+		expectedDelay := int(math.Floor((float64(avgTimePerChunk * numChunks))))
+
+		return time.Now().Add(time.Duration(expectedDelay))
+	} else {
+
+		// The application just started, we don't have any data yet,
+		// so just set est_ready_time to 10 seconds from now
+
+		/*
+		TODO:  get a more precise estimate of what this default should be
+		 */
+		return time.Now().Add(10 * time.Second)
+	}
 }
 
 func verifyChunkMessagesMatchRecord(chunks []models.DataMap) (filteredChunks FilteredChunk, err error) {
@@ -307,7 +326,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		Addresses: addresses,
 	}
 
-	response, err := api.FindTransactions(&request)
+	response, err := Api.FindTransactions(&request)
 
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -317,7 +336,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	filteredChunks = FilteredChunk{}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := api.GetTrytes(response.Hashes)
+		trytesArray, err := Api.GetTrytes(response.Hashes)
 		if err != nil {
 			raven.CaptureError(err, nil)
 			return filteredChunks, err

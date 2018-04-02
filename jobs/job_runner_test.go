@@ -14,6 +14,10 @@ type JobsSuite struct {
 	*suite.Model
 }
 
+var Suite JobsSuite
+var sendChunksToChannelMockCalled = false
+var verifyChunkMessagesMatchesRecordMockCalled = false
+
 func (suite *JobsSuite) SetupSuite() {
 
 	/*
@@ -22,7 +26,7 @@ func (suite *JobsSuite) SetupSuite() {
 	*/
 
 	IotaMock = services.IotaService{
-		ProcessChunks: func(chunks []models.DataMap, attachIfAlreadyAttached bool) {
+		SendChunksToChannel: func(chunks []models.DataMap, channel *models.ChunkChannel) {
 
 		},
 		VerifyChunkMessagesMatchRecord: func(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
