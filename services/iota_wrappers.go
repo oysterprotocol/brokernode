@@ -64,7 +64,7 @@ var (
 	minDepth     = int64(giota.DefaultNumberOfWalks)
 	minWeightMag = int64(14)
 	//minWeightMag = int64(2)
-	Api     = giota.NewAPI(provider, nil)
+	api     = giota.NewAPI(provider, nil)
 	bestPow giota.PowFunc
 	powName string
 	Channel = map[string]PowChannel{}
@@ -149,7 +149,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
 		}
 
-		bdl, err := giota.PrepareTransfers(Api, seed, transfersArray, nil, "", 1)
+		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
 
 		if err != nil {
 			raven.CaptureError(err, nil)
@@ -157,7 +157,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := Api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
 		if err != nil {
 			raven.CaptureError(err, nil)
 		}
@@ -227,10 +227,9 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		prev = trytes[i].Hash()
 	}
 
-	go func(branch giota.Trytes, trunk giota.Trytes, depth int64,
-		trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) {
+	go func(trytes []giota.Transaction) {
 
-		err = Api.BroadcastTransactions(trytes)
+		err = api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
@@ -242,6 +241,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
 			//})
 
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		} else {
 
@@ -257,7 +257,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
 			//})
 		}
-	}(branch, trunk, depth, trytes, mwm, bestPow, broadcastNodes)
+	}(trytes)
 
 	return nil
 }
@@ -326,7 +326,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		Addresses: addresses,
 	}
 
-	response, err := Api.FindTransactions(&request)
+	response, err := api.FindTransactions(&request)
 
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -336,7 +336,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	filteredChunks = FilteredChunk{}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := Api.GetTrytes(response.Hashes)
+		trytesArray, err := api.GetTrytes(response.Hashes)
 		if err != nil {
 			raven.CaptureError(err, nil)
 			return filteredChunks, err

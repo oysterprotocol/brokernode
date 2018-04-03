@@ -9,8 +9,8 @@ import (
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
 	res := as.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
-		"genesisHash":   "genesisHashTest",
-		"fileSizeBytes": 123,
+		"genesis_hash":    "genesisHashTest",
+		"file_size_bytes": 123,
 	})
 
 	// Parse response
@@ -28,8 +28,8 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 
 func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	res := as.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
-		"genesisHash":   "genesisHashTest",
-		"fileSizeBytes": 123,
+		"genesis_hash":    "genesisHashTest",
+		"file_size_bytes": 123,
 	})
 
 	// Parse response

@@ -4,7 +4,6 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-
 )
 
 func init() {
@@ -47,7 +46,14 @@ func AssignChunksToChannels(channels *[]models.ChunkChannel, iotaWrapper service
 					break
 				}
 
-				iotaWrapper.SendChunksToChannel(chunks[j:end], &channel)
+				filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(chunks[j:end])
+				if err != nil {
+					raven.CaptureError(err, nil)
+				}
+
+				chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
+
+				iotaWrapper.SendChunksToChannel(chunksToSend, &channel)
 
 				j += BundleSize
 				if j > len(chunks) {

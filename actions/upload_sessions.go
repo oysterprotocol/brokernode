@@ -3,12 +3,11 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
+	"net/http"
 )
 
 type UploadSessionResource struct {
@@ -18,24 +17,25 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash   string `json:"genesisHash"`
-	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIp"`
+	GenesisHash   string `json:"genesis_hash"`
+	FileSizeBytes int    `json:"file_size_bytes"`
+	BetaIP        string `json:"beta_brokernode_ip"`
 }
 
 type uploadSessionCreateRes struct {
-	UploadSession models.UploadSession `json:"id"`
-	BetaSessionID string               `json:"betaSessionId"`
+	ID            string               `json:"id"`
+	UploadSession models.UploadSession `json:"upload_session"`
+	BetaSessionID string               `json:"beta_session_id"`
 }
 
 type chunkReq struct {
-	idx  int    `json:idx`
-	data string `json:data`
-	hash string `json:hash`
+	Idx  int    `json:"idx"`
+	Data string `json:"data"`
+	Hash string `json:"hash"`
 }
 
-type uploadSessionUpdateReq struct {
-	chunks []chunkReq `json:chunks`
+type UploadSessionUpdateReq struct {
+	Chunks []chunkReq `json:"chunks"`
 }
 
 // Create creates an upload session.
@@ -58,22 +58,22 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		reqBetaBody := bytes.NewBuffer(betaReq)
 
 		// Should we be hardcoding the port?
-		betaURL := "https://" + req.BetaIP + ":3000/upload-sessions/beta"
+		betaURL := req.BetaIP + ":3000/api/v2/upload-sessions/beta"
 		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
 
 		if err != nil {
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
-
-		betaSessionRes := uploadSessionCreateRes{}
+		betaSessionRes := &uploadSessionCreateRes{}
 		parseResBody(betaRes, betaSessionRes)
-		betaSessionID = betaSessionRes.UploadSession.ID.String()
+		betaSessionID = betaSessionRes.ID
 	}
 
 	// Start Alpha Session.
 
 	u := models.UploadSession{
+		Type:          models.SessionTypeAlpha,
 		GenesisHash:   req.GenesisHash,
 		FileSizeBytes: req.FileSizeBytes,
 	}
@@ -89,6 +89,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	res := uploadSessionCreateRes{
 		UploadSession: u,
+		ID:            u.ID.String(),
 		BetaSessionID: betaSessionID,
 	}
 	return c.Render(200, r.JSON(res))
@@ -96,13 +97,13 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResource) Update(c buffalo.Context) error {
-	req := uploadSessionUpdateReq{}
+
+	req := UploadSessionUpdateReq{}
 	parseReqBody(c.Request(), &req)
 
 	// Get session
-	tx := c.Value("tx").(*pop.Connection)
 	uploadSession := &models.UploadSession{}
-	err := tx.Find(uploadSession, c.Param("id"))
+	err := models.DB.Find(uploadSession, c.Param("id"))
 	if err != nil || uploadSession == nil {
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
@@ -112,19 +113,23 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	go func() {
 		// Map over chunks from request
 		// TODO: Batch processing DB upserts.
-		dMaps := make([]models.DataMap, len(req.chunks))
-		for i, chunk := range req.chunks {
+		dMaps := make([]models.DataMap, len(req.Chunks))
+		for i, chunk := range req.Chunks {
 			// Fetch DataMap
 			dm := models.DataMap{}
-			tx.RawQuery(
-				"SELECT * from data_maps WHERE genesis_hash ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.idx).First(&dm)
+			err := models.DB.RawQuery(
+				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.Idx).First(&dm)
+
+			if err != nil {
+				raven.CaptureError(err, nil)
+			}
 
 			// Simple check if hashes match.
-			if chunk.hash == dm.Hash {
+			if chunk.Hash == dm.GenesisHash {
 				// Updates dmap in DB.
-				dm.Message = chunk.data
+				dm.Message = chunk.Data
 				dm.Status = models.Unassigned
-				tx.ValidateAndSave(&dm)
+				models.DB.ValidateAndSave(&dm)
 			}
 
 			dMaps[i] = dm
@@ -154,6 +159,6 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	res := uploadSessionCreateRes{UploadSession: u}
+	res := uploadSessionCreateRes{UploadSession: u, ID: u.ID.String()}
 	return c.Render(200, r.JSON(res))
 }
