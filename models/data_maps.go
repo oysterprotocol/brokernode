@@ -14,7 +14,7 @@ import (
 	"github.com/gobuffalo/validate/validators"
 )
 
-const fileBytesChunkSize = float64(2817)
+const fileBytesChunkSize = float64(2187)
 
 const (
 	Pending    int = iota + 1
@@ -83,7 +83,7 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
 func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
-	fileChunksCount := int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
+	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
 
 	currHash := genHash
 	for i := 0; i <= fileChunksCount; i++ {

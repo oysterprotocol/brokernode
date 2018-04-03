@@ -46,14 +46,15 @@ func AssignChunksToChannels(channels *[]models.ChunkChannel, iotaWrapper service
 					break
 				}
 
-				filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(chunks[j:end])
+				//filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(chunks[j:end])
 				if err != nil {
 					raven.CaptureError(err, nil)
 				}
 
-				chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
+				//chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
 
-				iotaWrapper.SendChunksToChannel(chunksToSend, &channel)
+				//iotaWrapper.SendChunksToChannel(chunksToSend, &channel)
+				iotaWrapper.SendChunksToChannel(chunks[j:end], &channel)
 
 				j += BundleSize
 				if j > len(chunks) {
