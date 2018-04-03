@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	raven "github.com/getsentry/raven-go"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
@@ -18,9 +18,9 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash   string `json:"genesisHash"`
-	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIp"`
+	GenesisHash   string `json:"genesis_hash"`
+	FileSizeBytes int    `json:"file_size_bytes"`
+	BetaIP        string `json:"beta_brokernode_ip"`
 }
 
 type uploadSessionCreateRes struct {
