@@ -1,0 +1,9 @@
+create_table("transactions", func(t) {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("status", "string", {})
+	t.Column("type", "string", {})
+	t.Column("data_map_id", "uuid", {})
+	t.Column("purchase", "string", {})
+})
+
+add_index("transactions", "id", {"unique": true})
