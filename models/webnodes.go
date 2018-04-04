@@ -10,7 +10,7 @@ import (
 
 type Webnode struct {
 	ID        uuid.UUID `json:"id" db:"id"`
-	WebnodeID string    `json:"webnodeID" db:"webnode_id"`
+	Address   string    `json:"address" db:"address"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
