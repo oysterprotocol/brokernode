@@ -79,6 +79,21 @@ func GetReadyChannels() ([]ChunkChannel, error) {
 	return channels, err
 }
 
+// GetReadyChannels grabs one ready channel
+func GetOneReadyChannel() (ChunkChannel, error) {
+
+	channel := ChunkChannel{}
+
+	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
+		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).First(&channel)
+
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
+	return channel, err
+}
+
 func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 	wg.Add(1)

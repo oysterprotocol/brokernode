@@ -49,7 +49,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(err, nil)
 
 	// verify initial lengths are what we expected
-	suite.Equal(6, len(allDataMaps))
+	suite.Equal(12, len(allDataMaps))
 	suite.Equal(0, len(completedDataMaps))
 	suite.Equal(3, len(uploadSessions))
 	suite.Equal(0, len(storedGenHashes))
@@ -59,10 +59,13 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&allDone)
 	suite.Equal(err, nil)
 
-	allDone[0].Status = models.Complete
-	allDone[1].Status = models.Confirmed
+	for _, dataMap := range allDone {
+		dataMap.Status = models.Complete
+		suite.DB.ValidateAndSave(&dataMap)
+	}
 
-	suite.DB.ValidateAndSave(&allDone[0])
+	// set one of them to "confirmed"
+	allDone[1].Status = models.Confirmed
 	suite.DB.ValidateAndSave(&allDone[1])
 
 	// set one chunk of second data map to complete
@@ -71,7 +74,6 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(err, nil)
 
 	someDone[0].Status = models.Complete
-
 	suite.DB.ValidateAndSave(&someDone[0])
 
 	//call method under test
@@ -94,8 +96,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(err, nil)
 
 	// verify final lengths are what we expected
-	suite.Equal(4, len(allDataMaps))
-	suite.Equal(2, len(completedDataMaps))
+	suite.Equal(8, len(allDataMaps))
+	suite.Equal(4, len(completedDataMaps))
 	suite.Equal(2, len(uploadSessions))
 	suite.Equal(1, len(storedGenHashes))
 
@@ -108,6 +110,6 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	genHash1Completed := []models.CompletedDataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1Completed)
-	suite.Equal(2, len(genHash1Completed))
+	suite.Equal(4, len(genHash1Completed))
 	suite.Equal(err, nil)
 }

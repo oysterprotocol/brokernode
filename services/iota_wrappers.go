@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"math"
 	"runtime"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"os"
 )
 
 type ChunkTracker struct {
@@ -60,18 +63,28 @@ var (
 	//This mutex was added by us.
 	mutex        = &sync.Mutex{}
 	seed         giota.Trytes
-	provider     = "http://172.21.0.1:14265"
 	minDepth     = int64(giota.DefaultNumberOfWalks)
 	minWeightMag = int64(14)
-	//minWeightMag = int64(2)
-	api     = giota.NewAPI(provider, nil)
-	bestPow giota.PowFunc
-	powName string
-	Channel = map[string]PowChannel{}
-	wg      sync.WaitGroup
+	bestPow      giota.PowFunc
+	powName      string
+	Channel      = map[string]PowChannel{}
+	wg           sync.WaitGroup
+	api          *giota.API
 )
 
 func init() {
+
+	// Load ENV variables
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+		raven.CaptureError(err, nil)
+	}
+
+	provider := "http://" + os.Getenv("HOST_IP") + ":14265"
+
+	api = giota.NewAPI(provider, nil)
+
 	seed = "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL"
 
 	powName, bestPow = giota.GetBestPoW()
@@ -91,7 +104,6 @@ func init() {
 	//makeFakeChunks()
 
 	channels := []models.ChunkChannel{}
-	var err error
 
 	wg.Add(1)
 	go func(channels *[]models.ChunkChannel, err *error) {
@@ -173,6 +185,11 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		channelToChange := Channel[channelID]
 
+		channelInDB := models.ChunkChannel{}
+		models.DB.RawQuery("SELECT * from chunk_channels where channel_id = ?", channelID).First(&channelInDB)
+		channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
+		models.DB.ValidateAndSave(&channelInDB)
+
 		fmt.Println("PowWorker: Leaving")
 		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
 	}
@@ -244,6 +261,8 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		} else {
+
+			fmt.Println("Broadcast Success!")
 
 			/*
 				TODO do we need this??
