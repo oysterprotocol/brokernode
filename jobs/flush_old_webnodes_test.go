@@ -10,8 +10,8 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 
 	// Testing that old webnodes get removed
 
-	_, err := models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "oldWebnodeC"})
-	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "oldWebnodeD"})
+	_, err := models.DB.ValidateAndCreate(&models.Webnode{Address: "oldWebnodeC"})
+	_, err = models.DB.ValidateAndCreate(&models.Webnode{Address: "oldWebnodeD"})
 
 	// setting the threshold time to be more recent than when the webnodes were updated
 	thresholdTime := time.Now().Add(time.Millisecond * 10000)
@@ -37,8 +37,8 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 
 	// Testing that it doesn't remove new webnodes
 
-	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "newWebnodeA"})
-	_, err = models.DB.ValidateAndCreate(&models.Webnode{WebnodeID: "newWebnodeB"})
+	_, err = models.DB.ValidateAndCreate(&models.Webnode{Address: "newWebnodeA"})
+	_, err = models.DB.ValidateAndCreate(&models.Webnode{Address: "newWebnodeB"})
 
 	// setting the threshold time to be less recent than when the webnodes were updated
 	thresholdTime = time.Now().Add(time.Millisecond * -10000)
