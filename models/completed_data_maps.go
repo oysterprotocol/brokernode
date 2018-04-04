@@ -10,19 +10,19 @@ import (
 )
 
 type CompletedDataMap struct {
-	ID          int          `json:"id" db:"id"`
-	CreatedAt   time.Time    `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time    `json:"updatedAt" db:"updated_at"`
-	Status      int          `json:"status" db:"status"`
-	NodeID      string       `json:"nodeID" db:"node_id"`
-	NodeType    string       `json:"nodeType" db:"node_type"`
-	Message     string       `json:"message" db:"message"`
-	TrunkTx     string       `json:"trunkTx" db:"trunk_tx"`
-	BranchTx    string       `json:"branchTx" db:"branch_tx"`
-	GenesisHash string       `json:"genesisHash" db:"genesis_hash"`
-	ChunkIdx    int          `json:"chunkIdx" db:"chunk_idx"`
-	Hash        string       `json:"hash" db:"hash"`
-	Address     string       `json:"address" db:"address"`
+	ID          int       `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
+	Status      int       `json:"status" db:"status"`
+	NodeID      string    `json:"nodeID" db:"node_id"`
+	NodeType    string    `json:"nodeType" db:"node_type"`
+	Message     string    `json:"message" db:"message"`
+	TrunkTx     string    `json:"trunkTx" db:"trunk_tx"`
+	BranchTx    string    `json:"branchTx" db:"branch_tx"`
+	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
+	ChunkIdx    int       `json:"chunkIdx" db:"chunk_idx"`
+	Hash        string    `json:"hash" db:"hash"`
+	Address     string    `json:"address" db:"address"`
 }
 
 func init() {
