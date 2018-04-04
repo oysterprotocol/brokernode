@@ -1,6 +1,6 @@
 create_table("webnodes", func(t) {
 	t.Column("id", "uuid", {"primary": true})
-	t.Column("webnode_id", "string", {})
+	t.Column("address", "string", {})
 })
 
-add_index("webnodes", "webnode_id", {"unique": true})
+add_index("webnodes", "address", {"unique": true})

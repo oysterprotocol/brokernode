@@ -12,3 +12,4 @@ brokernode
 .vscode/
 .grifter/
 data/
+migrations/schema.sql
