@@ -145,11 +145,11 @@ DROP TABLE IF EXISTS `webnodes`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `webnodes` (
   `id` char(36) NOT NULL,
-  `webnode_id` varchar(255) NOT NULL,
+  `address` varchar(255) NOT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `webnodes_webnode_id_idx` (`webnode_id`)
+  UNIQUE KEY `webnodes_address_idx` (`address`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -162,4 +162,4 @@ CREATE TABLE `webnodes` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-04-03 18:11:56
+-- Dump completed on 2018-04-04 15:40:43
