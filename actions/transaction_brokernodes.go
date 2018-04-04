@@ -3,6 +3,7 @@ package actions
 import (
 	"fmt"
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/uuid"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
 )
@@ -18,7 +19,7 @@ type transactionCreateReq struct {
 }
 
 type transactionCreateRes struct {
-	ID models.Transaction `json:"id"`
+	ID uuid.UUID `json:"id"`
 }
 
 // Creates a transaction.
@@ -47,7 +48,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	}
 
 	res := transactionCreateRes{
-		ID: t.id,
+		ID: t.ID,
 	}
 
 	return c.Render(200, r.JSON(res))
