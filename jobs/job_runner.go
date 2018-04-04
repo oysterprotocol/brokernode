@@ -39,7 +39,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "processUnassignedChunksHandler",
 		Args: worker.Args{
-			"duration": 5 * time.Second,
+			"duration": 20 * time.Second,
 		},
 	}
 

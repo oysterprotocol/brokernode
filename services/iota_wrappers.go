@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"github.com/joho/godotenv"
+	"log"
 	"math"
 	"runtime"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"os"
 )
 
 type ChunkTracker struct {
@@ -60,18 +63,28 @@ var (
 	//This mutex was added by us.
 	mutex        = &sync.Mutex{}
 	seed         giota.Trytes
-	provider     = "http://172.21.0.1:14265"
 	minDepth     = int64(giota.DefaultNumberOfWalks)
 	minWeightMag = int64(14)
-	//minWeightMag = int64(2)
-	Api     = giota.NewAPI(provider, nil)
-	bestPow giota.PowFunc
-	powName string
-	Channel = map[string]PowChannel{}
-	wg      sync.WaitGroup
+	bestPow      giota.PowFunc
+	powName      string
+	Channel      = map[string]PowChannel{}
+	wg           sync.WaitGroup
+	api          *giota.API
 )
 
 func init() {
+
+	// Load ENV variables
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+		raven.CaptureError(err, nil)
+	}
+
+	provider := "http://" + os.Getenv("HOST_IP") + ":14265"
+
+	api = giota.NewAPI(provider, nil)
+
 	seed = "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL"
 
 	powName, bestPow = giota.GetBestPoW()
@@ -91,7 +104,6 @@ func init() {
 	//makeFakeChunks()
 
 	channels := []models.ChunkChannel{}
-	var err error
 
 	wg.Add(1)
 	go func(channels *[]models.ChunkChannel, err *error) {
@@ -149,7 +161,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
 		}
 
-		bdl, err := giota.PrepareTransfers(Api, seed, transfersArray, nil, "", 1)
+		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
 
 		if err != nil {
 			raven.CaptureError(err, nil)
@@ -157,7 +169,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := Api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
 		if err != nil {
 			raven.CaptureError(err, nil)
 		}
@@ -172,6 +184,11 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			powJobRequest.BroadcastNodes)
 
 		channelToChange := Channel[channelID]
+
+		channelInDB := models.ChunkChannel{}
+		models.DB.RawQuery("SELECT * from chunk_channels where channel_id = ?", channelID).First(&channelInDB)
+		channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
+		models.DB.ValidateAndSave(&channelInDB)
 
 		fmt.Println("PowWorker: Leaving")
 		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
@@ -227,10 +244,9 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		prev = trytes[i].Hash()
 	}
 
-	go func(branch giota.Trytes, trunk giota.Trytes, depth int64,
-		trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) {
+	go func(trytes []giota.Transaction) {
 
-		err = Api.BroadcastTransactions(trytes)
+		err = api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
@@ -242,8 +258,11 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
 			//})
 
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		} else {
+
+			fmt.Println("Broadcast Success!")
 
 			/*
 				TODO do we need this??
@@ -257,7 +276,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
 			//})
 		}
-	}(branch, trunk, depth, trytes, mwm, bestPow, broadcastNodes)
+	}(trytes)
 
 	return nil
 }
@@ -326,7 +345,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		Addresses: addresses,
 	}
 
-	response, err := Api.FindTransactions(&request)
+	response, err := api.FindTransactions(&request)
 
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -336,7 +355,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	filteredChunks = FilteredChunk{}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := Api.GetTrytes(response.Hashes)
+		trytesArray, err := api.GetTrytes(response.Hashes)
 		if err != nil {
 			raven.CaptureError(err, nil)
 			return filteredChunks, err

@@ -4,7 +4,6 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-
 )
 
 func init() {
@@ -12,14 +11,17 @@ func init() {
 
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
-	channels, _ := models.GetReadyChannels()
+	chunks, err := GetUnassignedChunks()
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
-	if len(channels) > 0 {
-		AssignChunksToChannels(&channels, iotaWrapper)
+	if len(chunks) > 0 {
+		AssignChunksToChannels(chunks, iotaWrapper)
 	}
 }
 
-func AssignChunksToChannels(channels *[]models.ChunkChannel, iotaWrapper services.IotaService) {
+func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaService) {
 
 	/*
 	TODO:  More sophisticated chunk grabbing.  I.e. only grab as many as
@@ -27,32 +29,39 @@ func AssignChunksToChannels(channels *[]models.ChunkChannel, iotaWrapper service
 	genesis hash
 	 */
 
-	chunks, err := GetUnassignedChunks()
+	for i := 0; i < len(chunks); i += BundleSize {
+		end := i + BundleSize
 
-	if err != nil {
-		raven.CaptureError(err, nil)
-	} else {
-		if len(chunks) > 0 {
+		if end > len(chunks) {
+			end = len(chunks)
+		}
 
-			j := 0
+		if i >= end {
+			break
+		}
 
-			for _, channel := range *channels {
-				end := j + BundleSize
+		channel, err := models.GetOneReadyChannel()
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
+		if channel.ChannelID == "" {
+			break
+		}
 
-				if end > len(chunks) {
-					end = len(chunks)
-				}
+		filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(chunks[i:end])
 
-				if j >= end {
-					break
-				}
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
+		chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
 
-				iotaWrapper.SendChunksToChannel(chunks[j:end], &channel)
-
-				j += BundleSize
-				if j > len(chunks) {
-					break
-				}
+		if len(chunksToSend) > 0 {
+			iotaWrapper.SendChunksToChannel(chunksToSend, &channel)
+		}
+		if len(filteredChunks.MatchesTangle) > 0 {
+			for _, chunk := range filteredChunks.MatchesTangle {
+				chunk.Status = models.Complete
+				models.DB.ValidateAndSave(&chunk)
 			}
 		}
 	}
