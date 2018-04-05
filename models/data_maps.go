@@ -2,12 +2,15 @@ package models
 
 import (
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"hash"
 
-	"github.com/oysterprotocol/brokernode/utils"
 	"math"
 	"time"
+
+	"github.com/oysterprotocol/brokernode/utils"
 
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/validate"
@@ -17,12 +20,12 @@ import (
 const fileBytesChunkSize = float64(2187)
 
 const (
-	Pending    int = iota + 1
+	Pending int = iota + 1
 	Unassigned
 	Unverified
 	Complete
 	Confirmed
-	Error      = -1
+	Error = -1
 )
 
 type DataMap struct {
@@ -83,30 +86,31 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
 func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
-	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount) / fileBytesChunkSize))
+	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount)/fileBytesChunkSize))
 
 	currHash := genHash
 	for i := 0; i <= fileChunksCount; i++ {
 		// TODO: Batch these inserts.
-		currAddr := string(oyster_utils.MakeAddress(currHash))
+
+		obfuscatedHash := hashString(currHash, sha512.New384())
+		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		vErr, err = DB.ValidateAndCreate(&DataMap{
 			GenesisHash: genHash,
 			ChunkIdx:    i,
-			Hash:        currHash,
+			Hash:        obfuscatedHash,
 			Address:     currAddr,
 			Status:      Pending,
 		})
 
-		currHash = hashString(currHash)
+		currHash = hashString(currHash, sha256.New())
 	}
 
 	return
 }
 
-func hashString(str string) (h string) {
-	shaHash := sha256.New()
-	shaHash.Write([]byte(str))
-	h = hex.EncodeToString(shaHash.Sum(nil))
+func hashString(str string, shaAlg hash.Hash) (h string) {
+	shaAlg.Write([]byte(str))
+	h = hex.EncodeToString(shaAlg.Sum(nil))
 	return
 }
