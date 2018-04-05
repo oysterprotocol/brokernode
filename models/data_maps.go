@@ -89,7 +89,7 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount)/fileBytesChunkSize))
 
 	currHash := genHash
-	for i := 0; i <= fileChunksCount; i++ {
+	for i := 0; i < fileChunksCount; i++ {
 		// TODO: Batch these inserts.
 
 		obfuscatedHash := hashString(currHash, sha512.New384())
