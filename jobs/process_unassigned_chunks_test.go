@@ -13,32 +13,26 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
-	unassignedTimedOut := models.DataMap{}
-	unassignedNotTimedOut := models.DataMap{}
-	notUnassignedTimedOut := models.DataMap{}
-	notUnassignedNotTimedOut := models.DataMap{}
+	dataMaps := []models.DataMap{}
+	suite.DB.All(&dataMaps)
 
-	err = suite.DB.Find(&unassignedTimedOut, 1)
+	unassignedTimedOut := models.DataMap{}
+	unassignedTimedOut = dataMaps[0]
 	unassignedTimedOut.Status = models.Unassigned
 	unassignedTimedOut.Message = "unassignedTimedOut"
 	suite.DB.ValidateAndSave(&unassignedTimedOut)
 
-	err = suite.DB.Find(&notUnassignedTimedOut, 3)
-	notUnassignedTimedOut.Status = models.Pending
-	notUnassignedTimedOut.Message = "notUnassignedTimedOut"
-	suite.DB.ValidateAndSave(&notUnassignedTimedOut)
-
-	//currentTime := time.Now().Format("2006-01-02T15:04:05Z")
-
-	err = suite.DB.Find(&unassignedNotTimedOut, 2)
+	unassignedNotTimedOut := models.DataMap{}
+	unassignedNotTimedOut = dataMaps[1]
 	unassignedNotTimedOut.Status = models.Unassigned
 	unassignedNotTimedOut.Message = "unassignedNotTimedOut"
 	suite.DB.ValidateAndSave(&unassignedNotTimedOut)
 
-	err = suite.DB.Find(&notUnassignedNotTimedOut, 4)
-	notUnassignedNotTimedOut.Status = models.Pending
-	notUnassignedNotTimedOut.Message = "notUnassignedNotTimedOut"
-	suite.DB.ValidateAndSave(&notUnassignedNotTimedOut)
+	assignedTimedOut := models.DataMap{}
+	assignedTimedOut = dataMaps[2]
+	assignedTimedOut.Status = models.Pending
+	assignedTimedOut.Message = "assignedTimedOut"
+	suite.DB.ValidateAndSave(&assignedTimedOut)
 
 	result, err := jobs.GetUnassignedChunks()
 
