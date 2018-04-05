@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/uuid"
 	"github.com/oysterprotocol/brokernode/models"
@@ -29,7 +30,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	fmt.Println("xxxxxxxxxxxxxxxxxxxx")
 	tx := models.DB
-	query := tx.Limit(1).Where("status = 'unassigned' LIMIT 1")
+	query := tx.Limit(1).Where("status = 'unassigned'")
 	dataMap := models.DataMap{}
 	err := query.All(&dataMap)
 
