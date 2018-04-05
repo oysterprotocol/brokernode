@@ -49,7 +49,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(err, nil)
 
 	// verify initial lengths are what we expected
-	suite.Equal(12, len(allDataMaps))
+	suite.Equal(9, len(allDataMaps))
 	suite.Equal(0, len(completedDataMaps))
 	suite.Equal(3, len(uploadSessions))
 	suite.Equal(0, len(storedGenHashes))
@@ -96,8 +96,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(err, nil)
 
 	// verify final lengths are what we expected
-	suite.Equal(8, len(allDataMaps))
-	suite.Equal(4, len(completedDataMaps))
+	suite.Equal(6, len(allDataMaps))
+	suite.Equal(3, len(completedDataMaps))
 	suite.Equal(2, len(uploadSessions))
 	suite.Equal(1, len(storedGenHashes))
 
@@ -110,6 +110,6 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	genHash1Completed := []models.CompletedDataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1Completed)
-	suite.Equal(4, len(genHash1Completed))
+	suite.Equal(3, len(genHash1Completed))
 	suite.Equal(err, nil)
 }

@@ -34,7 +34,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(11, len(allDataMaps))
+	suite.Equal(10, len(allDataMaps))
 
 	// make first 6 data maps unverified
 	for i := 0; i < 6; i++ {
