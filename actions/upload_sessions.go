@@ -3,11 +3,12 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/getsentry/raven-go"
+	"net/http"
+
+	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
-	"net/http"
 )
 
 type UploadSessionResource struct {

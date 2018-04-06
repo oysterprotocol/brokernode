@@ -1,7 +1,7 @@
 package jobs
 
 import (
-	"github.com/getsentry/raven-go"
+	raven "github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 )
@@ -24,10 +24,10 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaService) {
 
 	/*
-	TODO:  More sophisticated chunk grabbing.  I.e. only grab as many as
-	we have ready channels for, and try to grab an equal number per unique
-	genesis hash
-	 */
+		TODO:  More sophisticated chunk grabbing.  I.e. only grab as many as
+		we have ready channels for, and try to grab an equal number per unique
+		genesis hash
+	*/
 
 	for i := 0; i < len(chunks); i += BundleSize {
 		end := i + BundleSize

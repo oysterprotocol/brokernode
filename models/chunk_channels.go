@@ -3,18 +3,19 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop"
-	"github.com/gobuffalo/uuid"
-	"github.com/gobuffalo/validate"
 	"math/rand"
 	"sync"
 	"time"
+
+	raven "github.com/getsentry/raven-go"
+	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/uuid"
+	"github.com/gobuffalo/validate"
 )
 
 /*
 Intended to replace hooknodes table until we add hooknodes back in
- */
+*/
 
 type ChunkChannel struct {
 	ID              uuid.UUID `json:"id" db:"id"`
@@ -111,7 +112,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 			for i := 0; i < powProcs; i++ {
 
-				var err error;
+				var err error
 				channel := ChunkChannel{}
 				channel.ChannelID = RandSeq(10)
 				channel.EstReadyTime = time.Now().Add(-5 * time.Second)
