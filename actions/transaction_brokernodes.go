@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/gobuffalo/buffalo"
@@ -28,18 +29,29 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	req := transactionCreateReq{}
 	parseReqBody(c.Request(), &req)
 
-	fmt.Println("xxxxxxxxxxxxxxxxxxxx")
+	fmt.Println("DATAMAPPPPPPPPPPPPPPPP")
 	tx := models.DB
-	query := tx.Limit(1).Where("status = 'unassigned'")
 	dataMap := models.DataMap{}
-	err := query.All(&dataMap)
-
-	if err != nil {
-		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
-		return err
-	}
+	dataMapError := tx.Limit(1).Where("status = 'unassigned'").First(&dataMap)
 
 	fmt.Println(dataMap)
+
+	if dataMapError != nil {
+		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(dataMapError).Error()}))
+		return dataMapError
+	}
+
+	fmt.Println("BROKERNODEEEEEEEEEEEE")
+	brokernode := models.Brokernode{}
+	existingAddresses := join(req.CurrentList, ", ")
+	brokernodeError := tx.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+
+	fmt.Println(brokernode)
+
+	if brokernodeError != nil {
+		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(brokernodeError).Error()}))
+		return brokernodeError
+	}
 
 	t := models.Transaction{
 		Type:      "BROKERNODE",
@@ -53,4 +65,17 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
+}
+
+// TODO: put this in a helper
+func join(A []string, delim string) string {
+	var buffer bytes.Buffer
+	for i := 0; i < len(A); i++ {
+		buffer.WriteString(A[i])
+		if i != len(A)-1 {
+			buffer.WriteString(delim)
+		}
+	}
+
+	return buffer.String()
 }
