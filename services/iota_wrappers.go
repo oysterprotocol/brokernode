@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/joho/godotenv"
-
-	"os"
-
 	raven "github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
+	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
 )
 
