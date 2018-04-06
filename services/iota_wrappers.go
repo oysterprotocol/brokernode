@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"github.com/joho/godotenv"
 	"log"
 	"math"
 	"runtime"
@@ -10,10 +9,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/joho/godotenv"
+
+	"os"
+
 	raven "github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
-	"os"
 )
 
 type ChunkTracker struct {
@@ -81,7 +83,14 @@ func init() {
 		raven.CaptureError(err, nil)
 	}
 
-	provider := "http://" + os.Getenv("HOST_IP") + ":14265"
+	host_ip := os.Getenv("HOST_IP")
+	if host_ip == "" {
+		log.Println("No IRI host given")
+		raven.CaptureError(err, nil)
+		panic("Invalid IRI host: Check the .env file for HOST_IP")
+	}
+
+	provider := "http://" + host_ip + ":14265"
 
 	api = giota.NewAPI(provider, nil)
 
@@ -321,8 +330,8 @@ func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
 		// so just set est_ready_time to 10 seconds from now
 
 		/*
-		TODO:  get a more precise estimate of what this default should be
-		 */
+			TODO:  get a more precise estimate of what this default should be
+		*/
 		return time.Now().Add(10 * time.Second)
 	}
 }
