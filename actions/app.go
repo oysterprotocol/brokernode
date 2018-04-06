@@ -1,6 +1,9 @@
 package actions
 
 import (
+	"os"
+
+	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/middleware"
 	"github.com/gobuffalo/buffalo/middleware/ssl"
@@ -33,6 +36,10 @@ func App() *buffalo.App {
 			WorkerOff:   false,
 			Worker:      jobs.OysterWorker,
 		})
+
+		// Setup sentry
+		raven.SetDSN(os.Getenv("SENTRY_DSN"))
+
 		// Automatically redirect to SSL
 		app.Use(ssl.ForceSSL(secure.Options{
 			SSLRedirect:     ENV == "production",

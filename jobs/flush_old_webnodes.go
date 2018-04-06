@@ -1,9 +1,10 @@
 package jobs
 
 import (
-	"github.com/getsentry/raven-go"
-	"github.com/oysterprotocol/brokernode/models"
 	"time"
+
+	raven "github.com/getsentry/raven-go"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 func init() {
