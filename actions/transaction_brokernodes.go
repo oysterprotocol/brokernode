@@ -40,36 +40,40 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernode := models.Brokernode{}
 	t := models.Transaction{}
 
-	models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
+	dataMapNotFound := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
 
 	existingAddresses := join(req.CurrentList, ", ")
-	models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+	brokernodeNotFound := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
-	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
-		tx.ValidateAndSave(&dataMap)
+	if dataMapNotFound != nil || brokernodeNotFound != nil {
+		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
+	} else {
+		models.DB.Transaction(func(tx *pop.Connection) error {
+			dataMap.Status = models.Unverified
+			tx.ValidateAndSave(&dataMap)
 
-		t = models.Transaction{
-			Type:      "BROKERNODE",
-			Status:    "PAYMENT_PENDING",
-			DataMapID: dataMap.ID,
-			Purchase:  brokernode.Address,
+			t = models.Transaction{
+				Type:      "BROKERNODE",
+				Status:    "PAYMENT_PENDING",
+				DataMapID: dataMap.ID,
+				Purchase:  brokernode.Address,
+			}
+			tx.ValidateAndSave(&t)
+			return nil
+		})
+
+		res := transactionCreateRes{
+			ID: t.ID,
+			Pow: Pow{
+				Address:  dataMap.Address,
+				Message:  dataMap.Message,
+				BranchTx: dataMap.BranchTx,
+				TrunkTx:  dataMap.TrunkTx,
+			},
 		}
-		tx.ValidateAndSave(&t)
-		return nil
-	})
 
-	res := transactionCreateRes{
-		ID: t.ID,
-		Pow: Pow{
-			Address:  dataMap.Address,
-			Message:  dataMap.Message,
-			BranchTx: dataMap.BranchTx,
-			TrunkTx:  dataMap.TrunkTx,
-		},
+		return c.Render(200, r.JSON(res))
 	}
-
-	return c.Render(200, r.JSON(res))
 }
 
 // TODO: put this in a helper
