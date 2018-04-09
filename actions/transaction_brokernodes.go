@@ -15,13 +15,20 @@ type TransactionBrokernodeResource struct {
 }
 
 // Request Response structs
+type Pow struct {
+	Address  string `json:"address"`
+	Message  string `json:"message"`
+	BranchTx string `json:"branchTx"`
+	TrunkTx  string `json:"trunkTx"`
+}
 
 type transactionCreateReq struct {
 	CurrentList []string `json:"currentList"`
 }
 
 type transactionCreateRes struct {
-	ID uuid.UUID `json:"id"`
+	ID  uuid.UUID `json:"id"`
+	Pow Pow       `json:"pow"`
 }
 
 // Creates a transaction.
@@ -54,6 +61,12 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	res := transactionCreateRes{
 		ID: t.ID,
+		Pow: Pow{
+			Address:  dataMap.Address,
+			Message:  dataMap.Message,
+			BranchTx: dataMap.BranchTx,
+			TrunkTx:  dataMap.TrunkTx,
+		},
 	}
 
 	return c.Render(200, r.JSON(res))
