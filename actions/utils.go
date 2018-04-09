@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -32,4 +33,16 @@ func parseResBody(res *http.Response, dest interface{}) (err error) {
 	err = json.Unmarshal(bodyBytes, dest)
 
 	return
+}
+
+func join(A []string, delim string) string {
+	var buffer bytes.Buffer
+	for i := 0; i < len(A); i++ {
+		buffer.WriteString(A[i])
+		if i != len(A)-1 {
+			buffer.WriteString(delim)
+		}
+	}
+
+	return buffer.String()
 }
