@@ -2,7 +2,7 @@ package actions
 
 import (
 	"bytes"
-	"fmt"
+	// "fmt"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
@@ -34,25 +34,21 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	t := models.Transaction{}
 
 	models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
-	fmt.Println("datamappppppppppppppppppppppppppp")
-	fmt.Println(dataMap)
 
 	existingAddresses := join(req.CurrentList, ", ")
 	models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
-	fmt.Println("brokernodeeeeeeeeeee")
-	fmt.Println(brokernode)
 
 	models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
 		tx.ValidateAndSave(&dataMap)
 
-		fmt.Println("transssssssssssss")
 		t = models.Transaction{
 			Type:      "BROKERNODE",
 			Status:    "PAYMENT_PENDING",
 			DataMapID: dataMap.ID,
 			Purchase:  brokernode.Address,
 		}
+		tx.ValidateAndSave(&t)
 		return nil
 	})
 
