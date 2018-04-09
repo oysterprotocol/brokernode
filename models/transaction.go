@@ -9,12 +9,23 @@ import (
 	"time"
 )
 
+const (
+	TransactionTypeBrokernode int = iota + 1
+	TransactionTypeWebnode
+	TransactionTypeGenesisHash
+)
+
+const (
+	TransactionStatusPending int = iota + 1
+	TransactionStatusComplete
+)
+
 type Transaction struct {
 	ID        uuid.UUID `json:"id" db:"id"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	Status    string    `json:"status" db:"status"`
-	Type      string    `json:"type" db:"type"`
+	Status    int       `json:"status" db:"status"`
+	Type      int       `json:"type" db:"type"`
 	DataMapID uuid.UUID `json:"data_map_id" db:"data_map_id"`
 	Purchase  string    `json:"purchase" db:"purchase"`
 }
@@ -38,8 +49,8 @@ func (t Transactions) String() string {
 // This method is not required and may be deleted.
 func (t *Transaction) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
-		&validators.StringIsPresent{Field: t.Status, Name: "Status"},
-		&validators.StringIsPresent{Field: t.Type, Name: "Type"},
+		&validators.IntIsPresent{Field: t.Status, Name: "Status"},
+		&validators.IntIsPresent{Field: t.Type, Name: "Type"},
 		&validators.StringIsPresent{Field: t.Purchase, Name: "Purchase"},
 	), nil
 }

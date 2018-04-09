@@ -53,8 +53,8 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		tx.ValidateAndSave(&dataMap)
 
 		t = models.Transaction{
-			Type:      "BROKERNODE",
-			Status:    "PAYMENT_PENDING",
+			Type:      models.TransactionTypeBrokernode,
+			Status:    models.TransactionStatusPending,
 			DataMapID: dataMap.ID,
 			Purchase:  brokernode.Address,
 		}
