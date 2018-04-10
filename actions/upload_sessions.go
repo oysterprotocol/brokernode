@@ -3,6 +3,7 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/getsentry/raven-go"
@@ -18,9 +19,9 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash   string `json:"genesis_hash"`
-	FileSizeBytes int    `json:"file_size_bytes"`
-	BetaIP        string `json:"beta_brokernode_ip"`
+	GenesisHash   string `json:"genesisHash"`
+	FileSizeBytes int    `json:"fileSizeBytes"`
+	BetaIP        string `json:"betaIp"`
 }
 
 type uploadSessionCreateRes struct {
@@ -84,6 +85,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 
 	if len(vErr.Errors) > 0 {
+		fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxX")
+		fmt.Println(vErr.Errors)
 		c.Render(422, r.JSON(vErr.Errors))
 		return err
 	}
