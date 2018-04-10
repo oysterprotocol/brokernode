@@ -3,10 +3,9 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
-	"github.com/getsentry/raven-go"
+	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
@@ -85,8 +84,6 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 
 	if len(vErr.Errors) > 0 {
-		fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxX")
-		fmt.Println(vErr.Errors)
 		c.Render(422, r.JSON(vErr.Errors))
 		return err
 	}
