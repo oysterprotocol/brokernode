@@ -1,8 +1,8 @@
 package jobs
 
 import (
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/gobuffalo/buffalo/worker"
+	"github.com/oysterprotocol/brokernode/services"
 	"time"
 )
 

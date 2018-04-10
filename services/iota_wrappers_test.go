@@ -78,11 +78,11 @@ func Test_TrackProcessingTime(t *testing.T) {
 
 	powChannel := services.Channel[channels[0].ChannelID]
 
-	initialLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers) - 1])
+	initialLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers)-1])
 
 	services.TrackProcessingTime(startTime, 10, &powChannel)
 
-	newLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers) - 1])
+	newLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers)-1])
 
 	// check that we have added a new record
 	if newLastChunkRecord == initialLastChunkRecord {

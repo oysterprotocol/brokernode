@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	trytesAlphabet = "9ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	trytesAlphabet = "9ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 func init() {
@@ -20,7 +20,7 @@ func AsciiToTrytes(asciiString string) (string, error) {
 		var charCode = character
 
 		// If not recognizable ASCII character, return null
-		if (charCode > 255) {
+		if charCode > 255 {
 			return trytes, err
 		}
 
@@ -34,16 +34,16 @@ func AsciiToTrytes(asciiString string) (string, error) {
 }
 
 func TrytesToAsciiTrimmed(inputTrytes string) (string, error) {
-	notNineIndex := strings.LastIndexFunc(inputTrytes, func(rune rune) (bool) {
+	notNineIndex := strings.LastIndexFunc(inputTrytes, func(rune rune) bool {
 		return string(rune) != "9"
-	});
-	trimmedString := inputTrytes[0:notNineIndex+1]
+	})
+	trimmedString := inputTrytes[0 : notNineIndex+1]
 
 	if len(trimmedString)%2 != 0 {
 		trimmedString += "9"
 	}
 
-	return TrytesToAscii(trimmedString);
+	return TrytesToAscii(trimmedString)
 }
 
 func TrytesToAscii(inputTrytes string) (string, error) {
@@ -52,7 +52,7 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 		return "", errors.New("TrytesToAscii needs input with an even number of characters!")
 	}
 
-	outputString := "";
+	outputString := ""
 	for i := 0; i < len(inputTrytes); i += 2 {
 		// get a trytes pair
 		trytes := string(inputTrytes[i]) + string(inputTrytes[i+1])
@@ -60,12 +60,12 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 		firstValue := strings.Index(trytesAlphabet, (string(trytes[0])))
 		secondValue := strings.Index(trytesAlphabet, (string(trytes[1])))
 
-		decimalValue := firstValue + secondValue*27;
-		character := string(decimalValue);
-		outputString += character;
+		decimalValue := firstValue + secondValue*27
+		character := string(decimalValue)
+		outputString += character
 	}
 
-	return outputString, nil;
+	return outputString, nil
 }
 
 //TrytesToBytes and BytesToTrytes written by Chris Warner, thanks!

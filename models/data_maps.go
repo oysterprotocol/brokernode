@@ -13,6 +13,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 
 	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
 )
@@ -29,7 +30,7 @@ const (
 )
 
 type DataMap struct {
-	ID          int       `json:"id" db:"id"`
+	ID          uuid.UUID `json:"id" db:"id"`
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
 	Status      int       `json:"status" db:"status"`

@@ -69,8 +69,13 @@ func App() *buffalo.App {
 		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
 		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
 
+		// Webnodes
 		webnodeResource := WebnodeResource{}
 		apiV2.POST("supply/webnodes", webnodeResource.Create)
+
+		// Transactions
+		transactionBrokernodeResource := TransactionBrokernodeResource{}
+		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
 	}
 
 	return app
