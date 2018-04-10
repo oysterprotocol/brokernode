@@ -1,8 +1,26 @@
 package models_test
 
 import (
+	"crypto/sha512"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+
+	"github.com/iotaledger/giota"
 )
+
+type hashAddressConversion struct {
+	sha256Hash     string
+	ethPrivateSeed string
+}
+
+var encryptedTreasureCases = []hashAddressConversion{
+	{sha256Hash: "64dc1ce4655554f514a4ce83e08c1d08372fdf02bd8c9b6dbecfc74b783d39d1",
+		ethPrivateSeed: "0000000000000000000000000000000000000000000000000000000000000001"},
+	{sha256Hash: "99577b266e77d07e364d0b87bf1bcef44c78e3668dfdc3881969b375c09d4fcd",
+		ethPrivateSeed: "1004444400000006780000000000000000000000000012345000000765430001"},
+	{sha256Hash: "7fb4ca9cc0032bafc2ebd0fda018a41f5adfcf441123de22ab736a42207933f7",
+		ethPrivateSeed: "7777777774444444777777744444447777777444444777777744444777777744"},
+}
 
 func (ms *ModelSuite) Test_BuildDataMaps() {
 	genHash := "genHashTest"
@@ -28,4 +46,28 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	for i, dMap := range dMaps {
 		ms.Equal(expectedHashes[i], dMap.Hash)
 	}
+}
+
+func (ms *ModelSuite) Test_CreateTreasurePayload() {
+	maxSideChainLength := 50
+	matchesFound := 0
+
+	for _, tc := range encryptedTreasureCases {
+		payload, err := models.CreateTreasurePayload(tc.ethPrivateSeed, tc.sha256Hash, maxSideChainLength)
+		ms.Nil(err)
+
+		payloadNotTryted := oyster_utils.TrytesToBytes(giota.Trytes(payload))
+
+		currentHash := tc.sha256Hash
+
+		for i := 0; i < maxSideChainLength; i++ {
+			currentHash = oyster_utils.HashString(currentHash, sha512.New())
+			result := oyster_utils.Decrypt(currentHash, string(payloadNotTryted))
+			if result != "" {
+				ms.Equal(result, tc.ethPrivateSeed)
+				matchesFound++
+			}
+		}
+	}
+	ms.Equal(3, matchesFound)
 }

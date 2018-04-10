@@ -3,9 +3,7 @@ package models
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
-	"hash"
 
 	"math"
 	"time"
@@ -16,9 +14,11 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"math/rand"
 )
 
 const fileBytesChunkSize = float64(2187)
+const MaxSideChainLength = 1000 // need to determine what this number should be
 
 const (
 	Pending int = iota + 1
@@ -93,7 +93,7 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 	for i := 0; i < fileChunksCount; i++ {
 		// TODO: Batch these inserts.
 
-		obfuscatedHash := hashString(currHash, sha512.New384())
+		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		vErr, err = DB.ValidateAndCreate(&DataMap{
@@ -104,14 +104,20 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 			Status:      Pending,
 		})
 
-		currHash = hashString(currHash, sha256.New())
+		currHash = oyster_utils.HashString(currHash, sha256.New())
 	}
 
 	return
 }
 
-func hashString(str string, shaAlg hash.Hash) (h string) {
-	shaAlg.Write([]byte(str))
-	h = hex.EncodeToString(shaAlg.Sum(nil))
-	return
+func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	currentHash := sha256Hash
+	for i := 0; i < keyLocation; i++ {
+		currentHash = oyster_utils.HashString(currentHash, sha512.New())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed)
+	return string(oyster_utils.BytesToTrytes([]byte(encryptedResult))), nil
 }
