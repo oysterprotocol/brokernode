@@ -27,6 +27,7 @@ type Transaction struct {
 	Status    int       `json:"status" db:"status"`
 	Type      int       `json:"type" db:"type"`
 	DataMapID uuid.UUID `json:"data_map_id" db:"data_map_id"`
+	DataMap   DataMap   `belongs_to:"data_maps" db:"-"`
 	Purchase  string    `json:"purchase" db:"purchase"`
 }
 
