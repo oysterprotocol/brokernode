@@ -74,9 +74,11 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	// Start Alpha Session.
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeAlpha,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
+		Type:           models.SessionTypeAlpha,
+		GenesisHash:    req.GenesisHash,
+		FileSizeBytes:  req.FileSizeBytes,
+		PaymentStatus:  models.Unpaid,
+		TreasureStatus: models.Unburied,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -129,7 +131,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			if chunk.Hash == dm.GenesisHash {
 				// Updates dmap in DB.
 				dm.Message = chunk.Data
-				dm.Status = models.Unassigned
 				models.DB.ValidateAndSave(&dm)
 			}
 
@@ -146,9 +147,11 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	parseReqBody(c.Request(), &req)
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeBeta,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
+		Type:           models.SessionTypeBeta,
+		GenesisHash:    req.GenesisHash,
+		FileSizeBytes:  req.FileSizeBytes,
+		PaymentStatus:  models.Unpaid,
+		TreasureStatus: models.Unburied,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {

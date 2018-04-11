@@ -16,13 +16,25 @@ const (
 	SessionTypeBeta
 )
 
+const (
+	Unpaid int = iota + 1
+	Paid
+)
+
+const (
+	Unburied int = iota + 1
+	Buried
+)
+
 type UploadSession struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	CreatedAt     time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt     time.Time `json:"updatedAt" db:"updated_at"`
-	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
-	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
-	Type          int       `json:"type" db:"type"`
+	ID             uuid.UUID `json:"id" db:"id"`
+	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt      time.Time `json:"updatedAt" db:"updated_at"`
+	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
+	FileSizeBytes  int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	Type           int       `json:"type" db:"type"`
+	PaymentStatus  int       `json:"paymentStatus" db:"payment_status"`
+	TreasureStatus int       `json:"treasureStatus" db:"treasure_status"`
 }
 
 // String is not required by pop and may be deleted

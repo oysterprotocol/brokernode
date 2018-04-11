@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	sendChunksToChannelMockCalled_verify              = false
 	verifyChunkMessagesMatchesRecordMockCalled_verify = false
 )
 
@@ -46,13 +45,16 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	jobs.VerifyDataMaps(IotaMock)
 
 	// verify the mock methods were called
-	suite.Equal(true, sendChunksToChannelMockCalled_verify)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)
+
+	// verify that the data maps that didn't match the tangle were set to an error state
+	allDataMaps = []models.DataMap{}
+	err = suite.DB.Where("status = ?", models.Error).All(&allDataMaps)
+	suite.Equal(1, len(allDataMaps))
 }
 
 func makeMocks(iotaMock *services.IotaService) {
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock
-	iotaMock.SendChunksToChannel = sendChunksToChannelMock
 }
 
 func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
@@ -79,23 +81,4 @@ func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChun
 		NotAttached:        notAttached,
 		DoesNotMatchTangle: doesNotMatchTangle,
 	}, err
-}
-
-func sendChunksToChannelMock(chunks []models.DataMap, channel *models.ChunkChannel) {
-
-	// our mock was called
-	sendChunksToChannelMockCalled_verify = true
-
-	allDataMaps := []models.DataMap{}
-	var err = Suite.DB.All(&allDataMaps)
-	Suite.Nil(err)
-
-	// SendChunksToChannel should have gotten called with the index 2 data map from data_maps
-	// make sure it's the same chunk
-	Suite.Equal(chunks[0].ID, allDataMaps[2].ID)
-	Suite.Equal(chunks[0].GenesisHash, allDataMaps[2].GenesisHash)
-	Suite.Equal(chunks[0].GenesisHash, allDataMaps[2].GenesisHash)
-
-	// status should have changed
-	Suite.NotEqual(chunks[0].Status, allDataMaps[2].Status)
 }

@@ -44,7 +44,7 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
 	for i, dMap := range dMaps {
-		ms.Equal(expectedHashes[i], dMap.Hash)
+		ms.Equal(expectedHashes[i], dMap.ObfuscatedHash)
 	}
 }
 

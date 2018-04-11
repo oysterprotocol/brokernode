@@ -70,36 +70,17 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 			//		Set("chunk_idx", notMatchingChunk.ChunkIdx),
 			//})
 
-			notMatchingChunk.Status = models.Unassigned
+			// if a chunk did not match the tangle in verify_data_maps
+			// we mark it as "Error" and there is no reason to check the tangle
+			// for it again while its status is still in an Error state
+
+			// this is to prevent verifyChunkMessageMatchesTangle
+			// from being executed on an Error'd chunk in process_unassigned_chunks
+			notMatchingChunk.Status = models.Error
 			notMatchingChunk.TrunkTx = ""
 			notMatchingChunk.BranchTx = ""
 			notMatchingChunk.NodeID = ""
 			models.DB.ValidateAndSave(&notMatchingChunk)
-		}
-
-		channels, _ := models.GetReadyChannels()
-
-		if len(channels) > 0 {
-			j := 0
-
-			for _, channel := range channels {
-
-				end := j + BundleSize
-
-				if end > len(filteredChunks.DoesNotMatchTangle) {
-					end = len(filteredChunks.DoesNotMatchTangle)
-				}
-
-				if j == end {
-					break
-				}
-
-				IotaWrapper.SendChunksToChannel(filteredChunks.DoesNotMatchTangle[j:end], &channel)
-				j += BundleSize
-				if j > len(filteredChunks.DoesNotMatchTangle) {
-					break
-				}
-			}
 		}
 	}
 }

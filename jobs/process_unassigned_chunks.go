@@ -69,7 +69,7 @@ func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaSe
 
 func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
 
-	query := models.DB.Where("status = ?", models.Unassigned)
+	query := models.DB.Where("status = ? OR status = ?", models.Unassigned, models.Error)
 	dataMaps = []models.DataMap{}
 	err = query.All(&dataMaps)
 	if err != nil {

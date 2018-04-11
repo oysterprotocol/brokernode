@@ -11,6 +11,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 	u := models.UploadSession{
 		GenesisHash:   genHash,
 		FileSizeBytes: fileSizeBytes,
+		PaymentStatus: models.Unpaid,
 	}
 
 	vErr, err := u.StartUploadSession()
@@ -32,6 +33,7 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 	u := models.UploadSession{
 		GenesisHash:   genHash,
 		FileSizeBytes: fileSizeBytes,
+		PaymentStatus: models.Unpaid,
 	}
 
 	vErr, err := u.StartUploadSession()
@@ -50,6 +52,6 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 	ms.Nil(err)
 
 	for i, dMap := range *dMaps {
-		ms.Equal(expectedHashes[i], dMap.Hash)
+		ms.Equal(expectedHashes[i], dMap.ObfuscatedHash)
 	}
 }
