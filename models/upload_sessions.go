@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
@@ -23,7 +24,22 @@ type UploadSession struct {
 	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
 	Type          int       `json:"type" db:"type"`
+
+	ETHAddrAlpha  nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
+	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
+	ETHPrivateKey nulls.String `db:"eth_private_key"`
+	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
+	TotalCost     float64 `json:"totalCost" db:"total_cost"`
+	PaymentStatus int     `json:"paymentStatus" db:"payment_status"`
+
+	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
+
+const (
+	PaymentStatusPending int = iota + 1
+	PaymentStatusPaid
+	PaymentStatusError = -1
+)
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
@@ -73,6 +89,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to alpha session.
 	if u.Type != SessionTypeBeta {
 		u.Type = SessionTypeAlpha
+	}
+
+	// Defaults to paymentStatusPending
+	if u.PaymentStatus == 0 {
+		u.PaymentStatus = PaymentStatusPending
 	}
 
 	return nil

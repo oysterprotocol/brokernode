@@ -77,6 +77,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Type:          models.SessionTypeAlpha,
 		GenesisHash:   req.GenesisHash,
 		FileSizeBytes: req.FileSizeBytes,
+		TotalCost:     1.23, // TODO: Real price
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
