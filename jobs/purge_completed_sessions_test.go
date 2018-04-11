@@ -14,7 +14,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		Type:          models.SessionTypeAlpha,
 	}
 
-	uploadSession1.StartUploadSession()
+	vErr, err := uploadSession1.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Equal(err, nil)
 
 	uploadSession2 := models.UploadSession{
 		GenesisHash:   "genHash2",
@@ -22,7 +24,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		Type:          models.SessionTypeAlpha,
 	}
 
-	uploadSession2.StartUploadSession()
+	vErr, err = uploadSession2.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Equal(err, nil)
 
 	uploadSession3 := models.UploadSession{
 		GenesisHash:   "genHash3",
@@ -30,10 +34,12 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		Type:          models.SessionTypeAlpha,
 	}
 
-	uploadSession3.StartUploadSession()
+	vErr, err = uploadSession3.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Equal(err, nil)
 
 	allDataMaps := []models.DataMap{}
-	err := suite.DB.All(&allDataMaps)
+	err = suite.DB.All(&allDataMaps)
 	suite.Equal(err, nil)
 
 	completedDataMaps := []models.CompletedDataMap{}

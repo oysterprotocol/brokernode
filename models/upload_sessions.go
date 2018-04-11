@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
@@ -24,13 +25,13 @@ type UploadSession struct {
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
 	Type          int       `json:"type" db:"type"`
 
-	ETHAddrAlpha int    `json:"ethAddrAlpha" db:"eth_addr_alpha"`
-	ETHAddrBeta  string `json:"ethAddrBeta" db:"eth_addr_beta"`
+	ETHAddrAlpha nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
+	ETHAddrBeta  nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
 	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
 	TotalCost     float64 `json:"totalCost" db:"total_cost"`
 	PaymentStatus int     `json:"paymentStatus" db:"payment_status"`
 
-	TreasureIdxMap string `json:"treasureIdxMap" db:"treasure_idx_map"`
+	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
 
 const (
