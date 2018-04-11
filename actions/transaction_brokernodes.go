@@ -123,7 +123,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	}
 
 	t.Status = models.TransactionStatusComplete
-	models.DB.ValidateAndSave(&t)
+	models.DB.ValidateAndUpdate(t)
 
 	res := transactionUpdateRes{Purchase: t.Purchase}
 
