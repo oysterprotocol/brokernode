@@ -76,6 +76,7 @@ func App() *buffalo.App {
 		// Transactions
 		transactionBrokernodeResource := TransactionBrokernodeResource{}
 		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
+		apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
 	}
 
 	return app
