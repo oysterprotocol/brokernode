@@ -15,7 +15,7 @@ var IotaWrapper = services.IotaWrapper
 func init() {
 	registerHandlers(OysterWorker)
 
-	// doWork(OysterWorker)
+	doWork(OysterWorker)
 }
 
 func registerHandlers(oysterWorker *worker.Simple) {
