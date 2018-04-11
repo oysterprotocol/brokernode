@@ -23,7 +23,21 @@ type UploadSession struct {
 	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
 	Type          int       `json:"type" db:"type"`
+
+	ETHAddrAlpha int    `json:"ethAddrAlpha" db:"eth_addr_alpha"`
+	ETHAddrBeta  string `json:"ethAddrBeta" db:"eth_addr_beta"`
+	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
+	TotalCost     float64 `json:"totalCost" db:"total_cost"`
+	PaymentStatus int     `json:"paymentStatus" db:"payment_status"`
+
+	TreasureIdxMap string `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
+
+const (
+	PaymentStatusPending int = iota + 1
+	PaymentStatusPaid
+	PaymentStatusError = -1
+)
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
@@ -73,6 +87,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to alpha session.
 	if u.Type != SessionTypeBeta {
 		u.Type = SessionTypeAlpha
+	}
+
+	// Defaults to paymentStatusPending
+	if u.PaymentStatus == 0 {
+		u.PaymentStatus = PaymentStatusPending
 	}
 
 	return nil
