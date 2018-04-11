@@ -90,12 +90,12 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	// Get transaction
 	t := &models.Transaction{}
-	err := models.DB.Eager("DataMap").Find(t, c.Param("id"))
+	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
 
 	trytes := giota.Trytes(req.Trytes)
 	iotaTransaction, iotaError := giota.NewTransaction(trytes)
 
-	if err != nil || iotaError != nil {
+	if transactionError != nil || iotaError != nil {
 		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
 	}
 
