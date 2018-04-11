@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
@@ -101,7 +103,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	address, addError := giota.ToAddress(t.DataMap.Address)
 	validAddress := addError == nil && address == iotaTransaction.Address
-	validMessage := giota.Trytes(t.DataMap.Message) == iotaTransaction.SignatureMessageFragment
+	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
 	validBranch := giota.Trytes(t.DataMap.BranchTx) == iotaTransaction.BranchTransaction
 	validTrunk := giota.Trytes(t.DataMap.TrunkTx) == iotaTransaction.TrunkTransaction
 
