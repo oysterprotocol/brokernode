@@ -6,6 +6,7 @@ create_table("upload_sessions", func(t) {
 
 	t.Column("eth_addr_alpha", "string", {"null": true})
 	t.Column("eth_addr_beta", "string", {"null": true})
+	t.Column("eth_private_key", "string", {"null": true})
 	t.Column("total_cost", "DECIMAL(28, 18)", {})
 	t.Column("payment_status", "integer", {})
 

@@ -25,8 +25,9 @@ type UploadSession struct {
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
 	Type          int       `json:"type" db:"type"`
 
-	ETHAddrAlpha nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
-	ETHAddrBeta  nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
+	ETHAddrAlpha  nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
+	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
+	ETHPrivateKey nulls.String `db:"eth_private_key"`
 	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
 	TotalCost     float64 `json:"totalCost" db:"total_cost"`
 	PaymentStatus int     `json:"paymentStatus" db:"payment_status"`
