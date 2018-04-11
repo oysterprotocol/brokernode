@@ -1,7 +1,8 @@
 package actions
 
 import (
-	"fmt"
+	// "fmt"
+	"os"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
@@ -105,20 +106,20 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	validBranch := giota.Trytes(t.DataMap.BranchTx) == iotaTransaction.BranchTransaction
 	validTrunk := giota.Trytes(t.DataMap.TrunkTx) == iotaTransaction.TrunkTransaction
 
-	fmt.Println("DATAMAP")
-	fmt.Println(t.DataMap.Address)
-	fmt.Println(t.DataMap.Message)
-	fmt.Println(t.DataMap.BranchTx)
-	fmt.Println(t.DataMap.TrunkTx)
-
-	fmt.Println("IOTA")
-	fmt.Println(iotaTransaction.Address)
-	fmt.Println(iotaTransaction.SignatureMessageFragment)
-	fmt.Println(iotaTransaction.TrunkTransaction)
-	fmt.Println(iotaTransaction.BranchTransaction)
-
 	if !(validAddress && validMessage && validBranch && validTrunk) {
 		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
+	}
+
+	// host_ip := "18.188.113.65"
+	host_ip := os.Getenv("HOST_IP")
+	provider := "http://" + host_ip + ":14265"
+	iotaAPI := giota.NewAPI(provider, nil)
+
+	iotaTransactions := []giota.Transaction{*iotaTransaction}
+	broadcastErr := iotaAPI.BroadcastTransactions(iotaTransactions)
+
+	if broadcastErr != nil {
+		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 
 	res := transactionUpdateRes{Purchase: t.Purchase}
