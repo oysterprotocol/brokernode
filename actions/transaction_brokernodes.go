@@ -122,6 +122,9 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 
+	t.Status = models.TransactionStatusComplete
+	models.DB.ValidateAndSave(&t)
+
 	res := transactionUpdateRes{Purchase: t.Purchase}
 
 	return c.Render(202, r.JSON(res))
