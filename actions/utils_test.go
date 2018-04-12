@@ -18,9 +18,9 @@ func (as *ActionSuite) Test_GenerateInsertedIndexesForPearl_LargeFileSize() {
 	indexes := generateInsertedIndexesForPearl(int(2.6 * fileSectorInChunkSize * fileChunkSizeInByte))
 
 	as.True(len(indexes) == 3)
-	as.True(indexes[0] >= 0 && indexes[0] < int(fileSectorInChunkSize))
-	as.True(indexes[1] >= int(fileSectorInChunkSize) && indexes[1] < 2*int(fileSectorInChunkSize))
-	as.True(indexes[2] >= 2*int(fileSectorInChunkSize) && indexes[2] < int(2.6*fileSectorInChunkSize)+3)
+	as.True(indexes[0] >= 0 && indexes[0] < fileSectorInChunkSize)
+	as.True(indexes[1] >= 0 && indexes[1] < fileSectorInChunkSize)
+	as.True(indexes[2] >= 0 && indexes[2] < int(0.6*fileSectorInChunkSize)+3)
 }
 
 func (as *ActionSuite) Test_GenerateInsertedIndexesForPearl_MediumFileSize() {
@@ -36,7 +36,7 @@ func (as *ActionSuite) Test_GenerateInsertIndexesForPearl_ExtendedToNextSector()
 	indexes := generateInsertedIndexesForPearl(int(2.999998 * fileSectorInChunkSize * fileChunkSizeInByte))
 
 	as.True(len(indexes) == 4)
-	as.True(indexes[3] == 3*int(fileSectorInChunkSize) || indexes[3] == 3*int(fileSectorInChunkSize)+1)
+	as.True(indexes[3] == 0 || indexes[3] == 1)
 }
 
 func (as *ActionSuite) Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNextSector() {
@@ -44,5 +44,5 @@ func (as *ActionSuite) Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNex
 	indexes := generateInsertedIndexesForPearl(int(2.999997 * fileSectorInChunkSize * fileChunkSizeInByte))
 
 	as.True(len(indexes) == 3)
-	as.True(indexes[2] >= 2*int(fileSectorInChunkSize) && indexes[2] < 3*int(fileSectorInChunkSize))
+	as.True(indexes[2] >= 0 && indexes[2] < fileSectorInChunkSize)
 }

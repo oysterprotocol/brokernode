@@ -11,10 +11,10 @@ import (
 
 const (
 	// One chunk unit as represents as 1KB
-	fileChunkSizeInByte = float64(1000)
+	fileChunkSizeInByte = 1000
 
 	// Number of 1KB chunk in one Sector
-	fileSectorInChunkSize = float64(1000000)
+	fileSectorInChunkSize = 1000000
 )
 
 // parseReqBody take a request and parses the body to the target interface.
@@ -65,13 +65,21 @@ func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	}
 
 	fileSectorInByte := fileChunkSizeInByte * (fileSectorInChunkSize - 1)
-	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / fileSectorInByte))
-	remainderOfChunks := math.Ceil(float64(fileSizeInByte) / fileChunkSizeInByte)
+	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
+	remainderOfChunks := int(math.Ceil(float64(fileSizeInByte) / fileChunkSizeInByte))
 
 	for i := 0; i < numOfSectors; i++ {
-		rang := int(math.Min(fileSectorInChunkSize, remainderOfChunks))
-		indexes = append(indexes, rand.Intn(rang)+i*int(fileSectorInChunkSize))
+		rang := min(fileSectorInChunkSize, remainderOfChunks)
+		indexes = append(indexes, rand.Intn(rang))
 		remainderOfChunks = remainderOfChunks - (fileSectorInChunkSize - 1)
 	}
 	return indexes
+}
+
+// Util method to return min value of a and b.
+func min(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
