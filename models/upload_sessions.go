@@ -18,13 +18,19 @@ const (
 	SessionTypeBeta
 )
 
+type Invoice struct {
+	Cost       float64      `json:"cost"`
+	EthAddress nulls.String `json:"ethAddress"`
+}
+
 type UploadSession struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	CreatedAt     time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt     time.Time `json:"updatedAt" db:"updated_at"`
-	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
-	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
-	Type          int       `json:"type" db:"type"`
+	ID                   uuid.UUID `json:"id" db:"id"`
+	CreatedAt            time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
+	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
+	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
+	Type                 int       `json:"type" db:"type"`
 
 	ETHAddrAlpha  nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
 	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
@@ -107,6 +113,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 // StartUploadSession will generate dataMaps and save the session and dataMaps
 // to the DB.
 func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
+	u.calculatePayment()
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
 		return
@@ -125,16 +132,32 @@ func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
 	return
 }
 
-func CalculatePayment(storageLengthInYears int, fileSizeBytes int) int {
-	storagePeg := 1 // TODO: write code to query smart contract to get real storage peg
-	fileSizeGigaBytes := int(math.Ceil(float64(fileSizeBytes / 1000000000)))
+func (u *UploadSession) GetInvoice() Invoice {
+
+	var ethAddress nulls.String
+
+	if u.Type != SessionTypeAlpha {
+		ethAddress = u.ETHAddrBeta
+	} else {
+		ethAddress = u.ETHAddrAlpha
+	}
+
+	return Invoice{
+		EthAddress: ethAddress,
+		Cost:       u.TotalCost,
+	}
+}
+
+func (u *UploadSession) calculatePayment() {
+	storagePeg := getStoragePeg()
+	fileSizeGigaBytes := int(math.Ceil(float64(u.FileSizeBytes / 1000000000)))
 	if fileSizeGigaBytes < 1 {
 		fileSizeGigaBytes = 1
 	}
 
-	return storagePeg * storageLengthInYears * fileSizeGigaBytes
+	u.TotalCost = float64(storagePeg * u.StorageLengthInYears * fileSizeGigaBytes)
 }
 
-func GetEthAddress() string {
-	return "this is a string" // TODO: integrate with create ethereum address methods
+func getStoragePeg() int {
+	return 1 // TODO: write code to query smart contract to get real storage peg
 }

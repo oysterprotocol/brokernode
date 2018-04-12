@@ -28,12 +28,7 @@ type uploadSessionCreateRes struct {
 	ID            string               `json:"id"`
 	UploadSession models.UploadSession `json:"uploadSession"`
 	BetaSessionID string               `json:"betaSessionId"`
-	Invoice       invoice              `json:"invoice"`
-}
-
-type invoice struct {
-	Cost       int    `json:"cost"`
-	EthAddress string `json:"ethAddress"`
+	Invoice       models.Invoice       `json:"invoice"`
 }
 
 type chunkReq struct {
@@ -81,10 +76,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	// Start Alpha Session.
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeAlpha,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
-		TotalCost:     1.23, // TODO: Real price
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -100,7 +95,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		UploadSession: u,
 		ID:            u.ID.String(),
 		BetaSessionID: betaSessionID,
-		Invoice:       CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
+		Invoice:       u.GetInvoice(),
 	}
 	return c.Render(200, r.JSON(res))
 }
@@ -155,9 +150,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	parseReqBody(c.Request(), &req)
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeBeta,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -172,16 +168,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	res := uploadSessionCreateRes{
 		UploadSession: u,
 		ID:            u.ID.String(),
-		Invoice:       CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
+		Invoice:       u.GetInvoice(),
 	}
 	return c.Render(200, r.JSON(res))
-}
-
-func CreateInvoice(storageLengthInYears int, fileSizeBytes int) invoice {
-	invoice := invoice{
-		EthAddress: models.GetEthAddress(),
-		Cost:       models.CalculatePayment(storageLengthInYears, fileSizeBytes),
-	}
-
-	return invoice
 }
