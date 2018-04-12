@@ -7,6 +7,9 @@ The broker node uses Docker to spin up a go app, mysql, and private iota instanc
 ```bash
 # Starts the brokernode on port 3000
 docker-compose up --build -d # This takes a few minutes when you first run it.
+# You only need to pass in --build the first time, or when you make a change to the container
+# This uses cached images, so it's much faster to start.
+docker-compose up -d
 
 # Executing commands in the app container
 # Use `docker-compose exec YOUR_COMMAND`
