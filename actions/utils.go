@@ -66,20 +66,12 @@ func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
 
 	fileSectorInByte := fileChunkSizeInByte * (fileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
-	remainderOfChunks := int(math.Ceil(float64(fileSizeInByte) / fileChunkSizeInByte))
+	remainderOfChunks := math.Ceil(float64(fileSizeInByte) / fileChunkSizeInByte)
 
 	for i := 0; i < numOfSectors; i++ {
-		rang := min(fileSectorInChunkSize, remainderOfChunks)
+		rang := int(math.Min(fileSectorInChunkSize, remainderOfChunks))
 		indexes = append(indexes, rand.Intn(rang))
 		remainderOfChunks = remainderOfChunks - (fileSectorInChunkSize - 1)
 	}
 	return indexes
-}
-
-// Util method to return min value of a and b.
-func min(a int, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
