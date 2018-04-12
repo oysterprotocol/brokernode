@@ -21,12 +21,19 @@ type uploadSessionCreateReq struct {
 	GenesisHash   string `json:"genesisHash"`
 	FileSizeBytes int    `json:"fileSizeBytes"`
 	BetaIP        string `json:"betaIp"`
+	StorageLengthInYears int `json:"storageLengthInYears"`
 }
 
 type uploadSessionCreateRes struct {
 	ID            string               `json:"id"`
 	UploadSession models.UploadSession `json:"uploadSession"`
 	BetaSessionID string               `json:"betaSessionId"`
+	Invoice invoice `json:"invoice"`
+}
+
+type invoice struct {
+	Cost int `json:"cost"`
+	EthAddress string `json:"ethAddress"`
 }
 
 type chunkReq struct {
@@ -93,6 +100,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		UploadSession: u,
 		ID:            u.ID.String(),
 		BetaSessionID: betaSessionID,
+		Invoice: CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
 	}
 	return c.Render(200, r.JSON(res))
 }
@@ -161,6 +169,19 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	res := uploadSessionCreateRes{UploadSession: u, ID: u.ID.String()}
+	res := uploadSessionCreateRes{
+		UploadSession: u,
+		ID: u.ID.String(),
+		Invoice: CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
+	}
 	return c.Render(200, r.JSON(res))
+}
+
+func CreateInvoice(storageLengthInYears int, fileSizeBytes int) invoice {
+	invoice:= invoice {
+		EthAddress: models.GetEthAddress(),
+		Cost: models.CalculatePayment(storageLengthInYears, fileSizeBytes),
+	}
+
+	return invoice
 }

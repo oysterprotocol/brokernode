@@ -9,6 +9,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"math"
 )
 
 // Enum for upload session type.
@@ -122,4 +123,18 @@ func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
 	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
 
 	return
+}
+
+func CalculatePayment(storageLengthInYears int, fileSizeBytes int) int {
+	storagePeg := 1 // TODO: write code to query smart contract to get real storage peg
+	fileSizeGigaBytes := int(math.Ceil(float64(fileSizeBytes / 1000000000)))
+	if fileSizeGigaBytes < 1 {
+		fileSizeGigaBytes = 1
+	}
+
+	return storagePeg * storageLengthInYears * fileSizeGigaBytes
+}
+
+func GetEthAddress() string {
+	return "this is a string" // TODO: integrate with create ethereum address methods
 }
