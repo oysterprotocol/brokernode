@@ -18,21 +18,21 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash   string `json:"genesisHash"`
-	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIp"`
-	StorageLengthInYears int `json:"storageLengthInYears"`
+	GenesisHash          string `json:"genesisHash"`
+	FileSizeBytes        int    `json:"fileSizeBytes"`
+	BetaIP               string `json:"betaIp"`
+	StorageLengthInYears int    `json:"storageLengthInYears"`
 }
 
 type uploadSessionCreateRes struct {
 	ID            string               `json:"id"`
 	UploadSession models.UploadSession `json:"uploadSession"`
 	BetaSessionID string               `json:"betaSessionId"`
-	Invoice invoice `json:"invoice"`
+	Invoice       invoice              `json:"invoice"`
 }
 
 type invoice struct {
-	Cost int `json:"cost"`
+	Cost       int    `json:"cost"`
 	EthAddress string `json:"ethAddress"`
 }
 
@@ -100,7 +100,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		UploadSession: u,
 		ID:            u.ID.String(),
 		BetaSessionID: betaSessionID,
-		Invoice: CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
+		Invoice:       CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
 	}
 	return c.Render(200, r.JSON(res))
 }
@@ -171,16 +171,16 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	res := uploadSessionCreateRes{
 		UploadSession: u,
-		ID: u.ID.String(),
-		Invoice: CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
+		ID:            u.ID.String(),
+		Invoice:       CreateInvoice(req.StorageLengthInYears, req.FileSizeBytes),
 	}
 	return c.Render(200, r.JSON(res))
 }
 
 func CreateInvoice(storageLengthInYears int, fileSizeBytes int) invoice {
-	invoice:= invoice {
+	invoice := invoice{
 		EthAddress: models.GetEthAddress(),
-		Cost: models.CalculatePayment(storageLengthInYears, fileSizeBytes),
+		Cost:       models.CalculatePayment(storageLengthInYears, fileSizeBytes),
 	}
 
 	return invoice
