@@ -15,8 +15,10 @@ import (
 const ethUrl = "ws://0.0.0.0"
 
 // Singleton client
-var client *ethclient.Client
-var mtx sync.Mutex
+var (
+	client *ethclient.Client
+	mtx    sync.Mutex
+)
 
 func sharedClient() (c *ethclient.Client, err error) {
 	if client != nil {
