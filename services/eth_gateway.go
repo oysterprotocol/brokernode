@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+// TODO: Find etherum node to connect to.
 const ethUrl = "ws://0.0.0.0"
 
 // Singleton client
@@ -40,6 +41,15 @@ func sharedClient() (c *ethclient.Client, err error) {
 	return client, err
 }
 
+func BuryPrl() {
+	// TODO
+}
+
+// TODO: Don't use floats for money transactions!
+func SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
+	// TODO
+}
+
 // SubscribeToTransfer will subscribe to transfer events
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
@@ -55,5 +65,3 @@ func SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	// Adapt msg sent from the subscription before passing it to outCh.
 	ethCl.SubscribeFilterLogs(ctx, q, outCh)
 }
-
-// func (ec *Client) SubscribeFilterLogs(ctx context.Context, q ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error)
