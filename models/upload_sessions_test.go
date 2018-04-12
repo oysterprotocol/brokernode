@@ -7,10 +7,12 @@ import (
 func (ms *ModelSuite) Test_StartUploadSession() {
 	genHash := "genHashTest"
 	fileSizeBytes := 123
+	storageLengthInYears := 2
 
 	u := models.UploadSession{
-		GenesisHash:   genHash,
-		FileSizeBytes: fileSizeBytes,
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
@@ -23,15 +25,19 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 	ms.Equal(genHash, uSession.GenesisHash)
 	ms.Equal(fileSizeBytes, uSession.FileSizeBytes)
 	ms.Equal(models.SessionTypeAlpha, uSession.Type)
+	ms.Equal(2.0, uSession.TotalCost)
+	ms.Equal(2, uSession.StorageLengthInYears)
 }
 
 func (ms *ModelSuite) Test_DataMapsForSession() {
 	genHash := "genHashTest"
 	fileSizeBytes := 123
+	storageLengthInYears := 3
 
 	u := models.UploadSession{
-		GenesisHash:   genHash,
-		FileSizeBytes: fileSizeBytes,
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
