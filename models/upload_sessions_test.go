@@ -10,6 +10,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 	storageLengthInYears := 2
 
 	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          genHash,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,

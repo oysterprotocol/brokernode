@@ -7,7 +7,9 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
 )
@@ -19,11 +21,12 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash          string `json:"genesisHash"`
-	FileSizeBytes        int    `json:"fileSizeBytes"`
-	BetaIP               string `json:"betaIp"`
-	StorageLengthInYears int    `json:"storageLengthInYears"`
-	AlphaTreasureIndexes []int  `json:"alphaTreasureIndexes"`
+	GenesisHash          string         `json:"genesisHash"`
+	FileSizeBytes        int            `json:"fileSizeBytes"`
+	BetaIP               string         `json:"betaIp"`
+	StorageLengthInYears int            `json:"storageLengthInYears"`
+	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
+	Invoice              models.Invoice `json:"invoice"`
 }
 
 type uploadSessionCreateRes struct {
@@ -49,7 +52,29 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	// TODO: Handle PRL Payments
+	// Is this really what golang wants me to do do namespace a function?
+	eth := services.Eth{}
+	alphaEthAddr, privKey, _ := eth.GenerateEthAddr()
+
+	// Start Alpha Session.
+	alphaSession := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
+		ETHAddrAlpha:         nulls.NewString(alphaEthAddr),
+		ETHPrivateKey:        privKey,
+	}
+	vErr, err := alphaSession.StartUploadSession()
+	if err != nil {
+		return err
+	}
+
+	invoice := alphaSession.GetInvoice()
+
+	// Mutates this because copying in golang sucks...
+	req.Invoice = invoice
+	// TODO(philip): req.AlphaBuriedIndexes
 
 	// Start Beta Session.
 
@@ -87,7 +112,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		StorageLengthInYears: req.StorageLengthInYears,
 		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 	}
-	vErr, err := u.StartUploadSession()
+	vErr, err = u.StartUploadSession()
 	if err != nil {
 		return err
 	}
@@ -98,10 +123,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 
 	res := uploadSessionCreateRes{
-		UploadSession: u,
-		ID:            u.ID.String(),
+		UploadSession: alphaSession,
+		ID:            alphaSession.ID.String(),
 		BetaSessionID: betaSessionID,
-		Invoice:       u.GetInvoice(),
+		Invoice:       invoice,
 	}
 	return c.Render(200, r.JSON(res))
 }
@@ -155,12 +180,21 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+
+	// Generates ETH address.
+	eth := services.Eth{}
+	betaEthAddr, privKey, _ := eth.GenerateEthAddr()
+
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
 		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
+		TotalCost:            req.Invoice.Cost,
+		ETHAddrAlpha:         req.Invoice.EthAddress,
+		ETHAddrBeta:          nulls.NewString(betaEthAddr),
+		ETHPrivateKey:        privKey,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
