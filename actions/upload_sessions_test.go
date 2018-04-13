@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/oysterprotocol/brokernode/models"
+	"fmt"
 )
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
