@@ -22,13 +22,15 @@ type uploadSessionCreateReq struct {
 	FileSizeBytes        int    `json:"fileSizeBytes"`
 	BetaIP               string `json:"betaIp"`
 	StorageLengthInYears int    `json:"storageLengthInYears"`
+	AlphaBuriedIndexes   []int  `json:"alphaBuriedIndexes"`
 }
 
 type uploadSessionCreateRes struct {
-	ID            string               `json:"id"`
-	UploadSession models.UploadSession `json:"uploadSession"`
-	BetaSessionID string               `json:"betaSessionId"`
-	Invoice       models.Invoice       `json:"invoice"`
+	ID              string               `json:"id"`
+	UploadSession   models.UploadSession `json:"uploadSession"`
+	BetaSessionID   string               `json:"betaSessionId"`
+	Invoice         models.Invoice       `json:"invoice"`
+	BetaBuriedIndex []int                `json:"betaBuriedIndexes"`
 }
 
 type chunkReq struct {
