@@ -56,6 +56,6 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 	ms.Nil(err)
 
 	for i, dMap := range *dMaps {
-		ms.Equal(expectedHashes[i], dMap.Hash)
+		ms.Equal(expectedHashes[i], dMap.ObfuscatedHash)
 	}
 }

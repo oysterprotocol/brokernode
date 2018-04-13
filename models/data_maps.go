@@ -3,9 +3,8 @@ package models
 import (
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
-	"hash"
+	"math/rand"
 
 	"math"
 	"time"
@@ -19,6 +18,7 @@ import (
 )
 
 const fileBytesChunkSize = float64(2187)
+const MaxSideChainLength = 1000 // need to determine what this number should be
 
 const (
 	Pending int = iota + 1
@@ -30,19 +30,20 @@ const (
 )
 
 type DataMap struct {
-	ID          uuid.UUID `json:"id" db:"id"`
-	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
-	Status      int       `json:"status" db:"status"`
-	NodeID      string    `json:"nodeID" db:"node_id"`
-	NodeType    string    `json:"nodeType" db:"node_type"`
-	Message     string    `json:"message" db:"message"`
-	TrunkTx     string    `json:"trunkTx" db:"trunk_tx"`
-	BranchTx    string    `json:"branchTx" db:"branch_tx"`
-	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
-	ChunkIdx    int       `json:"chunkIdx" db:"chunk_idx"`
-	Hash        string    `json:"hash" db:"hash"`
-	Address     string    `json:"address" db:"address"`
+	ID             uuid.UUID `json:"id" db:"id"`
+	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
+	UpdatedAt      time.Time `json:"updatedAt" db:"updated_at"`
+	Status         int       `json:"status" db:"status"`
+	NodeID         string    `json:"nodeID" db:"node_id"`
+	NodeType       string    `json:"nodeType" db:"node_type"`
+	Message        string    `json:"message" db:"message"`
+	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
+	BranchTx       string    `json:"branchTx" db:"branch_tx"`
+	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
+	ChunkIdx       int       `json:"chunkIdx" db:"chunk_idx"`
+	Hash           string    `json:"hash" db:"hash"`
+	ObfuscatedHash string    `json:"obfuscatedHash" db:"obfuscated_hash"`
+	Address        string    `json:"address" db:"address"`
 }
 
 func init() {
@@ -93,25 +94,33 @@ func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, e
 	for i := 0; i < fileChunksCount; i++ {
 		// TODO: Batch these inserts.
 
-		obfuscatedHash := hashString(currHash, sha512.New384())
+		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		vErr, err = DB.ValidateAndCreate(&DataMap{
-			GenesisHash: genHash,
-			ChunkIdx:    i,
-			Hash:        obfuscatedHash,
-			Address:     currAddr,
-			Status:      Pending,
+			GenesisHash:    genHash,
+			ChunkIdx:       i,
+			Hash:           currHash,
+			ObfuscatedHash: obfuscatedHash,
+			Address:        currAddr,
+			Status:         Pending,
 		})
 
-		currHash = hashString(currHash, sha256.New())
+		currHash = oyster_utils.HashString(currHash, sha256.New())
 	}
 
 	return
 }
 
-func hashString(str string, shaAlg hash.Hash) (h string) {
-	shaAlg.Write([]byte(str))
-	h = hex.EncodeToString(shaAlg.Sum(nil))
-	return
+/*@TODO is this file the best place for this method?*/
+func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	currentHash := sha256Hash
+	for i := 0; i < keyLocation; i++ {
+		currentHash = oyster_utils.HashString(currentHash, sha512.New())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed)
+	return string(oyster_utils.BytesToTrytes([]byte(encryptedResult))), nil
 }
