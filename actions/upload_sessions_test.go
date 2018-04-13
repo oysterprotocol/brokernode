@@ -9,8 +9,9 @@ import (
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
 	res := as.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
-		"genesisHash":   "genesisHashTest",
-		"fileSizeBytes": 123,
+		"genesisHash":          "genesisHashTest",
+		"fileSizeBytes":        123,
+		"storageLengthInYears": 1,
 	})
 
 	// Parse response
@@ -24,12 +25,15 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
+	as.NotEqual(0, resParsed.Invoice.Cost)
+	as.NotEqual("", resParsed.Invoice.EthAddress)
 }
 
 func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	res := as.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
-		"genesisHash":   "genesisHashTest",
-		"fileSizeBytes": 123,
+		"genesisHash":          "genesisHashTest",
+		"fileSizeBytes":        123,
+		"storageLengthInYears": 1,
 	})
 
 	// Parse response
@@ -43,4 +47,6 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
+	as.NotEqual(0, resParsed.Invoice.Cost)
+	as.NotEqual("", resParsed.Invoice.EthAddress)
 }

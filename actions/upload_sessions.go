@@ -18,15 +18,19 @@ type UploadSessionResource struct {
 // Request Response structs
 
 type uploadSessionCreateReq struct {
-	GenesisHash   string `json:"genesisHash"`
-	FileSizeBytes int    `json:"fileSizeBytes"`
-	BetaIP        string `json:"betaIp"`
+	GenesisHash          string `json:"genesisHash"`
+	FileSizeBytes        int    `json:"fileSizeBytes"`
+	BetaIP               string `json:"betaIp"`
+	StorageLengthInYears int    `json:"storageLengthInYears"`
+	AlphaBuriedIndexes   []int  `json:"alphaBuriedIndexes"`
 }
 
 type uploadSessionCreateRes struct {
-	ID            string               `json:"id"`
-	UploadSession models.UploadSession `json:"uploadSession"`
-	BetaSessionID string               `json:"betaSessionId"`
+	ID              string               `json:"id"`
+	UploadSession   models.UploadSession `json:"uploadSession"`
+	BetaSessionID   string               `json:"betaSessionId"`
+	Invoice         models.Invoice       `json:"invoice"`
+	BetaBuriedIndex []int                `json:"betaBuriedIndexes"`
 }
 
 type chunkReq struct {
@@ -74,10 +78,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	// Start Alpha Session.
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeAlpha,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
-		TotalCost:     1.23, // TODO: Real price
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -93,6 +97,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		UploadSession: u,
 		ID:            u.ID.String(),
 		BetaSessionID: betaSessionID,
+		Invoice:       u.GetInvoice(),
 	}
 	return c.Render(200, r.JSON(res))
 }
@@ -147,9 +152,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	parseReqBody(c.Request(), &req)
 
 	u := models.UploadSession{
-		Type:          models.SessionTypeBeta,
-		GenesisHash:   req.GenesisHash,
-		FileSizeBytes: req.FileSizeBytes,
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -161,6 +167,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	res := uploadSessionCreateRes{UploadSession: u, ID: u.ID.String()}
+	res := uploadSessionCreateRes{
+		UploadSession: u,
+		ID:            u.ID.String(),
+		Invoice:       u.GetInvoice(),
+	}
 	return c.Render(200, r.JSON(res))
 }

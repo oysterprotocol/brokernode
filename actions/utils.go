@@ -7,6 +7,8 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -74,4 +76,29 @@ func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
 		remainderOfChunks = remainderOfChunks - fileSectorInChunkSize
 	}
 	return indexes
+}
+
+// Convert an int array to a string.
+func IntsJoin(a []int, delim string) string {
+	var buffer bytes.Buffer
+	for i := 0; i < len(a); i++ {
+		buffer.WriteString(strconv.Itoa(a[i]))
+		if i != len(a)-1 {
+			buffer.WriteString(delim)
+		}
+	}
+	return buffer.String()
+}
+
+// Convert an string back to int array
+func IntsSplit(a string, delim string) []int {
+	var ints []int
+	substrings := strings.Split(a, delim)
+	for i := 0; i < len(substrings); i++ {
+		v, e := strconv.Atoi(substrings[i])
+		if e == nil {
+			ints = append(ints, v)
+		}
+	}
+	return ints
 }
