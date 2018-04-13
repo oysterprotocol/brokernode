@@ -23,15 +23,15 @@ type uploadSessionCreateReq struct {
 	FileSizeBytes        int    `json:"fileSizeBytes"`
 	BetaIP               string `json:"betaIp"`
 	StorageLengthInYears int    `json:"storageLengthInYears"`
-	AlphaBuriedIndexes   []int  `json:"alphaBuriedIndexes"`
+	AlphaTreasureIndexes []int  `json:"alphaTreasureIndexes"`
 }
 
 type uploadSessionCreateRes struct {
-	ID                string               `json:"id"`
-	UploadSession     models.UploadSession `json:"uploadSession"`
-	BetaSessionID     string               `json:"betaSessionId"`
-	Invoice           models.Invoice       `json:"invoice"`
-	BetaBuriedIndexes []int                `json:"betaBuriedIndexes"`
+	ID                  string               `json:"id"`
+	UploadSession       models.UploadSession `json:"uploadSession"`
+	BetaSessionID       string               `json:"betaSessionId"`
+	Invoice             models.Invoice       `json:"invoice"`
+	BetaTreasureIndexes []int                `json:"betaTreasureIndexes"`
 }
 
 type chunkReq struct {
@@ -53,9 +53,9 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	// Start Beta Session.
 
-	req.AlphaBuriedIndexes = GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	req.AlphaTreasureIndexes = GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	var betaSessionID = ""
-	var betaBuriedIndexes []int
+	var betaTreasureIndexes []int
 	if req.BetaIP != "" {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
@@ -76,7 +76,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaSessionRes := &uploadSessionCreateRes{}
 		parseResBody(betaRes, betaSessionRes)
 		betaSessionID = betaSessionRes.ID
-		betaBuriedIndexes = betaSessionRes.BetaBuriedIndexes
+		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
 	}
 
 	// Start Alpha Session.
@@ -85,7 +85,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaBuriedIndexes, betaBuriedIndexes), IntsJoinDelim), true},
+		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes), IntsJoinDelim), true},
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -154,13 +154,13 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	parseReqBody(c.Request(), &req)
 
-	betaBuriedIndexes := GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	betaTreasureIndexes := GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaBuriedIndexes, betaBuriedIndexes), IntsJoinDelim), true},
+		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes), IntsJoinDelim), true},
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -173,10 +173,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	res := uploadSessionCreateRes{
-		UploadSession:     u,
-		ID:                u.ID.String(),
-		Invoice:           u.GetInvoice(),
-		BetaBuriedIndexes: betaBuriedIndexes,
+		UploadSession:       u,
+		ID:                  u.ID.String(),
+		Invoice:             u.GetInvoice(),
+		BetaTreasureIndexes: betaTreasureIndexes,
 	}
 	return c.Render(200, r.JSON(res))
 }
