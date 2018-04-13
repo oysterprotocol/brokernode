@@ -78,6 +78,15 @@ func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	return indexes
 }
 
+func MergeIndexes(a []int, b []int) []int {
+	var merged []int
+	if (len(a) == 0 && len(b) == 0) {
+		return merged
+	}
+
+	return merged
+}
+
 // Convert an int array to a string.
 func IntsJoin(a []int, delim string) string {
 	var buffer bytes.Buffer
