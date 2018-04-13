@@ -36,8 +36,9 @@ type UploadSession struct {
 	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
 	ETHPrivateKey nulls.String `db:"eth_private_key"`
 	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
-	TotalCost     float64 `json:"totalCost" db:"total_cost"`
-	PaymentStatus int     `json:"paymentStatus" db:"payment_status"`
+	TotalCost      float64 `json:"totalCost" db:"total_cost"`
+	PaymentStatus  int     `json:"paymentStatus" db:"payment_status"`
+	TreasureStatus int     `json:"treasureStatus" db:"treasure_status"`
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
@@ -46,6 +47,11 @@ const (
 	PaymentStatusPending int = iota + 1
 	PaymentStatusPaid
 	PaymentStatusError = -1
+)
+
+const (
+	TreasureUnburied int = iota + 1
+	TreasureBuried
 )
 
 // String is not required by pop and may be deleted
@@ -101,6 +107,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to paymentStatusPending
 	if u.PaymentStatus == 0 {
 		u.PaymentStatus = PaymentStatusPending
+	}
+
+	// Defaults to treasureUnburied
+	if u.TreasureStatus == 0 {
+		u.TreasureStatus = TreasureUnburied
 	}
 
 	return nil

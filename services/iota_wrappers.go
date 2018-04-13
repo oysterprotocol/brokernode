@@ -344,7 +344,15 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	addresses := make([]giota.Address, 0, len(chunks))
 
 	for _, chunk := range chunks {
-		addresses = append(addresses, giota.Address(chunk.Address))
+		// if a chunk did not match the tangle in verify_data_maps
+		// we mark it as "Error" and there is no reason to check the tangle
+		// for it again while its status is still in an Error state
+
+		// this will cause this chunk to automatically get added to 'NotAttached' array
+		// and send to the channels
+		if chunk.Status != models.Error {
+			addresses = append(addresses, giota.Address(chunk.Address))
+		}
 	}
 
 	request := giota.FindTransactionsRequest{

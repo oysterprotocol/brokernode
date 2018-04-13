@@ -135,7 +135,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			if chunk.Hash == dm.GenesisHash {
 				// Updates dmap in DB.
 				dm.Message = chunk.Data
-				dm.Status = models.Unassigned
 				models.DB.ValidateAndSave(&dm)
 			}
 
