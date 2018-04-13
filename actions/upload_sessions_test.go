@@ -34,6 +34,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 		"genesisHash":          "genesisHashTest",
 		"fileSizeBytes":        123,
 		"storageLengthInYears": 1,
+		"alphaBuriedIndexes":   []int{1},
 	})
 
 	// Parse response

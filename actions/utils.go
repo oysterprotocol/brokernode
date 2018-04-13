@@ -13,10 +13,13 @@ import (
 
 const (
 	// One chunk unit as represents as 1KB
-	fileChunkSizeInByte = 1000
+	FileChunkSizeInByte = 1000
 
 	// Number of 1KB chunk in one Sector
-	fileSectorInChunkSize = 1000000
+	FileSectorInChunkSize = 1000000
+
+	// Separator to join []int array
+	IntsJoinDelim = "_"
 )
 
 // parseReqBody take a request and parses the body to the target interface.
@@ -60,30 +63,35 @@ func join(A []string, delim string) string {
 }
 
 // Randomly generate a set of indexes in each sector
-func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
+func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	var indexes []int
 	if fileSizeInByte <= 0 {
 		return indexes
 	}
 
-	fileSectorInByte := fileChunkSizeInByte * (fileSectorInChunkSize - 1)
+	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
-	remainderOfChunks := math.Ceil(float64(fileSizeInByte)/fileChunkSizeInByte) + float64(numOfSectors)
+	remainderOfChunks := math.Ceil(float64(fileSizeInByte)/FileChunkSizeInByte) + float64(numOfSectors)
 
 	for i := 0; i < numOfSectors; i++ {
-		rang := int(math.Min(fileSectorInChunkSize, remainderOfChunks))
+		rang := int(math.Min(FileSectorInChunkSize, remainderOfChunks))
 		indexes = append(indexes, rand.Intn(rang))
-		remainderOfChunks = remainderOfChunks - fileSectorInChunkSize
+		remainderOfChunks = remainderOfChunks - FileSectorInChunkSize
 	}
 	return indexes
 }
 
+// Merge 2 different indexes into 1 indexes. Computed Merged indexes
 func MergeIndexes(a []int, b []int) []int {
 	var merged []int
-	if (len(a) == 0 && len(b) == 0) {
+	if len(a) == 0 && len(b) == 0 {
 		return merged
 	}
 
+	for i := 0; i < int(math.Min(float64(len(a)), float64(len(b)))); i++ {
+		// TODO(pzhao5): figure a better way to hash it.
+		merged = append(merged, (a[i]+b[i])/2)
+	}
 	return merged
 }
 
