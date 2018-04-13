@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -41,6 +43,18 @@ func sharedClient() (c *ethclient.Client, err error) {
 	}
 
 	return client, err
+}
+
+func GenerateEthAddr() (addr string, privKey string, err error) {
+	ethAccount, err := crypto.GenerateKey()
+	if err != nil {
+		return
+	}
+
+	addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
+	privKey = hex.EncodeToString(ethAccount.D.Bytes())
+
+	return
 }
 
 func BuryPrl() {
