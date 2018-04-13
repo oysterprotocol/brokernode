@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/oysterprotocol/brokernode/models"
+	"fmt"
 )
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
@@ -34,6 +35,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 		"genesisHash":          "genesisHashTest",
 		"fileSizeBytes":        123,
 		"storageLengthInYears": 1,
+		"alphaBuriedIndexes":   []int{1},
 	})
 
 	// Parse response

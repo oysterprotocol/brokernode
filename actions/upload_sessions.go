@@ -7,6 +7,7 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
 )
@@ -26,11 +27,11 @@ type uploadSessionCreateReq struct {
 }
 
 type uploadSessionCreateRes struct {
-	ID              string               `json:"id"`
-	UploadSession   models.UploadSession `json:"uploadSession"`
-	BetaSessionID   string               `json:"betaSessionId"`
-	Invoice         models.Invoice       `json:"invoice"`
-	BetaBuriedIndex []int                `json:"betaBuriedIndexes"`
+	ID                string               `json:"id"`
+	UploadSession     models.UploadSession `json:"uploadSession"`
+	BetaSessionID     string               `json:"betaSessionId"`
+	Invoice           models.Invoice       `json:"invoice"`
+	BetaBuriedIndexes []int                `json:"betaBuriedIndexes"`
 }
 
 type chunkReq struct {
@@ -52,7 +53,9 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	// Start Beta Session.
 
+	req.AlphaBuriedIndexes = GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	var betaSessionID = ""
+	var betaBuriedIndexes []int
 	if req.BetaIP != "" {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
@@ -73,15 +76,16 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaSessionRes := &uploadSessionCreateRes{}
 		parseResBody(betaRes, betaSessionRes)
 		betaSessionID = betaSessionRes.ID
+		betaBuriedIndexes = betaSessionRes.BetaBuriedIndexes
 	}
 
 	// Start Alpha Session.
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
+		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaBuriedIndexes, betaBuriedIndexes), IntsJoinDelim), true},
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -150,11 +154,13 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	parseReqBody(c.Request(), &req)
 
+	betaBuriedIndexes := GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
+		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaBuriedIndexes, betaBuriedIndexes), IntsJoinDelim), true},
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -167,9 +173,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	res := uploadSessionCreateRes{
-		UploadSession: u,
-		ID:            u.ID.String(),
-		Invoice:       u.GetInvoice(),
+		UploadSession:     u,
+		ID:                u.ID.String(),
+		Invoice:           u.GetInvoice(),
+		BetaBuriedIndexes: betaBuriedIndexes,
 	}
 	return c.Render(200, r.JSON(res))
 }
