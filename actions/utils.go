@@ -66,12 +66,12 @@ func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
 
 	fileSectorInByte := fileChunkSizeInByte * (fileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
-	remainderOfChunks := math.Ceil(float64(fileSizeInByte) / fileChunkSizeInByte)
+	remainderOfChunks := math.Ceil(float64(fileSizeInByte)/fileChunkSizeInByte) + float64(numOfSectors)
 
 	for i := 0; i < numOfSectors; i++ {
 		rang := int(math.Min(fileSectorInChunkSize, remainderOfChunks))
 		indexes = append(indexes, rand.Intn(rang))
-		remainderOfChunks = remainderOfChunks - (fileSectorInChunkSize - 1)
+		remainderOfChunks = remainderOfChunks - fileSectorInChunkSize
 	}
 	return indexes
 }
