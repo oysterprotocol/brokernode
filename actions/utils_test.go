@@ -48,19 +48,19 @@ func (as *ActionSuite) Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNex
 }
 
 func (as *ActionSuite) Test_MergedIndexes_EmptyIndexes() {
-	_, err := MergeIndexes([]int{}, nil)
+	_, err := mergeIndexes([]int{}, nil)
 
 	as.Error(err)
 }
 
 func (as *ActionSuite) Test_MergedIndexes_OneNonEmptyIndexes() {
-	_, err := MergeIndexes(nil, []int{1, 2})
+	_, err := mergeIndexes(nil, []int{1, 2})
 
 	as.Error(err)
 }
 
 func (as *ActionSuite) Test_MergeIndexes_SameSize() {
-	indexes, _ := MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
+	indexes, _ := mergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
 
 	as.True(len(indexes) == 3)
 }
