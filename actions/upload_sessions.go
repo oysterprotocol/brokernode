@@ -7,7 +7,6 @@ import (
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
 )
@@ -85,7 +84,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes), IntsJoinDelim), true},
+		TreasureIdxMap:       GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -160,7 +159,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       nulls.String{IntsJoin(MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes), IntsJoinDelim), true},
+		TreasureIdxMap:       GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {

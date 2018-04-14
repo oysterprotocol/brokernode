@@ -48,21 +48,34 @@ func (as *ActionSuite) Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNex
 }
 
 func (as *ActionSuite) Test_MergedIndexes_EmptyIndexes() {
-	indexes := MergeIndexes([]int{}, nil)
+	_, err := MergeIndexes([]int{}, nil)
 
-	as.True(len(indexes) == 0)
+	as.Error(err)
 }
 
 func (as *ActionSuite) Test_MergedIndexes_OneNonEmptyIndexes() {
-	indexes := MergeIndexes(nil, []int{1, 2})
+	_, err := MergeIndexes(nil, []int{1, 2})
 
-	as.True(len(indexes) == 0)
+	as.Error(err)
 }
 
-func (as *ActionSuite) Test_MergeIndexes_DifferentSize() {
-	indexes := MergeIndexes([]int{1, 2}, []int{1, 2, 3})
+func (as *ActionSuite) Test_MergeIndexes_SameSize() {
+	indexes, _ := MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
 
-	as.True(len(indexes) == 2)
+	as.True(len(indexes) == 3)
+}
+
+func (as *ActionSuite) Test_GetTreasureIdxMap_ValidInput() {
+	idxMap := GetTreasureIdxMap([]int{1}, []int{2})
+
+	as.True(idxMap.Valid)
+}
+
+func (as *ActionSuite) Test_GetTreasureIdxMap_InvalidInput() {
+	idxMap := GetTreasureIdxMap([]int{1}, []int{1, 2})
+
+	as.Equal("", idxMap.String)
+	as.False(idxMap.Valid)
 }
 
 func (as *ActionSuite) Test_IntsJoin_NoInts() {

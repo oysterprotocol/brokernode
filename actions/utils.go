@@ -3,6 +3,8 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -82,17 +84,29 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 }
 
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
-func MergeIndexes(a []int, b []int) []int {
+func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
-	if len(a) == 0 && len(b) == 0 {
-		return merged
+	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
+		return nil, errors.New("Invalid input")
 	}
 
-	for i := 0; i < int(math.Min(float64(len(a)), float64(len(b)))); i++ {
+	for i := 0; i < len(a); i++ {
 		// TODO(pzhao5): figure a better way to hash it.
 		merged = append(merged, (a[i]+b[i])/2)
 	}
-	return merged
+	return merged, nil
+}
+
+// Return the IdxMap for treasure to burried
+func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
+	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
+	var idxMap nulls.String
+	if err == nil {
+		idxMap = nulls.String{IntsJoin(mergedIndexes, IntsJoinDelim), true}
+	} else {
+		idxMap = nulls.String{"", false}
+	}
+	return idxMap
 }
 
 // Convert an int array to a string.
