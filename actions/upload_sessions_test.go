@@ -34,6 +34,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 		"genesisHash":          "genesisHashTest",
 		"fileSizeBytes":        123,
 		"storageLengthInYears": 1,
+		"alphaTreasureIndexes": []int{1},
 	})
 
 	// Parse response
@@ -47,6 +48,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
+	as.True(1 == len(resParsed.BetaTreasureIndexes))
 	as.NotEqual(0, resParsed.Invoice.Cost)
 	as.NotEqual("", resParsed.Invoice.EthAddress)
 }

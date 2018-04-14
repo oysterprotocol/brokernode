@@ -3,6 +3,8 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -13,10 +15,13 @@ import (
 
 const (
 	// One chunk unit as represents as 1KB
-	fileChunkSizeInByte = 1000
+	FileChunkSizeInByte = 1000
 
 	// Number of 1KB chunk in one Sector
-	fileSectorInChunkSize = 1000000
+	FileSectorInChunkSize = 1000000
+
+	// Separator to join []int array
+	IntsJoinDelim = "_"
 )
 
 // parseReqBody take a request and parses the body to the target interface.
@@ -60,22 +65,48 @@ func join(A []string, delim string) string {
 }
 
 // Randomly generate a set of indexes in each sector
-func generateInsertedIndexesForPearl(fileSizeInByte int) []int {
+func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	var indexes []int
 	if fileSizeInByte <= 0 {
 		return indexes
 	}
 
-	fileSectorInByte := fileChunkSizeInByte * (fileSectorInChunkSize - 1)
+	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
-	remainderOfChunks := math.Ceil(float64(fileSizeInByte)/fileChunkSizeInByte) + float64(numOfSectors)
+	remainderOfChunks := math.Ceil(float64(fileSizeInByte)/FileChunkSizeInByte) + float64(numOfSectors)
 
 	for i := 0; i < numOfSectors; i++ {
-		rang := int(math.Min(fileSectorInChunkSize, remainderOfChunks))
+		rang := int(math.Min(FileSectorInChunkSize, remainderOfChunks))
 		indexes = append(indexes, rand.Intn(rang))
-		remainderOfChunks = remainderOfChunks - fileSectorInChunkSize
+		remainderOfChunks = remainderOfChunks - FileSectorInChunkSize
 	}
 	return indexes
+}
+
+// Merge 2 different indexes into 1 indexes. Computed Merged indexes
+func MergeIndexes(a []int, b []int) ([]int, error) {
+	var merged []int
+	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
+		return nil, errors.New("Invalid input")
+	}
+
+	for i := 0; i < len(a); i++ {
+		// TODO(pzhao5): figure a better way to hash it.
+		merged = append(merged, (a[i]+b[i])/2)
+	}
+	return merged, nil
+}
+
+// Return the IdxMap for treasure to burried
+func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
+	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
+	var idxMap nulls.String
+	if err == nil {
+		idxMap = nulls.String{IntsJoin(mergedIndexes, IntsJoinDelim), true}
+	} else {
+		idxMap = nulls.String{"", false}
+	}
+	return idxMap
 }
 
 // Convert an int array to a string.
