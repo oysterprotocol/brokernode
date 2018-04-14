@@ -5,6 +5,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/slices"
 	"github.com/oysterprotocol/brokernode/models"
+	"actions"
 )
 
 func init() {
@@ -45,13 +46,10 @@ func BuryTreasureInPaidDataMaps() {
 		// this is taking the json from treasureIdxMap and making it an array of ints.
 		// tried to pass in slices.Int{} as the interface but that did not work.
 		// https://play.golang.org/p/nQorh-mMYOw
-		treasureIndex := []int{}
+		treasureIndexes := []int{}
 		if unburiedSession.TreasureIdxMap.Valid {
 			// only do this if the string value is valid
-			err := json.Unmarshal([]byte(unburiedSession.TreasureIdxMap.String), &treasureIndex)
-			if err != nil {
-				raven.CaptureError(err, nil)
-			}
+			treasureIndexes = IntsSplit(unburiedSession.TreasureIdxMap.String, IntsJoinDelim)
 		}
 
 		/*@TODO remove this and actually make a slices.Int object that haves the values from
