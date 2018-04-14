@@ -44,7 +44,7 @@ type transactionUpdateRes struct {
 // Creates a transaction.
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	req := transactionCreateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	dataMap := models.DataMap{}
 	brokernode := models.Brokernode{}
@@ -52,7 +52,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	dataMapNotFound := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
 
-	existingAddresses := join(req.CurrentList, ", ")
+	existingAddresses := StringsJoin(req.CurrentList, StringsJoinDelim)
 	brokernodeNotFound := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
 	if dataMapNotFound != nil || brokernodeNotFound != nil {
@@ -88,7 +88,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	req := transactionUpdateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	// Get transaction
 	t := &models.Transaction{}

@@ -22,7 +22,7 @@ type webnodeCreateRes struct {
 // Creates a webnode.
 func (usr *WebnodeResource) Create(c buffalo.Context) error {
 	req := webnodeCreateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	w := models.Webnode{
 		Address: req.Address,

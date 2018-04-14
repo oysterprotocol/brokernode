@@ -46,7 +46,7 @@ type UploadSessionUpdateReq struct {
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	// TODO: Handle PRL Payments
 
@@ -73,7 +73,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			return err
 		}
 		betaSessionRes := &uploadSessionCreateRes{}
-		parseResBody(betaRes, betaSessionRes)
+		ParseResBody(betaRes, betaSessionRes)
 		betaSessionID = betaSessionRes.ID
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
 	}
@@ -109,7 +109,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	req := UploadSessionUpdateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	// Get session
 	uploadSession := &models.UploadSession{}
@@ -151,7 +151,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 // CreateBeta creates an upload session on the beta broker.
 func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
-	parseReqBody(c.Request(), &req)
+	ParseReqBody(c.Request(), &req)
 
 	betaTreasureIndexes := GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	u := models.UploadSession{

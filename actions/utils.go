@@ -22,10 +22,13 @@ const (
 
 	// Separator to join []int array
 	IntsJoinDelim = "_"
+
+	// Separator to join []string array
+	StringsJoinDelim = ", "
 )
 
-// parseReqBody take a request and parses the body to the target interface.
-func parseReqBody(req *http.Request, dest interface{}) (err error) {
+// ParseReqBody take a request and parses the body to the target interface.
+func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 	body := req.Body
 	defer body.Close()
 
@@ -38,8 +41,8 @@ func parseReqBody(req *http.Request, dest interface{}) (err error) {
 	return
 }
 
-// parseResBody take a request and parses the body to the target interface.
-func parseResBody(res *http.Response, dest interface{}) (err error) {
+// ParseResBody take a request and parses the body to the target interface.
+func ParseResBody(res *http.Response, dest interface{}) (err error) {
 	body := res.Body
 	defer body.Close()
 
@@ -50,18 +53,6 @@ func parseResBody(res *http.Response, dest interface{}) (err error) {
 	err = json.Unmarshal(bodyBytes, dest)
 
 	return
-}
-
-func join(A []string, delim string) string {
-	var buffer bytes.Buffer
-	for i := 0; i < len(A); i++ {
-		buffer.WriteString(A[i])
-		if i != len(A)-1 {
-			buffer.WriteString(delim)
-		}
-	}
-
-	return buffer.String()
 }
 
 // Randomly generate a set of indexes in each sector
@@ -83,30 +74,29 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	return indexes
 }
 
-// Merge 2 different indexes into 1 indexes. Computed Merged indexes
-func MergeIndexes(a []int, b []int) ([]int, error) {
-	var merged []int
-	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
-		return nil, errors.New("Invalid input")
-	}
-
-	for i := 0; i < len(a); i++ {
-		// TODO(pzhao5): figure a better way to hash it.
-		merged = append(merged, (a[i]+b[i])/2)
-	}
-	return merged, nil
-}
-
 // Return the IdxMap for treasure to burried
 func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
-	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
+	mergedIndexes, err := mergeIndexes(alphaIndexes, betaIndexs)
 	var idxMap nulls.String
 	if err == nil {
-		idxMap = nulls.String{IntsJoin(mergedIndexes, IntsJoinDelim), true}
+		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
 	} else {
 		idxMap = nulls.String{"", false}
 	}
 	return idxMap
+}
+
+// Convert an []string array to a string.
+func StringsJoin(A []string, delim string) string {
+	var buffer bytes.Buffer
+	for i := 0; i < len(A); i++ {
+		buffer.WriteString(A[i])
+		if i != len(A)-1 {
+			buffer.WriteString(delim)
+		}
+	}
+
+	return buffer.String()
 }
 
 // Convert an int array to a string.
@@ -132,4 +122,18 @@ func IntsSplit(a string, delim string) []int {
 		}
 	}
 	return ints
+}
+
+// Merge 2 different indexes into 1 indexes. Computed Merged indexes
+func mergeIndexes(a []int, b []int) ([]int, error) {
+	var merged []int
+	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
+		return nil, errors.New("Invalid input")
+	}
+
+	for i := 0; i < len(a); i++ {
+		// TODO(pzhao5): figure a better way to hash it.
+		merged = append(merged, (a[i]+b[i])/2)
+	}
+	return merged, nil
 }
