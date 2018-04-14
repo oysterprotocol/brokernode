@@ -47,7 +47,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	return client, err
 }
 
-func (e Eth) GenerateEthAddr() (addr string, privKey string, err error) {
+func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
 		return
@@ -59,19 +59,19 @@ func (e Eth) GenerateEthAddr() (addr string, privKey string, err error) {
 	return
 }
 
-func (e Eth) BuryPrl() {
+func (e *Eth) BuryPrl() {
 	// TODO
 }
 
 // TODO: Don't use floats for money transactions!
-func (e Eth) SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
+func (e *Eth) SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
 
 // SubscribeToTransfer will subscribe to transfer events
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
-func (e Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
+func (e *Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	ethCl, _ := sharedClient()
 	ctx := context.Background() // TODO: Should we have some timeout or cancel?
 
