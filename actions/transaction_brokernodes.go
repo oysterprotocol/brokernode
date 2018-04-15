@@ -10,6 +10,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type TransactionBrokernodeResource struct {
@@ -44,7 +45,7 @@ type transactionUpdateRes struct {
 // Creates a transaction.
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	req := transactionCreateReq{}
-	ParseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	dataMap := models.DataMap{}
 	brokernode := models.Brokernode{}
@@ -52,7 +53,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	dataMapNotFound := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
 
-	existingAddresses := StringsJoin(req.CurrentList, StringsJoinDelim)
+	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
 	brokernodeNotFound := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
 	if dataMapNotFound != nil || brokernodeNotFound != nil {
@@ -88,7 +89,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	req := transactionUpdateReq{}
-	ParseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// Get transaction
 	t := &models.Transaction{}
