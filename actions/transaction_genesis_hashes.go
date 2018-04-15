@@ -3,6 +3,7 @@ package actions
 import (
 	"fmt"
 	// "os"
+	"math"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
@@ -38,7 +39,8 @@ type transactionGenesisHashUpdateReq struct {
 }
 
 type transactionGenesisHashUpdateRes struct {
-	Purchase string `json:"purchase"`
+	Purchase       string `json:"purchase"`
+	NumberOfChunks int    `json:"numberOfChunks"`
 }
 
 // Creates a transaction.
@@ -129,9 +131,19 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 
+	storedGenesisHash := models.StoredGenesisHash{}
+	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash = ?", t.DataMap.GenesisHash).First(&storedGenesisHash)
+
+	if genesisHashNotFound != nil {
+		return c.Render(403, r.JSON(map[string]string{"error": "Stored genesis hash was not found"}))
+	}
+
 	models.DB.Transaction(func(tx *pop.Connection) error {
 		t.Status = models.TransactionStatusComplete
 		tx.ValidateAndSave(t)
+
+		storedGenesisHash.Status = models.StoredGenesisHashUnassigned
+		tx.ValidateAndSave(&storedGenesisHash)
 
 		dataMap := t.DataMap
 		dataMap.Status = models.Complete
@@ -140,7 +152,10 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return nil
 	})
 
-	res := transactionGenesisHashUpdateRes{Purchase: t.Purchase}
+	res := transactionGenesisHashUpdateRes{
+		Purchase:       t.Purchase,
+		NumberOfChunks: int(math.Ceil(float64(storedGenesisHash.FileSizeBytes) / models.FileBytesChunkSize)),
+	}
 
 	return c.Render(202, r.JSON(res))
 }
