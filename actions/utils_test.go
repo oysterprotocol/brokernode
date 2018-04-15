@@ -19,27 +19,27 @@ func (as *ActionSuite) Test_TransformIndexWithBuriedIndexes_EqualIndex() {
 }
 
 func (as *ActionSuite) Test_TransformIndexWithBuriedIndexes_WithinFirstSector() {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize - 2, []int{20, 0})
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-2, []int{20, 0})
 
-	as.Equal(FileSectorInChunkSize - 1, index)
+	as.Equal(FileSectorInChunkSize-1, index)
 }
 
 func (as *ActionSuite) Test_TransformIndexWithBuriedIndexes_ToAnotherSector() {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize - 1, []int{20, 0})
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{20, 0})
 
-	as.Equal(FileSectorInChunkSize + 2, index)
+	as.Equal(FileSectorInChunkSize+1, index)
 }
 
 func (as *ActionSuite) Test_TransformIndexWithBuriedIndexes_TreasureAsLastIndex() {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize - 1, []int{FileSectorInChunkSize -1 , 0})
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{FileSectorInChunkSize - 1, 0})
 
-	as.Equal(FileSectorInChunkSize + 2, index)
+	as.Equal(FileSectorInChunkSize+1, index)
 }
 
 func (as *ActionSuite) Test_TransformIndexWithBuriedIndexes_LastSector() {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize * 2 - 2, []int{0, 0})
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize*2-3, []int{0, 0})
 
-	as.Equal(FileSectorInChunkSize * 2, index)
+	as.Equal(FileSectorInChunkSize*2-1, index)
 }
 
 func (as *ActionSuite) Test_GenerateInsertedIndexesForPearl_BadFileSize() {

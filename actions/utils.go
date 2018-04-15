@@ -70,13 +70,12 @@ func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 		return index
 	}
 
-	// Since index starts from 0, while FileSectorInChunkSize counts from 1, thus +1.
-	// We also needs to consider to each sector to save a space for Treasure, thus -1.
-	sector := (index + 1) / (FileSectorInChunkSize - 1)
-	if (index - sector * FileSectorInChunkSize) < treasureIdxMap[sector] {
-		return index + sector
+	// We needs to consider to each sector to save a space for Treasure, thus -1.
+	sector := index / (FileSectorInChunkSize - 1)
+	if (index - sector*(FileSectorInChunkSize-1)) >= treasureIdxMap[sector] {
+		return index + sector + 1
 	} else {
-		return index + 1 + sector
+		return index + sector
 	}
 }
 
