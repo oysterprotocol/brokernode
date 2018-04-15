@@ -17,33 +17,33 @@ type TransactionGenesisHashResource struct {
 }
 
 // Request Response structs
-type Pow struct {
+type GenesisHashPow struct {
 	Address  string `json:"address"`
 	Message  string `json:"message"`
 	BranchTx string `json:"branchTx"`
 	TrunkTx  string `json:"trunkTx"`
 }
 
-type transactionCreateReq struct {
+type transactionGenesisHashCreateReq struct {
 	CurrentList []string `json:"currentList"`
 }
 
-type transactionCreateRes struct {
-	ID  uuid.UUID `json:"id"`
-	Pow Pow       `json:"pow"`
+type transactionGenesisHashCreateRes struct {
+	ID  uuid.UUID      `json:"id"`
+	Pow GenesisHashPow `json:"pow"`
 }
 
-type transactionUpdateReq struct {
+type transactionGenesisHashUpdateReq struct {
 	Trytes string `json:"trytes"`
 }
 
-type transactionUpdateRes struct {
+type transactionGenesisHashUpdateRes struct {
 	Purchase string `json:"purchase"`
 }
 
 // Creates a transaction.
 func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
-	req := transactionCreateReq{}
+	req := transactionGenesisHashCreateReq{}
 	parseReqBody(c.Request(), &req)
 
 	existingGenesisHashes := join(req.CurrentList, ", ")
@@ -79,9 +79,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		return nil
 	})
 
-	res := transactionCreateRes{
+	res := transactionGenesisHashCreateRes{
 		ID: t.ID,
-		Pow: Pow{
+		Pow: GenesisHashPow{
 			Address:  dataMap.Address,
 			Message:  dataMap.Message,
 			BranchTx: dataMap.BranchTx,
@@ -93,7 +93,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
-	req := transactionUpdateReq{}
+	req := transactionGenesisHashUpdateReq{}
 	parseReqBody(c.Request(), &req)
 
 	// Get transaction
@@ -140,7 +140,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return nil
 	})
 
-	res := transactionUpdateRes{Purchase: t.Purchase}
+	res := transactionGenesisHashUpdateRes{Purchase: t.Purchase}
 
 	return c.Render(202, r.JSON(res))
 }
