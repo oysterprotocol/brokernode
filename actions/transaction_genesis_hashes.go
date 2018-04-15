@@ -2,7 +2,7 @@ package actions
 
 import (
 	"fmt"
-	"os"
+	// "os"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
@@ -10,73 +10,78 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/utils"
 )
 
-type TransactionBrokernodeResource struct {
+type TransactionGenesisHashResource struct {
 	buffalo.Resource
 }
 
 // Request Response structs
-type BrokernodeAddressPow struct {
+type Pow struct {
 	Address  string `json:"address"`
 	Message  string `json:"message"`
 	BranchTx string `json:"branchTx"`
 	TrunkTx  string `json:"trunkTx"`
 }
 
-type transactionBrokernodeCreateReq struct {
+type transactionCreateReq struct {
 	CurrentList []string `json:"currentList"`
 }
 
-type transactionBrokernodeCreateRes struct {
-	ID  uuid.UUID            `json:"id"`
-	Pow BrokernodeAddressPow `json:"pow"`
+type transactionCreateRes struct {
+	ID  uuid.UUID `json:"id"`
+	Pow Pow       `json:"pow"`
 }
 
-type transactionBrokernodeUpdateReq struct {
+type transactionUpdateReq struct {
 	Trytes string `json:"trytes"`
 }
 
-type transactionBrokernodeUpdateRes struct {
+type transactionUpdateRes struct {
 	Purchase string `json:"purchase"`
 }
 
 // Creates a transaction.
-func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
+func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	parseReqBody(c.Request(), &req)
+
+	existingGenesisHashes := join(req.CurrentList, ", ")
+	storedGenesisHash := models.StoredGenesisHash{}
+	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash NOT IN (?) AND webnode_count < ? AND status = ?", existingGenesisHashes, models.WebnodeCountLimit, models.StoredGenesisHashUnassigned).First(&storedGenesisHash)
+
+	if genesisHashNotFound != nil {
+		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
+	}
 
 	dataMap := models.DataMap{}
-	brokernode := models.Brokernode{}
-	t := models.Transaction{}
+	dataMapNotFound := models.DB.Limit(1).Where("status = ? AND genesis_hash = ?", models.Unassigned, storedGenesisHash.GenesisHash).First(&dataMap)
 
-	dataMapNotFound := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
-
-	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
-	brokernodeNotFound := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
-
-	if dataMapNotFound != nil || brokernodeNotFound != nil {
+	if dataMapNotFound != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
+	t := models.Transaction{}
 	models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
 		tx.ValidateAndSave(&dataMap)
 
+		storedGenesisHash.Status = models.StoredGenesisHashAssigned
+		tx.ValidateAndSave(&storedGenesisHash)
+
 		t = models.Transaction{
-			Type:      models.TransactionTypeBrokernode,
+			Type:      models.TransactionTypeGenesisHash,
 			Status:    models.TransactionStatusPending,
 			DataMapID: dataMap.ID,
-			Purchase:  brokernode.Address,
+			Purchase:  storedGenesisHash.GenesisHash,
 		}
 		tx.ValidateAndSave(&t)
 		return nil
 	})
 
-	res := transactionBrokernodeCreateRes{
+	res := transactionCreateRes{
 		ID: t.ID,
-		Pow: BrokernodeAddressPow{
+		Pow: Pow{
 			Address:  dataMap.Address,
 			Message:  dataMap.Message,
 			BranchTx: dataMap.BranchTx,
@@ -87,9 +92,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	return c.Render(200, r.JSON(res))
 }
 
-func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
+func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	req := transactionUpdateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	parseReqBody(c.Request(), &req)
 
 	// Get transaction
 	t := &models.Transaction{}
@@ -112,7 +117,8 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
 	}
 
-	host_ip := os.Getenv("HOST_IP")
+	// host_ip := os.Getenv("HOST_IP")
+	host_ip := "18.188.113.65"
 	provider := "http://" + host_ip + ":14265"
 	iotaAPI := giota.NewAPI(provider, nil)
 
@@ -134,7 +140,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return nil
 	})
 
-	res := transactionBrokernodeUpdateRes{Purchase: t.Purchase}
+	res := transactionUpdateRes{Purchase: t.Purchase}
 
 	return c.Render(202, r.JSON(res))
 }
