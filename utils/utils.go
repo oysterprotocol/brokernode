@@ -1,4 +1,4 @@
-package actions
+package oyster_utils
 
 import (
 	"bytes"
@@ -124,6 +124,7 @@ func IntsSplit(a string, delim string) []int {
 	return ints
 }
 
+// Private methods
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
 func mergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int

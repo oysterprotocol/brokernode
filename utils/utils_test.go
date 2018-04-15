@@ -1,4 +1,4 @@
-package actions
+package oyster_utils
 
 func (as *ActionSuite) Test_GenerateInsertedIndexesForPearl_BadFileSize() {
 	indexes := GenerateInsertedIndexesForPearl(-1)
