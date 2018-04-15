@@ -143,6 +143,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		tx.ValidateAndSave(t)
 
 		storedGenesisHash.Status = models.StoredGenesisHashUnassigned
+		storedGenesisHash.WebnodeCount = storedGenesisHash.WebnodeCount + 1
 		tx.ValidateAndSave(&storedGenesisHash)
 
 		dataMap := t.DataMap
