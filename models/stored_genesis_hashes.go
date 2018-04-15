@@ -8,13 +8,19 @@ import (
 	"time"
 )
 
+const (
+	StoredGenesisHashUnassigned int = iota + 1
+	StoredGenesisHashAssigned
+)
+
 type StoredGenesisHash struct {
 	ID            uuid.UUID `json:"id" db:"id"`
+	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
 	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
 	WebnodeCount  int       `json:"webnodeCount" db:"webnode_count"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
+	Status        int       `json:"status" db:"status"`
 }
 
 // String is not required by pop and may be deleted
