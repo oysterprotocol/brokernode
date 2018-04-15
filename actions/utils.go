@@ -64,6 +64,22 @@ func join(A []string, delim string) string {
 	return buffer.String()
 }
 
+// Transforms index with correct position for insertion after considering the buried indexes.
+func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
+	if len(treasureIdxMap) == 0 {
+		return index
+	}
+
+	// Since index starts from 0, while FileSectorInChunkSize counts from 1, thus +1.
+	// We also needs to consider to each sector to save a space for Treasure, thus -1.
+	sector := (index + 1) / (FileSectorInChunkSize - 1)
+	if (index - sector * FileSectorInChunkSize) < treasureIdxMap[sector] {
+		return index + sector
+	} else {
+		return index + 1 + sector
+	}
+}
+
 // Randomly generate a set of indexes in each sector
 func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	var indexes []int
