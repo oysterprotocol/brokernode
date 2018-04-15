@@ -116,6 +116,16 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	validTrunk := giota.Trytes(t.DataMap.TrunkTx) == iotaTransaction.TrunkTransaction
 
 	if !(validAddress && validMessage && validBranch && validTrunk) {
+		fmt.Println("ppppppppppppp")
+		fmt.Println(iotaTransaction.Trytes())
+		fmt.Println("xxxxxxxxxxx")
+		fmt.Println(iotaTransaction.Address)
+		fmt.Println("mmmmmmmmmmmmm")
+		fmt.Println(iotaTransaction.SignatureMessageFragment)
+		fmt.Println("nnnnnnnnnnnnnnnn")
+		fmt.Println(iotaTransaction.BranchTransaction)
+		fmt.Println("wwwwwwwwwwwww")
+		fmt.Println(iotaTransaction.TrunkTransaction)
 		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
 	}
 
