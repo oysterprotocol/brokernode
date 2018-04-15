@@ -2,7 +2,7 @@ package actions
 
 import (
 	"fmt"
-	"os"
+	// "os"
 	"strings"
 
 	"github.com/gobuffalo/buffalo"
@@ -112,7 +112,8 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
 	}
 
-	host_ip := os.Getenv("HOST_IP")
+	// host_ip := os.Getenv("HOST_IP")
+	host_ip := "18.188.113.65"
 	provider := "http://" + host_ip + ":14265"
 	iotaAPI := giota.NewAPI(provider, nil)
 
@@ -120,6 +121,8 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	broadcastErr := iotaAPI.BroadcastTransactions(iotaTransactions)
 
 	if broadcastErr != nil {
+		fmt.Println("xxxxxxxxxxxxxxxxxxxxxx")
+		fmt.Println(broadcastErr)
 		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 

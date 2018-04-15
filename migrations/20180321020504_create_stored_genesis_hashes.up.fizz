@@ -4,6 +4,6 @@ create_table("stored_genesis_hashes", func(t) {
   t.Column("file_size_bytes", "integer", {})
   t.Column("webnode_count", "integer", {"null": true})
   t.Column("status", "integer", {})
-
-  add_index("stored_genesis_hashes", ["genesis_hash"], {})
 })
+
+add_index("stored_genesis_hashes", ["genesis_hash"], {})
