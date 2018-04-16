@@ -4,6 +4,48 @@ import (
 	"testing"
 )
 
+func Test_TransformIndexWithBuriedIndexes_NoBuriedIndexes(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(10, []int{})
+
+	assertTrue(index == 10, t, "No change on the index")
+}
+
+func Test_TransformIndexWithBuriedIndexes_NoChangeOnIndex(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(10, []int{20, 1})
+
+	assertTrue(index == 10, t, "No change on the index")
+}
+
+func Test_TransformIndexWithBuriedIndexes_EqualIndex(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(20, []int{20, 1})
+
+	assertTrue(index == 21, t, "Increase index by 1")
+}
+
+func Test_TransformIndexWithBuriedIndexes_WithinFirstSector(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-2, []int{20, 0})
+
+	assertTrue(index == FileSectorInChunkSize-1, t, "Increase index by 1")
+}
+
+func Test_TransformIndexWithBuriedIndexes_ToAnotherSector(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{20, 0})
+
+	assertTrue(index == FileSectorInChunkSize+1, t, "Increasee index by 2")
+}
+
+func Test_TransformIndexWithBuriedIndexes_TreasureAsLastIndex(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{FileSectorInChunkSize - 1, 0})
+
+	assertTrue(index == FileSectorInChunkSize+1, t, "Increase index by 2")
+}
+
+func Test_TransformIndexWithBuriedIndexes_LastSector(t *testing.T) {
+	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize*2-3, []int{0, 0})
+
+	assertTrue(index == FileSectorInChunkSize*2-1, t, "Increase index by 2")
+}
+
 func Test_GenerateInsertedIndexesForPearl_BadFileSize(t *testing.T) {
 	indexes := GenerateInsertedIndexesForPearl(-1)
 
