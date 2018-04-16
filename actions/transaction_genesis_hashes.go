@@ -11,6 +11,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type TransactionGenesisHashResource struct {
@@ -46,7 +47,7 @@ type transactionGenesisHashUpdateRes struct {
 // Creates a transaction.
 func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionGenesisHashCreateReq{}
-	parseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	existingGenesisHashes := join(req.CurrentList, ", ")
 	storedGenesisHash := models.StoredGenesisHash{}
@@ -96,7 +97,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 
 func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	req := transactionGenesisHashUpdateReq{}
-	parseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// Get transaction
 	t := &models.Transaction{}
