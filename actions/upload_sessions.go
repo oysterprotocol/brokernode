@@ -8,6 +8,7 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
 )
 
@@ -46,13 +47,13 @@ type UploadSessionUpdateReq struct {
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
-	parseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// TODO: Handle PRL Payments
 
 	// Start Beta Session.
 
-	req.AlphaTreasureIndexes = GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	var betaSessionID = ""
 	var betaTreasureIndexes []int
 	if req.BetaIP != "" {
@@ -73,7 +74,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			return err
 		}
 		betaSessionRes := &uploadSessionCreateRes{}
-		parseResBody(betaRes, betaSessionRes)
+		oyster_utils.ParseResBody(betaRes, betaSessionRes)
 		betaSessionID = betaSessionRes.ID
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
 	}
@@ -84,7 +85,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
+		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
@@ -109,7 +110,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	req := UploadSessionUpdateReq{}
-	parseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// Get session
 	uploadSession := &models.UploadSession{}
@@ -151,15 +152,15 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 // CreateBeta creates an upload session on the beta broker.
 func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
-	parseReqBody(c.Request(), &req)
+	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	betaTreasureIndexes := GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
 		GenesisHash:          req.GenesisHash,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
+		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 	}
 	vErr, err := u.StartUploadSession()
 	if err != nil {
