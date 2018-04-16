@@ -18,33 +18,33 @@ type TransactionBrokernodeResource struct {
 }
 
 // Request Response structs
-type Pow struct {
+type BrokernodeAddressPow struct {
 	Address  string `json:"address"`
 	Message  string `json:"message"`
 	BranchTx string `json:"branchTx"`
 	TrunkTx  string `json:"trunkTx"`
 }
 
-type transactionCreateReq struct {
+type transactionBrokernodeCreateReq struct {
 	CurrentList []string `json:"currentList"`
 }
 
-type transactionCreateRes struct {
-	ID  uuid.UUID `json:"id"`
-	Pow Pow       `json:"pow"`
+type transactionBrokernodeCreateRes struct {
+	ID  uuid.UUID            `json:"id"`
+	Pow BrokernodeAddressPow `json:"pow"`
 }
 
-type transactionUpdateReq struct {
+type transactionBrokernodeUpdateReq struct {
 	Trytes string `json:"trytes"`
 }
 
-type transactionUpdateRes struct {
+type transactionBrokernodeUpdateRes struct {
 	Purchase string `json:"purchase"`
 }
 
 // Creates a transaction.
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
-	req := transactionCreateReq{}
+	req := transactionBrokernodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	dataMap := models.DataMap{}
@@ -74,9 +74,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		return nil
 	})
 
-	res := transactionCreateRes{
+	res := transactionBrokernodeCreateRes{
 		ID: t.ID,
-		Pow: Pow{
+		Pow: BrokernodeAddressPow{
 			Address:  dataMap.Address,
 			Message:  dataMap.Message,
 			BranchTx: dataMap.BranchTx,
@@ -88,7 +88,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
-	req := transactionUpdateReq{}
+	req := transactionBrokernodeUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// Get transaction
@@ -123,10 +123,18 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 
-	t.Status = models.TransactionStatusComplete
-	models.DB.ValidateAndUpdate(t)
+	models.DB.Transaction(func(tx *pop.Connection) error {
+		t.Status = models.TransactionStatusComplete
+		tx.ValidateAndSave(t)
 
-	res := transactionUpdateRes{Purchase: t.Purchase}
+		dataMap := t.DataMap
+		dataMap.Status = models.Complete
+		tx.ValidateAndSave(&dataMap)
+
+		return nil
+	})
+
+	res := transactionBrokernodeUpdateRes{Purchase: t.Purchase}
 
 	return c.Render(202, r.JSON(res))
 }

@@ -77,6 +77,10 @@ func App() *buffalo.App {
 		transactionBrokernodeResource := TransactionBrokernodeResource{}
 		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
 		apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
+
+		transactionGenesisHashResource := TransactionGenesisHashResource{}
+		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
+		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
 	}
 
 	return app
