@@ -44,7 +44,7 @@ type transactionBrokernodeUpdateRes struct {
 
 // Creates a transaction.
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
-	req := transactionCreateReq{}
+	req := transactionBrokernodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	dataMap := models.DataMap{}
@@ -88,7 +88,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
-	req := transactionUpdateReq{}
+	req := transactionBrokernodeUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	// Get transaction

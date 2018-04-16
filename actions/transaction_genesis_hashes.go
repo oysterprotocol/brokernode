@@ -49,7 +49,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	existingGenesisHashes := join(req.CurrentList, ", ")
+	existingGenesisHashes := oyster_utils.StringsJoin(req.CurrentList, ", ")
 	storedGenesisHash := models.StoredGenesisHash{}
 	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash NOT IN (?) AND webnode_count < ? AND status = ?", existingGenesisHashes, models.WebnodeCountLimit, models.StoredGenesisHashUnassigned).First(&storedGenesisHash)
 
