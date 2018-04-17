@@ -55,6 +55,22 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 	return
 }
 
+// Transforms index with correct position for insertion after considering the buried indexes.
+func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
+	if len(treasureIdxMap) == 0 {
+		// TODO(pzhao5): Should log here about missing treasureIdxMap. Which should not happen.
+		return index
+	}
+
+	// We needs to consider to each sector to save a space for Treasure, thus -1.
+	sector := index / (FileSectorInChunkSize - 1)
+	if (index - sector*(FileSectorInChunkSize-1)) >= treasureIdxMap[sector] {
+		return index + sector + 1
+	} else {
+		return index + sector
+	}
+}
+
 // Randomly generate a set of indexes in each sector
 func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	var indexes []int
