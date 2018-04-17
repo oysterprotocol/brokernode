@@ -30,6 +30,13 @@ type uploadSessionCreateReq struct {
 }
 
 type uploadSessionCreateRes struct {
+	ID            string               `json:"id"`
+	UploadSession models.UploadSession `json:"uploadSession"`
+	BetaSessionID string               `json:"betaSessionId"`
+	Invoice       models.Invoice       `json:"invoice"`
+}
+
+type uploadSessionCreateBetaRes struct {
 	ID                  string               `json:"id"`
 	UploadSession       models.UploadSession `json:"uploadSession"`
 	BetaSessionID       string               `json:"betaSessionId"`
@@ -98,21 +105,15 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
-		betaSessionRes := &uploadSessionCreateRes{}
+		betaSessionRes := &uploadSessionCreateBetaRes{}
 		oyster_utils.ParseResBody(betaRes, betaSessionRes)
 		betaSessionID = betaSessionRes.ID
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
 	}
 
-	// Start Alpha Session.
-	u := models.UploadSession{
-		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          req.GenesisHash,
-		FileSizeBytes:        req.FileSizeBytes,
-		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
-	}
-	vErr, err = u.StartUploadSession()
+	// Update alpha treasure idx map.
+	alphaSession.TreasureIdxMap = oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	err = models.DB.Save(&alphaSession)
 	if err != nil {
 		return err
 	}
@@ -206,7 +207,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	res := uploadSessionCreateRes{
+	res := uploadSessionCreateBetaRes{
 		UploadSession:       u,
 		ID:                  u.ID.String(),
 		Invoice:             u.GetInvoice(),

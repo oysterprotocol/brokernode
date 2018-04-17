@@ -38,7 +38,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	})
 
 	// Parse response
-	resParsed := uploadSessionCreateRes{}
+	resParsed := uploadSessionCreateBetaRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	as.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
