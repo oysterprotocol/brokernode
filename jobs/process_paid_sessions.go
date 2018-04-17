@@ -2,10 +2,18 @@ package jobs
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop/slices"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
+	"log"
 )
+
+type TreasureMap struct {
+	Sector int    `json:"sector"`
+	Idx    int    `json:"idx"`
+	Key    string `json:"key"`
+}
 
 func init() {
 }
@@ -17,6 +25,7 @@ func ProcessPaidSessions() {
 }
 
 func BuryTreasureInPaidDataMaps() {
+
 	unburiedSessions := []models.UploadSession{}
 
 	err := models.DB.Where("payment_status = ? AND treasure_status = ?",
@@ -25,27 +34,9 @@ func BuryTreasureInPaidDataMaps() {
 		raven.CaptureError(err, nil)
 	}
 
-	treasureChunks := []models.DataMap{}
-
 	for _, unburiedSession := range unburiedSessions {
 
-		/*TODO
-		pop queries for "where in" need a slice type to work (pop/slices)
-
-		https://godoc.org/github.com/gobuffalo/pop/slices#Int
-
-		But, I cannot seem to get it to work.
-		treasureIndex is an array of ints but "where in" won't work with it, and cannot figure
-		out how to convert a regular array of ints to type pop/slices.
-
-		Even with just manually inputting some dummy ints into slices.Int{} the "where in" does not
-		seem to work.
-		*/
-
-		// this is taking the json from treasureIdxMap and making it an array of ints.
-		// tried to pass in slices.Int{} as the interface but that did not work.
-		// https://play.golang.org/p/nQorh-mMYOw
-		treasureIndex := []int{}
+		treasureIndex := []TreasureMap{}
 		if unburiedSession.TreasureIdxMap.Valid {
 			// only do this if the string value is valid
 			err := json.Unmarshal([]byte(unburiedSession.TreasureIdxMap.String), &treasureIndex)
@@ -54,47 +45,47 @@ func BuryTreasureInPaidDataMaps() {
 			}
 		}
 
-		/*@TODO remove this and actually make a slices.Int object that haves the values from
-		TreasureIdxMap and get the "where in" query to work
-		*/
-		treasureSlices := slices.Int{1, 220, 355}
-
-		err = models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? "+
-			"AND chunk_idx in (?) ORDER BY chunk_idx asc",
-			unburiedSession.GenesisHash,
-			treasureSlices).All(&treasureChunks)
-
-		BuryTreasure(treasureChunks, &unburiedSession)
-
-		if len(treasureChunks) != 0 {
-			unburiedSession.TreasureStatus = models.TreasureBuried
-			models.DB.ValidateAndSave(&unburiedSession)
-		}
+		BuryTreasure(treasureIndex, &unburiedSession)
 	}
 }
 
-func BuryTreasure(treasureChunks []models.DataMap, unburiedSession *models.UploadSession) {
+func BuryTreasure(treasureIndexMap []TreasureMap, unburiedSession *models.UploadSession) error {
 
-	var err error
-
-	/*@TODO would be better to re-write this method such that we're passing in the seeds, so we can pass in
-	@TODO dummy seeds for our unit tests.
-	*/
-
-	//@TODO grab the ethereum seeds once we have ethereum functionality enabled.  For now just using a dummy seed.
-
-	//@TODO do something in the event that the length of the seeds isn't the same as the length of the treasureChunks
-
-	/*@TODO remove this*/
-	dummyEthSeed := "1004444400000006780000000000000000000000000012345000000765430001"
-
-	for _, treasureChunk := range treasureChunks {
-		treasureChunk.Message, err = models.CreateTreasurePayload(dummyEthSeed, treasureChunk.Hash, models.MaxSideChainLength)
+	for i, entry := range treasureIndexMap {
+		treasureChunks := []models.DataMap{}
+		err := models.DB.Where("genesis_hash = ?",
+			unburiedSession.GenesisHash).Where("chunk_idx = ?", entry.Idx).All(&treasureChunks)
 		if err != nil {
 			raven.CaptureError(err, nil)
+			return err
 		}
-		models.DB.ValidateAndSave(&treasureChunk)
+		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
+			errString := "did not find a chunk that matched genesis_hash and chunk_idx in process_paid_sessions, or " +
+				"found duplicate chunks"
+			log.Println(errString)
+			err = errors.New(errString)
+			raven.CaptureError(err, nil)
+			return err
+		}
+		treasureChunks[0].Message, err = models.CreateTreasurePayload(entry.Key, treasureChunks[0].Hash, models.MaxSideChainLength)
+		if err != nil {
+			raven.CaptureError(err, nil)
+			return err
+		}
+		models.DB.ValidateAndSave(&treasureChunks[0])
+		// delete the keys now that they have been buried
+		treasureIndexMap[i].Key = ""
 	}
+	unburiedSession.TreasureStatus = models.TreasureBuried
+	treasureString, err := json.Marshal(treasureIndexMap)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return err
+	}
+	unburiedSession.TreasureIdxMap = nulls.String{string(treasureString), true}
+
+	models.DB.ValidateAndSave(unburiedSession)
+	return nil
 }
 
 // marking the maps as "Unassigned" will trigger them to get processed by the process_unassigned_chunks cron task.
