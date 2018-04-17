@@ -2,15 +2,16 @@ package models
 
 import (
 	"encoding/json"
-	"github.com/getsentry/raven-go"
+	"math"
 	"time"
-
+  
+  "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
+	// "github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"math"
 )
 
 // Enum for upload session type.
@@ -41,13 +42,14 @@ type UploadSession struct {
 
 	ETHAddrAlpha  nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
 	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
-	ETHPrivateKey nulls.String `db:"eth_private_key"`
+	ETHPrivateKey string       `db:"eth_private_key"`
 	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
 	TotalCost      float64 `json:"totalCost" db:"total_cost"`
 	PaymentStatus  int     `json:"paymentStatus" db:"payment_status"`
 	TreasureStatus int     `json:"treasureStatus" db:"treasure_status"`
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
+	// TreasureIdxMap slices.Int `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
 
 const (
@@ -131,7 +133,10 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 // StartUploadSession will generate dataMaps and save the session and dataMaps
 // to the DB.
 func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
-	u.calculatePayment()
+	if u.Type == SessionTypeAlpha {
+		u.calculatePayment()
+	}
+
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
 		return

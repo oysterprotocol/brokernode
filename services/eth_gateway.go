@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
+
+type Eth struct{}
 
 // TODO: Find etherum node to connect to.
 const ethUrl = "ws://0.0.0.0"
@@ -43,19 +47,31 @@ func sharedClient() (c *ethclient.Client, err error) {
 	return client, err
 }
 
-func BuryPrl() {
+func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
+	ethAccount, err := crypto.GenerateKey()
+	if err != nil {
+		return
+	}
+
+	addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
+	privKey = hex.EncodeToString(ethAccount.D.Bytes())
+
+	return
+}
+
+func (e *Eth) BuryPrl() {
 	// TODO
 }
 
 // TODO: Don't use floats for money transactions!
-func SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
+func (e *Eth) SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
 
 // SubscribeToTransfer will subscribe to transfer events
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
-func SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
+func (e *Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	ethCl, _ := sharedClient()
 	ctx := context.Background() // TODO: Should we have some timeout or cancel?
 
