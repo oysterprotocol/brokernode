@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
 )
 
@@ -58,5 +59,60 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 
 	for i, dMap := range *dMaps {
 		ms.Equal(expectedHashes[i], dMap.ObfuscatedHash)
+	}
+}
+
+func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
+	genHash := "genHashTest"
+	fileSizeBytes := 123
+	storageLengthInYears := 3
+
+	// This map seems pointless but it makes the testing
+	// in the for loop later on a bit simpler
+	t := map[int]models.TreasureMap{}
+	t[5] = models.TreasureMap{
+		Sector: 1,
+		Idx:    5,
+		Key:    "firstKey",
+	}
+	t[78] = models.TreasureMap{
+		Sector: 2,
+		Idx:    78,
+		Key:    "secondKey",
+	}
+
+	treasureIndexArray := make([]models.TreasureMap, 0)
+	treasureIndexArray = append(treasureIndexArray, t[5])
+	treasureIndexArray = append(treasureIndexArray, t[78])
+
+	// do not format this.  It needs to not have new lines in it
+	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.SetTreasureMap(treasureIndexArray)
+	vErr, err := u.StartUploadSession()
+	treasureIdxMap, err := u.GetTreasureMap()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	session := models.UploadSession{}
+	err = models.DB.Where("genesis_hash = ?", u.GenesisHash).First(&session)
+
+	ms.Equal(testMap, session.TreasureIdxMap.String)
+
+	ms.Equal(treasureIndexArray, treasureIdxMap)
+	ms.Equal(2, len(treasureIdxMap))
+
+	for _, entry := range treasureIdxMap {
+		_, ok := t[entry.Idx]
+		ms.Equal(true, ok)
+		ms.Equal(t[entry.Idx].Sector, entry.Sector)
+		ms.Equal(t[entry.Idx].Key, entry.Key)
+		ms.Equal(t[entry.Idx].Idx, entry.Idx)
 	}
 }
