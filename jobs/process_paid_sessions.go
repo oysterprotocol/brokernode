@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/getsentry/raven-go"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"log"
 )
@@ -50,7 +51,7 @@ func BuryTreasureInPaidDataMaps() {
 
 func BuryTreasure(treasureIndexMap []TreasureMap, unburiedSession *models.UploadSession) error {
 
-	for _, entry := range treasureIndexMap {
+	for i, entry := range treasureIndexMap {
 		treasureChunks := []models.DataMap{}
 		err := models.DB.Where("genesis_hash = ?",
 			unburiedSession.GenesisHash).Where("chunk_idx = ?", entry.Idx).All(&treasureChunks)
@@ -72,8 +73,17 @@ func BuryTreasure(treasureIndexMap []TreasureMap, unburiedSession *models.Upload
 			return err
 		}
 		models.DB.ValidateAndSave(&treasureChunks[0])
+		// delete the keys now that they have been buried
+		treasureIndexMap[i].Key = ""
 	}
 	unburiedSession.TreasureStatus = models.TreasureBuried
+	treasureString, err := json.Marshal(treasureIndexMap)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return err
+	}
+	unburiedSession.TreasureIdxMap = nulls.String{string(treasureString), true}
+
 	models.DB.ValidateAndSave(unburiedSession)
 	return nil
 }
