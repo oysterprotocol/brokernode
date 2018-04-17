@@ -1,19 +1,11 @@
 package jobs
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"log"
 )
-
-type TreasureMap struct {
-	Sector int    `json:"sector"`
-	Idx    int    `json:"idx"`
-	Key    string `json:"key"`
-}
 
 func init() {
 }
@@ -24,7 +16,7 @@ func ProcessPaidSessions() {
 	MarkBuriedMapsAsUnassigned()
 }
 
-func BuryTreasureInPaidDataMaps() {
+func BuryTreasureInPaidDataMaps() error {
 
 	unburiedSessions := []models.UploadSession{}
 
@@ -36,20 +28,18 @@ func BuryTreasureInPaidDataMaps() {
 
 	for _, unburiedSession := range unburiedSessions {
 
-		treasureIndex := []TreasureMap{}
-		if unburiedSession.TreasureIdxMap.Valid {
-			// only do this if the string value is valid
-			err := json.Unmarshal([]byte(unburiedSession.TreasureIdxMap.String), &treasureIndex)
-			if err != nil {
-				raven.CaptureError(err, nil)
-			}
+		treasureIndex, err := unburiedSession.GetTreasureMap()
+		if err != nil {
+			raven.CaptureError(err, nil)
+			return err
 		}
 
 		BuryTreasure(treasureIndex, &unburiedSession)
 	}
+	return nil
 }
 
-func BuryTreasure(treasureIndexMap []TreasureMap, unburiedSession *models.UploadSession) error {
+func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models.UploadSession) error {
 
 	for i, entry := range treasureIndexMap {
 		treasureChunks := []models.DataMap{}
@@ -77,13 +67,7 @@ func BuryTreasure(treasureIndexMap []TreasureMap, unburiedSession *models.Upload
 		treasureIndexMap[i].Key = ""
 	}
 	unburiedSession.TreasureStatus = models.TreasureBuried
-	treasureString, err := json.Marshal(treasureIndexMap)
-	if err != nil {
-		raven.CaptureError(err, nil)
-		return err
-	}
-	unburiedSession.TreasureIdxMap = nulls.String{string(treasureString), true}
-
+	unburiedSession.SetTreasureMap(treasureIndexMap)
 	models.DB.ValidateAndSave(unburiedSession)
 	return nil
 }

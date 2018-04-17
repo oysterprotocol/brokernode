@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/getsentry/raven-go"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -21,6 +22,12 @@ const (
 type Invoice struct {
 	Cost       float64      `json:"cost"`
 	EthAddress nulls.String `json:"ethAddress"`
+}
+
+type TreasureMap struct {
+	Sector int    `json:"sector"`
+	Idx    int    `json:"idx"`
+	Key    string `json:"key"`
 }
 
 type UploadSession struct {
@@ -167,6 +174,33 @@ func (u *UploadSession) calculatePayment() {
 	}
 
 	u.TotalCost = float64(storagePeg * u.StorageLengthInYears * fileSizeGigaBytes)
+}
+
+func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
+	var err error
+	treasureIndex := []TreasureMap{}
+	if u.TreasureIdxMap.Valid {
+		// only do this if the string value is valid
+		err = json.Unmarshal([]byte(u.TreasureIdxMap.String), &treasureIndex)
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
+	}
+	return treasureIndex, err
+}
+
+func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
+	var err error
+	u.TreasureIdxMap = nulls.String{}
+	DB.ValidateAndSave(u)
+	treasureString, err := json.Marshal(treasureIndexMap)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return err
+	}
+	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	DB.ValidateAndSave(u)
+	return nil
 }
 
 func getStoragePeg() int {

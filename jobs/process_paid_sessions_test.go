@@ -1,7 +1,6 @@
 package jobs_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
@@ -135,11 +134,8 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").First(&paidAndUnburiedSession)
 	suite.Equal(err, nil)
 
-	treasureIndex := []jobs.TreasureMap{}
-	if paidAndUnburiedSession.TreasureIdxMap.Valid {
-		err := json.Unmarshal([]byte(paidAndUnburiedSession.TreasureIdxMap.String), &treasureIndex)
-		suite.Equal(err, nil)
-	}
+	treasureIndex, err := paidAndUnburiedSession.GetTreasureMap()
+	suite.Equal(err, nil)
 
 	suite.Equal(3, len(treasureIndex))
 
