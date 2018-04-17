@@ -124,6 +124,14 @@ func IntsSplit(a string, delim string) []int {
 	return ints
 }
 
+// Return the total file chunk, including burying pearl
+func GetTotalFileChunkIncludingBuriedPearls(fileSizeInByte int) int {
+	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
+	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
+
+	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
+}
+
 // Private methods
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
 func mergeIndexes(a []int, b []int) ([]int, error) {
