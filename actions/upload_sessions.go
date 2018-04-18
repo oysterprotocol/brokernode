@@ -54,6 +54,11 @@ type UploadSessionUpdateReq struct {
 	Chunks []chunkReq `json:"chunks"`
 }
 
+type paymentStatusCreateRes struct {
+	ID            string               `json:"id"`
+	PaymentStatus string			   `json:"paymentStatus"`
+}
+
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
@@ -213,5 +218,33 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
+	return c.Render(200, r.JSON(res))
+}
+
+
+func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
+	session := models.UploadSession{}
+	err := models.DB.Where("id = ?", c.Param("id")).First(&session)
+
+	if err != nil {
+		//TODO: Return better error response when ID does not exist
+		return err
+	}
+
+	paymentStatus := ""
+
+	if session.PaymentStatus == models.PaymentStatusPending {
+		paymentStatus = "pending"
+	} else if session.PaymentStatus == models.PaymentStatusPaid {
+		paymentStatus = "paid"
+	} else {
+		paymentStatus = "error"
+	}
+
+	res := paymentStatusCreateRes{
+		ID:                  session.ID.String(),
+		PaymentStatus:		 paymentStatus,
+	}
+
 	return c.Render(200, r.JSON(res))
 }
