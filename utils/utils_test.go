@@ -178,6 +178,24 @@ func Test_IntsSplit_EmptyString(t *testing.T) {
 	compareIntsArray(t, v, []int{})
 }
 
+func Test_GetTotalFileChunkIncludingBuriedPearls_SmallFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(10)
+
+	assertTrue(v == 2, t, "")
+}
+
+func Test_GetTotalFileChunkIncludingBuriedPearls_MediaFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(FileChunkSizeInByte)
+
+	assertTrue(v == 2, t, "")
+}
+
+func Test_GetTotalFileChunkIncludingBuriedPearls_BigFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(FileChunkSizeInByte * FileSectorInChunkSize * 2)
+
+	assertTrue(v == 2*FileSectorInChunkSize+3, t, "")
+}
+
 // Private helper methods
 func compareIntsArray(t *testing.T, a []int, b []int) {
 	assertTrue(len(a) == len(b), t, "a and b must have the same len")

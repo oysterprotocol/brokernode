@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"math/rand"
 
-	"math"
 	"time"
 
 	"github.com/oysterprotocol/brokernode/utils"
@@ -17,7 +16,6 @@ import (
 	"github.com/gobuffalo/validate/validators"
 )
 
-const FileBytesChunkSize = float64(2187)
 const MaxSideChainLength = 1000 // need to determine what this number should be
 
 const (
@@ -88,7 +86,7 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
 func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
-	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount)/FileBytesChunkSize))
+	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(fileBytesCount)
 
 	currHash := genHash
 	for i := 0; i < fileChunksCount; i++ {
