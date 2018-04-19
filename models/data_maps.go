@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"math/rand"
 
-	"math"
 	"time"
 
 	"github.com/oysterprotocol/brokernode/utils"
@@ -87,8 +86,8 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileBytesCount int) (vErr *validate.Errors, err error) {
-	fileChunksCount := 1 + int(math.Ceil(float64(fileBytesCount)/FileBytesChunkSize))
+func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, err error) {
+	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
 
 	currHash := genHash
 	for i := 0; i < fileChunksCount; i++ {

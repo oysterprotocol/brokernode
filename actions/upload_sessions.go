@@ -85,7 +85,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	// Start Beta Session.
 
-	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 	var betaSessionID = ""
 	var betaTreasureIndexes []int
 	if req.BetaIP != "" {
@@ -180,7 +180,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
 	eth := services.Eth{}
