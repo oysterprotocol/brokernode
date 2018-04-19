@@ -1,6 +1,7 @@
 package oyster_utils
 
 import (
+	"github.com/gobuffalo/pop/nulls"
 	"testing"
 )
 
@@ -158,6 +159,21 @@ func Test_GetTreasureIdxMap_InvalidInput(t *testing.T) {
 
 	assertTrue(idxMap.String == "", t, "")
 	assertTrue(!idxMap.Valid, t, "")
+}
+
+func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
+	indexes := GetTreasureIdxIndexes(nulls.String{"", false})
+
+	assertTrue(len(indexes) == 0, t, "")
+}
+
+func Test_GetTreasureIdxIndexes_ValidInput(t *testing.T) {
+	indexes := GetTreasureIdxIndexes(nulls.String{"1_1_1", true})
+
+	assertTrue(len(indexes) == 3, t, "")
+	assertTrue(indexes[0] == 1, t, "")
+	assertTrue(indexes[1] == 1, t, "")
+	assertTrue(indexes[2] == 1, t, "")
 }
 
 func Test_IntsJoin_NoInts(t *testing.T) {
