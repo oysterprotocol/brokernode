@@ -62,6 +62,7 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 }
 
 // Convert trytes to bytes
+
 func ConvertToByte(trytes int) int {
 	return int(math.Ceil(float64(trytes*KiloByte) / float64(KiloByteToTryByte)))
 }
