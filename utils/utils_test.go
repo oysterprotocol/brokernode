@@ -4,6 +4,42 @@ import (
 	"testing"
 )
 
+func Test_ConvertToByte_1Trytes(t *testing.T) {
+	v := ConvertToByte(1)
+
+	assertTrue(v == 1, t, "")
+}
+
+func Test_ConvertToByte_2Trytes(t *testing.T) {
+	v := ConvertToByte(2)
+
+	assertTrue(v == 1, t, "")
+}
+
+func Test_ConvertToTrytes_1Byte(t *testing.T) {
+	v := ConvertToTrytes(1)
+
+	assertTrue(v == 2, t, "")
+}
+
+func Test_GetTotalFileChunkIncludingBuriedPearls_SmallFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(10)
+
+	assertTrue(v == 2, t, "")
+}
+
+func Test_GetTotalFileChunkIncludingBuriedPearls_MediaFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(FileChunkSizeInByte)
+
+	assertTrue(v == 2, t, "")
+}
+
+func Test_GetTotalFileChunkIncludingBuriedPearls_BigFileSize(t *testing.T) {
+	v := GetTotalFileChunkIncludingBuriedPearls(FileChunkSizeInByte * FileSectorInChunkSize * 2)
+
+	assertTrue(v == 2*FileSectorInChunkSize+3, t, "")
+}
+
 func Test_TransformIndexWithBuriedIndexes_NoBuriedIndexes(t *testing.T) {
 	index := TransformIndexWithBuriedIndexes(10, []int{})
 
