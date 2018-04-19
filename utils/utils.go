@@ -17,8 +17,8 @@ const (
 	// 1000 Byte or 1KB
 	KiloByte = 1000
 
-	// 1000 Byte (1KB) = 2187 TryBytes
-	KiloByteToTryByte = 2187
+	// 1000 Byte (1KB) = 2187 Trytes
+	KiloByteToTrytes = 2187
 
 	// One chunk unit as represents as 1KB
 	FileChunkSizeInByte = 1000
@@ -64,11 +64,11 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 // Convert trytes to bytes
 
 func ConvertToByte(trytes int) int {
-	return int(math.Ceil(float64(trytes*KiloByte) / float64(KiloByteToTryByte)))
+	return int(math.Ceil(float64(trytes*KiloByte) / float64(KiloByteToTrytes)))
 }
 
 func ConvertToTrytes(bytes int) int {
-	return int(math.Ceil(float64(bytes*KiloByteToTryByte) / float64(KiloByte)))
+	return int(math.Ceil(float64(bytes*KiloByteToTrytes) / float64(KiloByte)))
 }
 
 // Return the total file chunk, including burying pearl
