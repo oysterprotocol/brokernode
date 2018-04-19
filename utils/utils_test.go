@@ -16,22 +16,10 @@ func Test_ConvertToByte_2Trytes(t *testing.T) {
 	assertTrue(v == 1, t, "")
 }
 
-func Test_ConvertToByte_2186Trytes(t *testing.T) {
-	v := ConvertToByte(2186)
-
-	assertTrue(v == 1000, t, "")
-}
-
 func Test_ConvertToTrytes_1Byte(t *testing.T) {
 	v := ConvertToTrytes(1)
 
-	assertTrue(v == 3, t, "")
-}
-
-func Test_ConvertToTrytes_1000Bytes(t *testing.T) {
-	v := ConvertToTrytes(1000)
-
-	assertTrue(v == 2187, t, "")
+	assertTrue(v == 2, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearls_SmallFileSize(t *testing.T) {
