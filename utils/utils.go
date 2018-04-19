@@ -14,6 +14,12 @@ import (
 )
 
 const (
+	// 1000 Byte or 1KB
+	KiloByte = 1000
+
+	// 1000 Byte (1KB) = 2187 TryBytes
+	KiloByteToTryByte = 2187
+
 	// One chunk unit as represents as 1KB
 	FileChunkSizeInByte = 1000
 
@@ -53,6 +59,23 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 	err = json.Unmarshal(bodyBytes, dest)
 
 	return
+}
+
+// Convert trytes to bytes
+func ConvertToByte(tryBytes int) int {
+	return int(math.Ceil(float64(tryBytes*KiloByte) / float64(KiloByteToTryByte)))
+}
+
+func ConvertToTryByte(bytes int) int {
+	return int(math.Ceil(float64(bytes*KiloByteToTryByte) / float64(KiloByte)))
+}
+
+// Return the total file chunk, including burying pearl
+func GetTotalFileChunkIncludingBuriedPearls(fileSizeInByte int) int {
+	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
+	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
+
+	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
 }
 
 // Transforms index with correct position for insertion after considering the buried indexes.
