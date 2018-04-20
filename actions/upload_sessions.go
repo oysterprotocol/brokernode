@@ -81,11 +81,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	// Mutates this because copying in golang sucks...
 	req.Invoice = invoice
-	// TODO(philip): req.AlphaBuriedIndexes
-
-	// Start Beta Session.
 
 	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
+
+	// Start Beta Session.
 	var betaSessionID = ""
 	var betaTreasureIndexes []int
 	if req.BetaIP != "" {
