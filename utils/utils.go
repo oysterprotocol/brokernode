@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"log"
 )
 
 const (
@@ -79,7 +80,7 @@ func GetTotalFileChunkIncludingBuriedPearls(fileSizeInByte int) int {
 // Transforms index with correct position for insertion after considering the buried indexes.
 func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	if len(treasureIdxMap) == 0 {
-		// TODO(pzhao5): Should log here about missing treasureIdxMap. Which should not happen.
+		log.Println("TransformIndexWithBuriedIndexes(): treasureIdxMap as []int{} is empty")
 		return index
 	}
 
