@@ -123,6 +123,15 @@ func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
 	return idxMap
 }
 
+// Returns int[] for serialized nulls.String
+func GetTreasureIdxIndexes(idxMap nulls.String) []int {
+	if !idxMap.Valid {
+		// TODO(pzhao5): add some logging here
+		return []int{}
+	}
+	return IntsSplit(idxMap.String, IntsJoinDelim)
+}
+
 // Convert an []string array to a string.
 func StringsJoin(A []string, delim string) string {
 	var buffer bytes.Buffer

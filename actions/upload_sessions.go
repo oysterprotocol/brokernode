@@ -145,7 +145,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
 	}
-
+	treasureIdxMap := oyster_utils.GetTreasureIdxIndexes(uploadSession.TreasureIdxMap)
 	// Update dMaps to have chunks async
 	go func() {
 		// Map over chunks from request
@@ -154,8 +154,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		for i, chunk := range req.Chunks {
 			// Fetch DataMap
 			dm := models.DataMap{}
+			chunkIdx := oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
 			err := models.DB.RawQuery(
-				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.Idx).First(&dm)
+				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunkIdx).First(&dm)
 
 			if err != nil {
 				raven.CaptureError(err, nil)
