@@ -224,26 +224,16 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	session := models.UploadSession{}
-	err := models.DB.Where("id = ?", c.Param("id")).First(&session)
+	err := models.DB.Find(&session, c.Param("id"))
 
-	if err != nil {
+	if err != nil || session.ID == models.EmptyUUID {
 		//TODO: Return better error response when ID does not exist
 		return err
 	}
 
-	paymentStatus := ""
-
-	if session.PaymentStatus == models.PaymentStatusPending {
-		paymentStatus = "pending"
-	} else if session.PaymentStatus == models.PaymentStatusPaid {
-		paymentStatus = "paid"
-	} else {
-		paymentStatus = "error"
-	}
-
 	res := paymentStatusCreateRes{
 		ID:                  session.ID.String(),
-		PaymentStatus:		 paymentStatus,
+		PaymentStatus:		 session.GetPaymentStatus(),
 	}
 
 	return c.Render(200, r.JSON(res))
