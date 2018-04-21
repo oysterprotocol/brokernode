@@ -121,6 +121,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
 	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks
+	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks
 }
 
 func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, channel *models.ChunkChannel) {
