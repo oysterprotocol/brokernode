@@ -35,7 +35,7 @@ type UploadSession struct {
 	CreatedAt            time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
-	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
 
