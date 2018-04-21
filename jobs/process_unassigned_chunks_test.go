@@ -88,7 +88,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	jobs.ProcessUnassignedChunks(IotaMock)
 
 	suite.Equal(true, sendChunksToChannelMockCalled)
-	suite.Equal(30, len(AllChunksCalled))
+	suite.Equal(31, len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
@@ -112,7 +112,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		} else if i > 13 && i < 16 {
 			suite.Equal("genHash1", chunk.GenesisHash)
 			suite.Equal(true, AllChunksCalled[i].ChunkIdx < AllChunksCalled[i+1].ChunkIdx)
-		} else if i > 16 && i < 29 {
+		} else if i > 16 && i < 30 {
 			suite.Equal("genHash3", chunk.GenesisHash)
 			suite.Equal(true, AllChunksCalled[i].ChunkIdx < AllChunksCalled[i+1].ChunkIdx)
 		}
