@@ -56,7 +56,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "verifyDataMapsHandler",
 		Args: worker.Args{
-			"duration": 60 * time.Second,
+			"duration": 30 * time.Second,
 		},
 	}
 
@@ -64,7 +64,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "updateTimedOutDataMapsHandler",
 		Args: worker.Args{
-			"duration": 30 * time.Second,
+			"duration": 60 * time.Second,
 		},
 	}
 
