@@ -2,6 +2,7 @@ package models_test
 
 import (
 	"crypto/sha512"
+	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 
@@ -49,7 +50,7 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 }
 
 func (ms *ModelSuite) Test_CreateTreasurePayload() {
-	maxSideChainLength := 50
+	maxSideChainLength := 10
 	matchesFound := 0
 
 	for _, tc := range encryptedTreasureCases {
@@ -70,4 +71,265 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 		}
 	}
 	ms.Equal(3, matchesFound)
+}
+
+func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
+	fileBytesCount := 8500
+
+	vErr, err := models.BuildDataMaps("genHash1", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash2", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash3", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash4", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash5", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+
+	genHash1 := []models.DataMap{} // 1 unassigned
+	genHash2 := []models.DataMap{} // 1 error
+	genHash3 := []models.DataMap{} // all unassigned
+	genHash4 := []models.DataMap{} // all error
+	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	suite.Equal(err, nil)
+
+	genHash1[1].Status = models.Unassigned
+	suite.DB.ValidateAndSave(&genHash1[1])
+
+	genHash2[0].Status = models.Error
+	suite.DB.ValidateAndSave(&genHash2[0])
+
+	for _, dataMap := range genHash3 {
+		dataMap.Status = models.Unassigned
+		suite.DB.ValidateAndSave(&dataMap)
+	}
+
+	for _, dataMap := range genHash4 {
+		dataMap.Status = models.Error
+		suite.DB.ValidateAndSave(&dataMap)
+	}
+
+	genHashes, err := models.GetUnassignedGenesisHashes()
+	suite.Equal(err, nil)
+	suite.Equal(4, len(genHashes))
+
+	for _, genHash := range genHashes {
+		if genHash == "genHash5" {
+			suite.Failf("FAIL", "genHash5 should not be in the array")
+		}
+	}
+}
+
+func (suite *ModelSuite) Test_GetUnassignedChunks() {
+	fileBytesCount := 1000
+
+	vErr, err := models.BuildDataMaps("genHash1", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash2", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash3", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash4", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+	vErr, err = models.BuildDataMaps("genHash5", fileBytesCount)
+	suite.Nil(err)
+	suite.Equal(0, len(vErr.Errors))
+
+	genHash1 := []models.DataMap{} // 1 unassigned
+	genHash2 := []models.DataMap{} // 1 error
+	genHash3 := []models.DataMap{} // all unassigned
+	genHash4 := []models.DataMap{} // all error
+	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	suite.Equal(err, nil)
+	err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	suite.Equal(err, nil)
+
+	genHash1[1].Status = models.Unassigned
+	suite.DB.ValidateAndSave(&genHash1[1])
+
+	genHash2[0].Status = models.Error
+	suite.DB.ValidateAndSave(&genHash2[0])
+
+	for _, dataMap := range genHash3 {
+		dataMap.Status = models.Unassigned
+		suite.DB.ValidateAndSave(&dataMap)
+	}
+
+	for _, dataMap := range genHash4 {
+		dataMap.Status = models.Error
+		suite.DB.ValidateAndSave(&dataMap)
+	}
+
+	unassignedChunks, err := models.GetUnassignedChunks()
+	suite.Equal(err, nil)
+
+	for _, unassignedChunk := range unassignedChunks {
+		if unassignedChunk.GenesisHash == "genHash5" {
+			suite.Failf("FAIL", "a chunk with genHash5 should not be in the array")
+		}
+	}
+}
+
+func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  8000,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession1.StartUploadSession()
+	session := models.UploadSession{}
+	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	suite.Nil(err)
+
+	jobs.MarkBuriedMapsAsUnassigned()
+	chunks, err := models.GetAllUnassignedChunksBySession(session)
+	suite.Nil(err)
+
+	suite.NotEqual(0, len(chunks))
+	suite.Equal(5, len(chunks))
+	suite.NotEqual(models.DataMap{}, chunks[0])
+}
+
+func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  8000,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession1.StartUploadSession()
+	session := models.UploadSession{}
+	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	suite.Nil(err)
+
+	jobs.MarkBuriedMapsAsUnassigned()
+	chunks, err := models.GetAllUnassignedChunksBySession(session)
+	chunksWithLimit, err := models.GetUnassignedChunksBySession(session, 4)
+	suite.Nil(err)
+
+	suite.NotEqual(0, len(chunksWithLimit))
+	suite.Equal(5, len(chunks))
+	suite.Equal(4, len(chunksWithLimit))
+	suite.NotEqual(models.DataMap{}, chunksWithLimit[0])
+}
+
+func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
+
+	/*TODO
+
+	This was originally intended as part of a more sophisticated means to process the chunks
+	but the test is flakey so I'm just commenting it all out for now and will come back to it
+	after mainnet.
+
+	*/
+
+	//fileBytesCount := 2000
+	//
+	//uploadSession1 := models.UploadSession{
+	//	GenesisHash:   "genHash1",
+	//	FileSizeBytes: fileBytesCount,
+	//	Type:          models.SessionTypeAlpha,
+	//}
+	//
+	//uploadSession2 := models.UploadSession{
+	//	GenesisHash:   "genHash2",
+	//	FileSizeBytes: fileBytesCount,
+	//	Type:          models.SessionTypeBeta,
+	//}
+	//
+	//uploadSession3 := models.UploadSession{
+	//	GenesisHash:   "genHash3",
+	//	FileSizeBytes: fileBytesCount,
+	//	Type:          models.SessionTypeAlpha,
+	//}
+	//
+	//uploadSession4 := models.UploadSession{
+	//	GenesisHash:   "genHash4",
+	//	FileSizeBytes: fileBytesCount,
+	//	Type:          models.SessionTypeBeta,
+	//}
+	//
+	//uploadSession1.StartUploadSession()
+	//uploadSession2.StartUploadSession()
+	//uploadSession3.StartUploadSession()
+	//uploadSession4.StartUploadSession()
+	//
+	//genHash1 := []models.DataMap{}
+	//genHash2 := []models.DataMap{}
+	//genHash3 := []models.DataMap{}
+	//genHash4 := []models.DataMap{}
+	//err := suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	//suite.Equal(err, nil)
+	//err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	//suite.Equal(err, nil)
+	//err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	//suite.Equal(err, nil)
+	//err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	//suite.Equal(err, nil)
+	//
+	//genHash1[0].Status = models.Unassigned
+	//genHash1[1].Status = models.Unassigned
+	//suite.DB.ValidateAndSave(&genHash1[0])
+	//suite.DB.ValidateAndSave(&genHash1[1])
+	//
+	//genHash2[0].Status = models.Error
+	//genHash2[1].Status = models.Error
+	//suite.DB.ValidateAndSave(&genHash2[0])
+	//suite.DB.ValidateAndSave(&genHash2[1])
+	//
+	//for _, dataMap := range genHash3 {
+	//	dataMap.Status = models.Unassigned
+	//	suite.DB.ValidateAndSave(&dataMap)
+	//}
+	//
+	//for _, dataMap := range genHash4 {
+	//	dataMap.Status = models.Error
+	//	suite.DB.ValidateAndSave(&dataMap)
+	//}
+	//
+	//genHashes, err := models.GetUnassignedGenesisHashes()
+	//suite.Equal(err, nil)
+	//suite.Equal(4, len(genHashes))
+	//
+	//hashAndTypeMap, err := models.AttachUnassignedChunksToGenHashMap(genHashes)
+	//
+	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["genHash1"].Type)
+	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["genHash2"].Type)
+	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["genHash3"].Type)
+	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["genHash4"].Type)
+	//
+	//suite.Equal(6, len(hashAndTypeMap["genHash1"].Chunks))
+	//suite.Equal(20, len(hashAndTypeMap["genHash2"].Chunks))
+	//suite.Equal(0, len(hashAndTypeMap["genHash3"].Chunks))
+	//suite.Equal(0, len(hashAndTypeMap["genHash4"].Chunks))
+
+	//suite.Equal(0, hashAndTypeMap["genHash1"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["genHash2"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["genHash3"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["genHash4"].Chunks[0].ChunkIdx)
+
+	//fmt.Println(len(hashAndTypeMap))
 }

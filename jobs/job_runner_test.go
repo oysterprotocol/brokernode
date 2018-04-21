@@ -15,8 +15,6 @@ type JobsSuite struct {
 }
 
 var Suite JobsSuite
-var sendChunksToChannelMockCalled = false
-var verifyChunkMessagesMatchesRecordMockCalled = false
 
 func (suite *JobsSuite) SetupSuite() {
 

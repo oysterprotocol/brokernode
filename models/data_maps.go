@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/json"
+	"github.com/getsentry/raven-go"
 	"math/rand"
 
 	"math"
@@ -46,7 +47,17 @@ type DataMap struct {
 	Address        string    `json:"address" db:"address"`
 }
 
+type TypeAndChunkMap struct {
+	Type   int       `json:"type"`
+	Chunks []DataMap `json:"chunks"`
+}
+
+var SortOrder map[int]string
+
 func init() {
+	SortOrder = make(map[int]string, 2)
+	SortOrder[SessionTypeAlpha] = "asc"
+	SortOrder[SessionTypeBeta] = "desc"
 }
 
 // String is not required by pop and may be deleted
@@ -123,4 +134,120 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 
 	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed)
 	return string(oyster_utils.BytesToTrytes([]byte(encryptedResult))), nil
+}
+
+func GetUnassignedGenesisHashes() ([]interface{}, error) {
+
+	var genesisHashesUnassigned = []DataMap{}
+
+	err := DB.RawQuery("SELECT distinct genesis_hash FROM data_maps WHERE status = ? || status = ?",
+		Unassigned,
+		Error).All(&genesisHashesUnassigned)
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return nil, err
+	}
+
+	genHashInterface := make([]interface{}, len(genesisHashesUnassigned))
+
+	for i, genHash := range genesisHashesUnassigned {
+		genHashInterface[i] = genHash.GenesisHash
+	}
+
+	// return value is an interface like this:
+	// genHashes := []interface{}{"genHash1", "genHash2", "genHash3", "genHash4"}
+	// need it in this form for "Where in {?)" queries
+	return genHashInterface, nil
+}
+
+func GetUnassignedChunks() (dataMaps []DataMap, err error) {
+	dataMaps = []DataMap{}
+	err = DB.Where("status = ? OR status = ?", Unassigned, Error).All(&dataMaps)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	return dataMaps, err
+}
+
+func GetAllUnassignedChunksBySession(session UploadSession) (dataMaps []DataMap, err error) {
+	dataMaps = []DataMap{}
+
+	if session.Type == SessionTypeAlpha {
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
+			session.GenesisHash, Unassigned, Error).All(&dataMaps)
+	} else {
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
+			session.GenesisHash, Unassigned, Error).All(&dataMaps)
+	}
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	return dataMaps, err
+}
+
+func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []DataMap, err error) {
+	dataMaps = []DataMap{}
+
+	if session.Type == SessionTypeAlpha {
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc LIMIT ?",
+			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
+	} else {
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc LIMIT ?",
+			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
+	}
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	return dataMaps, err
+}
+
+func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string]TypeAndChunkMap, error) {
+
+	/* TODO: this method was an attempt at more sophisticated chunk prioritizing but the tests are being
+	flaky.  After mainnet revisit this.
+	*/
+
+	if len(genesisHashes) > 0 {
+
+		incompleteSessions := []UploadSession{}
+		dataMaps := []DataMap{}
+
+		err := DB.Where("genesis_hash in (?)", genesisHashes...).All(&incompleteSessions)
+
+		if err != nil {
+			raven.CaptureError(err, nil)
+			return nil, err
+		}
+		if len(incompleteSessions) <= 0 {
+			return nil, nil
+		}
+
+		hashAndTypeMap := map[string]TypeAndChunkMap{}
+		for _, session := range incompleteSessions {
+			if session.Type == SessionTypeAlpha {
+				err = DB.RawQuery("SELECT * from data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
+					session.GenesisHash,
+					Unassigned,
+					Error).All(&dataMaps)
+			} else {
+				err = DB.RawQuery("SELECT * from data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
+					session.GenesisHash,
+					Unassigned,
+					Error).All(&dataMaps)
+			}
+
+			typeAndChunkMap := TypeAndChunkMap{
+				Type:   session.Type,
+				Chunks: dataMaps,
+			}
+			hashAndTypeMap[string(session.GenesisHash)] = typeAndChunkMap
+		}
+
+		return hashAndTypeMap, nil
+
+	}
+	return nil, nil
 }

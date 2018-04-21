@@ -1,7 +1,7 @@
 package jobs
 
 import (
-	raven "github.com/getsentry/raven-go"
+	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 )
@@ -11,25 +11,39 @@ func init() {
 
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
-	chunks, err := GetUnassignedChunks()
+	sessions, err := models.GetSessionsByAge()
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}
 
-	if len(chunks) > 0 {
-		AssignChunksToChannels(chunks, iotaWrapper)
+	if len(sessions) > 0 {
+		GetSessionUnassignedChunks(sessions, iotaWrapper)
 	}
 }
 
-func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaService) {
+func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper services.IotaService) {
+	for _, session := range sessions {
+		channels, err := models.GetReadyChannels()
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
+		if len(channels) <= 0 {
+			break
+		}
 
-	/*
-		TODO:  More sophisticated chunk grabbing.  I.e. only grab as many as
-		we have ready channels for, and try to grab an equal number per unique
-		genesis hash
-	*/
+		chunks, err := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
+		AssignChunksToChannels(chunks, channels, iotaWrapper)
+		if len(chunks) == len(channels)*BundleSize {
+			// we have used up all the channels, no point in doing the for loop again
+			break
+		}
+	}
+}
 
-	for i := 0; i < len(chunks); i += BundleSize {
+func AssignChunksToChannels(chunks []models.DataMap, channels []models.ChunkChannel, iotaWrapper services.IotaService) {
+
+	// as long as there are still chunks and still channels this for loop continues
+	for ok, i, j := true, 0, 0; ok; ok = i < len(chunks) && j < len(channels) {
 		end := i + BundleSize
 
 		if end > len(chunks) {
@@ -37,14 +51,6 @@ func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaSe
 		}
 
 		if i >= end {
-			break
-		}
-
-		channel, err := models.GetOneReadyChannel()
-		if err != nil {
-			raven.CaptureError(err, nil)
-		}
-		if channel.ChannelID == "" {
 			break
 		}
 
@@ -56,7 +62,7 @@ func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaSe
 		chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
 
 		if len(chunksToSend) > 0 {
-			iotaWrapper.SendChunksToChannel(chunksToSend, &channel)
+			iotaWrapper.SendChunksToChannel(chunksToSend, &channels[j])
 		}
 		if len(filteredChunks.MatchesTangle) > 0 {
 			for _, chunk := range filteredChunks.MatchesTangle {
@@ -64,17 +70,7 @@ func AssignChunksToChannels(chunks []models.DataMap, iotaWrapper services.IotaSe
 				models.DB.ValidateAndSave(&chunk)
 			}
 		}
+		j++
+		i += BundleSize
 	}
-}
-
-func GetUnassignedChunks() (dataMaps []models.DataMap, err error) {
-
-	query := models.DB.Where("status = ? OR status = ?", models.Unassigned, models.Error)
-	dataMaps = []models.DataMap{}
-	err = query.All(&dataMaps)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
-
-	return dataMaps, err
 }

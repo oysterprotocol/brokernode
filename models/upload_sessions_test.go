@@ -3,6 +3,7 @@ package models_test
 import (
 	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
+	"time"
 )
 
 func (ms *ModelSuite) Test_StartUploadSession() {
@@ -101,7 +102,7 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	ms.Equal(0, len(vErr.Errors))
 
 	session := models.UploadSession{}
-	err = models.DB.Where("genesis_hash = ?", u.GenesisHash).First(&session)
+	err = ms.DB.Where("genesis_hash = ?", u.GenesisHash).First(&session)
 
 	ms.Equal(testMap, session.TreasureIdxMap.String)
 
@@ -115,4 +116,69 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 		ms.Equal(t[entry.Idx].Key, entry.Key)
 		ms.Equal(t[entry.Idx].Idx, entry.Idx)
 	}
+}
+
+func (ms *ModelSuite) Test_GetSessionsByAge() {
+
+	err := ms.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
+	ms.Nil(err)
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  5000,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
+		GenesisHash:    "genHash2",
+		FileSizeBytes:  5000,
+		Type:           models.SessionTypeBeta,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
+		GenesisHash:    "genHash3",
+		FileSizeBytes:  5000,
+		Type:           models.SessionTypeBeta,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession4 := models.UploadSession{ // will not be in the array
+		GenesisHash:    "genHash4",
+		FileSizeBytes:  5000,
+		Type:           models.SessionTypeBeta,
+		PaymentStatus:  models.PaymentStatusPaid,
+		TreasureStatus: models.TreasureUnburied,
+	}
+	uploadSession5 := models.UploadSession{ // will not be in the array
+		GenesisHash:    "genHash5",
+		FileSizeBytes:  5000,
+		Type:           models.SessionTypeBeta,
+		PaymentStatus:  models.PaymentStatusPending,
+		TreasureStatus: models.TreasureUnburied,
+	}
+
+	uploadSession1.StartUploadSession()
+	uploadSession2.StartUploadSession()
+	uploadSession3.StartUploadSession()
+	uploadSession4.StartUploadSession()
+	uploadSession5.StartUploadSession()
+
+	// set uploadSession3 to be the oldest
+	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+		time.Now().Add(-10*time.Second), "genHash3").All(&[]models.UploadSession{})
+
+	// set uploadSession2 to be the newest
+	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+		time.Now().Add(10*time.Second), "genHash2").All(&[]models.UploadSession{})
+
+	sessions, err := models.GetSessionsByAge()
+	ms.Nil(err)
+
+	//verify that the oldest session (uploadSession3) is first in the array
+	ms.Equal("genHash3", sessions[0].GenesisHash)
+	ms.Equal("genHash1", sessions[1].GenesisHash)
+	ms.Equal("genHash2", sessions[2].GenesisHash)
+	ms.Equal(3, len(sessions))
 }
