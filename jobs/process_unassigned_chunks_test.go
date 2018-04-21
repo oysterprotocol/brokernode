@@ -131,3 +131,23 @@ func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, 
 	// stored all the chunks that get sent to the mock so we can run tests on them.
 	AllChunksCalled = append(AllChunksCalled, chunks...)
 }
+
+func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
+
+	allDataMaps := []models.DataMap{}
+	err = Suite.DB.All(&allDataMaps)
+	Suite.Nil(err)
+
+	matchesTangle := []models.DataMap{}
+	doesNotMatchTangle := []models.DataMap{}
+	notAttached := []models.DataMap{}
+
+	// assume everything is unattached
+	notAttached = append(notAttached, chunks...)
+
+	return services.FilteredChunk{
+		MatchesTangle:      matchesTangle,
+		NotAttached:        notAttached,
+		DoesNotMatchTangle: doesNotMatchTangle,
+	}, err
+}
