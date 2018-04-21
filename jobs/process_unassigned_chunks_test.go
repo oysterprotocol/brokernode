@@ -88,10 +88,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	// call method under test
 	jobs.ProcessUnassignedChunks(IotaMock)
 
-	time.Sleep(1 * time.Second)
-	//suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
-	time.Sleep(1 * time.Second)
-	//suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
+	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
+	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
 	suite.Equal(31, len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
@@ -124,8 +122,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 }
 
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
-	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks
+	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks
 }
 
 func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, channel *models.ChunkChannel) {
@@ -141,15 +139,11 @@ func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []mod
 
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = true
 
-	allDataMaps := []models.DataMap{}
-	err = Suite.DB.All(&allDataMaps)
-	Suite.Nil(err)
-
 	matchesTangle := []models.DataMap{}
 	doesNotMatchTangle := []models.DataMap{}
 	notAttached := []models.DataMap{}
 
-	// assume everything is unattached
+	// mark everything as unattached
 	notAttached = append(notAttached, chunks...)
 
 	return services.FilteredChunk{

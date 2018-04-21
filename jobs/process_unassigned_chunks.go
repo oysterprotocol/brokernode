@@ -54,7 +54,7 @@ func AssignChunksToChannels(chunks []models.DataMap, channels []models.ChunkChan
 			break
 		}
 
-		filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(chunks[i:end])
+		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(chunks[i:end])
 
 		if err != nil {
 			raven.CaptureError(err, nil)
