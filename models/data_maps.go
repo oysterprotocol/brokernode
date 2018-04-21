@@ -127,7 +127,7 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 	keyLocation := rand.Intn(maxSideChainLength)
 
 	currentHash := sha256Hash
-	for i := 0; i < keyLocation; i++ {
+	for i := 0; i <= keyLocation; i++ {
 		currentHash = oyster_utils.HashString(currentHash, sha512.New())
 	}
 

@@ -61,7 +61,7 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 
 		currentHash := tc.sha256Hash
 
-		for i := 0; i < maxSideChainLength; i++ {
+		for i := 0; i <= maxSideChainLength; i++ {
 			currentHash = oyster_utils.HashString(currentHash, sha512.New())
 			result := oyster_utils.Decrypt(currentHash, string(payloadNotTryted))
 			if result != "" {
