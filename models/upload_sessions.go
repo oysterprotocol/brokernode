@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"math"
 	"time"
-  
-  "github.com/getsentry/raven-go"
+
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
-	// "github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
@@ -36,7 +35,7 @@ type UploadSession struct {
 	CreatedAt            time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
-	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
 
@@ -218,4 +217,19 @@ func (u *UploadSession) GetPaymentStatus() string {
 		case PaymentStatusPaid: return "paid"
 		default: return "error"
 	}
+}
+
+func GetSessionsByAge() ([]UploadSession, error) {
+
+	sessionsByAge := []UploadSession{}
+
+	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
+		"treasure_status = ? ORDER BY created_at asc", PaymentStatusPaid, TreasureBuried).All(&sessionsByAge)
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return nil, err
+	}
+
+	return sessionsByAge, nil
 }

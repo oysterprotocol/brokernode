@@ -11,9 +11,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"log"
 )
 
 const (
+	// 1 Byte = 2 Trytes
+	ByteToTrytes = 2
+
 	// One chunk unit as represents as 1KB
 	FileChunkSizeInByte = 1000
 
@@ -55,10 +59,28 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 	return
 }
 
+// Convert trytes to bytes
+
+func ConvertToByte(trytes int) int {
+	return int(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
+}
+
+func ConvertToTrytes(bytes int) int {
+	return bytes * ByteToTrytes
+}
+
+// Return the total file chunk, including burying pearl
+func GetTotalFileChunkIncludingBuriedPearls(fileSizeInByte int) int {
+	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
+	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
+
+	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
+}
+
 // Transforms index with correct position for insertion after considering the buried indexes.
 func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	if len(treasureIdxMap) == 0 {
-		// TODO(pzhao5): Should log here about missing treasureIdxMap. Which should not happen.
+		log.Println("TransformIndexWithBuriedIndexes(): treasureIdxMap as []int{} is empty")
 		return index
 	}
 
@@ -100,6 +122,15 @@ func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
 		idxMap = nulls.String{"", false}
 	}
 	return idxMap
+}
+
+// Returns int[] for serialized nulls.String
+func GetTreasureIdxIndexes(idxMap nulls.String) []int {
+	if !idxMap.Valid {
+		// TODO(pzhao5): add some logging here
+		return []int{}
+	}
+	return IntsSplit(idxMap.String, IntsJoinDelim)
 }
 
 // Convert an []string array to a string.

@@ -22,7 +22,7 @@ type UploadSessionResource struct {
 
 type uploadSessionCreateReq struct {
 	GenesisHash          string         `json:"genesisHash"`
-	FileSizeBytes        int            `json:"fileSizeBytes"`
+	FileSizeBytes        int            `json:"fileSizeBytes"` // This is Trytes instead of Byte
 	BetaIP               string         `json:"betaIp"`
 	StorageLengthInYears int            `json:"storageLengthInYears"`
 	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
@@ -86,11 +86,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	// Mutates this because copying in golang sucks...
 	req.Invoice = invoice
-	// TODO(philip): req.AlphaBuriedIndexes
+
+	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Start Beta Session.
-
-	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
 	var betaSessionID = ""
 	var betaTreasureIndexes []int
 	if req.BetaIP != "" {
@@ -150,7 +149,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
 	}
-
+	treasureIdxMap := oyster_utils.GetTreasureIdxIndexes(uploadSession.TreasureIdxMap)
 	// Update dMaps to have chunks async
 	go func() {
 		// Map over chunks from request
@@ -159,8 +158,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		for i, chunk := range req.Chunks {
 			// Fetch DataMap
 			dm := models.DataMap{}
+			chunkIdx := oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
 			err := models.DB.RawQuery(
-				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunk.Idx).First(&dm)
+				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunkIdx).First(&dm)
 
 			if err != nil {
 				raven.CaptureError(err, nil)
@@ -185,7 +185,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(req.FileSizeBytes)
+	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
 	eth := services.Eth{}
