@@ -211,6 +211,14 @@ func getStoragePeg() int {
 	return 1 // TODO: write code to query smart contract to get real storage peg
 }
 
+func (u *UploadSession) GetPaymentStatus() string {
+	switch u.PaymentStatus {
+		case PaymentStatusPending: return "pending"
+		case PaymentStatusPaid: return "paid"
+		default: return "error"
+	}
+}
+
 func GetSessionsByAge() ([]UploadSession, error) {
 
 	sessionsByAge := []UploadSession{}
