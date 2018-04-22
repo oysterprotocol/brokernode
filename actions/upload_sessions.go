@@ -226,7 +226,7 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	session := models.UploadSession{}
 	err := models.DB.Find(&session, c.Param("id"))
 
-	if err != nil || session.ID == models.EmptyUUID {
+	if (err != nil || session == models.UploadSession{}) {
 		//TODO: Return better error response when ID does not exist
 		return err
 	}
