@@ -55,8 +55,8 @@ type UploadSessionUpdateReq struct {
 }
 
 type paymentStatusCreateRes struct {
-	ID            string               `json:"id"`
-	PaymentStatus string			   `json:"paymentStatus"`
+	ID            string `json:"id"`
+	PaymentStatus string `json:"paymentStatus"`
 }
 
 // Create creates an upload session.
@@ -221,7 +221,6 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	return c.Render(200, r.JSON(res))
 }
 
-
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	session := models.UploadSession{}
 	err := models.DB.Find(&session, c.Param("id"))
@@ -232,8 +231,8 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	res := paymentStatusCreateRes{
-		ID:                  session.ID.String(),
-		PaymentStatus:		 session.GetPaymentStatus(),
+		ID:            session.ID.String(),
+		PaymentStatus: session.GetPaymentStatus(),
 	}
 
 	return c.Render(200, r.JSON(res))
