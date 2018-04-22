@@ -16,13 +16,13 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	// setting the threshold time to be more recent than when the webnodes were updated
 	thresholdTime := time.Now().Add(time.Millisecond * 10000)
 
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	webnodes := []models.Webnode{}
 
 	// check that there are 2 webnodes
 	err = suite.DB.All(&webnodes)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
@@ -32,7 +32,7 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 
 	// checking that all webnodes have been removed
 	err = suite.DB.All(&webnodes)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 	suite.Equal(0, len(webnodes))
 
 	// Testing that it doesn't remove new webnodes
@@ -43,13 +43,13 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	// setting the threshold time to be less recent than when the webnodes were updated
 	thresholdTime = time.Now().Add(time.Millisecond * -10000)
 
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	webnodes = []models.Webnode{}
 
 	// check that there are 2 webnodes
 	err = suite.DB.All(&webnodes)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
@@ -59,6 +59,6 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 
 	// checking that all webnodes are still there
 	err = suite.DB.All(&webnodes)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 	suite.Equal(2, len(webnodes))
 }

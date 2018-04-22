@@ -62,7 +62,14 @@ func PurgeCompletedSessions() {
 				}
 
 				if len(session) > 0 {
-					_, err = tx.ValidateAndSave(&models.StoredGenesisHash{GenesisHash: session[0].GenesisHash, FileSizeBytes: session[0].FileSizeBytes})
+					_, err = tx.ValidateAndSave(&models.StoredGenesisHash{
+						GenesisHash:   session[0].GenesisHash,
+						FileSizeBytes: session[0].FileSizeBytes,
+					})
+					if err != nil {
+						return err
+					}
+					err = models.NewCompletedUpload(session[0])
 					if err != nil {
 						return err
 					}

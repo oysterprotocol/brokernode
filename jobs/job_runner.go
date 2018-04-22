@@ -25,6 +25,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register("verifyDataMapsHandler", verifyDataMapsHandler)
 	oysterWorker.Register("updateTimedOutDataMapsHandler", updateTimedOutDataMapsHandler)
 	oysterWorker.Register("processPaidSessionsHandler", processPaidSessionsHandler)
+	oysterWorker.Register("claimUnusedPRLsHandler", claimUnusedPRLsHandler)
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -76,12 +77,21 @@ func doWork(oysterWorker *worker.Simple) {
 		},
 	}
 
+	claimUnusedPRLsJob := worker.Job{
+		Queue:   "default",
+		Handler: "claimUnusedPRLsHandler",
+		Args: worker.Args{
+			"duration": 10 * time.Minute,
+		},
+	}
+
 	oysterWorker.PerformIn(flushOldWebnodesJob, flushOldWebnodesJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(processUnassignedChunksJob, processUnassignedChunksJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(purgeCompletedSessionsJob, purgeCompletedSessionsJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(verifyDataMapsJob, verifyDataMapsJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(updateTimedOutDataMapsJob, updateTimedOutDataMapsJob.Args["duration"].(time.Duration))
 	oysterWorker.PerformIn(processPaidSessionsJob, processPaidSessionsJob.Args["duration"].(time.Duration))
+	oysterWorker.PerformIn(claimUnusedPRLsJob, claimUnusedPRLsJob.Args["duration"].(time.Duration))
 }
 
 var flushOldWebnodesHandler = func(args worker.Args) error {
@@ -159,6 +169,19 @@ var processPaidSessionsHandler = func(args worker.Args) error {
 		Args:    args,
 	}
 	OysterWorker.PerformIn(processPaidSessionsJob, processPaidSessionsJob.Args["duration"].(time.Duration))
+
+	return nil
+}
+
+var claimUnusedPRLsHandler = func(args worker.Args) error {
+	ClaimUnusedPRLs()
+
+	claimUnusedPRLsJob := worker.Job{
+		Queue:   "default",
+		Handler: "claimUnusedPRLsHandler",
+		Args:    args,
+	}
+	OysterWorker.PerformIn(claimUnusedPRLsJob, claimUnusedPRLsJob.Args["duration"].(time.Duration))
 
 	return nil
 }
