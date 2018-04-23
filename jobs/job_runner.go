@@ -11,6 +11,7 @@ var BundleSize = 10
 var OysterWorker = worker.NewSimple()
 
 var IotaWrapper = services.IotaWrapper
+var EthWrapper = services.EthWrapper
 
 func init() {
 	registerHandlers(OysterWorker)
@@ -175,7 +176,7 @@ var processPaidSessionsHandler = func(args worker.Args) error {
 
 var claimUnusedPRLsHandler = func(args worker.Args) error {
 	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
-	ClaimUnusedPRLs(thresholdTime)
+	ClaimUnusedPRLs(EthWrapper, thresholdTime)
 
 	claimUnusedPRLsJob := worker.Job{
 		Queue:   "default",

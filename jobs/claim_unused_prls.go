@@ -9,10 +9,14 @@ import (
 	"time"
 )
 
+var ethWrapper services.Eth
+
 func init() {
 }
 
-func ClaimUnusedPRLs(thresholdTime time.Time) {
+func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
+
+	ethWrapper = ethService
 
 	ResendTimedOutGasTransfers(thresholdTime)
 	ResendTimedOutPRLTransfers(thresholdTime)
@@ -112,7 +116,7 @@ func StartNewClaims() {
 
 // wraps calls eth_gatway's SendGas method and sets GasStatus to GasTransferProcessing
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
-	err := services.SendGas(uploadsThatNeedGas)
+	err := ethWrapper.SendGas(uploadsThatNeedGas)
 	if err != nil {
 		fmt.Println(err)
 		log.Println("Error sending gas.")
@@ -125,7 +129,7 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 
 // wraps calls eth_gatway's ClaimPRLs method and sets GasStatus to GasTransferProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
-	err := services.ClaimPRLs(uploadsWithUnclaimedPRLs)
+	err := ethWrapper.ClaimPRLs(uploadsWithUnclaimedPRLs)
 	if err != nil {
 		fmt.Println(err)
 		log.Println("Error claiming PRL.")

@@ -18,7 +18,29 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-type Eth struct{}
+type Eth struct {
+	SendGas             SendGas
+	ClaimPRLs           ClaimPRLs
+	GenerateEthAddr     GenerateEthAddr
+	BuryPrl             BuryPrl
+	SendETH             SendETH
+	SendPRL             SendPRL
+	GetGasPrice         GetGasPrice
+	SubscribeToTransfer SubscribeToTransfer
+	CheckBalance        CheckBalance
+	GetCurrentBlock     GetCurrentBlock
+}
+
+type SendGas func([]models.CompletedUpload) error
+type ClaimPRLs func([]models.CompletedUpload) error
+type GenerateEthAddr func() (addr string, privKey string, err error)
+type BuryPrl func()
+type SendETH func(fromAddr common.Address, toAddr common.Address, amt float64)
+type SendPRL func(fromAddr common.Address, toAddr common.Address, amt float64)
+type GetGasPrice func() (uint64, error)
+type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
+type CheckBalance func(common.Address)
+type GetCurrentBlock func()
 
 // Singleton client
 var (
@@ -27,6 +49,7 @@ var (
 	MainWalletKey     string
 	client            *ethclient.Client
 	mtx               sync.Mutex
+	EthWrapper        Eth
 )
 
 func init() {
@@ -44,6 +67,19 @@ func init() {
 	fmt.Println(MainWalletAddress)
 	fmt.Println(MainWalletKey)
 	fmt.Println(ethUrl)
+
+	EthWrapper = Eth{
+		SendGas:         sendGas,
+		ClaimPRLs:       claimPRLs,
+		GenerateEthAddr: generateEthAddr,
+		BuryPrl:         buryPrl,
+		SendETH:         sendETH,
+		SendPRL:         sendPRL,
+		//GetGasPrice:     getGasPrice,
+		SubscribeToTransfer: subscribeToTransfer,
+		CheckBalance:        checkBalance,
+		GetCurrentBlock:     getCurrentBlock,
+	}
 }
 
 func sharedClient() (c *ethclient.Client, err error) {
@@ -69,7 +105,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	return client, err
 }
 
-func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
+func generateEthAddr() (addr string, privKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
 		return
@@ -81,7 +117,7 @@ func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
 	return
 }
 
-func (e *Eth) BuryPrl() {
+func buryPrl() {
 	// TODO
 
 	/*
@@ -90,7 +126,7 @@ func (e *Eth) BuryPrl() {
 	*/
 }
 
-func SendGas(completedUploads []models.CompletedUpload) error {
+func sendGas(completedUploads []models.CompletedUpload) error {
 	//gas, err := GetGasPrice()
 	//for _, completedUpload := range completedUploads {
 	//	Eth.SendETH(MainWalletAddress, completedUpload.ETHAddr, float64(gas))
@@ -102,11 +138,11 @@ func SendGas(completedUploads []models.CompletedUpload) error {
 }
 
 // TODO: Don't use floats for money transactions!
-func (e *Eth) SendETH(fromAddr common.Address, toAddr common.Address, amt float64) {
+func sendETH(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
 
-func ClaimPRLs(completedUploads []models.CompletedUpload) error {
+func claimPRLs(completedUploads []models.CompletedUpload) error {
 
 	//for _, completedUpload := range completedUploads {
 	//	/* TODO:
@@ -128,7 +164,7 @@ func ClaimPRLs(completedUploads []models.CompletedUpload) error {
 	return nil
 }
 
-func (e *Eth) SendPRL(fromAddr common.Address, toAddr common.Address, amt float64) {
+func sendPRL(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
 
@@ -143,7 +179,7 @@ func (e *Eth) SendPRL(fromAddr common.Address, toAddr common.Address, amt float6
 // SubscribeToTransfer will subscribe to transfer events
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
-func (e *Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
+func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	ethCl, _ := sharedClient()
 
 	ctx := context.Background() // TODO: Should we have some timeout or cancel?
@@ -157,12 +193,12 @@ func (e *Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.
 	ethCl.SubscribeFilterLogs(ctx, q, outCh)
 }
 
-func (e *Eth) CheckBalance(addr common.Address) {
+func checkBalance(addr common.Address) {
 	//ctx := context.Background() // TODO: Should we have some timeout or cancel?
 	//client.BalanceAt(ctx, addr)
 }
 
-func (e *Eth) GetCurrentBlock() {
+func getCurrentBlock() {
 
 }
 
