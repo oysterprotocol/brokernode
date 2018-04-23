@@ -174,7 +174,8 @@ var processPaidSessionsHandler = func(args worker.Args) error {
 }
 
 var claimUnusedPRLsHandler = func(args worker.Args) error {
-	ClaimUnusedPRLs()
+	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
+	ClaimUnusedPRLs(thresholdTime)
 
 	claimUnusedPRLsJob := worker.Job{
 		Queue:   "default",

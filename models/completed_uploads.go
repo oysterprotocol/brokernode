@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"github.com/getsentry/raven-go"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -17,15 +18,23 @@ type CompletedUpload struct {
 	UpdatedAt     time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
 	ETHAddr       string    `json:"ethAddr" db:"eth_addr"`
-	ETHPrivateKey string    `db:"eth_private_key"`
-	ClaimStatus   int       `json:"claimStatus" db:"claim_status"`
+	ETHPrivateKey string    `json:"ethPrivateKey" db:"eth_private_key"`
+	PRLStatus     int       `json:"prlStatus" db:"prl_status"`
+	GasStatus     int       `json:"gasStatus" db:"gas_status"`
 }
 
 const (
-	ClaimNotBegun int = iota + 1
-	ClaimInProcess
-	ClaimSuccess
-	ClaimError = -1
+	PRLClaimNotStarted int = iota + 1
+	PRLClaimProcessing
+	PRLClaimSuccess
+	PRLClaimError = -1
+)
+
+const (
+	GasTransferNotStarted int = iota + 1
+	GasTransferProcessing
+	GasTransferSuccess
+	GasTransferError = -1
 )
 
 // String is not required by pop and may be deleted
@@ -76,8 +85,13 @@ func (c *CompletedUpload) ValidateUpdate(tx *pop.Connection) (*validate.Errors, 
 func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 
 	// Defaults to ClaimNotBegun
-	if c.ClaimStatus == 0 {
-		c.ClaimStatus = ClaimNotBegun
+	if c.PRLStatus == 0 {
+		c.PRLStatus = PRLClaimNotStarted
+	}
+
+	// Defaults to GasTransferNotStarted
+	if c.GasStatus == 0 {
+		c.GasStatus = GasTransferNotStarted
 	}
 	return nil
 }
@@ -105,4 +119,84 @@ func NewCompletedUpload(session UploadSession) error {
 	}
 
 	return err
+}
+
+func GetRowsByGasAndPRLStatus(gasStatus int, prlStatus int) (uploads []CompletedUpload, err error) {
+	err = DB.Where("gas_status = ? AND prl_status = ?", gasStatus, prlStatus).All(&uploads)
+	return uploads, err
+}
+
+func GetRowsByGasStatus(gasStatus int) (uploads []CompletedUpload, err error) {
+	err = DB.Where("gas_status = ?", gasStatus).All(&uploads)
+	return uploads, err
+}
+
+func SetGasStatus(uploads []CompletedUpload, newGasStatus int) {
+	for _, upload := range uploads {
+		upload.GasStatus = newGasStatus
+		DB.ValidateAndSave(&upload)
+	}
+}
+
+func GetRowsByPRLStatus(prlStatus int) (uploads []CompletedUpload, err error) {
+	err = DB.Where("prl_status = ?", prlStatus).All(&uploads)
+	return uploads, err
+}
+
+func SetPRLStatus(uploads []CompletedUpload, newPRLStatus int) {
+	for _, upload := range uploads {
+		upload.PRLStatus = newPRLStatus
+		DB.ValidateAndSave(&upload)
+	}
+}
+
+func GetTimedOutGasTransfers(thresholdTime time.Time) (uploads []CompletedUpload, err error) {
+	err = DB.Where("gas_status = ? AND updated_at <= ?",
+		GasTransferProcessing,
+		thresholdTime).All(&uploads)
+	return uploads, err
+}
+
+func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload, err error) {
+	err = DB.Where("prl_status = ? AND updated_at <= ?",
+		PRLClaimProcessing,
+		thresholdTime).All(&uploads)
+	return uploads, err
+}
+
+func SetGasStatusByAddress(transactionAddress string, newGasStatus int) {
+	uploadRow := CompletedUpload{}
+	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return
+	}
+	if uploadRow.ID == uuid.Nil {
+		return
+	}
+	uploadRow.GasStatus = newGasStatus
+	DB.ValidateAndSave(&uploadRow)
+}
+
+func SetPRLStatusByAddress(transactionAddress string, newPRLStatus int) {
+	uploadRow := CompletedUpload{}
+	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return
+	}
+	if uploadRow.ID == uuid.Nil {
+		return
+	}
+	uploadRow.PRLStatus = newPRLStatus
+	DB.ValidateAndSave(&uploadRow)
+}
+
+func DeleteCompletedClaims() error {
+	err := DB.RawQuery("DELETE from completed_uploads WHERE prl_status = ?", PRLClaimSuccess).All(&[]CompletedUpload{})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

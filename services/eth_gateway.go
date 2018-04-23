@@ -174,7 +174,7 @@ func (e *Eth) GetCurrentBlock() {
 
 	-to indicate that a gas transfers has succeedded, call this method:
 
-    models.SetGasStatusByAddress(address, models.GasTransferReceived)
+    models.SetGasStatusByAddress(address, models.GasTransferSuccess)
 
     -to indicate that a PRL transfer succeeded, call this:
 
