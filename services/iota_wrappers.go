@@ -269,7 +269,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			raven.CaptureError(err, nil)
 		} else {
 
-			fmt.Println("Broadcast Success!")
+			err = api.StoreTransactions(trytes)
 
 			/*
 				TODO do we need this??

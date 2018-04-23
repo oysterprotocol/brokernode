@@ -8,7 +8,6 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
-	// "github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
@@ -210,4 +209,27 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 
 func getStoragePeg() int {
 	return 1 // TODO: write code to query smart contract to get real storage peg
+}
+
+func (u *UploadSession) GetPaymentStatus() string {
+	switch u.PaymentStatus {
+		case PaymentStatusPending: return "pending"
+		case PaymentStatusPaid: return "paid"
+		default: return "error"
+	}
+}
+
+func GetSessionsByAge() ([]UploadSession, error) {
+
+	sessionsByAge := []UploadSession{}
+
+	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
+		"treasure_status = ? ORDER BY created_at asc", PaymentStatusPaid, TreasureBuried).All(&sessionsByAge)
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return nil, err
+	}
+
+	return sessionsByAge, nil
 }

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	"github.com/oysterprotocol/brokernode/models"
+	"fmt"
 )
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
@@ -51,4 +52,91 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.True(1 == len(resParsed.BetaTreasureIndexes))
 	as.NotEqual(0, resParsed.Invoice.Cost)
 	as.NotEqual("", resParsed.Invoice.EthAddress)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
+	//setup
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  123,
+		PaymentStatus:  models.PaymentStatusPaid,
+	}
+
+	uploadSession1.StartUploadSession()
+
+	session := models.UploadSession{}
+	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	as.Equal(err, nil)
+
+	//execute method
+	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
+
+	// Parse response
+	resParsed := paymentStatusCreateRes{}
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	as.Nil(err)
+	err = json.Unmarshal(bodyBytes, &resParsed)
+	as.Nil(err)
+
+	as.Equal("paid", resParsed.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
+	//setup
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  123,
+		PaymentStatus:  models.PaymentStatusPending,
+	}
+
+	uploadSession1.StartUploadSession()
+
+	session := models.UploadSession{}
+	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	as.Equal(err, nil)
+
+	//execute method
+	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
+
+	// Parse response
+	resParsed := paymentStatusCreateRes{}
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	as.Nil(err)
+	err = json.Unmarshal(bodyBytes, &resParsed)
+	as.Nil(err)
+
+	as.Equal("pending", resParsed.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Error() {
+	//setup
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  123,
+		PaymentStatus:  models.PaymentStatusError,
+	}
+
+	uploadSession1.StartUploadSession()
+
+	session := models.UploadSession{}
+	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	as.Equal(err, nil)
+
+	//execute method
+	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
+
+	// Parse response
+	resParsed := paymentStatusCreateRes{}
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	as.Nil(err)
+	err = json.Unmarshal(bodyBytes, &resParsed)
+	as.Nil(err)
+
+	as.Equal("error", resParsed.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
+	//res := as.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
+
+	//TODO: Return better error response when ID does not exist
 }
