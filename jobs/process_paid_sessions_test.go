@@ -80,11 +80,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// verify that we have successfully created all the data maps
 	paidButUnburied := []models.DataMap{}
 	err := suite.DB.Where("genesis_hash = ?", "genHash1").All(&paidButUnburied)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	paidAndBuried := []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&paidAndBuried)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	suite.NotEqual(0, len(paidButUnburied))
 	suite.NotEqual(0, len(paidAndBuried))
@@ -104,7 +104,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	paidButUnburied = []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&paidButUnburied)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	/* Verify the following:
 	1.  If a chunk in paidButUnburied was one of the treasure chunks, Message is no longer ""
@@ -121,7 +121,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	paidAndBuried = []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&paidAndBuried)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	// verify that all chunks in paidAndBuried have statuses changed to Unassigned
 	for _, dMap := range paidAndBuried {
@@ -132,10 +132,10 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// keys are now "" but that we still have a value for the Idx
 	paidAndUnburiedSession := models.UploadSession{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").First(&paidAndUnburiedSession)
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	treasureIndex, err := paidAndUnburiedSession.GetTreasureMap()
-	suite.Equal(err, nil)
+	suite.Equal(nil, err)
 
 	suite.Equal(3, len(treasureIndex))
 

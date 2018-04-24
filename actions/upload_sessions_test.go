@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	"github.com/oysterprotocol/brokernode/models"
 	"fmt"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 func (as *ActionSuite) Test_UploadSessionsCreate() {
@@ -57,9 +57,9 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
-		FileSizeBytes:  123,
-		PaymentStatus:  models.PaymentStatusPaid,
+		GenesisHash:   "genHash1",
+		FileSizeBytes: 123,
+		PaymentStatus: models.PaymentStatusPaid,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -84,9 +84,9 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
 	//setup
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
-		FileSizeBytes:  123,
-		PaymentStatus:  models.PaymentStatusPending,
+		GenesisHash:   "genHash1",
+		FileSizeBytes: 123,
+		PaymentStatus: models.PaymentStatusPending,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -111,9 +111,9 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Error() {
 	//setup
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
-		FileSizeBytes:  123,
-		PaymentStatus:  models.PaymentStatusError,
+		GenesisHash:   "genHash1",
+		FileSizeBytes: 123,
+		PaymentStatus: models.PaymentStatusError,
 	}
 
 	uploadSession1.StartUploadSession()

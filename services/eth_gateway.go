@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/getsentry/raven-go"
+	"github.com/joho/godotenv"
+	"github.com/oysterprotocol/brokernode/models"
+	"log"
+	"os"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
@@ -13,16 +18,69 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-type Eth struct{}
+type Eth struct {
+	SendGas             SendGas
+	ClaimPRLs           ClaimPRLs
+	GenerateEthAddr     GenerateEthAddr
+	BuryPrl             BuryPrl
+	SendETH             SendETH
+	SendPRL             SendPRL
+	GetGasPrice         GetGasPrice
+	SubscribeToTransfer SubscribeToTransfer
+	CheckBalance        CheckBalance
+	GetCurrentBlock     GetCurrentBlock
+}
 
-// TODO: Find etherum node to connect to.
-const ethUrl = "ws://0.0.0.0"
+type SendGas func([]models.CompletedUpload) error
+type ClaimPRLs func([]models.CompletedUpload) error
+type GenerateEthAddr func() (addr string, privKey string, err error)
+type BuryPrl func()
+type SendETH func(fromAddr common.Address, toAddr common.Address, amt float64)
+type SendPRL func(fromAddr common.Address, toAddr common.Address, amt float64)
+type GetGasPrice func() (uint64, error)
+type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
+type CheckBalance func(common.Address)
+type GetCurrentBlock func()
 
 // Singleton client
 var (
-	client *ethclient.Client
-	mtx    sync.Mutex
+	ethUrl            string
+	MainWalletAddress common.Address
+	MainWalletKey     string
+	client            *ethclient.Client
+	mtx               sync.Mutex
+	EthWrapper        Eth
 )
+
+func init() {
+	// Load ENV variables
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+		raven.CaptureError(err, nil)
+	}
+
+	MainWalletAddress := os.Getenv("MAIN_WALLET_ADDRESS")
+	MainWalletKey := os.Getenv("MAIN_WALLET_KEY")
+	ethUrl := os.Getenv("ETH_NODE_URL")
+
+	fmt.Println(MainWalletAddress)
+	fmt.Println(MainWalletKey)
+	fmt.Println(ethUrl)
+
+	EthWrapper = Eth{
+		SendGas:         sendGas,
+		ClaimPRLs:       claimPRLs,
+		GenerateEthAddr: generateEthAddr,
+		BuryPrl:         buryPrl,
+		SendETH:         sendETH,
+		SendPRL:         sendPRL,
+		//GetGasPrice:     getGasPrice,
+		SubscribeToTransfer: subscribeToTransfer,
+		CheckBalance:        checkBalance,
+		GetCurrentBlock:     getCurrentBlock,
+	}
+}
 
 func sharedClient() (c *ethclient.Client, err error) {
 	if client != nil {
@@ -47,7 +105,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	return client, err
 }
 
-func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
+func generateEthAddr() (addr string, privKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
 		return
@@ -59,27 +117,109 @@ func (e *Eth) GenerateEthAddr() (addr string, privKey string, err error) {
 	return
 }
 
-func (e *Eth) BuryPrl() {
+func buryPrl() {
 	// TODO
+
+	/*
+		At a high level, what this method will have to do is send PRLs from the transaction address to each 'treasure'
+		address, and invoke the smart contract bury() function on them.
+	*/
+}
+
+func sendGas(completedUploads []models.CompletedUpload) error {
+	//gas, err := GetGasPrice()
+	//for _, completedUpload := range completedUploads {
+	//	Eth.SendETH(MainWalletAddress, completedUpload.ETHAddr, float64(gas))
+	//}
+	//if err != nil {
+	//	return err
+	//}
+	return nil
 }
 
 // TODO: Don't use floats for money transactions!
-func (e *Eth) SendTransaction(fromAddr common.Address, toAddr common.Address, amt float64) {
+func sendETH(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
+
+func claimPRLs(completedUploads []models.CompletedUpload) error {
+
+	//for _, completedUpload := range completedUploads {
+	//	/* TODO:
+	//
+	//	    for each completed upload, get its PRL balance from its ETH
+	//		address (completedUpload.ETHAddr) by calling CheckBalance.
+	//
+	//	    Then, using SendPRL, create a transaction with each
+	//	    completedUpload.ETHAddr as the "fromAddr" address, the broker's
+	//	    main wallet (MainWalletAddress) as the "toAddr" address, and the PRL
+	//	    balance of completedUpload.ETHAddr as the "amt" to send, and
+	//	    subscribe to the event with SubscribeToTransfer.
+	//	*/
+	//}
+	//if err != nil {
+	//	return err
+	//}
+
+	return nil
+}
+
+func sendPRL(fromAddr common.Address, toAddr common.Address, amt float64) {
+	// TODO
+}
+
+//func GetGasPrice() (uint64, error) {
+//	//ctx := context.Background() // TODO: Should we have some timeout or cancel?
+//
+//	//TODO:  Decide whether 'SuggestGasPrice' or 'EstimateGasPrice' is the better method, then
+//	// return the gas and the error
+//	//gas, errEstimator := client.SuggestGasPrice(ctx)
+//}
 
 // SubscribeToTransfer will subscribe to transfer events
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
-func (e *Eth) SubscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
+func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	ethCl, _ := sharedClient()
+
 	ctx := context.Background() // TODO: Should we have some timeout or cancel?
 
 	q := ethereum.FilterQuery{
-		FromBlock: nil, // TODO: Figure out how to get current block
+		FromBlock: nil, // TODO: Figure out how to get current block in GetCurrentBlock
 		Addresses: []common.Address{brokerAddr},
 		Topics:    nil, // TODO: scope this to just oyster's contract.
 	}
 	// Adapt msg sent from the subscription before passing it to outCh.
 	ethCl.SubscribeFilterLogs(ctx, q, outCh)
 }
+
+func checkBalance(addr common.Address) {
+	//ctx := context.Background() // TODO: Should we have some timeout or cancel?
+	//client.BalanceAt(ctx, addr)
+}
+
+func getCurrentBlock() {
+
+}
+
+/* TODO will be using channels/workers for subscribe to transaction events
+
+	-there is an example of a channel/worker in iota_wrappers.go
+	-when you see a successful transaction event, will need to change the status
+    of the correct row in the completed_uploads table.
+
+	-to indicate that a gas transfers has succeedded, call this method:
+
+    models.SetGasStatusByAddress(address, models.GasTransferSuccess)
+
+    -to indicate that a PRL transfer succeeded, call this:
+
+    models.SetPRLStatusByAddress(address, models.PRLClaimSuccess)
+
+    Both methods currently expect address to be a string (change that if you want)
+    and expect "address" to be the "to" address of the gas transaction or the "from"
+    address of the PRL transaction.  In other words, *not* the broker's main wallet
+    address.
+
+    These methods live in models/completed_uploads.go
+*/

@@ -1,0 +1,13 @@
+create_table("completed_uploads", func(t) {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("genesis_hash", "string", {})
+
+	t.Column("eth_addr", "string", {})
+	t.Column("eth_private_key", "string", {})
+
+	t.Column("prl_status", "integer", {})
+	t.Column("gas_status", "integer", {})
+})
+
+add_index("completed_uploads", "genesis_hash", {"unique": true})
+add_index("completed_uploads", "eth_addr", {"unique": true})
