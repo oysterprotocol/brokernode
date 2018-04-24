@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -9,14 +8,14 @@ import (
 	"time"
 )
 
-var ethWrapper services.Eth
+var ethWrapper = services.EthWrapper
 
 func init() {
 }
 
 func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
 
-	ethWrapper = ethService
+	SetEthWrapper(ethService)
 
 	ResendTimedOutGasTransfers(thresholdTime)
 	ResendTimedOutPRLTransfers(thresholdTime)
@@ -30,11 +29,15 @@ func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
 	PurgeCompletedClaims()
 }
 
+func SetEthWrapper(ethService services.Eth) {
+	ethWrapper = ethService
+}
+
 // for gas transfers that are still processing by the time of the threshold
 func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 	timedOutGasTransfers, err := models.GetTimedOutGasTransfers(thresholdTime)
+
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting timed out gas transfers")
 		raven.CaptureError(err, nil)
 		return
@@ -48,7 +51,6 @@ func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 	timedOutPRLTransfers, err := models.GetTimedOutPRLTransfers(thresholdTime)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting timed out gas transfers")
 		raven.CaptureError(err, nil)
 		return
@@ -62,7 +64,6 @@ func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 func ResendErroredGasTransfers() {
 	gasTransferErrors, err := models.GetRowsByGasStatus(models.GasTransferError)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting completed uploads whose gas transfers errored")
 		raven.CaptureError(err, nil)
 		return
@@ -76,7 +77,6 @@ func ResendErroredGasTransfers() {
 func ResendErroredPRLTransfers() {
 	prlTransferErrors, err := models.GetRowsByPRLStatus(models.PRLClaimError)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting completed uploads whose PRL transfers errored")
 		raven.CaptureError(err, nil)
 		return
@@ -90,7 +90,6 @@ func ResendErroredPRLTransfers() {
 func SendGasForNewClaims() {
 	needGas, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting completed uploads whose addresses need gas.")
 		raven.CaptureError(err, nil)
 		return
@@ -104,7 +103,6 @@ func SendGasForNewClaims() {
 func StartNewClaims() {
 	readyClaims, err := models.GetRowsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimNotStarted)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error getting ready claims.")
 		raven.CaptureError(err, nil)
 		return
@@ -118,7 +116,6 @@ func StartNewClaims() {
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 	err := ethWrapper.SendGas(uploadsThatNeedGas)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error sending gas.")
 		raven.CaptureError(err, nil)
 		return
@@ -131,7 +128,6 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 	err := ethWrapper.ClaimPRLs(uploadsWithUnclaimedPRLs)
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error claiming PRL.")
 		raven.CaptureError(err, nil)
 		return
@@ -144,7 +140,6 @@ func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 func PurgeCompletedClaims() {
 	err := models.DeleteCompletedClaims()
 	if err != nil {
-		fmt.Println(err)
 		log.Println("Error purging completed claims.")
 		raven.CaptureError(err, nil)
 		return

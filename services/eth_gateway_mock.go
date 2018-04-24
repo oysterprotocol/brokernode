@@ -1,6 +1,8 @@
 package services
 
-import "github.com/oysterprotocol/brokernode/models"
+import (
+	"github.com/oysterprotocol/brokernode/models"
+)
 
 var EthMock Eth
 
