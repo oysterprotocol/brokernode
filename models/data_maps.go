@@ -25,6 +25,9 @@ const (
 	MaxSideChainLength = 1000 // need to determine what this number should be
 
 	DataMapTableName = "data_maps"
+
+	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
+	MaxNumberOfValueForInsertOperation = 50
 )
 
 const (
@@ -108,10 +111,11 @@ func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, er
 	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
 
 	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
+	columnNames := operation.GetColumns()
 	var values []string
 
 	currHash := genHash
-	// TODO: pzhao5 insert this every x iterations
+	insertionCount := 0
 	for i := 0; i < fileChunksCount; i++ {
 		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
@@ -129,10 +133,15 @@ func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, er
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewUpdateValue(dataMap)))
 
 		currHash = oyster_utils.HashString(currHash, sha256.New())
-	}
 
-	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, operation.GetColumns(), strings.Join(values, ", "))
-	err = DB.RawQuery(rawQuery).All(&[]DataMap{})
+		insertionCount++
+		if insertionCount >= MaxNumberOfValueForInsertOperation {
+			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
+			insertionCount = 0
+			values = nil
+		}
+	}
+	err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
 
 	return
 }
@@ -264,4 +273,13 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 
 	}
 	return nil, nil
+}
+
+func insertsIntoDataMapsTable(columnsName string, values string) error {
+	if len(values) == 0 {
+		return nil
+	}
+
+	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
+	return DB.RawQuery(rawQuery).All(&[]DataMap{})
 }

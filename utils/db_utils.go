@@ -32,12 +32,12 @@ type dbUpdateModel struct {
 
 // Expect an empty ptr struct as &MyStruct{}. Return a dbUpdateOperation interface
 func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
-	m := pop.Model{Value: vPtr}
-	if m.PrimaryKeyType() != "UUID" {
+	model := pop.Model{Value: vPtr}
+	if model.PrimaryKeyType() != "UUID" {
 		return nil, errors.New("Primary key is not UUID, did not support to generate this type of key")
 	}
 
-	c := columns.ColumnsForStructWithAlias(vPtr, m.TableName(), m.As)
+	cols := columns.ColumnsForStructWithAlias(vPtr, model.TableName(), model.As)
 
 	f := make(map[string]string)
 
@@ -55,50 +55,54 @@ func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
 		if tag.Ignored() || tag.Empty() {
 			continue
 		}
-		col := tag.Value
-		if cols := c.Cols[col]; cols != nil {
-			f[cols.Name] = field.Name
+		columnName := tag.Value
+		if col := cols.Cols[columnName]; col != nil {
+			f[col.Name] = field.Name
 		}
 	}
-	return &dbUpdateModel{columns: c, fieldMap: f}, nil
+	return &dbUpdateModel{columns: cols, fieldMap: f}, nil
 }
 
 func (s *dbUpdateModel) GetColumns() string {
-	return strings.Join(s.getSortedColumns(), COLUMNS_SEPARATOR)
+	return strings.Join(getSortedColumns(s.columns), COLUMNS_SEPARATOR)
 }
 
 func (s *dbUpdateModel) GetNewUpdateValue(v ValueT) string {
-	cols := s.getSortedColumns()
-	var xs []string
-	r := reflect.Indirect(reflect.ValueOf(v))
+	cols := getSortedColumns(s.columns)
+	var columnValues []string
+	stValue := reflect.Indirect(reflect.ValueOf(v))
 
 	for _, t := range cols {
+		// Generated UUID for 'id' column
 		if t == "id" {
 			u, _ := uuid.NewV4()
-			xs = append(xs, fmt.Sprintf("'%s'", u.String()))
+			columnValues = append(columnValues, fmt.Sprintf("'%s'", u.String()))
 			continue
 		}
+		// Use Sql NOW() method for 'updated_at' and 'created_at' column
 		if t == "updated_at" || t == "created_at" {
-			xs = append(xs, "NOW()")
+			columnValues = append(columnValues, "NOW()")
 			continue
 		}
 
 		if f := s.fieldMap[t]; len(f) > 0 {
-			xs = append(xs, getStringPresentation(r.FieldByName(f)))
+			columnValues = append(columnValues, getStringPresentation(stValue.FieldByName(f)))
 		}
 	}
-	return strings.Join(xs, COLUMNS_SEPARATOR)
+	return strings.Join(columnValues, COLUMNS_SEPARATOR)
 }
 
-func (s *dbUpdateModel) getSortedColumns() []string {
-	var xs []string
-	for _, t := range s.columns.Cols {
-		xs = append(xs, t.Name)
+// Returns a sorted column name list.
+func getSortedColumns(cols columns.Columns) []string {
+	var columnNames []string
+	for _, t := range cols.Cols {
+		columnNames = append(columnNames, t.Name)
 	}
-	sort.Strings(xs)
-	return xs
+	sort.Strings(columnNames)
+	return columnNames
 }
 
+// Returns string presentation of underlying value for both int and string. String will include single quote (')
 func getStringPresentation(v reflect.Value) string {
 	switch v.Type().Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
