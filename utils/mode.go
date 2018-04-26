@@ -10,9 +10,9 @@ import (
 type ModeStatus int
 
 const (
-	ProdMode              ModeStatus = iota + 1
-	TestModeDummyTreasure ModeStatus = iota + 1
-	TestModeNoTreasure    ModeStatus = iota + 1
+	ProdMode ModeStatus = iota + 1
+	TestModeDummyTreasure
+	TestModeNoTreasure
 )
 
 var BrokerMode ModeStatus
