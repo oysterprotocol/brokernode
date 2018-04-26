@@ -213,9 +213,12 @@ func getStoragePeg() int {
 
 func (u *UploadSession) GetPaymentStatus() string {
 	switch u.PaymentStatus {
-		case PaymentStatusPending: return "pending"
-		case PaymentStatusPaid: return "paid"
-		default: return "error"
+	case PaymentStatusPending:
+		return "pending"
+	case PaymentStatusPaid:
+		return "paid"
+	default:
+		return "error"
 	}
 }
 
