@@ -111,6 +111,7 @@ func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, er
 	var values []string
 
 	currHash := genHash
+	// TODO: pzhao5 insert this every x iterations
 	for i := 0; i < fileChunksCount; i++ {
 		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
