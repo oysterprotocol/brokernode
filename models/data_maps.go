@@ -11,14 +11,21 @@ import (
 
 	"github.com/oysterprotocol/brokernode/utils"
 
+	"fmt"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"strings"
 )
 
-const FileBytesChunkSize = float64(2187)
-const MaxSideChainLength = 1000 // need to determine what this number should be
+const (
+	FileBytesChunkSize = float64(2187)
+
+	MaxSideChainLength = 1000 // need to determine what this number should be
+
+	DataMapTableName = "data_maps"
+)
 
 const (
 	Pending int = iota + 1
@@ -100,24 +107,32 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, err error) {
 	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
 
-	currHash := genHash
-	for i := 0; i < fileChunksCount; i++ {
-		// TODO: Batch these inserts.
+	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
+	var values []string
 
+	currHash := genHash
+	// TODO: pzhao5 insert this every x iterations
+	for i := 0; i < fileChunksCount; i++ {
 		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
-		vErr, err = DB.ValidateAndCreate(&DataMap{
+		dataMap := DataMap{
 			GenesisHash:    genHash,
 			ChunkIdx:       i,
 			Hash:           currHash,
 			ObfuscatedHash: obfuscatedHash,
 			Address:        currAddr,
 			Status:         Pending,
-		})
+		}
+		// Validate the data
+		vErr, _ = dataMap.Validate(nil)
+		values = append(values, fmt.Sprintf("(%s)", operation.GetNewUpdateValue(dataMap)))
 
 		currHash = oyster_utils.HashString(currHash, sha256.New())
 	}
+
+	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, operation.GetColumns(), strings.Join(values, ", "))
+	err = DB.RawQuery(rawQuery).All(&[]DataMap{})
 
 	return
 }

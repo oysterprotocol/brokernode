@@ -6,12 +6,12 @@ import (
 	"errors"
 	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
-	"log"
 )
 
 const (
