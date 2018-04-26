@@ -24,24 +24,24 @@ type dbUpdateOperation interface {
 
 const COLUMNS_SEPARATOR = ", "
 
-// Internal data structure
+// Private data structure
 type dbUpdateModel struct {
-	columns        columns.Columns
-	fieldMap       map[string]string // Map from tableColumn to fieldName
+	columns  columns.Columns
+	fieldMap map[string]string // Map from tableColumn to fieldName
 }
 
 // Expect an empty ptr struct as &MyStruct{}. Return a dbUpdateOperation interface
-func CreateDbUpdateOperation(v_ptr ValueT) (dbUpdateOperation, error) {
-	m := pop.Model{Value: v_ptr}
+func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
+	m := pop.Model{Value: vPtr}
 	if m.PrimaryKeyType() != "UUID" {
-		return nil, errors.New("Primary key is not UUID, did not support to genereate this type of key")
+		return nil, errors.New("Primary key is not UUID, did not support to generate this type of key")
 	}
 
-	c := columns.ColumnsForStructWithAlias(v_ptr, m.TableName(), m.As)
+	c := columns.ColumnsForStructWithAlias(vPtr, m.TableName(), m.As)
 
 	f := make(map[string]string)
 
-	st := reflect.TypeOf(v_ptr)
+	st := reflect.TypeOf(vPtr)
 	if st.Kind() == reflect.Ptr {
 		st = st.Elem()
 	}
