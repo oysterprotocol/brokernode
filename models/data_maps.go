@@ -108,7 +108,7 @@ func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, er
 	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
 
 	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
-	values := []string{}
+	var values []string
 
 	currHash := genHash
 	for i := 0; i < fileChunksCount; i++ {
