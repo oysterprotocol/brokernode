@@ -14,14 +14,19 @@ import (
 
 type ValueT interface{}
 
+// Interface for DB Update operation.
 type dbUpdateOperation interface {
+	// Get columns in string format and separated by ", "
 	GetColumns() string
+	// Get columns new value in string format and separated by ", "
 	GetNewUpdateValue(ValueT) string
 }
 
+const COLUMNS_SEPARATOR = ", "
+
+// Internal data structure
 type dbUpdateModel struct {
 	columns        columns.Columns
-	primayeKeyType string
 	fieldMap       map[string]string // Map from tableColumn to fieldName
 }
 
@@ -59,7 +64,7 @@ func CreateDbUpdateOperation(v_ptr ValueT) (dbUpdateOperation, error) {
 }
 
 func (s *dbUpdateModel) GetColumns() string {
-	return strings.Join(s.getSortedColumns(), ", ")
+	return strings.Join(s.getSortedColumns(), COLUMNS_SEPARATOR)
 }
 
 func (s *dbUpdateModel) GetNewUpdateValue(v ValueT) string {
@@ -82,7 +87,7 @@ func (s *dbUpdateModel) GetNewUpdateValue(v ValueT) string {
 			xs = append(xs, getStringPresentation(r.FieldByName(f)))
 		}
 	}
-	return strings.Join(xs, ", ")
+	return strings.Join(xs, COLUMNS_SEPARATOR)
 }
 
 func (s *dbUpdateModel) getSortedColumns() []string {
