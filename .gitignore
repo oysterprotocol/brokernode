@@ -13,5 +13,3 @@ brokernode
 .grifter/
 data/
 migrations/schema.sql
-.env
-*.env
