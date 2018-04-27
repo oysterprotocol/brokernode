@@ -256,9 +256,3 @@ func compareIntsArray(t *testing.T, a []int, b []int) {
 		assertTrue(a[i] == b[i], t, "a and b value are different")
 	}
 }
-
-func assertTrue(v bool, t *testing.T, desc string) {
-	if !v {
-		t.Error(desc)
-	}
-}

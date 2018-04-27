@@ -11,14 +11,24 @@ import (
 
 	"github.com/oysterprotocol/brokernode/utils"
 
+	"fmt"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"strings"
 )
 
-const FileBytesChunkSize = float64(2187)
-const MaxSideChainLength = 1000 // need to determine what this number should be
+const (
+	FileBytesChunkSize = float64(2187)
+
+	MaxSideChainLength = 1000 // need to determine what this number should be
+
+	DataMapTableName = "data_maps"
+
+	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
+	MaxNumberOfValueForInsertOperation = 50
+)
 
 const (
 	Pending int = iota + 1
@@ -105,24 +115,38 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 		fileChunksCount = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks)
 	}
 
-	currHash := genHash
-	for i := 0; i < fileChunksCount; i++ {
-		// TODO: Batch these inserts.
+	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
+	columnNames := operation.GetColumns()
+	var values []string
 
+	currHash := genHash
+	insertionCount := 0
+	for i := 0; i < fileChunksCount; i++ {
 		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
-		vErr, err = DB.ValidateAndCreate(&DataMap{
+		dataMap := DataMap{
 			GenesisHash:    genHash,
 			ChunkIdx:       i,
 			Hash:           currHash,
 			ObfuscatedHash: obfuscatedHash,
 			Address:        currAddr,
 			Status:         Pending,
-		})
+		}
+		// Validate the data
+		vErr, _ = dataMap.Validate(nil)
+		values = append(values, fmt.Sprintf("(%s)", operation.GetNewUpdateValue(dataMap)))
 
 		currHash = oyster_utils.HashString(currHash, sha256.New())
+
+		insertionCount++
+		if insertionCount >= MaxNumberOfValueForInsertOperation {
+			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
+			insertionCount = 0
+			values = nil
+		}
 	}
+	err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
 
 	return
 }
@@ -256,6 +280,15 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 	return nil, nil
 }
 
+func insertsIntoDataMapsTable(columnsName string, values string) error {
+	if len(values) == 0 {
+		return nil
+	}
+
+	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
+	return DB.RawQuery(rawQuery).All(&[]DataMap{})
+}
+
 func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) (dataMaps []DataMap, err error) {
 	dataMaps = []DataMap{}
 	err = DB.Where("genesis_hash = ?",
@@ -263,3 +296,4 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) (dataM
 
 	return dataMaps, err
 }
+
