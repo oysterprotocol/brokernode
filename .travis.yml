@@ -25,6 +25,8 @@ before_install:
   - chmod +x docker-compose
   - sudo mv docker-compose /usr/local/bin
   - docker-compose --version
+  - cp .env.example .env
+  - sudo sed -i -e 's/HOST_IP=""/HOST_IP="TRAVIS"/' .env
 
 install:
   - rm -rf ./data

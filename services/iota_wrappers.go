@@ -83,9 +83,8 @@ func init() {
 
 	host_ip := os.Getenv("HOST_IP")
 	if host_ip == "" {
-		log.Println("No IRI host given")
 		raven.CaptureError(err, nil)
-		// panic("Invalid IRI host: Check the .env file for HOST_IP")
+		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
 	provider := "http://" + host_ip + ":14265"

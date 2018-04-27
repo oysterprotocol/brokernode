@@ -19,7 +19,7 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(10, len(allDataMaps))
+	suite.Equal(numChunks+1, len(allDataMaps)) //  1 data map, 1 chunk has been added
 
 	// make data maps unverified
 	for i := 0; i < 10; i++ {
@@ -33,9 +33,13 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 	allDataMaps = []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
 
-	suite.Equal(10, len(allDataMaps))
+	suite.Equal(numChunks+1, len(allDataMaps)) //  1 data map, 1 chunk has been added
 
 	for _, dataMap := range allDataMaps {
-		suite.Equal(models.Unassigned, dataMap.Status)
+		if dataMap.Message != "" {
+			// if no message, will not mark as Unassigned
+			// the treasure chunk currently has no message
+			suite.Equal(models.Unassigned, dataMap.Status)
+		}
 	}
 }

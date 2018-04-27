@@ -15,6 +15,8 @@ var (
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
+	numChunks := 31
+
 	// reset back to generic mocks
 	defer suite.SetupSuite()
 
@@ -29,7 +31,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
-		NumChunks:      31,
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -38,7 +40,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession2 := models.UploadSession{
 		GenesisHash:    "genHash2",
-		NumChunks:      31,
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -47,7 +49,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession3 := models.UploadSession{
 		GenesisHash:    "genHash3",
-		NumChunks:      31,
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -56,7 +58,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession4 := models.UploadSession{
 		GenesisHash:    "genHash4",
-		NumChunks:      31,
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -94,7 +96,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-	suite.Equal(124, len(AllChunksCalled))
+	suite.Equal(4*(numChunks+1), len(AllChunksCalled)) // 4 data maps so 4 chunks have been added
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
