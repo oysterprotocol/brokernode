@@ -21,6 +21,7 @@ type StoredGenesisHash struct {
 	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
 	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
 	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	NumChunks     int       `json:"numChunks" db:"num_chunks"`
 	WebnodeCount  int       `json:"webnodeCount" db:"webnode_count"`
 	Status        int       `json:"status" db:"status"`
 }

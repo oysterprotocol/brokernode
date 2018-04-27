@@ -9,12 +9,14 @@ import (
 func (ms *ModelSuite) Test_StartUploadSession() {
 	genHash := "genHashTest"
 	fileSizeBytes := 123
+	numChunks := 2
 	storageLengthInYears := 2
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          genHash,
 		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
@@ -27,6 +29,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 
 	ms.Equal(genHash, uSession.GenesisHash)
 	ms.Equal(fileSizeBytes, uSession.FileSizeBytes)
+	ms.Equal(2, uSession.NumChunks)
 	ms.Equal(models.SessionTypeAlpha, uSession.Type)
 	ms.Equal(2.0, uSession.TotalCost)
 	ms.Equal(2, uSession.StorageLengthInYears)
@@ -35,11 +38,13 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 func (ms *ModelSuite) Test_DataMapsForSession() {
 	genHash := "genHashTest"
 	fileSizeBytes := 123
+	numChunks := 2
 	storageLengthInYears := 3
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
 		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
@@ -66,6 +71,7 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	genHash := "genHashTest"
 	fileSizeBytes := 123
+	numChunks := 2
 	storageLengthInYears := 3
 
 	// This map seems pointless but it makes the testing
@@ -92,6 +98,7 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	u := models.UploadSession{
 		GenesisHash:          genHash,
 		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
@@ -126,6 +133,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
 		FileSizeBytes:  5000,
+		NumChunks:      7,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -133,6 +141,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
 		GenesisHash:    "genHash2",
 		FileSizeBytes:  5000,
+		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -140,6 +149,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
 		GenesisHash:    "genHash3",
 		FileSizeBytes:  5000,
+		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -147,6 +157,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	uploadSession4 := models.UploadSession{ // will not be in the array
 		GenesisHash:    "genHash4",
 		FileSizeBytes:  5000,
+		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureUnburied,
@@ -154,16 +165,27 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	uploadSession5 := models.UploadSession{ // will not be in the array
 		GenesisHash:    "genHash5",
 		FileSizeBytes:  5000,
+		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPending,
 		TreasureStatus: models.TreasureUnburied,
 	}
 
-	uploadSession1.StartUploadSession()
-	uploadSession2.StartUploadSession()
-	uploadSession3.StartUploadSession()
-	uploadSession4.StartUploadSession()
-	uploadSession5.StartUploadSession()
+	vErr, err := uploadSession1.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+	vErr, err = uploadSession2.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+	vErr, err = uploadSession3.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+	vErr, err = uploadSession4.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+	vErr, err = uploadSession5.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
 	// set uploadSession3 to be the oldest
 	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",

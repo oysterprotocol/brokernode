@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var BundleSize = 10
+var BundleSize = 30
 
 var OysterWorker = worker.NewSimple()
 

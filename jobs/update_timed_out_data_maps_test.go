@@ -1,19 +1,18 @@
 package jobs_test
 
 import (
-	"time"
-
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
+	"time"
 )
 
 func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 
 	// populate data_maps
 	genHash := "someGenHash"
-	fileBytesCount := 18000
+	numChunks := 10
 
-	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 

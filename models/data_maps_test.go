@@ -25,9 +25,9 @@ var encryptedTreasureCases = []hashAddressConversion{
 
 func (ms *ModelSuite) Test_BuildDataMaps() {
 	genHash := "genHashTest"
-	fileBytesCount := 9000
+	numChunks := 7
 
-	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
@@ -74,21 +74,21 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 }
 
 func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
-	fileBytesCount := 8500
+	numChunks := 10
 
-	vErr, err := models.BuildDataMaps("genHash1", fileBytesCount)
+	vErr, err := models.BuildDataMaps("genHash1", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash2", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash2", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash3", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash3", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash4", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash4", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash5", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash5", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
@@ -133,21 +133,21 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 }
 
 func (suite *ModelSuite) Test_GetUnassignedChunks() {
-	fileBytesCount := 1000
+	numChunks := 2
 
-	vErr, err := models.BuildDataMaps("genHash1", fileBytesCount)
+	vErr, err := models.BuildDataMaps("genHash1", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash2", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash2", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash3", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash3", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash4", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash4", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash5", fileBytesCount)
+	vErr, err = models.BuildDataMaps("genHash5", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
@@ -194,6 +194,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
 		FileSizeBytes:  8000,
+		NumChunks:      5,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -202,6 +203,14 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	session := models.UploadSession{}
 	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
 	suite.Nil(err)
+
+	dataMaps := []models.DataMap{}
+	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	suite.Nil(err)
+	for _, dm := range dataMaps {
+		dm.Message = "NOTEMPETY"
+		suite.DB.ValidateAndSave(&dm)
+	}
 
 	jobs.MarkBuriedMapsAsUnassigned()
 	chunks, err := models.GetAllUnassignedChunksBySession(session)
@@ -216,6 +225,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
 		FileSizeBytes:  8000,
+		NumChunks:      5,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -224,6 +234,14 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	session := models.UploadSession{}
 	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
 	suite.Nil(err)
+
+	dataMaps := []models.DataMap{}
+	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	suite.Nil(err)
+	for _, dm := range dataMaps {
+		dm.Message = "NOTEMPETY"
+		suite.DB.ValidateAndSave(&dm)
+	}
 
 	jobs.MarkBuriedMapsAsUnassigned()
 	chunks, err := models.GetAllUnassignedChunksBySession(session)

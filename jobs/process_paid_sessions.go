@@ -12,16 +12,14 @@ func init() {
 
 func ProcessPaidSessions() {
 
-	BuryTreasureInPaidDataMaps()
+	BuryTreasureInDataMaps()
 	MarkBuriedMapsAsUnassigned()
 }
 
-func BuryTreasureInPaidDataMaps() error {
+func BuryTreasureInDataMaps() error {
 
-	unburiedSessions := []models.UploadSession{}
+	unburiedSessions, err := models.GetSessionsThatNeedTreasure()
 
-	err := models.DB.Where("payment_status = ? AND treasure_status = ?",
-		models.PaymentStatusPaid, models.TreasureUnburied).All(&unburiedSessions)
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}
@@ -42,9 +40,7 @@ func BuryTreasureInPaidDataMaps() error {
 func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models.UploadSession) error {
 
 	for i, entry := range treasureIndexMap {
-		treasureChunks := []models.DataMap{}
-		err := models.DB.Where("genesis_hash = ?",
-			unburiedSession.GenesisHash).Where("chunk_idx = ?", entry.Idx).All(&treasureChunks)
+		treasureChunks, err := models.GetDataMapByGenesisHashAndChunkIdx(unburiedSession.GenesisHash, entry.Idx)
 		if err != nil {
 			raven.CaptureError(err, nil)
 			return err
@@ -74,20 +70,12 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 
 // marking the maps as "Unassigned" will trigger them to get processed by the process_unassigned_chunks cron task.
 func MarkBuriedMapsAsUnassigned() {
-	readySessions := []models.UploadSession{}
-
-	err := models.DB.Where("payment_status = ? AND treasure_status = ?",
-		models.PaymentStatusPaid, models.TreasureBuried).All(&readySessions)
+	readySessions, err := models.GetReadySessions()
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}
 
-	var dataMaps = []models.DataMap{}
-
 	for _, readySession := range readySessions {
-		err = models.DB.RawQuery("UPDATE data_maps SET status = ? WHERE genesis_hash = ? AND status = ?",
-			models.Unassigned,
-			readySession.GenesisHash,
-			models.Pending).All(&dataMaps)
+		err = readySession.BulkMarkDataMapsAsUnassigned()
 	}
 }

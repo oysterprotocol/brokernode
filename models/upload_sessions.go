@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/oysterprotocol/brokernode/utils"
 	"math"
 	"time"
 
@@ -35,6 +36,7 @@ type UploadSession struct {
 	CreatedAt            time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
+	NumChunks            int       `json:"numChunks" db:"num_chunks"`
 	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
@@ -86,7 +88,8 @@ func (u UploadSessions) String() string {
 func (u *UploadSession) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: u.GenesisHash, Name: "GenesisHash"},
-		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSizeBytes"},
+		&validators.IntIsPresent{Field: u.NumChunks, Name: "NumChunks"},
+		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSize"},
 	), nil
 }
 
@@ -112,14 +115,37 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 		u.Type = SessionTypeAlpha
 	}
 
-	// Defaults to paymentStatusPending
-	if u.PaymentStatus == 0 {
-		u.PaymentStatus = PaymentStatusPending
-	}
+	switch oyster_utils.BrokerMode {
+	case oyster_utils.ProdMode:
+		// Defaults to paymentStatusPending
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusPending
+		}
 
-	// Defaults to treasureUnburied
-	if u.TreasureStatus == 0 {
-		u.TreasureStatus = TreasureUnburied
+		// Defaults to treasureUnburied
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureUnburied
+		}
+	case oyster_utils.TestModeDummyTreasure:
+		// Defaults to paymentStatusPaid
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusPaid
+		}
+
+		// Defaults to treasureUnburied
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureUnburied
+		}
+	case oyster_utils.TestModeNoTreasure:
+		// Defaults to paymentStatusPaid
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusPaid
+		}
+
+		// Defaults to treasureBuried
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureBuried
+		}
 	}
 
 	return nil
@@ -141,7 +167,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		return
 	}
 
-	vErr, err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
+	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	return
 }
 
@@ -207,20 +233,32 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	return nil
 }
 
+func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
+	err := DB.RawQuery("UPDATE data_maps SET status = ? "+
+		"WHERE genesis_hash = ? AND status = ? AND message != ?",
+		Unassigned,
+		u.GenesisHash,
+		Pending,
+		DataMap{}.Message).All(&[]DataMap{})
+	return err
+}
+
 func getStoragePeg() int {
 	return 1 // TODO: write code to query smart contract to get real storage peg
 }
 
 func (u *UploadSession) GetPaymentStatus() string {
 	switch u.PaymentStatus {
-		case PaymentStatusPending: return "pending"
-		case PaymentStatusPaid: return "paid"
-		default: return "error"
+	case PaymentStatusPending:
+		return "pending"
+	case PaymentStatusPaid:
+		return "paid"
+	default:
+		return "error"
 	}
 }
 
 func GetSessionsByAge() ([]UploadSession, error) {
-
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
@@ -232,4 +270,22 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	}
 
 	return sessionsByAge, nil
+}
+
+func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
+	unburiedSessions := []UploadSession{}
+
+	err := DB.Where("payment_status = ? AND treasure_status = ?",
+		PaymentStatusPaid, TreasureUnburied).All(&unburiedSessions)
+
+	return unburiedSessions, err
+}
+
+func GetReadySessions() ([]UploadSession, error) {
+	readySessions := []UploadSession{}
+
+	err := DB.Where("payment_status = ? AND treasure_status = ?",
+		PaymentStatusPaid, TreasureBuried).All(&readySessions)
+
+	return readySessions, err
 }

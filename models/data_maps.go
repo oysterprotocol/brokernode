@@ -97,8 +97,13 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, err error) {
-	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
+func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err error) {
+
+	fileChunksCount := numChunks
+
+	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		fileChunksCount = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks)
+	}
 
 	currHash := genHash
 	for i := 0; i < fileChunksCount; i++ {
@@ -249,4 +254,12 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 
 	}
 	return nil, nil
+}
+
+func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) (dataMaps []DataMap, err error) {
+	dataMaps = []DataMap{}
+	err = DB.Where("genesis_hash = ?",
+		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
+
+	return dataMaps, err
 }

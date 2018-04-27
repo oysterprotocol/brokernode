@@ -8,10 +8,12 @@ import (
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	fileBytesCount := 2500
+	numChunks := 3
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
@@ -25,6 +27,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	uploadSession2 := models.UploadSession{
 		GenesisHash:   "genHash2",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
 	}
 
@@ -35,6 +38,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	uploadSession3 := models.UploadSession{
 		GenesisHash:   "genHash3",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
 	}
 

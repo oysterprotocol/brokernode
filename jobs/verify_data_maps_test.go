@@ -24,9 +24,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 
 	// populate data_maps
 	genHash := "someGenHash"
-	fileBytesCount := 18000
+	numChunks := 10
 
-	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 

@@ -64,7 +64,7 @@ var (
 	mutex        = &sync.Mutex{}
 	seed         giota.Trytes
 	minDepth     = int64(giota.DefaultNumberOfWalks)
-	minWeightMag = int64(14)
+	minWeightMag = int64(9)
 	bestPow      giota.PowFunc
 	powName      string
 	Channel      = map[string]PowChannel{}
@@ -108,8 +108,6 @@ func init() {
 		PowProcs--
 	}
 
-	//makeFakeChunks()
-
 	channels := []models.ChunkChannel{}
 
 	wg.Add(1)
@@ -132,23 +130,6 @@ func init() {
 
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
-	}
-}
-
-func makeFakeChunks() {
-
-	dataMaps := []models.DataMap{}
-
-	models.BuildDataMaps("GENHASH2", 49000)
-
-	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
-
-	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address = models.RandSeq(81)
-		dataMaps[i].Message = "TESTMESSAGE"
-		dataMaps[i].Status = models.Unassigned
-
-		models.DB.ValidateAndSave(&dataMaps[i])
 	}
 }
 
@@ -270,6 +251,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		} else {
 
 			err = api.StoreTransactions(trytes)
+			fmt.Println("BROADCAST SUCCESS")
 
 			/*
 				TODO do we need this??
