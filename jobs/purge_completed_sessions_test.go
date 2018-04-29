@@ -8,10 +8,12 @@ import (
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	fileBytesCount := 2500
+	numChunks := 3
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
@@ -25,6 +27,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	uploadSession2 := models.UploadSession{
 		GenesisHash:   "genHash2",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
 	}
 
@@ -35,6 +38,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	uploadSession3 := models.UploadSession{
 		GenesisHash:   "genHash3",
 		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
 	}
 
@@ -63,7 +67,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(nil, err)
 
 	// verify initial lengths are what we expected
-	suite.Equal(9, len(allDataMaps))
+	suite.Equal(3*(numChunks+1), len(allDataMaps)) // 3 data maps so 3 extra chunks have been added
 	suite.Equal(0, len(completedDataMaps))
 	suite.Equal(3, len(uploadSessions))
 	suite.Equal(0, len(storedGenHashes))
@@ -115,8 +119,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(nil, err)
 
 	// verify final lengths are what we expected
-	suite.Equal(6, len(allDataMaps))
-	suite.Equal(3, len(completedDataMaps))
+	suite.Equal(2*(numChunks+1), len(allDataMaps))   // 2 data maps so 2 extra chunks
+	suite.Equal(numChunks+1, len(completedDataMaps)) // 1 data map so 1 extra chunk
 	suite.Equal(2, len(uploadSessions))
 	suite.Equal(1, len(storedGenHashes))
 	suite.Equal(1, len(completedUploads))
@@ -130,7 +134,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	genHash1Completed := []models.CompletedDataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1Completed)
-	suite.Equal(3, len(genHash1Completed))
+	suite.Equal(numChunks+1, len(genHash1Completed))
 	suite.Equal(nil, err)
 
 	suite.Equal("SOME_BETA_ETH_ADDRESS", completedUploads[0].ETHAddr)

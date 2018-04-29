@@ -12,6 +12,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	res := as.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
 		"genesisHash":          "genesisHashTest",
 		"fileSizeBytes":        123,
+		"numChunks":            2,
 		"storageLengthInYears": 1,
 	})
 
@@ -34,6 +35,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	res := as.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
 		"genesisHash":          "genesisHashTest",
 		"fileSizeBytes":        123,
+		"numChunks":            2,
 		"storageLengthInYears": 1,
 		"alphaTreasureIndexes": []int{1},
 	})
@@ -59,6 +61,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
+		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusPaid,
 	}
 
@@ -86,6 +89,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
+		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusPending,
 	}
 
@@ -113,6 +117,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Error() {
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
+		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusError,
 	}
 

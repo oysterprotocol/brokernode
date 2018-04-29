@@ -107,8 +107,13 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
-func BuildDataMaps(genHash string, fileTryteSize int) (vErr *validate.Errors, err error) {
-	fileChunksCount := oyster_utils.GetTotalFileChunkIncludingBuriedPearls(oyster_utils.ConvertToByte(fileTryteSize))
+func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err error) {
+
+	fileChunksCount := numChunks
+
+	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		fileChunksCount = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks)
+	}
 
 	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
 	columnNames := operation.GetColumns()
@@ -282,4 +287,14 @@ func insertsIntoDataMapsTable(columnsName string, values string) error {
 
 	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
 	return DB.RawQuery(rawQuery).All(&[]DataMap{})
+}
+
+// GetDataMapByGenesisHashAndChunkIdx lets you pass in genesis hash and chunk idx as
+// parameters to get a specific data map
+func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]DataMap, error) {
+	dataMaps := []DataMap{}
+	err := DB.Where("genesis_hash = ?",
+		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
+
+	return dataMaps, err
 }

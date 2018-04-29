@@ -15,6 +15,8 @@ var (
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
+	numChunks := 31
+
 	// reset back to generic mocks
 	defer suite.SetupSuite()
 
@@ -29,6 +31,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -37,6 +40,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession2 := models.UploadSession{
 		GenesisHash:    "genHash2",
+		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
@@ -45,7 +49,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession3 := models.UploadSession{
 		GenesisHash:    "genHash3",
-		FileSizeBytes:  25000,
+		NumChunks:      numChunks,
+		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -53,7 +58,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	uploadSession4 := models.UploadSession{
 		GenesisHash:    "genHash4",
-		FileSizeBytes:  20000,
+		NumChunks:      numChunks,
+		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
 		TreasureStatus: models.TreasureBuried,
@@ -90,7 +96,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-	suite.Equal(31, len(AllChunksCalled))
+	suite.Equal(4*(numChunks+1), len(AllChunksCalled)) // 4 data maps so 4 chunks have been added
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
@@ -104,21 +110,28 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	If BundleSize is changed, these tests will need to be changed.
 	*/
-	for i, chunk := range AllChunksCalled {
-		if i >= 0 && i < 10 {
-			suite.Equal("genHash4", chunk.GenesisHash)
-			suite.Equal(true, AllChunksCalled[i].ChunkIdx > AllChunksCalled[i+1].ChunkIdx)
-		} else if i > 10 && i < 13 {
-			suite.Equal("genHash2", chunk.GenesisHash)
-			suite.Equal(true, AllChunksCalled[i].ChunkIdx > AllChunksCalled[i+1].ChunkIdx)
-		} else if i > 13 && i < 16 {
-			suite.Equal("genHash1", chunk.GenesisHash)
-			suite.Equal(true, AllChunksCalled[i].ChunkIdx < AllChunksCalled[i+1].ChunkIdx)
-		} else if i > 16 && i < 30 {
-			suite.Equal("genHash3", chunk.GenesisHash)
-			suite.Equal(true, AllChunksCalled[i].ChunkIdx < AllChunksCalled[i+1].ChunkIdx)
+
+	genHashMapIdx := map[string][]int{}
+	genHashMapOrder := map[string]int{}
+	i := 0
+
+	for _, chunk := range AllChunksCalled {
+		genHashMapIdx[chunk.GenesisHash] = append(genHashMapIdx[chunk.GenesisHash], chunk.ChunkIdx)
+		if _, ok := genHashMapOrder[chunk.GenesisHash]; !ok {
+			genHashMapOrder[chunk.GenesisHash] = i
+			i++
 		}
 	}
+
+	suite.Equal(true, genHashMapIdx["genHash4"][0] > genHashMapIdx["genHash4"][len(genHashMapIdx["genHash4"])-1])
+	suite.Equal(true, genHashMapIdx["genHash2"][0] > genHashMapIdx["genHash2"][len(genHashMapIdx["genHash2"])-1])
+	suite.Equal(true, genHashMapIdx["genHash1"][0] < genHashMapIdx["genHash1"][len(genHashMapIdx["genHash1"])-1])
+	suite.Equal(true, genHashMapIdx["genHash3"][0] < genHashMapIdx["genHash3"][len(genHashMapIdx["genHash3"])-1])
+
+	suite.Equal(0, genHashMapOrder["genHash4"])
+	suite.Equal(1, genHashMapOrder["genHash2"])
+	suite.Equal(2, genHashMapOrder["genHash1"])
+	suite.Equal(3, genHashMapOrder["genHash3"])
 }
 
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {

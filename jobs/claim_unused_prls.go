@@ -4,6 +4,7 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"log"
 	"time"
 )
@@ -15,18 +16,20 @@ func init() {
 
 func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
 
-	SetEthWrapper(ethService)
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+		SetEthWrapper(ethService)
 
-	ResendTimedOutGasTransfers(thresholdTime)
-	ResendTimedOutPRLTransfers(thresholdTime)
+		ResendTimedOutGasTransfers(thresholdTime)
+		ResendTimedOutPRLTransfers(thresholdTime)
 
-	ResendErroredGasTransfers()
-	ResendErroredPRLTransfers()
+		ResendErroredGasTransfers()
+		ResendErroredPRLTransfers()
 
-	SendGasForNewClaims()
-	StartNewClaims()
+		SendGasForNewClaims()
+		StartNewClaims()
 
-	PurgeCompletedClaims()
+		PurgeCompletedClaims()
+	}
 }
 
 func SetEthWrapper(ethService services.Eth) {
