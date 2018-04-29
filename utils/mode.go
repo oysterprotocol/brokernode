@@ -28,11 +28,10 @@ func init() {
 
 	brokerMode := os.Getenv("MODE")
 
-	SetBrokerMode(brokerMode)
+	setBrokerMode(brokerMode)
 }
 
-func SetBrokerMode(brokerMode string) {
-
+func setBrokerMode(brokerMode string) {
 	switch brokerMode {
 	case "PROD_MODE":
 		log.Println("Broker mode set to PROD_MODE")

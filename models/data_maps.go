@@ -289,11 +289,12 @@ func insertsIntoDataMapsTable(columnsName string, values string) error {
 	return DB.RawQuery(rawQuery).All(&[]DataMap{})
 }
 
-func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) (dataMaps []DataMap, err error) {
-	dataMaps = []DataMap{}
-	err = DB.Where("genesis_hash = ?",
+// GetDataMapByGenesisHashAndChunkIdx lets you pass in genesis hash and chunk idx as
+// parameters to get a specific data map
+func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]DataMap, error) {
+	dataMaps := []DataMap{}
+	err := DB.Where("genesis_hash = ?",
 		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
 
 	return dataMaps, err
 }
-

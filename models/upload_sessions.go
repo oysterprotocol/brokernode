@@ -272,6 +272,8 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	return sessionsByAge, nil
 }
 
+// GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
+// we have not yet buried the treasure.
 func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
