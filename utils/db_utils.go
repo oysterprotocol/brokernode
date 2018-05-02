@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ValueT interface{}
@@ -18,8 +19,10 @@ type ValueT interface{}
 type dbUpdateOperation interface {
 	// Get columns in string format and separated by ", "
 	GetColumns() string
-	// Get columns new value in string format and separated by ", "
-	GetNewUpdateValue(ValueT) string
+	// Get columns new value for INSERT in string format and separated by ", "
+	GetNewInsertedValue(ValueT) string
+	// Get columns value for UPDATE operation in string format and separated by ","
+	GetUpdatedValue(ValueT) string
 }
 
 const COLUMNS_SEPARATOR = ", "
@@ -67,7 +70,7 @@ func (s *dbUpdateModel) GetColumns() string {
 	return strings.Join(getSortedColumns(s.columns), COLUMNS_SEPARATOR)
 }
 
-func (s *dbUpdateModel) GetNewUpdateValue(v ValueT) string {
+func (s *dbUpdateModel) GetNewInsertedValue(v ValueT) string {
 	cols := getSortedColumns(s.columns)
 	var columnValues []string
 	stValue := reflect.Indirect(reflect.ValueOf(v))
@@ -92,6 +95,23 @@ func (s *dbUpdateModel) GetNewUpdateValue(v ValueT) string {
 	return strings.Join(columnValues, COLUMNS_SEPARATOR)
 }
 
+func (s *dbUpdateModel) GetUpdatedValue(v ValueT) string {
+	cols := getSortedColumns(s.columns)
+	var columnValues []string
+	stValue := reflect.Indirect(reflect.ValueOf(v))
+
+	for _, t := range cols {
+		if t == "update_at" {
+			columnValues = append(columnValues, "NOW()")
+			continue
+		}
+		if f := s.fieldMap[t]; len(f) > 0 {
+			columnValues = append(columnValues, getStringPresentation(stValue.FieldByName(f)))
+		}
+	}
+	return strings.Join(columnValues, COLUMNS_SEPARATOR)
+}
+
 // Returns a sorted column name list.
 func getSortedColumns(cols columns.Columns) []string {
 	var columnNames []string
@@ -109,7 +129,22 @@ func getStringPresentation(v reflect.Value) string {
 		return strconv.FormatInt(v.Int(), 10)
 	case reflect.String:
 		return fmt.Sprintf("'%v'", v.String())
-	default:
-		panic(errors.Errorf("No implemented type %v", v.String()))
 	}
+
+	switch v.Type().String() {
+	case "time.Time":
+		t := v.Interface().(time.Time)
+		// This is the format SQL like.
+		return fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05"))
+	case "uuid.UUID":
+		// convert slice of []uint8 to uuid.UUID
+		id := uuid.UUID{}
+		for i := 0; i < v.Len(); i++ {
+			id[i] = byte(v.Index(i).Uint())
+		}
+
+		return fmt.Sprintf("'%s'", id.String())
+	}
+
+	panic(errors.Errorf("No implemented type %v", v.String()))
 }
