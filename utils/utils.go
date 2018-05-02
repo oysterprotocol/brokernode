@@ -119,7 +119,7 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 
 // Return the IdxMap for treasure to burried
 func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
-	mergedIndexes, err := mergeIndexes(alphaIndexes, betaIndexs)
+	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
 	var idxMap nulls.String
 	if err == nil {
 		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
@@ -178,7 +178,7 @@ func IntsSplit(a string, delim string) []int {
 
 // Private methods
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
-func mergeIndexes(a []int, b []int) ([]int, error) {
+func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		return nil, errors.New("Invalid input")

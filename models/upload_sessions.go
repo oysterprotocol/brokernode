@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math"
+	"os"
 	"time"
 
 	"github.com/getsentry/raven-go"
@@ -60,7 +61,8 @@ const (
 )
 
 const (
-	TreasureUnburied int = iota + 1
+	TreasureGeneratingKeys int = iota + 1
+	TreasureBurying
 	TreasureBuried
 )
 
@@ -122,9 +124,9 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 			u.PaymentStatus = PaymentStatusPending
 		}
 
-		// Defaults to treasureUnburied
+		// Defaults to treasureGeneratingKeys
 		if u.TreasureStatus == 0 {
-			u.TreasureStatus = TreasureUnburied
+			u.TreasureStatus = TreasureGeneratingKeys
 		}
 	case oyster_utils.TestModeDummyTreasure:
 		// Defaults to paymentStatusPaid
@@ -132,9 +134,9 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 			u.PaymentStatus = PaymentStatusPaid
 		}
 
-		// Defaults to treasureUnburied
+		// Defaults to treasureBurying
 		if u.TreasureStatus == 0 {
-			u.TreasureStatus = TreasureUnburied
+			u.TreasureStatus = TreasureBurying
 		}
 	case oyster_utils.TestModeNoTreasure:
 		// Defaults to paymentStatusPaid
@@ -216,6 +218,7 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 			raven.CaptureError(err, nil)
 		}
 	}
+
 	return treasureIndex, err
 }
 
@@ -231,6 +234,46 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
 	DB.ValidateAndSave(u)
 	return nil
+}
+
+// Sets the TreasureIdxMap with Sector, Idx, and Key
+func (u *UploadSession) MakeTreasureIdxMap(alphaIndexes []int, betaIndexs []int) {
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexs)
+	treasureIndexArray := make([]TreasureMap, 0)
+
+	key := ""
+
+	if oyster_utils.BrokerMode == oyster_utils.TestModeDummyTreasure {
+		key = os.Getenv("TEST_MODE_WALLET_KEY")
+	}
+
+	for i, mergedIndex := range mergedIndexes {
+		treasureIndexArray = append(treasureIndexArray, TreasureMap{
+			Sector: i,
+			Idx:    mergedIndex,
+			Key:    key, // TODO where are we getting the real keys?
+		})
+	}
+
+	treasureString, err := json.Marshal(treasureIndexArray)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
+	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	DB.ValidateAndSave(u)
+}
+
+func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
+	treasureMap, err := u.GetTreasureMap()
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	treasureIndexArray := make([]int, 0)
+	for _, treasure := range treasureMap {
+		treasureIndexArray = append(treasureIndexArray, treasure.Idx)
+	}
+	return treasureIndexArray, err
 }
 
 func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
@@ -278,7 +321,7 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusPaid, TreasureUnburied).All(&unburiedSessions)
+		PaymentStatusPaid, TreasureBurying).All(&unburiedSessions)
 
 	return unburiedSessions, err
 }

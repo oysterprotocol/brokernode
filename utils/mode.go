@@ -1,8 +1,6 @@
 package oyster_utils
 
 import (
-	"github.com/getsentry/raven-go"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 )
@@ -19,19 +17,12 @@ var BrokerMode ModeStatus
 
 func init() {
 
-	// Load ENV variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Error loading .env file")
-		raven.CaptureError(err, nil)
-	}
-
-	brokerMode := os.Getenv("MODE")
-
-	setBrokerMode(brokerMode)
+	ResetBrokerMode()
 }
 
-func setBrokerMode(brokerMode string) {
+func ResetBrokerMode() {
+	brokerMode := os.Getenv("MODE")
+
 	switch brokerMode {
 	case "PROD_MODE":
 		log.Println("Broker mode set to PROD_MODE")
@@ -46,4 +37,8 @@ func setBrokerMode(brokerMode string) {
 		log.Println("No MODE given, defaulting to PROD_MODE")
 		BrokerMode = ProdMode
 	}
+}
+
+func SetBrokerMode(brokerMode ModeStatus) {
+	BrokerMode = brokerMode
 }

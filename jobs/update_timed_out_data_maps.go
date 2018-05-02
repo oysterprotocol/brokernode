@@ -1,10 +1,12 @@
 package jobs
 
 import (
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 func init() {
@@ -21,17 +23,17 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 
 	if len(timedOutDataMaps) > 0 {
 
-		//when we bring back hooknodes, do decrement somewhere in here
+		//when we bring back hooknodes, do decrement score somewhere in here
 
 		for _, timedOutDataMap := range timedOutDataMaps {
-			//go services.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "chunk_timed_out",
-			//	UserId: services.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("address", timedOutDataMap.Address).
-			//		Set("genesis_hash", timedOutDataMap.GenesisHash).
-			//		Set("chunk_idx", timedOutDataMap.ChunkIdx),
-			//})
+			go oyster_utils.SegmentClient.Enqueue(analytics.Track{
+				Event:  "chunk_timed_out",
+				UserId: oyster_utils.GetLocalIP(),
+				Properties: analytics.NewProperties().
+					Set("address", timedOutDataMap.Address).
+					Set("genesis_hash", timedOutDataMap.GenesisHash).
+					Set("chunk_idx", timedOutDataMap.ChunkIdx),
+			})
 
 			timedOutDataMap.Status = models.Unassigned
 			models.DB.ValidateAndSave(&timedOutDataMap)

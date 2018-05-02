@@ -4,6 +4,8 @@ import (
 	raven "github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 func init() {
@@ -42,14 +44,14 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 	if len(filteredChunks.MatchesTangle) > 0 {
 
 		for _, matchingChunk := range filteredChunks.MatchesTangle {
-			//go services.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "chunk_matched_tangle",
-			//	UserId: services.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("address", matchingChunk.Address).
-			//		Set("genesis_hash", matchingChunk.GenesisHash).
-			//		Set("chunk_idx", matchingChunk.ChunkIdx),
-			//})
+			go oyster_utils.SegmentClient.Enqueue(analytics.Track{
+				Event:  "chunk_matched_tangle",
+				UserId: oyster_utils.GetLocalIP(),
+				Properties: analytics.NewProperties().
+					Set("address", matchingChunk.Address).
+					Set("genesis_hash", matchingChunk.GenesisHash).
+					Set("chunk_idx", matchingChunk.ChunkIdx),
+			})
 
 			matchingChunk.Status = models.Complete
 			models.DB.ValidateAndSave(&matchingChunk)
@@ -61,14 +63,14 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 		// when we bring back hooknodes, decrement their reputation here
 
 		for _, notMatchingChunk := range filteredChunks.DoesNotMatchTangle {
-			//go services.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "resend_chunk_tangle_mismatch",
-			//	UserId: services.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("address", notMatchingChunk.Address).
-			//		Set("genesis_hash", notMatchingChunk.GenesisHash).
-			//		Set("chunk_idx", notMatchingChunk.ChunkIdx),
-			//})
+			go oyster_utils.SegmentClient.Enqueue(analytics.Track{
+				Event:  "resend_chunk_tangle_mismatch",
+				UserId: oyster_utils.GetLocalIP(),
+				Properties: analytics.NewProperties().
+					Set("address", notMatchingChunk.Address).
+					Set("genesis_hash", notMatchingChunk.GenesisHash).
+					Set("chunk_idx", notMatchingChunk.ChunkIdx),
+			})
 
 			// if a chunk did not match the tangle in verify_data_maps
 			// we mark it as "Error" and there is no reason to check the tangle
