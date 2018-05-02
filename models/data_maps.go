@@ -135,7 +135,7 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 		}
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
-		values = append(values, fmt.Sprintf("(%s)", operation.GetNewUpdateValue(dataMap)))
+		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
 
 		currHash = oyster_utils.HashString(currHash, sha256.New())
 
