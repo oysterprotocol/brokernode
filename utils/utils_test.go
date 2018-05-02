@@ -149,19 +149,19 @@ func Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNextSector(t *testing
 }
 
 func Test_MergedIndexes_EmptyIndexes(t *testing.T) {
-	_, err := mergeIndexes([]int{}, nil)
+	_, err := MergeIndexes([]int{}, nil)
 
 	assertTrue(err != nil, t, "")
 }
 
 func Test_MergedIndexes_OneNonEmptyIndexes(t *testing.T) {
-	_, err := mergeIndexes(nil, []int{1, 2})
+	_, err := MergeIndexes(nil, []int{1, 2})
 
 	assertTrue(err != nil, t, "Must result an error")
 }
 
 func Test_MergeIndexes_SameSize(t *testing.T) {
-	indexes, _ := mergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
+	indexes, _ := MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
 
 	assertTrue(len(indexes) == 3, t, "Must result an error")
 }

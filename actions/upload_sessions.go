@@ -116,9 +116,9 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
 	}
 
-	// Update alpha treasure idx map.
-	alphaSession.TreasureIdxMap = oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	err = models.DB.Save(&alphaSession)
+	// Update alpha treasure idx map.
+	alphaSession.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,8 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
 	}
-	treasureIdxMap := oyster_utils.GetTreasureIdxIndexes(uploadSession.TreasureIdxMap)
+	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
+
 	// Update dMaps to have chunks async
 	go func() {
 		// Map over chunks from request
@@ -210,13 +211,14 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		NumChunks:            req.NumChunks,
 		FileSizeBytes:        req.FileSizeBytes,
 		StorageLengthInYears: req.StorageLengthInYears,
-		TreasureIdxMap:       oyster_utils.GetTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes),
 		TotalCost:            req.Invoice.Cost,
 		ETHAddrAlpha:         req.Invoice.EthAddress,
 		ETHAddrBeta:          nulls.NewString(betaEthAddr),
 		ETHPrivateKey:        privKey,
 	}
 	vErr, err := u.StartUploadSession()
+
+	u.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
 		return err
 	}

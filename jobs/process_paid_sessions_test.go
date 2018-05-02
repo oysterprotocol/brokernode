@@ -24,7 +24,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		"idx": ` + fmt.Sprint(treasureIndexes[5]) + `,
 		"key": "firstKeyFirstMap"
 		},
-		{ 
+		{
 		"sector": 2,
 		"idx": ` + fmt.Sprint(treasureIndexes[78]) + `,
 		"key": "secondKeyFirstMap"
@@ -42,7 +42,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		"idx": 155,
 		"key": "firstKeySecondMap"
 		},
-		{ 
+		{
 		"sector": 2,
 		"idx": 204,
 		"key": "secondKeySecondMap"
@@ -60,7 +60,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusPaid,
-		TreasureStatus: models.TreasureUnburied,
+		TreasureStatus: models.TreasureBurying,
 		TreasureIdxMap: nulls.String{string(testMap1), true},
 	}
 

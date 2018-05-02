@@ -3,6 +3,8 @@ package models_test
 import (
 	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"os"
 	"time"
 )
 
@@ -160,7 +162,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPaid,
-		TreasureStatus: models.TreasureUnburied,
+		TreasureStatus: models.TreasureBurying,
 	}
 	uploadSession5 := models.UploadSession{ // will not be in the array
 		GenesisHash:    "genHash5",
@@ -168,7 +170,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPending,
-		TreasureStatus: models.TreasureUnburied,
+		TreasureStatus: models.TreasureBurying,
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
@@ -203,4 +205,93 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	ms.Equal("genHash1", sessions[1].GenesisHash)
 	ms.Equal("genHash2", sessions[2].GenesisHash)
 	ms.Equal(3, len(sessions))
+}
+
+func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
+
+	defer oyster_utils.ResetBrokerMode()
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	genHash := "genHashTest"
+	fileSizeBytes := 123
+	numChunks := 2
+	storageLengthInYears := 3
+	alphaIndexes := []int{2, 1200000, 2340000}
+	betaIndexes := []int{888888, 1900000, 2777777}
+
+	// This map seems pointless but it makes the testing
+	// in the for loop later on a bit simpler
+	t := map[int]models.TreasureMap{}
+	t[0] = models.TreasureMap{
+		Sector: 0,
+		Idx:    444445,
+		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
+	}
+	t[1] = models.TreasureMap{
+		Sector: 1,
+		Idx:    1550000,
+		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
+	}
+	t[2] = models.TreasureMap{
+		Sector: 2,
+		Idx:    2558888,
+		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
+	}
+
+	treasureIndexArray := make([]models.TreasureMap, 0)
+	treasureIndexArray = append(treasureIndexArray, t[0])
+	treasureIndexArray = append(treasureIndexArray, t[1])
+	treasureIndexArray = append(treasureIndexArray, t[2])
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	vErr, err := u.StartUploadSession()
+	u.MakeTreasureIdxMap(alphaIndexes, betaIndexes)
+
+	treasureIdxMap, err := u.GetTreasureMap()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	// When we update MergeIndexes to hash the indexes, this test will start failing
+	ms.Equal(treasureIndexArray, treasureIdxMap)
+}
+
+func (ms *ModelSuite) Test_GetTreasureIndexes() {
+
+	defer oyster_utils.ResetBrokerMode()
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	genHash := "genHashTest"
+	fileSizeBytes := 123
+	numChunks := 2
+	storageLengthInYears := 3
+	alphaIndexes := []int{2, 1200000, 2340000}
+	betaIndexes := []int{888888, 1900000, 2777777}
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	expectedIndexes := make([]int, 0)
+	expectedIndexes = append(expectedIndexes, 444445)
+	expectedIndexes = append(expectedIndexes, 1550000)
+	expectedIndexes = append(expectedIndexes, 2558888)
+
+	vErr, err := u.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	u.MakeTreasureIdxMap(alphaIndexes, betaIndexes)
+	actualIndexes, err := u.GetTreasureIndexes()
+
+	// When we update MergeIndexes to hash the indexes, this test will start failing
+	ms.Equal(expectedIndexes, actualIndexes)
 }
