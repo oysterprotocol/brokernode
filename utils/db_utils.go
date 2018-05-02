@@ -137,12 +137,7 @@ func getStringPresentation(v reflect.Value) string {
 		// This is the format SQL like.
 		return fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05"))
 	case "uuid.UUID":
-		// convert slice of []uint8 to uuid.UUID
-		id := uuid.UUID{}
-		for i := 0; i < v.Len(); i++ {
-			id[i] = byte(v.Index(i).Uint())
-		}
-
+		id := v.Interface().(uuid.UUID)
 		return fmt.Sprintf("'%s'", id.String())
 	}
 
