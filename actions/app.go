@@ -82,6 +82,10 @@ func App() *buffalo.App {
 		transactionGenesisHashResource := TransactionGenesisHashResource{}
 		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
 		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
+
+		// Treasures
+		treasures := TreasuresResource{}
+		apiV2.POST("treasures", treasures.VerifyAndClaim)
 	}
 
 	return app

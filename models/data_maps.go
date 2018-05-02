@@ -135,7 +135,7 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 		}
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
-		values = append(values, fmt.Sprintf("(%s)", operation.GetNewUpdateValue(dataMap)))
+		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
 
 		currHash = oyster_utils.HashString(currHash, sha256.New())
 
@@ -289,11 +289,12 @@ func insertsIntoDataMapsTable(columnsName string, values string) error {
 	return DB.RawQuery(rawQuery).All(&[]DataMap{})
 }
 
-func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) (dataMaps []DataMap, err error) {
-	dataMaps = []DataMap{}
-	err = DB.Where("genesis_hash = ?",
+// GetDataMapByGenesisHashAndChunkIdx lets you pass in genesis hash and chunk idx as
+// parameters to get a specific data map
+func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]DataMap, error) {
+	dataMaps := []DataMap{}
+	err := DB.Where("genesis_hash = ?",
 		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
 
 	return dataMaps, err
 }
-
