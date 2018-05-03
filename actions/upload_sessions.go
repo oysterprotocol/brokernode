@@ -210,7 +210,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		}
 
 		// Do an insert operation and dup by primary key.
-		rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status)",
+		rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
 			dbOperation.GetColumns(), strings.Join(updatedDms, ","))
 		err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap)
 
