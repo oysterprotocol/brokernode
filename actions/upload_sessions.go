@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"fmt"
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
@@ -12,6 +13,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
+	"strings"
 )
 
 type UploadSessionResource struct {
@@ -155,14 +157,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	// Update dMaps to have chunks async
 	go func() {
-		// Map over chunks from request
-		// TODO: Batch processing DB upserts.
-		dMaps := make([]models.DataMap, len(req.Chunks))
-
-		for i, chunk := range req.Chunks {
-			// Fetch DataMap
-			dm := models.DataMap{}
-
+		var sqlWhereClosures []string
+		chunksMap := make(map[string]Chunks)
+		for _, chunk := range req.Chunks {
 			var chunkIdx int
 			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 				chunkIdx = chunk.Idx
@@ -170,25 +167,55 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
 			}
 
-			err := models.DB.RawQuery(
-				"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx = ?", uploadSession.GenesisHash, chunkIdx).First(&dm)
+			key := sqlWhereForGenesisHashAndChunkIdx(uploadSession.GenesisHash, chunkIdx)
+			sqlWhereClosures = append(sqlWhereClosures, key)
+			chunksMap[key] = chunk
+		}
 
-			if err != nil {
-				raven.CaptureError(err, nil)
+		var dms []models.DataMap
+		rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosure, " OR "))
+		err := models.DB.RawQuery(rawQuery).All(&dms)
+
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
+
+		dmsMap := make(map[string]models.DataMap)
+		for _, dm := range dms {
+			key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
+			// Only use the first one
+			if _, hasKey := dmsMap[key]; !hasKey {
+				dmsMap[key] = dm
+			}
+		}
+
+		dbOperation := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+		var updatedDms []string
+		for key, chunk := range chunksMap {
+			dm, hasKey := dmsMap[key]
+			if !hasKey {
+				continue
 			}
 
-			// Simple check if hashes match.
 			if chunk.Hash == dm.GenesisHash {
-				// Updates dmap in DB.
 				dm.Message = chunk.Data
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
-
-				models.DB.ValidateAndSave(&dm)
+				vErr, _ := dm.Validate(nil)
+				if len(vErr.Error) == 0 {
+					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
+				}
 			}
+		}
 
-			dMaps[i] = dm
+		// Do an insert operation and dup by primary key.
+		rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
+			dbOperation.GetColumns(), strings.Join(updatedDms, ","))
+		err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap)
+
+		if err != nil {
+			raven.CaptureError(err, nil)
 		}
 	}()
 
@@ -252,4 +279,8 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
+}
+
+func sqlWhereForGenesisHashAndChunkIdx(string genesisHash, int chunkIdx) string {
+	return fmt.Sprintf("(genesis_hash = %s AND chunk_idx = %d)", uploadSession.GenesisHash, chunkIdx)
 }
