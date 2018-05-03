@@ -298,3 +298,30 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]Dat
 
 	return dataMaps, err
 }
+
+func GetDataMap(genHash string, numChunks int) (dataMap []DataMap, vErr *validate.Errors) {
+
+	fileChunksCount := numChunks
+
+	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		fileChunksCount = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks)
+	}
+
+	currHash := genHash
+	for i := 0; i < fileChunksCount; i++ {
+		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
+		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
+
+		dataMap := DataMap{
+			GenesisHash:    genHash,
+			ChunkIdx:       i,
+			Hash:           currHash,
+			ObfuscatedHash: obfuscatedHash,
+			Address:        currAddr,
+			Status:         Pending,
+		}
+		// Validate the data
+		vErr, _ = dataMap.Validate(nil)
+	}
+	return
+}
