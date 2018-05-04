@@ -197,8 +197,8 @@ func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel
 func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) error {
 
-	//defer oysterUtils.TimeTrack(time.Now(), "doPow_using_" + powName, analytics.NewProperties().
-	//	Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)))
+	defer oysterUtils.TimeTrack(time.Now(), "doPow_using_"+powName, analytics.NewProperties().
+		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)))
 
 	var prev giota.Trytes
 	var err error
