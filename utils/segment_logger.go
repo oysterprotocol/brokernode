@@ -21,6 +21,17 @@ func init() {
 	}
 }
 
+func LogToSegment(name string, properties analytics.Properties) {
+	if segmentWriteKey != "" {
+
+		go SegmentClient.Enqueue(analytics.Track{
+			Event:      name,
+			UserId:     GetLocalIP(),
+			Properties: properties,
+		})
+	}
+}
+
 func GetLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
