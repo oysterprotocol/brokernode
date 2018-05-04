@@ -158,7 +158,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	// Update dMaps to have chunks async
 	go func() {
 		var sqlWhereClosures []string
-		chunksMap := make(map[string]Chunks)
+		chunksMap := make(map[string]chunkReq)
 		for _, chunk := range req.Chunks {
 			var chunkIdx int
 			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
@@ -173,7 +173,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		}
 
 		var dms []models.DataMap
-		rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosure, " OR "))
+		rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
 		err := models.DB.RawQuery(rawQuery).All(&dms)
 
 		if err != nil {
@@ -189,7 +189,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 		}
 
-		dbOperation := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 		var updatedDms []string
 		for key, chunk := range chunksMap {
 			dm, hasKey := dmsMap[key]
@@ -203,7 +203,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 					dm.Status = models.Unassigned
 				}
 				vErr, _ := dm.Validate(nil)
-				if len(vErr.Error) == 0 {
+				if len(vErr.Errors) == 0 {
 					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
 				}
 			}
@@ -212,7 +212,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		// Do an insert operation and dup by primary key.
 		rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
 			dbOperation.GetColumns(), strings.Join(updatedDms, ","))
-		err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap)
+		err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
 
 		if err != nil {
 			raven.CaptureError(err, nil)
@@ -281,6 +281,6 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	return c.Render(200, r.JSON(res))
 }
 
-func sqlWhereForGenesisHashAndChunkIdx(string genesisHash, int chunkIdx) string {
-	return fmt.Sprintf("(genesis_hash = %s AND chunk_idx = %d)", uploadSession.GenesisHash, chunkIdx)
+func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
+	return fmt.Sprintf("(genesis_hash = %s AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
