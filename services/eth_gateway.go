@@ -7,6 +7,8 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"os"
 	"sync"
@@ -20,7 +22,7 @@ import (
 
 type Eth struct {
 	SendGas             SendGas
-	ClaimPRLs           ClaimPRLs
+	ClaimUnusedPRLs     ClaimUnusedPRLs
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
 	SendETH             SendETH
@@ -32,7 +34,7 @@ type Eth struct {
 }
 
 type SendGas func([]models.CompletedUpload) error
-type ClaimPRLs func([]models.CompletedUpload) error
+type ClaimUnusedPRLs func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr string, privKey string, err error)
 type BuryPrl func()
 type SendETH func(fromAddr common.Address, toAddr common.Address, amt float64)
@@ -70,7 +72,7 @@ func init() {
 
 	EthWrapper = Eth{
 		SendGas:         sendGas,
-		ClaimPRLs:       claimPRLs,
+		ClaimUnusedPRLs: claimUnusedPRLs,
 		GenerateEthAddr: generateEthAddr,
 		BuryPrl:         buryPrl,
 		SendETH:         sendETH,
@@ -114,6 +116,9 @@ func generateEthAddr() (addr string, privKey string, err error) {
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
 	privKey = hex.EncodeToString(ethAccount.D.Bytes())
 
+	oyster_utils.LogToSegment("generated_new_eth_address", analytics.NewProperties().
+		Set("eth_address", fmt.Sprint(addr)))
+
 	return
 }
 
@@ -124,11 +129,20 @@ func buryPrl() {
 		At a high level, what this method will have to do is send PRLs from the transaction address to each 'treasure'
 		address, and invoke the smart contract bury() function on them.
 	*/
+
+	//oyster_utils.LogToSegment("bury_invoked", analytics.NewProperties().
+	//	Set("eth_address", fmt.Sprint(addr)))
 }
 
 func sendGas(completedUploads []models.CompletedUpload) error {
 	//gas, err := GetGasPrice()
 	//for _, completedUpload := range completedUploads {
+
+	//oyster_utils.LogToSegment("sending_gas", analytics.NewProperties().
+	//	Set("eth_address_from", MainWalletAddress).
+	//	Set("eth_address_to", completedUpload.ETHAddr).
+	//	Set("genesis_hash", completedUpload.GenesisHash))
+
 	//	Eth.SendETH(MainWalletAddress, completedUpload.ETHAddr, float64(gas))
 	//}
 	//if err != nil {
@@ -142,7 +156,7 @@ func sendETH(fromAddr common.Address, toAddr common.Address, amt float64) {
 	// TODO
 }
 
-func claimPRLs(completedUploads []models.CompletedUpload) error {
+func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 
 	//for _, completedUpload := range completedUploads {
 	//	/* TODO:
@@ -156,6 +170,12 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 	//	    balance of completedUpload.ETHAddr as the "amt" to send, and
 	//	    subscribe to the event with SubscribeToTransfer.
 	//	*/
+
+	//oyster_utils.LogToSegment("send_unused_prls_back_to_broker", analytics.NewProperties().
+	//	Set("eth_address_from", completedUpload.ETHAddr).
+	//	Set("eth_address_to", MainWalletAddress).
+	//	Set("genesis_hash", completedUpload.GenesisHash))
+
 	//}
 	//if err != nil {
 	//	return err
@@ -180,6 +200,9 @@ func sendPRL(fromAddr common.Address, toAddr common.Address, amt float64) {
 // sending PRL to the brokerAddr given. Notifications
 // will be sent in the out channel provided.
 func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
+
+	/*TODO:  Add segment logging of a detected transfer event */
+
 	ethCl, _ := sharedClient()
 
 	ctx := context.Background() // TODO: Should we have some timeout or cancel?

@@ -299,6 +299,19 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]Dat
 	return dataMaps, err
 }
 
+func MapChunkIndexesAndAddresses(chunks []DataMap) ([]string, []int) {
+
+	addrs := make([]string, 0, len(chunks))
+	indexes := make([]int, 0, len(chunks))
+
+	for _, chunk := range chunks {
+		addrs = append(addrs, chunk.Address)
+		indexes = append(indexes, chunk.ChunkIdx)
+	}
+
+	return addrs, indexes
+}
+
 func GetDataMap(genHash string, numChunks int) (dataMap []DataMap, vErr *validate.Errors) {
 
 	fileChunksCount := numChunks

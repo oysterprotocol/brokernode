@@ -3,6 +3,8 @@ package jobs
 import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 )
 
@@ -80,6 +82,10 @@ func PurgeCompletedSessions() {
 				if err != nil {
 					return err
 				}
+
+				oyster_utils.LogToSegment("completed_session_purged", analytics.NewProperties().
+					Set("genesis_hash", genesisHash).
+					Set("session_id", session[0].ID))
 
 				return nil
 			})

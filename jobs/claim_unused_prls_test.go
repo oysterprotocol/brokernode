@@ -8,11 +8,11 @@ import (
 )
 
 var (
-	sendGasMockCalled_claim_unusued_prls   = false
-	claimPRLsMockCalled_claim_unusued_prls = false
-	EthMock                                = services.EthMock
-	SentToClaimPRLs                        []models.CompletedUpload
-	SentToSendGas                          []models.CompletedUpload
+	sendGasMockCalled_claim_unusued_prls         = false
+	claimUnusedPRLsMockCalled_claim_unusued_prls = false
+	EthMock                                      = services.EthMock
+	SentToClaimUnusedPRLs                        []models.CompletedUpload
+	SentToSendGas                                []models.CompletedUpload
 )
 
 var (
@@ -65,20 +65,20 @@ func testResendTimedOutGasTransfers(suite *JobsSuite) {
 }
 
 func testResendTimedOutPRLTransfers(suite *JobsSuite) {
-	suite.Equal(0, len(SentToClaimPRLs))
-	suite.Equal(false, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, len(SentToClaimUnusedPRLs))
+	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
 
 	jobs.ResendTimedOutPRLTransfers(time.Now().Add(20 * time.Minute))
 	// should be one timed out
-	suite.Equal(1, len(SentToClaimPRLs))
-	suite.Equal(true, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, len(SentToClaimUnusedPRLs))
+	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
 
 	resetTestVariables()
 
 	jobs.ResendTimedOutPRLTransfers(time.Now().Add(-20 * time.Minute))
 	// should be none, nothing timed out yet
-	suite.Equal(0, len(SentToClaimPRLs))
-	suite.Equal(false, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, len(SentToClaimUnusedPRLs))
+	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
 }
 
 func testResendErroredGasTransfers(suite *JobsSuite) {
@@ -97,14 +97,14 @@ func testResendErroredGasTransfers(suite *JobsSuite) {
 func testResendErroredPRLTransfers(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimPRLs))
-	suite.Equal(false, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, len(SentToClaimUnusedPRLs))
+	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
 
 	jobs.ResendErroredPRLTransfers()
 
 	// should be one error'd prl transfer that gets resent
-	suite.Equal(1, len(SentToClaimPRLs))
-	suite.Equal(true, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, len(SentToClaimUnusedPRLs))
+	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
 }
 
 func testSendGasForNewClaims(suite *JobsSuite) {
@@ -123,14 +123,14 @@ func testSendGasForNewClaims(suite *JobsSuite) {
 func testStartNewClaims(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimPRLs))
-	suite.Equal(false, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, len(SentToClaimUnusedPRLs))
+	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
 
 	jobs.StartNewClaims()
 
 	// should be one new prl claim that gets sent
-	suite.Equal(1, len(SentToClaimPRLs))
-	suite.Equal(true, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, len(SentToClaimUnusedPRLs))
+	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
 }
 
 func testInitiateGasTransfer(suite *JobsSuite) {
@@ -153,8 +153,8 @@ func testInitiateGasTransfer(suite *JobsSuite) {
 func testInitiatePRLClaim(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimPRLs))
-	suite.Equal(false, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, len(SentToClaimUnusedPRLs))
+	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
@@ -163,8 +163,8 @@ func testInitiatePRLClaim(suite *JobsSuite) {
 
 	jobs.InitiatePRLClaim(completedUploads)
 
-	suite.Equal(len(completedUploads), len(SentToClaimPRLs))
-	suite.Equal(true, claimPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(len(completedUploads), len(SentToClaimUnusedPRLs))
+	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
 }
 
 func testPurgeCompletedClaims(suite *JobsSuite) {
@@ -267,24 +267,24 @@ func testSetup(suite *JobsSuite) {
 }
 
 func resetTestVariables() {
-	SentToClaimPRLs = nil
-	SentToClaimPRLs = []models.CompletedUpload{}
+	SentToClaimUnusedPRLs = nil
+	SentToClaimUnusedPRLs = []models.CompletedUpload{}
 
 	SentToSendGas = nil
 	SentToSendGas = []models.CompletedUpload{}
 
 	sendGasMockCalled_claim_unusued_prls = false
-	claimPRLsMockCalled_claim_unusued_prls = false
+	claimUnusedPRLsMockCalled_claim_unusued_prls = false
 }
 
 func makeEthMocks_claim_unused_prls(ethMock *services.Eth) {
-	ethMock.ClaimPRLs = claimPRLsMock_claim_unusued_prls
+	ethMock.ClaimUnusedPRLs = claimUnusedPRLsMock_claim_unusued_prls
 	ethMock.SendGas = sendGasMock_claim_unusued_prls
 }
 
-func claimPRLsMock_claim_unusued_prls(uploads []models.CompletedUpload) error {
-	SentToClaimPRLs = append(SentToClaimPRLs, uploads...)
-	claimPRLsMockCalled_claim_unusued_prls = true
+func claimUnusedPRLsMock_claim_unusued_prls(uploads []models.CompletedUpload) error {
+	SentToClaimUnusedPRLs = append(SentToClaimUnusedPRLs, uploads...)
+	claimUnusedPRLsMockCalled_claim_unusued_prls = true
 	return nil
 }
 

@@ -4,6 +4,8 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 func init() {
@@ -33,6 +35,12 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 
 		chunks, err := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 		AssignChunksToChannels(chunks, channels, iotaWrapper)
+
+		oyster_utils.LogToSegment("processing_chunks_for_session", analytics.NewProperties().
+			Set("genesis_hash", session.GenesisHash).
+			Set("num_chunks_processing", len(chunks)).
+			Set("num_ready_channels", len(channels)))
+
 		if len(chunks) == len(channels)*BundleSize {
 			// we have used up all the channels, no point in doing the for loop again
 			break
@@ -62,6 +70,15 @@ func AssignChunksToChannels(chunks []models.DataMap, channels []models.ChunkChan
 		chunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
 
 		if len(chunksToSend) > 0 {
+
+			addresses, indexes := models.MapChunkIndexesAndAddresses(chunksToSend)
+
+			oyster_utils.LogToSegment("sending_chunks_to_channel", analytics.NewProperties().
+				Set("genesis_hash", chunksToSend[0].GenesisHash).
+				Set("channel_id", channels[j].ChannelID).
+				Set("addresses", addresses).
+				Set("chunk_indexes", indexes))
+
 			iotaWrapper.SendChunksToChannel(chunksToSend, &channels[j])
 		}
 		if len(filteredChunks.MatchesTangle) > 0 {
