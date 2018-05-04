@@ -1,14 +1,14 @@
 package actions
 
 import (
-	"fmt"
-	"os"
-	"time"
-	"strings"
+	//"fmt"
 	"github.com/gobuffalo/buffalo"
-	"github.com/iotaledger/giota"
-	"github.com/oysterprotocol/brokernode/models"
+	//"github.com/iotaledger/giota"
+	//"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
+	//"os"
+	//"strings"
+	"time"
 )
 
 type TreasuresResource struct {
@@ -37,37 +37,37 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	host_ip := os.Getenv("HOST_IP")
-	provider := "http://" + host_ip + ":14265"
-	api := giota.NewAPI(provider, nil)
-	ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
-	resp, err := api.FindTransactions(ftr)
+	//host_ip := os.Getenv("HOST_IP")
+	//provider := "http://" + host_ip + ":14265"
+	//api := giota.NewAPI(provider, nil)
+	//ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
+	//resp, err := api.FindTransactions(ftr)
 
-	datamap1, vErr := models.GetDataMap(req.GenesisHash, req.NumChunks)
-	for _, d := range datamap1 {
-		
-	}
-	// or 
-	
-	vErr, error := models.BuildDataMaps(req.GenesisHash, req.NumChunks)
-	datamap, err := models.GetDataMapByGenesisHashAndChunkIdx(req.GenesisHash, req.NumChunks)
-	for _, d := range datamap {
-		
-	}
-	
-	var transactions[2] int64
+	//datamap1, vErr := models.GetDataMap(req.GenesisHash, req.NumChunks)
+	//for _, d := range datamap1 {
+	//
+	//}
+	// or
+
+	//vErr, error := models.BuildDataMaps(req.GenesisHash, req.NumChunks)
+	//datamap, err := models.GetDataMapByGenesisHashAndChunkIdx(req.GenesisHash, req.NumChunks)
+	//for _, d := range datamap {
+	//
+	//}
+
+	var transactions [2]int64
 	transactions[0] = 11
 	transactions[0] = 1122
 	epoch := unixMilli(time.Now().AddDate(-1, 0, 0))
-	verifyAttached := true
+	//verifyAttached := true
 	for _, transaction := range transactions {
 		if transaction <= epoch {
-			verifyAttached = false
+			//verifyAttached = false
 		}
 	}
 
 	res := treasureRes{
-		Success:       "true"
+		Success: "true",
 	}
 
 	return c.Render(202, r.JSON(res))

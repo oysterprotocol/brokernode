@@ -26,14 +26,11 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 		//when we bring back hooknodes, do decrement score somewhere in here
 
 		for _, timedOutDataMap := range timedOutDataMaps {
-			go oyster_utils.SegmentClient.Enqueue(analytics.Track{
-				Event:  "chunk_timed_out",
-				UserId: oyster_utils.GetLocalIP(),
-				Properties: analytics.NewProperties().
-					Set("address", timedOutDataMap.Address).
-					Set("genesis_hash", timedOutDataMap.GenesisHash).
-					Set("chunk_idx", timedOutDataMap.ChunkIdx),
-			})
+
+			oyster_utils.LogToSegment("chunk_timed_out", analytics.NewProperties().
+				Set("address", timedOutDataMap.Address).
+				Set("genesis_hash", timedOutDataMap.GenesisHash).
+				Set("chunk_idx", timedOutDataMap.ChunkIdx))
 
 			timedOutDataMap.Status = models.Unassigned
 			models.DB.ValidateAndSave(&timedOutDataMap)

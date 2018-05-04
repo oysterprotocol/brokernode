@@ -5,6 +5,7 @@ import (
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"testing"
 )
 
@@ -63,7 +64,8 @@ func (suite *JobsSuite) SetupSuite() {
 //}
 
 func Test_JobsSuite(t *testing.T) {
-
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+	defer oyster_utils.ResetBrokerMode()
 	as := &JobsSuite{suite.NewModel()}
 	suite.Run(t, as)
 }

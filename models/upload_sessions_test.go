@@ -263,7 +263,7 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 
 func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
-	defer oyster_utils.ResetBrokerMode()
+	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	genHash := "genHashTest"

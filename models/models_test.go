@@ -11,8 +11,8 @@ type ModelSuite struct {
 }
 
 func Test_ModelSuite(t *testing.T) {
-	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	as := &ModelSuite{suite.NewModel()}
 	suite.Run(t, as)
 }
