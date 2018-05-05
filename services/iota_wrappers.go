@@ -233,19 +233,17 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		prev = trytes[i].Hash()
 	}
 
-	go func(trytes []giota.Transaction) {
+	broadcastProperties := analytics.NewProperties().
+		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes))
+
+	go func(trytes []giota.Transaction, broadcastProperties analytics.Properties) {
 
 		err = api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
 			// Async log
-			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "broadcast_fail_redoing_pow",
-			//	UserId: oysterUtils.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
-			//})
+			oyster_utils.LogToSegment("broadcast_FAIL", broadcastProperties)
 
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
@@ -254,19 +252,10 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			err = api.StoreTransactions(trytes)
 			fmt.Println("BROADCAST SUCCESS")
 
-			/*
-				TODO do we need this??
-			*/
-			//go BroadcastTxs(&trytes, broadcastNodes)
-
-			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "broadcast_success",
-			//	UserId: oysterUtils.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
-			//})
+			// Async log
+			oyster_utils.LogToSegment("broadcast_success", broadcastProperties)
 		}
-	}(trytes)
+	}(trytes, broadcastProperties)
 
 	return nil
 }

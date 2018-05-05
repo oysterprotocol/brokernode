@@ -1,11 +1,11 @@
 package jobs
 
 import (
-	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 
-	raven "github.com/getsentry/raven-go"
+	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 

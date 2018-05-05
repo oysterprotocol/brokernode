@@ -6,7 +6,7 @@ create_table("data_maps", func(t) {
 	t.Column("obfuscated_hash", "string", {})
 	t.Column("status", "integer", {})
 	t.Column("node_id", "string", {"null": true})
-  t.Column("node_type", "string", {"null": true})
+    t.Column("node_type", "string", {"null": true})
 	t.Column("message", "MEDIUMTEXT", {"null": true})
 	t.Column("trunk_tx", "string", {"null": true})
 	t.Column("branch_tx", "string", {"null": true})

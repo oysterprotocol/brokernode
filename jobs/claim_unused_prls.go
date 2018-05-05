@@ -5,6 +5,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"time"
 )
@@ -46,6 +47,13 @@ func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 		return
 	}
 	if len(timedOutGasTransfers) > 0 {
+
+		for _, transfer := range timedOutGasTransfers {
+			oyster_utils.LogToSegment("gas_transfer_timed_out", analytics.NewProperties().
+				Set("eth_address_to", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiateGasTransfer(timedOutGasTransfers)
 	}
 }
@@ -59,6 +67,13 @@ func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 		return
 	}
 	if len(timedOutPRLTransfers) > 0 {
+
+		for _, transfer := range timedOutPRLTransfers {
+			oyster_utils.LogToSegment("unclaimed_prl_transfer_timed_out", analytics.NewProperties().
+				Set("eth_address_from", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiatePRLClaim(timedOutPRLTransfers)
 	}
 }
@@ -72,6 +87,13 @@ func ResendErroredGasTransfers() {
 		return
 	}
 	if len(gasTransferErrors) > 0 {
+
+		for _, transfer := range gasTransferErrors {
+			oyster_utils.LogToSegment("gas_transfer_error", analytics.NewProperties().
+				Set("eth_address_to", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiateGasTransfer(gasTransferErrors)
 	}
 }
@@ -85,6 +107,13 @@ func ResendErroredPRLTransfers() {
 		return
 	}
 	if len(prlTransferErrors) > 0 {
+
+		for _, transfer := range prlTransferErrors {
+			oyster_utils.LogToSegment("unclaimed_prl_transfer_error", analytics.NewProperties().
+				Set("eth_address_from", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiatePRLClaim(prlTransferErrors)
 	}
 }
@@ -98,6 +127,13 @@ func SendGasForNewClaims() {
 		return
 	}
 	if len(needGas) > 0 {
+
+		for _, transfer := range needGas {
+			oyster_utils.LogToSegment("send_gas_for_new_claim", analytics.NewProperties().
+				Set("eth_address_to", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiateGasTransfer(needGas)
 	}
 }
@@ -111,6 +147,13 @@ func StartNewClaims() {
 		return
 	}
 	if len(readyClaims) > 0 {
+
+		for _, transfer := range readyClaims {
+			oyster_utils.LogToSegment("unclaimed_prl_new_claim", analytics.NewProperties().
+				Set("eth_address_from", transfer.ETHAddr).
+				Set("genesis_hash", transfer.GenesisHash))
+		}
+
 		InitiatePRLClaim(readyClaims)
 	}
 }
@@ -127,9 +170,9 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 	//models.SetGasStatus(needGas, models.GasTransferProcessing)
 }
 
-// wraps calls eth_gatway's ClaimPRLs method and sets GasStatus to GasTransferProcessing
+// wraps calls eth_gatway's ClaimUnusedPRLs method and sets GasStatus to GasTransferProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
-	err := ethWrapper.ClaimPRLs(uploadsWithUnclaimedPRLs)
+	err := ethWrapper.ClaimUnusedPRLs(uploadsWithUnclaimedPRLs)
 	if err != nil {
 		log.Println("Error claiming PRL.")
 		raven.CaptureError(err, nil)

@@ -282,5 +282,5 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 }
 
 func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
-	return fmt.Sprintf("(genesis_hash = %s AND chunk_idx = %d)", genesisHash, chunkIdx)
+	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
