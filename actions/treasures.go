@@ -3,11 +3,14 @@ package actions
 import (
 	//"fmt"
 	"github.com/gobuffalo/buffalo"
-	//"github.com/iotaledger/giota"
+	"github.com/iotaledger/giota"
 	//"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	//"os"
 	//"strings"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -28,8 +31,13 @@ type treasureRes struct {
 	Success string `json:"success"`
 }
 
-func unixMilli(t time.Time) int64 {
-	return t.Round(time.Millisecond).UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+// Constant API connection to IOTA
+var IOTA_API *giota.API
+
+func init() {
+	host_ip := strings.Trim(os.Getenv("HOST_IP"), "http://")
+	provider := fmt.Sprintf("http://%s:14265", host_ip)
+	IOTA_API = giota.NewAPI(provider, nil)
 }
 
 // Verifies the treasure and claims such treasure.
@@ -37,12 +45,9 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	//host_ip := os.Getenv("HOST_IP")
-	//provider := "http://" + host_ip + ":14265"
-	//api := giota.NewAPI(provider, nil)
 	//ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
 	//resp, err := api.FindTransactions(ftr)
-
+	//
 	//datamap1, vErr := models.GetDataMap(req.GenesisHash, req.NumChunks)
 	//for _, d := range datamap1 {
 	//
@@ -54,7 +59,6 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	//for _, d := range datamap {
 	//
 	//}
-
 	var transactions [2]int64
 	transactions[0] = 11
 	transactions[0] = 1122
@@ -70,5 +74,10 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 		Success: "true",
 	}
 
-	return c.Render(202, r.JSON(res))
+	return c.Render(200, r.JSON(res))
+}
+
+// Get Unix Time in mili-second
+func unixMilli(t time.Time) int64 {
+	return t.Round(time.Millisecond).UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
