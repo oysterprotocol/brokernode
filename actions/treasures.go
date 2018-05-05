@@ -35,8 +35,14 @@ type treasureRes struct {
 var IOTA_API *giota.API
 
 func init() {
-	host_ip := strings.Trim(os.Getenv("HOST_IP"), "http://")
-	provider := fmt.Sprintf("http://%s:14265", host_ip)
+	host_ip := os.Getenv("HOST_IP")
+	if len(host_ip) >= 0 {
+		host_ip = strings.Trim(host_ip, "http://")
+		host_ip = strings.Trim(host_ip, "https://")
+	} else {
+		host_ip = "localhost"
+	}
+	provider := fmt.Sprintf("http://%s:14265/", host_ip)
 	IOTA_API = giota.NewAPI(provider, nil)
 }
 
