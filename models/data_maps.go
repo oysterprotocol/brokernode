@@ -106,9 +106,9 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
-// Computes a particular sectorIdx hashes. Limit by maxNumbOfHashes.
-func ComputeSectorHashes(genHash string, sectorIdx int, maxNumOfHashes int) []string {
-	var hashes []string
+// Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.
+func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes int) []string {
+	var addr []string
 
 	currHash := genHash
 	for i := 0; i < sectorIdx*oyster_utils.FileSectorInChunkSize; i++ {
@@ -116,10 +116,13 @@ func ComputeSectorHashes(genHash string, sectorIdx int, maxNumOfHashes int) []st
 	}
 
 	for i := 0; i < maxNumOfHashes; i++ {
-		hashes = append(hashes, currHash)
+		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
+		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
+
+		addr = append(addr, currAddr)
 		currHash = oyster_utils.HashString(currHash, sha256.New())
 	}
-	return hashes
+	return addr
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.

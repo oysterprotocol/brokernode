@@ -261,17 +261,20 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	suite.NotEqual(models.DataMap{}, chunksWithLimit[0])
 }
 
-func (suite *ModelSuite) Test_ComputeSectorHashes_AtSectorZero() {
-	hashes := models.ComputeSectorHashes("genHash", 0, 2)
+func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorZero() {
+	hashes := models.ComputeSectorDataMapAddress("genHash", 0, 2)
 
-	suite.Equal(hashes, []string{"genHash", "7000556e041504a06cfc3f08e1dda5500ed3a4157635054b392347a060df8b43"})
+	suite.Equal(hashes, []string{
+		"UCVAUCSC9BXAABUCUAQCUAUAUCPCRCYAQCXACBQCQCBBBBPCSCVASCXAABUAWAYACBUAQCBB9BTCQCUCP",
+		"UCZA9BYAWARCYAPCUAQCBBQCTCPCUC9BSCPCXAZAVAZAWAUCCBTCUA9BXAUAVAXAUAPCWAPCPCPCXATCU"})
 }
 
-func (suite *ModelSuite) Test_ComputerSectorHashes_AtSectorOne() {
-	hashes := models.ComputeSectorHashes("genHash", 1, 2)
+func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorOne() {
+	hashes := models.ComputeSectorDataMapAddress("genHash", 1, 2)
 
-	suite.Equal(hashes, []string{"0da27899301775e74175fc6394839db94aa67f59c0dcfeeb67f19e42d1c1008e",
-		"af270fbe08f2c6b1c3476870d28019a7d2c6e607e320da56e137967a87cc4e52"})
+	suite.Equal(hashes, []string{
+		"VAQCPCRCQC9BYAYAUCSCABVA9BVAYA9BUASCSC9BQCZASCYASCYAABWAXABBCBYAUAQCAB9BSCTCQCABP",
+		"XAWA9BXARCSCWATCVATCCBWAYAPCUCTCUATCCBXARCTCCBQCCB9BUACBBBSCSCVAQCABSCRCZASCBBTCR"})
 }
 
 func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {

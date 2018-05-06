@@ -1,16 +1,11 @@
 package actions
 
 import (
-	//"fmt"
 	"github.com/gobuffalo/buffalo"
 	"github.com/iotaledger/giota"
-	//"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	//"os"
-	//"strings"
-	"fmt"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -31,25 +26,38 @@ type treasureRes struct {
 	Success string `json:"success"`
 }
 
-// Constant API connection to IOTA
-var IOTA_API *giota.API
-
-func init() {
-	host_ip := os.Getenv("HOST_IP")
-	if len(host_ip) >= 0 {
-		host_ip = strings.Trim(host_ip, "http://")
-		host_ip = strings.Trim(host_ip, "https://")
-	} else {
-		host_ip = "localhost"
-	}
-	provider := fmt.Sprintf("http://%s:14265/", host_ip)
-	IOTA_API = giota.NewAPI(provider, nil)
-}
-
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
+
+	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
+	iotaAddr := make([]giota.Address, 0, len(addr))
+
+	for i, address := range addr {
+		iotaAddr[i] = giota.Address(address)
+	}
+
+	transactionsMap := services.FindTransactions(iotaAddr)
+
+	if len(transactionsMap) != len(iotaAddr) {
+		// indicate that PoW failure.
+	}
+
+	passedTimestamp := time.Now().AddDate(-1, 0, 0)
+	for _, iotaAddress := range iotaAddr {
+		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
+			// indicate that PoW failure
+		}
+
+		transactions := transactionsMap[iotaAddress]
+		// Check all the transactions has submit within the passed 1 year.
+		for _, transaction := range transactions {
+			if !transaction.Timestamp.After(passedTimestamp) {
+				// indicate that PoW failure
+			}
+		}
+	}
 
 	//ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
 	//resp, err := api.FindTransactions(ftr)
@@ -65,25 +73,10 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	//for _, d := range datamap {
 	//
 	//}
-	var transactions [2]int64
-	transactions[0] = 11
-	transactions[0] = 1122
-	epoch := unixMilli(time.Now().AddDate(-1, 0, 0))
-	//verifyAttached := true
-	for _, transaction := range transactions {
-		if transaction <= epoch {
-			//verifyAttached = false
-		}
-	}
 
 	res := treasureRes{
 		Success: "true",
 	}
 
 	return c.Render(200, r.JSON(res))
-}
-
-// Get Unix Time in mili-second
-func unixMilli(t time.Time) int64 {
-	return t.Round(time.Millisecond).UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
