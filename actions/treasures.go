@@ -32,7 +32,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
-	iotaAddr := make([]giota.Address, 0, len(addr))
+	iotaAddr := make([]giota.Address, len(addr))
 
 	for i, address := range addr {
 		iotaAddr[i] = giota.Address(address)
