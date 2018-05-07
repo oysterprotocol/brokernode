@@ -51,11 +51,17 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 		}
 
 		transactions := transactionsMap[iotaAddress]
-		// Check all the transactions has submit within the passed 1 year.
+		// Check one the transactions has submit within the passed 1 year.
+		isTransactionWithinTimePeriod := false
 		for _, transaction := range transactions {
-			if !transaction.Timestamp.After(passedTimestamp) {
-				// indicate that PoW failure
+			if transaction.Timestamp.After(passedTimestamp) {
+				isTransactionWithinTimePeriod = true
+				break
 			}
+		}
+		if !isTransactionWithinTimePeriod {
+			// Indicate that PoW failure
+			break
 		}
 	}
 
