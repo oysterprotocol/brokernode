@@ -19,7 +19,7 @@ type treasureReq struct {
 	SectorIdx       int    `json:"sectorIdx"`
 	NumChunks       int    `json:"numChunks"`
 	EthAddr         string `json:"ethAddr"`
-	EthKey          string `json:"EthKey"`
+	EthKey          string `json:"ethKey"`
 }
 
 type treasureRes struct {
@@ -38,9 +38,9 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 		iotaAddr[i] = giota.Address(address)
 	}
 
-	transactionsMap := services.FindTransactions(iotaAddr)
+	transactionsMap, err := services.FindTransactions(iotaAddr)
 
-	if len(transactionsMap) != len(iotaAddr) {
+	if err != nil || len(transactionsMap) != len(iotaAddr) {
 		// indicate that PoW failure.
 	}
 

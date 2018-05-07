@@ -196,10 +196,29 @@ func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel
 	}
 }
 
-// Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcation
-func FindTransactions(address []giota.Address) map[giota.Address][]giota.Transaction {
-	// TODO pzhao5, implement this method
-	return make(map[giota.Address][]giota.Transaction)
+// Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcations
+func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
+
+	req := giota.FindTransactionsRequest{
+		Addresses: addresses,
+	}
+	resp, err := api.FindTransactions(&req)
+	if err != nil {
+		return nil, err
+	}
+
+	transactionResp, err := api.GetTrytes(resp.Hashes)
+	if err != nil {
+		return nil, err
+	}
+
+	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
+	for _, transaction := range transactionResp.Trytes {
+		list := addrToTransactionMap[transaction.Address]
+		list = append(list, transaction)
+		addrToTransactionMap[transaction.Address] = list
+	}
+	return addrToTransactionMap, nil
 }
 
 func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
