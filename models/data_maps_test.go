@@ -1,12 +1,12 @@
 package models_test
 
 import (
-	"crypto/sha512"
+	"encoding/hex"
+	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
-
-	"github.com/iotaledger/giota"
+	"golang.org/x/crypto/sha3"
 )
 
 type hashAddressConversion struct {
@@ -60,15 +60,15 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 		payload, err := models.CreateTreasurePayload(tc.ethPrivateSeed, tc.sha256Hash, maxSideChainLength)
 		ms.Nil(err)
 
-		payloadNotTryted := oyster_utils.TrytesToBytes(giota.Trytes(payload))
+		payloadInBytes := oyster_utils.TrytesToBytes(giota.Trytes(payload))
 
 		currentHash := tc.sha256Hash
 
 		for i := 0; i <= maxSideChainLength; i++ {
-			currentHash = oyster_utils.HashString(currentHash, sha512.New())
-			result := oyster_utils.Decrypt(currentHash, string(payloadNotTryted))
-			if result != "" {
-				ms.Equal(result, tc.ethPrivateSeed)
+			currentHash = oyster_utils.HashString(currentHash, sha3.New256())
+			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
+			if result != nil {
+				ms.Equal(string(result), tc.ethPrivateSeed)
 				matchesFound++
 			}
 		}
