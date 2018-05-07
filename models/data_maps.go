@@ -5,6 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/json"
 	"github.com/getsentry/raven-go"
+	"golang.org/x/crypto/sha3"
 	"math/rand"
 
 	"time"
@@ -173,11 +174,12 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 
 	currentHash := sha256Hash
 	for i := 0; i <= keyLocation; i++ {
-		currentHash = oyster_utils.HashString(currentHash, sha512.New())
+		currentHash = oyster_utils.HashString(currentHash, sha3.New256())
 	}
 
-	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed)
-	return string(oyster_utils.BytesToTrytes([]byte(encryptedResult))), nil
+	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed, sha256Hash)
+
+	return string(oyster_utils.BytesToTrytes(encryptedResult)), nil
 }
 
 func GetUnassignedGenesisHashes() ([]interface{}, error) {
