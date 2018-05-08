@@ -41,6 +41,11 @@ type IotaService struct {
 	ChunksMatch                    ChunksMatch
 }
 
+type ProcessingFrequency struct {
+	RecentProcessingTimes []time.Duration
+	Frequency             float64
+}
+
 type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
 type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
 type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
@@ -66,15 +71,17 @@ var (
 	PowProcs    int
 	IotaWrapper IotaService
 	//This mutex was added by us.
-	mutex        = &sync.Mutex{}
-	seed         giota.Trytes
-	minDepth     = int64(giota.DefaultNumberOfWalks)
-	minWeightMag = int64(9)
-	bestPow      giota.PowFunc
-	powName      string
-	Channel      = map[string]PowChannel{}
-	wg           sync.WaitGroup
-	api          *giota.API
+	mutex           = &sync.Mutex{}
+	seed            giota.Trytes
+	minDepth        = int64(giota.DefaultNumberOfWalks)
+	minWeightMag    = int64(9)
+	bestPow         giota.PowFunc
+	powName         string
+	Channel         = map[string]PowChannel{}
+	wg              sync.WaitGroup
+	api             *giota.API
+	PoWFrequency    ProcessingFrequency
+	minPoWFrequency = 1
 )
 
 func init() {
@@ -135,6 +142,8 @@ func init() {
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
 	}
+
+	PoWFrequency.Frequency = 5
 }
 
 func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
@@ -194,9 +203,28 @@ func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel
 		ElapsedTime: time.Since(startTime),
 	})
 
+	PoWFrequency.RecentProcessingTimes = append(PoWFrequency.RecentProcessingTimes, time.Since(startTime))
+
 	if len(*(channel.ChunkTrackers)) > 10 {
 		*(channel.ChunkTrackers) = (*(channel.ChunkTrackers))[1:11]
 	}
+
+	if len(PoWFrequency.RecentProcessingTimes) > 10 {
+		PoWFrequency.RecentProcessingTimes = PoWFrequency.RecentProcessingTimes[1:11]
+	}
+
+	var totalTime time.Duration
+	for _, elapsedTime := range PoWFrequency.RecentProcessingTimes {
+		totalTime += elapsedTime
+	}
+
+	avgTimePerPoW := float64(totalTime/time.Second) / float64(len(PoWFrequency.RecentProcessingTimes))
+
+	PoWFrequency.Frequency = math.Max(avgTimePerPoW, float64(minPoWFrequency))
+}
+
+func GetProcessingFrequency() float64 {
+	return PoWFrequency.Frequency
 }
 
 // Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcations
