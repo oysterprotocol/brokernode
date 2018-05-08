@@ -39,6 +39,7 @@ type IotaService struct {
 	VerifyChunkMessagesMatchRecord VerifyChunkMessagesMatchRecord
 	VerifyChunksMatchRecord        VerifyChunksMatchRecord
 	ChunksMatch                    ChunksMatch
+	VerifyTreasure                 VerifyTreasure
 }
 
 type ProcessingFrequency struct {
@@ -50,6 +51,7 @@ type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
 type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
 type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
 type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
+type VerifyTreasure func([]string) (verify bool, err error)
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -112,6 +114,7 @@ func init() {
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
+		VerifyTreasure:                 verifyTreasure,
 	}
 
 	PowProcs = runtime.NumCPU()
@@ -461,4 +464,44 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 
 		return false
 	}
+}
+
+func verifyTreasure(addr []string) (verify bool, err error) {
+
+	iotaAddr := make([]giota.Address, len(addr))
+
+	for i, address := range addr {
+		iotaAddr[i] = giota.Address(address)
+	}
+
+	transactionsMap := FindTransactions(iotaAddr)
+
+	if len(transactionsMap) != len(iotaAddr) {
+		// indicate that PoW failure.
+	}
+
+	isTransactionWithinTimePeriod := false
+	passedTimestamp := time.Now().AddDate(-1, 0, 0)
+
+	for _, iotaAddress := range iotaAddr {
+		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
+			// indicate that PoW failure
+		}
+
+		transactions := transactionsMap[iotaAddress]
+		// Check one the transactions has submit within the passed 1 year.
+		for _, transaction := range transactions {
+			if transaction.Timestamp.After(passedTimestamp) {
+				isTransactionWithinTimePeriod = true
+				break
+			}
+		}
+		if !isTransactionWithinTimePeriod {
+			// Indicate that PoW failure
+			break
+		}
+	}
+
+	verify = isTransactionWithinTimePeriod
+	return verify, err
 }
