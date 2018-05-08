@@ -56,6 +56,9 @@ type FilteredChunk struct {
 // https://github.com/iotaledger/giota/blob/master/transfer.go#L322
 const (
 	maxTimestampTrytes = "MMMMMMMMM"
+
+	// By a hard limit on the request for FindTransaction to IOTA
+	maxNumberOfAddressPerFindTransactionRequest = 1000
 )
 
 var (
@@ -199,25 +202,34 @@ func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel
 // Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcations
 func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
 
-	req := giota.FindTransactionsRequest{
-		Addresses: addresses,
-	}
-	resp, err := api.FindTransactions(&req)
-	if err != nil {
-		return nil, err
-	}
-
-	transactionResp, err := api.GetTrytes(resp.Hashes)
-	if err != nil {
-		return nil, err
-	}
-
 	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
-	for _, transaction := range transactionResp.Trytes {
-		list := addrToTransactionMap[transaction.Address]
-		list = append(list, transaction)
-		addrToTransactionMap[transaction.Address] = list
+
+	numOfBatchRequest := int(math.Ceil(float64(len(addresses)) / float64(maxNumberOfAddressPerFindTransactionRequest)))
+
+	remainder := len(addresses)
+	for i := 0; i < numOfBatchRequest; i++ {
+		lower := i * maxNumberOfAddressPerFindTransactionRequest
+		upper := i*maxNumberOfAddressPerFindTransactionRequest + int(math.Min(float64(remainder), maxNumberOfAddressPerFindTransactionRequest))
+		req := giota.FindTransactionsRequest{
+			Addresses: addresses[lower:upper],
+		}
+		resp, err := api.FindTransactions(&req)
+		if err != nil {
+			return nil, err
+		}
+		transactionResp, err := api.GetTrytes(resp.Hashes)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, transaction := range transactionResp.Trytes {
+			list := addrToTransactionMap[transaction.Address]
+			list = append(list, transaction)
+			addrToTransactionMap[transaction.Address] = list
+		}
+		remainder = remainder - maxFindTransactionRequest
 	}
+
 	return addrToTransactionMap, nil
 }
 
