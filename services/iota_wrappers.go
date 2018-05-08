@@ -227,7 +227,7 @@ func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Tran
 			list = append(list, transaction)
 			addrToTransactionMap[transaction.Address] = list
 		}
-		remainder = remainder - maxFindTransactionRequest
+		remainder = remainder - maxNumberOfAddressPerFindTransactionRequest
 	}
 
 	return addrToTransactionMap, nil
