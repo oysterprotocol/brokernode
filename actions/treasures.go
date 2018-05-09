@@ -26,6 +26,10 @@ type treasureRes struct {
 	Success string `json:"success"`
 }
 
+const (
+	POW_FAILURE = "PoW Failed"
+)
+
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	req := treasureReq{}
@@ -40,14 +44,28 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 
 	transactionsMap, err := services.FindTransactions(iotaAddr)
 
-	if err != nil || len(transactionsMap) != len(iotaAddr) {
+	if err != nil || !verifyAllPoW(iotaAddr, transactionsMap) {
 		// indicate that PoW failure.
+		return c.Render(200, r.JSON(treasureRes{Success: POW_FAILURE}))
+	}
+
+	return c.Render(200, r.JSON(treasureRes{
+		Success: "true",
+	}))
+
+}
+
+// Verify the Proof of work. Returns true if PoW is done. Otherwise, return false
+func verifyAllPoW(iotaAddress []giota.Address, transactionsMap map[giota.Address][]giota.Transaction) bool {
+	if len(transactionsMap) != len(iotaAddr) {
+		return false
 	}
 
 	passedTimestamp := time.Now().AddDate(-1, 0, 0)
+
 	for _, iotaAddress := range iotaAddr {
 		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
-			// indicate that PoW failure
+			return false
 		}
 
 		transactions := transactionsMap[iotaAddress]
@@ -60,29 +78,8 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 			}
 		}
 		if !isTransactionWithinTimePeriod {
-			// Indicate that PoW failure
-			break
+			return false
 		}
 	}
-
-	//ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
-	//resp, err := api.FindTransactions(ftr)
-	//
-	//datamap1, vErr := models.GetDataMap(req.GenesisHash, req.NumChunks)
-	//for _, d := range datamap1 {
-	//
-	//}
-	// or
-
-	//vErr, error := models.BuildDataMaps(req.GenesisHash, req.NumChunks)
-	//datamap, err := models.GetDataMapByGenesisHashAndChunkIdx(req.GenesisHash, req.NumChunks)
-	//for _, d := range datamap {
-	//
-	//}
-
-	res := treasureRes{
-		Success: "true",
-	}
-
-	return c.Render(200, r.JSON(res))
+	return true
 }
