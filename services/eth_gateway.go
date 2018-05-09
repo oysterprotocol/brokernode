@@ -31,7 +31,6 @@ type Eth struct {
 	SubscribeToTransfer SubscribeToTransfer
 	CheckBalance        CheckBalance
 	GetCurrentBlock     GetCurrentBlock
-	Claim               Claim
 }
 
 type SendGas func([]models.CompletedUpload) error
@@ -44,7 +43,6 @@ type GetGasPrice func() (uint64, error)
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address)
 type GetCurrentBlock func()
-type Claim func(from string, to string) (result bool)
 
 // Singleton client
 var (
@@ -83,7 +81,6 @@ func init() {
 		SubscribeToTransfer: subscribeToTransfer,
 		CheckBalance:        checkBalance,
 		GetCurrentBlock:     getCurrentBlock,
-		Claim:               claim,
 	}
 }
 
@@ -226,11 +223,6 @@ func checkBalance(addr common.Address) {
 
 func getCurrentBlock() {
 
-}
-
-func claim(from string, to string) (result bool) {
-	result = true
-	return result
 }
 
 /* TODO will be using channels/workers for subscribe to transaction events

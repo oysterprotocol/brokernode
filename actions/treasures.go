@@ -40,8 +40,9 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	}
 
 	if verify == true {
-		result := EthWrapper.Claim("from", "to")
-		verify = result
+		//msg := EthWrapper.OysterCallMsg{From: "from", To: "to", Amount: 10, PrivateKey:, Gas: 1, TotalWei: 1, Data: [01, 11, 10]}
+		//result := EthWrapper.BuryPrl(msg)
+		//verify = result
 	}
 
 	res := treasureRes{
