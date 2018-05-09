@@ -40,7 +40,8 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	}
 
 	if verify == true {
-		// result := EthWrapper.Claim("from", "to")
+		result := EthWrapper.Claim("from", "to")
+		verify = result
 	}
 
 	res := treasureRes{
