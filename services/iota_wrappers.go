@@ -491,7 +491,7 @@ func verifyTreasure(addr []string) (bool, error) {
 
 	for _, iotaAddress := range iotaAddr {
 		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
-			// indicate that PoW failure
+			return false, nil
 		}
 
 		transactions := transactionsMap[iotaAddress]
