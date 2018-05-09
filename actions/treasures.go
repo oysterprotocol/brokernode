@@ -2,11 +2,9 @@ package actions
 
 import (
 	"github.com/gobuffalo/buffalo"
-	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"time"
 )
 
 type TreasuresResource struct {
@@ -23,8 +21,11 @@ type treasureReq struct {
 }
 
 type treasureRes struct {
-	Success string `json:"success"`
+	Success bool `json:"success"`
 }
+
+var IotaWrapper = services.IotaWrapper
+var EthWrapper = services.EthWrapper
 
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
@@ -32,56 +33,20 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
-	iotaAddr := make([]giota.Address, len(addr))
+	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	for i, address := range addr {
-		iotaAddr[i] = giota.Address(address)
+	if err != nil {
+		verify = false
 	}
 
-	transactionsMap, err := services.FindTransactions(iotaAddr)
-
-	if err != nil || len(transactionsMap) != len(iotaAddr) {
-		// indicate that PoW failure.
+	if verify == true {
+		//msg := EthWrapper.OysterCallMsg{From: "from", To: "to", Amount: 10, PrivateKey:, Gas: 1, TotalWei: 1, Data: [01, 11, 10]}
+		//result := EthWrapper.BuryPrl(msg)
+		//verify = result
 	}
-
-	passedTimestamp := time.Now().AddDate(-1, 0, 0)
-	for _, iotaAddress := range iotaAddr {
-		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
-			// indicate that PoW failure
-		}
-
-		transactions := transactionsMap[iotaAddress]
-		// Check one the transactions has submit within the passed 1 year.
-		isTransactionWithinTimePeriod := false
-		for _, transaction := range transactions {
-			if transaction.Timestamp.After(passedTimestamp) {
-				isTransactionWithinTimePeriod = true
-				break
-			}
-		}
-		if !isTransactionWithinTimePeriod {
-			// Indicate that PoW failure
-			break
-		}
-	}
-
-	//ftr := &giota.FindTransactionsRequest{Bundles: []giota.Trytes{"DEXRPLKGBROUQMKCLMRPG9HFKCACDZ9AB9HOJQWERTYWERJNOYLW9PKLOGDUPC9DLGSUH9UHSKJOASJRU"}}
-	//resp, err := api.FindTransactions(ftr)
-	//
-	//datamap1, vErr := models.GetDataMap(req.GenesisHash, req.NumChunks)
-	//for _, d := range datamap1 {
-	//
-	//}
-	// or
-
-	//vErr, error := models.BuildDataMaps(req.GenesisHash, req.NumChunks)
-	//datamap, err := models.GetDataMapByGenesisHashAndChunkIdx(req.GenesisHash, req.NumChunks)
-	//for _, d := range datamap {
-	//
-	//}
 
 	res := treasureRes{
-		Success: "true",
+		Success: verify,
 	}
 
 	return c.Render(200, r.JSON(res))
