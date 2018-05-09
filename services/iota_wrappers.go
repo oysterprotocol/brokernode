@@ -466,7 +466,8 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 	}
 }
 
-func verifyTreasure(addr []string) (verify bool, err error) {
+// Verify PoW of work.
+func verifyTreasure(addr []string) (bool, error) {
 
 	iotaAddr := make([]giota.Address, len(addr))
 
@@ -478,11 +479,11 @@ func verifyTreasure(addr []string) (verify bool, err error) {
 
 	if err != nil {
 		raven.CaptureError(err, nil)
-		return verify, err
+		return false, err
 	}
 
 	if len(transactionsMap) != len(iotaAddr) {
-		// indicate that PoW failure.
+		return false, nil
 	}
 
 	isTransactionWithinTimePeriod := false
@@ -490,7 +491,7 @@ func verifyTreasure(addr []string) (verify bool, err error) {
 
 	for _, iotaAddress := range iotaAddr {
 		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
-			// indicate that PoW failure
+			return false, nil
 		}
 
 		transactions := transactionsMap[iotaAddress]
@@ -502,11 +503,9 @@ func verifyTreasure(addr []string) (verify bool, err error) {
 			}
 		}
 		if !isTransactionWithinTimePeriod {
-			// Indicate that PoW failure
-			break
+			return false, nil
 		}
 	}
 
-	verify = isTransactionWithinTimePeriod
-	return verify, err
+	return true, nil
 }
