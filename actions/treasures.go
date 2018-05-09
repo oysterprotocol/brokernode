@@ -35,11 +35,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	if err != nil {
-		verify = false
-	}
-
-	if verify == true {
+	if err == nil && verify {
 		//msg := EthWrapper.OysterCallMsg{From: "from", To: "to", Amount: 10, PrivateKey:, Gas: 1, TotalWei: 1, Data: [01, 11, 10]}
 		//result := EthWrapper.BuryPrl(msg)
 		//verify = result
