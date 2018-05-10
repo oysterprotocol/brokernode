@@ -68,7 +68,7 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 			currentHash = oyster_utils.HashString(currentHash, sha3.New256())
 			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
 			if result != nil {
-				ms.Equal(string(result), tc.ethPrivateSeed)
+				ms.Equal(hex.EncodeToString(result), tc.ethPrivateSeed)
 				matchesFound++
 			}
 		}
