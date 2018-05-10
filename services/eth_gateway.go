@@ -32,18 +32,31 @@ type Eth struct {
 	SubscribeToTransfer SubscribeToTransfer
 	CheckBalance        CheckBalance
 	GetCurrentBlock     GetCurrentBlock
+	OysterCallMsg		OysterCallMsg
+}
+
+type OysterCallMsg struct {
+	From common.Address
+	To common.Address
+	Amount big.Int
+	PrivateKey ecdsa.PrivateKey
+	Gas uint64
+	GasPrice big.Int
+	TotalWei big.Int
+	Data []byte
 }
 
 type SendGas func([]models.CompletedUpload) error
-type ClaimPRLs func([]models.CompletedUpload) error
-type GenerateEthAddr func() (addr string, privKey string, err error)
-type BuryPrl func()
-type SendETH func(fromAddr common.Address, toAddr common.Address, amt *big.Int, privateKey *ecdsa.PrivateKey) (rawTransaction string)
-type SendPRL func(fromAddr common.Address, toAddr common.Address, amt float64)
+type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GetGasPrice func() (*big.Int, error)
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address) (*big.Int)
 type GetCurrentBlock func() (*types.Block, error)
+type SendETH func(fromAddr common.Address, toAddr common.Address, amt *big.Int, privateKey *ecdsa.PrivateKey) (rawTransaction string)
+
+type BuryPrl func(msg OysterCallMsg) (bool)
+type SendPRL func(msg OysterCallMsg) (bool)
+type ClaimPRLs func([]models.CompletedUpload) error
 
 // Singleton client
 var (
@@ -112,10 +125,7 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 
 // Generate an Ethereum address
 func generateEthAddr() (addr common.Address, privateKey string, err error) {
-	ethAccount, err := crypto.GenerateKey()
-	if err != nil {
-		return
-	}
+	ethAccount, _ := crypto.GenerateKey()
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
 	return addr, privateKey, err
@@ -123,10 +133,7 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 
 // returns represents the 20 byte address of an ethereum account.
 func stringToAddress(address string) common.Address {
-	var stringByte [20]byte
-	decodedBytes, _ :=  hex.DecodeString(address[2:])
-	copy(stringByte[:], decodedBytes)
-	return common.Address([20]byte(stringByte))
+	return common.HexToAddress(address)
 }
 
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
@@ -209,7 +216,7 @@ func sendGas(completedUploads []models.CompletedUpload) (error) {
 		return err
 	}
 	// collection of raw transactions
-	var completedTransactions []string
+	//var completedTransactions []string
 
 	for _, completedUpload := range completedUploads {
 		var privateKey = ecdsa.PrivateKey{} // completedUpload.ETHPrivateKey
@@ -220,37 +227,29 @@ func sendGas(completedUploads []models.CompletedUpload) (error) {
 	return nil
 }
 
+// TODO WIP need to update this method send eth is incomplete
 // Transfer funds from one Ethereum account to another.
 // We need to pass in the credentials, to allow the transaction to execute.
 func sendETH(fromAddr common.Address, toAddr common.Address, amt *big.Int, privateKey *ecdsa.PrivateKey) (rawTransaction string){
 
-	data := []byte("") // setup data
-	gasLimit := uint64(10000) // gasLimit
-	gasPrice, _ := getGasPrice() // get gas price
-	tx := types.NewTransaction(99, toAddr, amt, gasLimit, gasPrice, data)
+	// TODO use the transfer contract method to send the eth, pull from stash
 
-	// 1999 temp chainId identifier, will need to pass in env
-	signer := types.NewEIP155Signer(big.NewInt(1999))
-	hash := tx.Hash().Bytes()
-
-	signature, _ := crypto.Sign(hash, privateKey)
-	signedTx, _ := tx.WithSignature(signer, signature)
-
-	ts := types.Transactions{signedTx}
-	rawTransaction = string(ts.GetRlp(0))
+	//data := []byte("") // setup data
+	//gasLimit := uint64(10000) // gasLimit
+	//gasPrice, _ := getGasPrice() // get gas price
+	//tx := types.NewTransaction(99, toAddr, amt, gasLimit, gasPrice, data)
+	//
+	//// 1999 temp chainId identifier, will need to pass in env
+	//signer := types.NewEIP155Signer(big.NewInt(1999))
+	//hash := tx.Hash().Bytes()
+	//
+	//signature, _ := crypto.Sign(hash, privateKey)
+	//signedTx, _ := tx.WithSignature(signer, signature)
+	//
+	//ts := types.Transactions{signedTx}
+	//rawTransaction = string(ts.GetRlp(0))
 
 	return
-}
-
-type OysterCallMsg struct {
-	From common.Address
-	To common.Address
-	Amount big.Int
-	PrivateKey ecdsa.PrivateKey
-	Gas uint64
-	GasPrice big.Int
-	TotalWei big.Int
-	Data []byte
 }
 
 // Bury PRLs
@@ -288,7 +287,6 @@ func buryPrl(msg OysterCallMsg) (bool) {
 func claimPRLs(completedUploads []models.CompletedUpload) error {
 
 	// Contract claim(address _payout, address _fee) public returns (bool success)
-
 	for _, completedUpload := range completedUploads {
 		//1
 		//	    for each completed upload, get its PRL balance from its ETH
@@ -309,7 +307,7 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 		// 		and the PRL balance of completedUpload.ETHAddr as the "amt" to send,
 		// 		and subscribe to the event with SubscribeToTransfer.
 		var amountToSend = balance
-		var gas = uint64(0)
+		var gas = uint64(0) // TODO get gas source are we pulling from ETHAddr?
 		gasPrice, _ := getGasPrice()
 
 		// prepare oyster message call
@@ -317,10 +315,10 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 			From: from,
 			To: to,
 			Amount: *amountToSend,
-			Gas: gas,
-			GasPrice: *gasPrice,
-			TotalWei: *big.NewInt(1),
-			Data: []byte,
+			Gas: gas,					 // TODO gas
+			GasPrice: *gasPrice,         // TODO ensure gas price is valid and sufficient
+			TotalWei: *big.NewInt(1), // TODO finish wei
+			Data: []byte(""), // setup data
 		}
 		// send transaction from completed upload eth addr to main wallet
 		if !sendPRL(oysterMsg) {
@@ -355,6 +353,7 @@ func sendPRL(msg OysterCallMsg) (bool) {
 		Data:msg.Data, 				// ABI-encoded contract method bury
 	}
 	// call  byte[] or error
+	// TODO send the PRL via contract method : bury() from contract owner
 	contractResponse, error := client.CallContract(context.Background(), callMsg, big.NewInt(1))
 	if error != nil {
 		// TODO More descriptive contract error response for failed send
@@ -367,7 +366,6 @@ func sendPRL(msg OysterCallMsg) (bool) {
 		return false
 	}
 }
-
 
 
 /* TODO will be using channels/workers for subscribe to transaction events
