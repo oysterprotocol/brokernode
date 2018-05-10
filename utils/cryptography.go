@@ -10,13 +10,15 @@ import (
 func Encrypt(key string, secret string, nonce string) []byte {
 	keyInBytes, err := hex.DecodeString(key)
 	panicOnErr(err)
+	secretInBytes, err := hex.DecodeString(secret)
+	panicOnErr(err)
 	block, err := aes.NewCipher(keyInBytes)
 	panicOnErr(err)
 	gcm, err := cipher.NewGCM(block)
 	panicOnErr(err)
 	nonceInBytes, err := hex.DecodeString(nonce[0 : 2*gcm.NonceSize()])
 	panicOnErr(err)
-	data := gcm.Seal(nil, nonceInBytes, []byte(secret), nil)
+	data := gcm.Seal(nil, nonceInBytes, secretInBytes, nil)
 	return data
 }
 

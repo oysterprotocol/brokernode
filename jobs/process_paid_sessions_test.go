@@ -22,17 +22,17 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	testMap1 := `[{
 		"sector": 1,
 		"idx": ` + fmt.Sprint(treasureIndexes[5]) + `,
-		"key": "firstKeyFirstMap"
+		"key": "0000000001"
 		},
 		{
 		"sector": 2,
 		"idx": ` + fmt.Sprint(treasureIndexes[78]) + `,
-		"key": "secondKeyFirstMap"
+		"key": "0000000002"
 		},
 		{
 		"sector": 3,
 		"idx": ` + fmt.Sprint(treasureIndexes[199]) + `,
-		"key": "thirdKeyFirstMap"
+		"key": "0000000003"
 		}]`
 
 	// create another dummy TreasureIdxMap for the data maps
