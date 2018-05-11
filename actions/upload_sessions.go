@@ -13,6 +13,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
+	"math"
 	"strings"
 )
 
@@ -61,6 +62,10 @@ type paymentStatusCreateRes struct {
 	ID            string `json:"id"`
 	PaymentStatus string `json:"paymentStatus"`
 }
+
+const (
+	SQL_BATCH_SIZE = 10
+)
 
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
@@ -209,13 +214,26 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 		}
 
-		// Do an insert operation and dup by primary key.
-		rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
-			dbOperation.GetColumns(), strings.Join(updatedDms, ","))
-		err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+		numOfBatchRequest := int(math.Ceil(float64(len(updatedDms)) / float64(SQL_BATCH_SIZE)))
 
-		if err != nil {
-			raven.CaptureError(err, nil)
+		remainder := len(updatedDms)
+		for i := 0; i < numOfBatchRequest; i++ {
+			lower := i * SQL_BATCH_SIZE
+			upper := i*SQL_BATCH_SIZE + int(math.Min(float64(remainder), SQL_BATCH_SIZE))
+
+			sectionUpdatedDms := updatedDms[lower:upper]
+
+			// Do an insert operation and dup by primary key.
+			rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
+				dbOperation.GetColumns(), strings.Join(sectionUpdatedDms, ","))
+			err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+
+			remainder = remainder - SQL_BATCH_SIZE
+
+			if err != nil {
+				raven.CaptureError(err, nil)
+				break
+			}
 		}
 	}()
 
