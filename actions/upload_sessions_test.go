@@ -62,7 +62,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
 		NumChunks:     2,
-		PaymentStatus: models.PaymentStatusPaid,
+		PaymentStatus: models.PaymentStatusConfirmed,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -81,7 +81,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	err = json.Unmarshal(bodyBytes, &resParsed)
 	as.Nil(err)
 
-	as.Equal("paid", resParsed.PaymentStatus)
+	as.Equal("confirmed", resParsed.PaymentStatus)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
@@ -110,6 +110,34 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
 	as.Nil(err)
 
 	as.Equal("pending", resParsed.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Invoiced() {
+	//setup
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   "genHash1",
+		FileSizeBytes: 123,
+		NumChunks:     2,
+		PaymentStatus: models.PaymentStatusInvoiced,
+	}
+
+	uploadSession1.StartUploadSession()
+
+	session := models.UploadSession{}
+	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	as.Equal(err, nil)
+
+	//execute method
+	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
+
+	// Parse response
+	resParsed := paymentStatusCreateRes{}
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	as.Nil(err)
+	err = json.Unmarshal(bodyBytes, &resParsed)
+	as.Nil(err)
+
+	as.Equal("invoiced", resParsed.PaymentStatus)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Error() {
