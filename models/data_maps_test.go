@@ -201,7 +201,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 		FileSizeBytes:  8000,
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 	uploadSession1.StartUploadSession()
@@ -234,7 +234,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 		FileSizeBytes:  8000,
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 	uploadSession1.StartUploadSession()

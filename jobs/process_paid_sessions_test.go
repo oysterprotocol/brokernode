@@ -59,7 +59,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBurying,
 		TreasureIdxMap: nulls.String{string(testMap1), true},
 	}
@@ -72,7 +72,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}

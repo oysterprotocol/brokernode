@@ -55,8 +55,9 @@ type UploadSession struct {
 }
 
 const (
-	PaymentStatusPending int = iota + 1
-	PaymentStatusPaid
+	PaymentStatusInvoiced int = iota + 1
+	PaymentStatusPending
+	PaymentStatusConfirmed
 	PaymentStatusError = -1
 )
 
@@ -121,7 +122,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.ProdMode:
 		// Defaults to paymentStatusPending
 		if u.PaymentStatus == 0 {
-			u.PaymentStatus = PaymentStatusPending
+			u.PaymentStatus = PaymentStatusInvoiced
 		}
 
 		// Defaults to treasureGeneratingKeys
@@ -131,7 +132,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.TestModeDummyTreasure:
 		// Defaults to paymentStatusPaid
 		if u.PaymentStatus == 0 {
-			u.PaymentStatus = PaymentStatusPaid
+			u.PaymentStatus = PaymentStatusConfirmed
 		}
 
 		// Defaults to treasureBurying
@@ -141,7 +142,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.TestModeNoTreasure:
 		// Defaults to paymentStatusPaid
 		if u.PaymentStatus == 0 {
-			u.PaymentStatus = PaymentStatusPaid
+			u.PaymentStatus = PaymentStatusConfirmed
 		}
 
 		// Defaults to treasureBuried
@@ -292,10 +293,12 @@ func getStoragePeg() int {
 
 func (u *UploadSession) GetPaymentStatus() string {
 	switch u.PaymentStatus {
+	case PaymentStatusInvoiced:
+		return "invoiced"
 	case PaymentStatusPending:
 		return "pending"
-	case PaymentStatusPaid:
-		return "paid"
+	case PaymentStatusConfirmed:
+		return "confirmed"
 	default:
 		return "error"
 	}
@@ -305,7 +308,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? ORDER BY created_at asc", PaymentStatusPaid, TreasureBuried).All(&sessionsByAge)
+		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureBuried).All(&sessionsByAge)
 
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -321,7 +324,7 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusPaid, TreasureBurying).All(&unburiedSessions)
+		PaymentStatusConfirmed, TreasureBurying).All(&unburiedSessions)
 
 	return unburiedSessions, err
 }
@@ -330,7 +333,7 @@ func GetReadySessions() ([]UploadSession, error) {
 	readySessions := []UploadSession{}
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusPaid, TreasureBuried).All(&readySessions)
+		PaymentStatusConfirmed, TreasureBuried).All(&readySessions)
 
 	return readySessions, err
 }

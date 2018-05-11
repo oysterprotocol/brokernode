@@ -137,7 +137,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
@@ -145,7 +145,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
@@ -153,7 +153,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 	uploadSession4 := models.UploadSession{ // will not be in the array
@@ -161,7 +161,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBurying,
 	}
 	uploadSession5 := models.UploadSession{ // will not be in the array

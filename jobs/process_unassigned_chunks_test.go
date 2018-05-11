@@ -34,7 +34,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 
@@ -43,7 +43,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 
@@ -52,7 +52,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 
@@ -61,7 +61,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 	}
 
