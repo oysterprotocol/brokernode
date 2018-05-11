@@ -19,6 +19,12 @@ import (
 	"math/big"
 	"crypto/ecdsa"
 	"errors"
+	"io/ioutil"
+	"time"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"strings"
 )
 
 type Eth struct {
@@ -52,7 +58,7 @@ type GetGasPrice func() (*big.Int, error)
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address) (*big.Int)
 type GetCurrentBlock func() (*types.Block, error)
-type SendETH func(fromAddr common.Address, toAddr common.Address, amt *big.Int, privateKey *ecdsa.PrivateKey) (rawTransaction string)
+type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string)
 
 type BuryPrl func(msg OysterCallMsg) (bool)
 type SendPRL func(msg OysterCallMsg) (bool)
@@ -192,8 +198,8 @@ func getCurrentBlock() (*types.Block, error) {
 }
 
 // SubscribeToTransfer will subscribe to transfer events
-// sending PRL to the brokerAddr given. Notifications
-// will be sent in the out channel provided.
+// sending PRL to the brokerAddr given.
+// Notifications will be sent in the out channel provided.
 func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	client, _ := sharedClient("")
 	currentBlock, _ := getCurrentBlock()
@@ -201,7 +207,7 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 		FromBlock: currentBlock.Number(), // beginning of the queried range, nil means genesis block
 		ToBlock: nil, // end of the range, nil means latest block
 		Addresses: []common.Address{brokerAddr},
-		Topics:    nil, // TODO: scope this to just oyster's contract.
+		Topics:  nil, // matches any topic list
 	}
 	// subscribe before passing it to outCh.
 	client.SubscribeFilterLogs(context.Background(), q, outCh)
@@ -209,45 +215,53 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 
 // Send gas to the completed upload Ethereum account
 func sendGas(completedUploads []models.CompletedUpload) (error) {
-
-	// retrieve current gas price
-	gas, err := getGasPrice()
-	if err != nil {
-		return err
-	}
-	// collection of raw transactions
-	//var completedTransactions []string
-
 	for _, completedUpload := range completedUploads {
-		var privateKey = ecdsa.PrivateKey{} // completedUpload.ETHPrivateKey
+		privateKey := completedUpload.ETHPrivateKey
 		// returns a raw transaction, we may need to store them to verify all transactions are completed
-		sendETH(MainWalletAddress, stringToAddress(completedUpload.ETHAddr), gas, &privateKey)
+		// mock value need to get amount, not in completed upload object
+		sendETH(stringToAddress(completedUpload.ETHAddr), big.NewInt(1000))
 	}
-
 	return nil
 }
 
-// TODO WIP need to update this method send eth is incomplete
+// TODO finish getting data on which wallet and private key, main wallet or other?
 // Transfer funds from one Ethereum account to another.
 // We need to pass in the credentials, to allow the transaction to execute.
-func sendETH(fromAddr common.Address, toAddr common.Address, amt *big.Int, privateKey *ecdsa.PrivateKey) (rawTransaction string){
+func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 
-	// TODO use the transfer contract method to send the eth, pull from stash
+	// TODO transfer PRLs from(MainWalletAddress), to(Recipient, amount)
+	client, _ := sharedClient("")
+	// initialize the context
+	deadline := time.Now().Add(1000 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
 
-	//data := []byte("") // setup data
-	//gasLimit := uint64(10000) // gasLimit
-	//gasPrice, _ := getGasPrice() // get gas price
-	//tx := types.NewTransaction(99, toAddr, amt, gasLimit, gasPrice, data)
-	//
-	//// 1999 temp chainId identifier, will need to pass in env
-	//signer := types.NewEIP155Signer(big.NewInt(1999))
-	//hash := tx.Hash().Bytes()
-	//
-	//signature, _ := crypto.Sign(hash, privateKey)
-	//signedTx, _ := tx.WithSignature(signer, signature)
-	//
-	//ts := types.Transactions{signedTx}
-	//rawTransaction = string(ts.GetRlp(0))
+	// generate nonce
+	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
+
+	// get latest gas limit & price - current default gasLimit on oysterby 21000
+	gasLimit := uint64(21000) // may pull gas limit from estimate gas price
+	gasPrice, _ := getGasPrice()
+
+	// create new transaction
+	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, gasPrice, nil)
+
+	// oysterby chainId 559966
+	chainId := big.NewInt(559966)
+	privateKey := ecdsa.PrivateKey{} // TODO Create MainWalletKey?
+	signer := types.NewEIP155Signer(chainId)
+	signedTx, err := types.SignTx(tx, signer, &privateKey)
+
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+	if err != nil {
+		return err.Error()
+	}
+
+	// pull signed transaction
+	ts := types.Transactions{signedTx}
+	// return raw transaction
+	rawTransaction = string(ts.GetRlp(0))
 
 	return
 }
@@ -256,27 +270,38 @@ func sendETH(fromAddr common.Address, toAddr common.Address, amt *big.Int, priva
 func buryPrl(msg OysterCallMsg) (bool) {
 
 	// dispense PRLs from the transaction address to each 'treasure' address
-	sendETH(msg.From, msg.To, &msg.Amount, &msg.PrivateKey)
+	rawTransaction := sendETH(msg.To, &msg.Amount)
 
-	// invoke the smart contract bury() function with 'treasure'
-	// contract bury() public returns (bool success)
-	// initialize call msg for oyster prl contract
-	var callMsg = ethereum.CallMsg {
-		From:msg.From,         		// the sender of the 'transaction'
-		To:&msg.To,            		// the destination contract (nil for contract creation)
-		Gas:msg.Gas,           		// if 0, the call executes with near-infinite gas
-		GasPrice:&msg.GasPrice,		// wei <-> gas exchange ratio
-		Value:&msg.TotalWei,   		// amount of wei sent along with the call
-		Data:msg.Data, 				// ABI-encoded contract method bury
-	}
-	// call  byte[] or error
-	contractResponse, error := client.CallContract(context.Background(), callMsg, big.NewInt(1))
-	if error != nil {
-		// TODO More descriptive contract error response
+	if len(rawTransaction) < 0 {
+		// sending eth has failed TODO need more descriptive fail or log?
 		return false
 	}
+
+	// initialize the context
+	deadline := time.Now().Add(1000 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	// shared client
+	client, _ := sharedClient("")
+	// abi
+	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
+	// oyster contract method bury() no args
+	buryPRL, _ := oysterABI.Pack("bury")
+	// build transaction and sign
+	signedTx, err := callOysterPearl(ctx, buryPRL)
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+
+	if err != nil {
+		return false
+	}
+	// pull signed transaction
+	ts := types.Transactions{signedTx}
+	// return raw transaction
+	rawTransaction = string(ts.GetRlp(0))
+
 	// successful contract message call
-	if contractResponse != nil {
+	if len(rawTransaction) > 0 {
 		return true
 	} else {
 		return false
@@ -307,7 +332,7 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 		// 		and the PRL balance of completedUpload.ETHAddr as the "amt" to send,
 		// 		and subscribe to the event with SubscribeToTransfer.
 		var amountToSend = balance
-		var gas = uint64(0) // TODO get gas source are we pulling from ETHAddr?
+		var gas = uint64(21000)           // TODO get gas source are we pulling from ETHAddr?
 		gasPrice, _ := getGasPrice()
 
 		// prepare oyster message call
@@ -343,28 +368,63 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
  */
 func sendPRL(msg OysterCallMsg) (bool) {
 
-	// send PRL from Oyster contract call
-	var callMsg = ethereum.CallMsg {
-		From:msg.From,         		// the sender of the 'transaction'
-		To:&msg.To,            		// the destination contract (nil for contract creation)
-		Gas:msg.Gas,           		// if 0, the call executes with near-infinite gas
-		GasPrice:&msg.GasPrice,		// wei <-> gas exchange ratio
-		Value:&msg.TotalWei,   		// amount of wei sent along with the call
-		Data:msg.Data, 				// ABI-encoded contract method bury
-	}
-	// call  byte[] or error
-	// TODO send the PRL via contract method : bury() from contract owner
-	contractResponse, error := client.CallContract(context.Background(), callMsg, big.NewInt(1))
-	if error != nil {
-		// TODO More descriptive contract error response for failed send
+	// initialize the context
+	deadline := time.Now().Add(1000 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+
+	// shared client
+	client, _ := sharedClient("")
+	// abi
+	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
+	// oyster contract method transfer(address _to, uint256 _value)
+	sendPRL, _ := oysterABI.Pack("transfer", msg.To.Hex(), msg.Amount)
+	// build transaction and sign
+	signedTx, err := callOysterPearl(ctx, sendPRL)
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+
+	if err != nil {
 		return false
 	}
+	// pull signed transaction
+	ts := types.Transactions{signedTx}
+	// return raw transaction
+	rawTransaction := string(ts.GetRlp(0))
+
 	// successful contract message call
-	if contractResponse != nil {
+	if len(rawTransaction) > 0 {
 		return true
 	} else {
 		return false
 	}
+}
+
+// utility to call a method on OysterPearl contract
+func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, error) {
+
+	// invoke the smart contract bury() function with 'treasure'
+	// contract bury() public returns (bool success)
+	// OysterPearl: 0xf25186b5081ff5ce73482ad761db0eb0d25abfbf
+	contractAddress := common.HexToAddress("0xf25186b5081ff5ce73482ad761db0eb0d25abfbf")
+
+	// oysterby chainId 559966
+	chainId := big.NewInt(559966)
+	privateKey := ecdsa.PrivateKey{} // TODO Create MainWalletKey?
+	client, _ := sharedClient("")
+	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
+
+	// get latest gas limit & price - current default gasLimit on oysterby 21000
+	gasLimit := uint64(21000) // may pull gas limit from estimate gas price
+	gasPrice, _ := getGasPrice()
+
+	// create new transaction with 0 amount
+	tx := types.NewTransaction(nonce, contractAddress, big.NewInt(0), gasLimit, gasPrice, data)
+
+	signer := types.NewEIP155Signer(chainId)
+	signedTx, _ := types.SignTx(tx, signer, &privateKey)
+
+	return  signedTx, nil
 }
 
 
