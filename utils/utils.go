@@ -190,3 +190,11 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 	}
 	return merged, nil
 }
+
+func RandSeq(length int, sequence []rune) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = sequence[rand.Intn(len(sequence))]
+	}
+	return string(b)
+}

@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-const (
-	trytesAlphabet = "9ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+var (
+	TrytesAlphabet = []rune("9ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
 func init() {
@@ -26,7 +26,7 @@ func AsciiToTrytes(asciiString string) (string, error) {
 
 		var firstValue = charCode % 27
 		var secondValue = (charCode - firstValue) / 27
-		var trytesValue = string(trytesAlphabet[firstValue]) + string(trytesAlphabet[secondValue])
+		var trytesValue = string(TrytesAlphabet[firstValue]) + string(TrytesAlphabet[secondValue])
 		trytes += string(trytesValue)
 	}
 
@@ -57,8 +57,8 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 		// get a trytes pair
 		trytes := string(inputTrytes[i]) + string(inputTrytes[i+1])
 
-		firstValue := strings.Index(trytesAlphabet, (string(trytes[0])))
-		secondValue := strings.Index(trytesAlphabet, (string(trytes[1])))
+		firstValue := strings.Index(string(TrytesAlphabet), (string(trytes[0])))
+		secondValue := strings.Index(string(TrytesAlphabet), (string(trytes[1])))
 
 		decimalValue := firstValue + secondValue*27
 		character := string(decimalValue)
@@ -73,8 +73,8 @@ func TrytesToBytes(t giota.Trytes) []byte {
 	var output []byte
 	trytesString := string(t)
 	for i := 0; i < len(trytesString); i += 2 {
-		v1 := strings.IndexRune(trytesAlphabet, rune(trytesString[i]))
-		v2 := strings.IndexRune(trytesAlphabet, rune(trytesString[i+1]))
+		v1 := strings.IndexRune(string(TrytesAlphabet), rune(trytesString[i]))
+		v2 := strings.IndexRune(string(TrytesAlphabet), rune(trytesString[i+1]))
 		decimal := v1 + v2*27
 		c := byte(decimal)
 		output = append(output, c)
@@ -87,7 +87,7 @@ func BytesToTrytes(b []byte) giota.Trytes {
 	for _, c := range b {
 		v1 := c % 27
 		v2 := (c - v1) / 27
-		output += string(trytesAlphabet[v1]) + string(trytesAlphabet[v2])
+		output += string(TrytesAlphabet[v1]) + string(TrytesAlphabet[v2])
 	}
 	return giota.Trytes(output)
 }
