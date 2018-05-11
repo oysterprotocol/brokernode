@@ -3,11 +3,11 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"github.com/oysterprotocol/brokernode/utils"
 	"sync"
 	"time"
 
-	raven "github.com/getsentry/raven-go"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
@@ -114,7 +114,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 				var err error
 				channel := ChunkChannel{}
-				channel.ChannelID = RandSeq(10)
+				channel.ChannelID = oyster_utils.RandSeq(10, letters)
 				channel.EstReadyTime = time.Now().Add(-5 * time.Second)
 				channel.ChunksProcessed = 0
 
@@ -147,13 +147,4 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 	}
 
 	return channels, err
-}
-
-//TODO:  put this in some utils class
-func RandSeq(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
 }

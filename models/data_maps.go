@@ -29,6 +29,10 @@ const (
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
 	MaxNumberOfValueForInsertOperation = 50
+
+	TreasureChunkPadding = 2091 // 2187 - 96
+
+	TreasurePayloadLength = 96
 )
 
 const (
@@ -182,7 +186,9 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 
 	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed, sha256Hash)
 
-	return string(oyster_utils.BytesToTrytes(encryptedResult)), nil
+	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding, oyster_utils.TrytesAlphabet)
+
+	return treasurePayload, nil
 }
 
 func GetUnassignedGenesisHashes() ([]interface{}, error) {
