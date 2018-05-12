@@ -3,6 +3,7 @@ package models
 import (
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"github.com/getsentry/raven-go"
 	"golang.org/x/crypto/sha3"
@@ -29,10 +30,6 @@ const (
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
 	MaxNumberOfValueForInsertOperation = 50
-
-	TreasureChunkPadding = 2091 // 2187 - 96
-
-	TreasurePayloadLength = 96
 )
 
 const (
@@ -67,6 +64,12 @@ type TypeAndChunkMap struct {
 }
 
 var SortOrder map[int]string
+
+var (
+	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
+	TreasurePayloadLength = len(TreasurePrefix) + 96
+	TreasureChunkPadding  = int(FileBytesChunkSize) - TreasurePayloadLength
+)
 
 func init() {
 	SortOrder = make(map[int]string, 2)
@@ -184,7 +187,7 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 		currentHash = oyster_utils.HashString(currentHash, sha3.New256())
 	}
 
-	encryptedResult := oyster_utils.Encrypt(currentHash, ethereumSeed, sha256Hash)
+	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, sha256Hash)
 
 	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding, oyster_utils.TrytesAlphabet)
 
@@ -252,6 +255,18 @@ func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []
 		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc LIMIT ?",
 			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
 	}
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	return dataMaps, err
+}
+
+func GetPendingChunksBySession(session UploadSession, limit int) (dataMaps []DataMap, err error) {
+	dataMaps = []DataMap{}
+
+	err = DB.Where("genesis_hash = ? AND status = ? LIMIT ?",
+		session.GenesisHash, Pending, limit).All(&dataMaps)
 
 	if err != nil {
 		raven.CaptureError(err, nil)

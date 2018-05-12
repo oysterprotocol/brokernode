@@ -2,11 +2,13 @@ package models_test
 
 import (
 	"encoding/hex"
+	"fmt"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
+	"strings"
 )
 
 type hashAddressConversion struct {
@@ -68,7 +70,8 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 			currentHash = oyster_utils.HashString(currentHash, sha3.New256())
 			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
 			if result != nil {
-				ms.Equal(hex.EncodeToString(result), tc.ethPrivateSeed)
+				ms.Equal(true, strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
+				ms.Equal(hex.EncodeToString(result)[len(models.TreasurePrefix):], tc.ethPrivateSeed)
 				matchesFound++
 			}
 		}
@@ -259,6 +262,37 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	suite.Equal(numChunks+1, len(chunks)) // 1 extra chunk for treasure
 	suite.Equal(4, len(chunksWithLimit))
 	suite.NotEqual(models.DataMap{}, chunksWithLimit[0])
+}
+
+func (suite *ModelSuite) Test_GetPendingChunksBySession() {
+	numChunks := 5
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		FileSizeBytes:  8000,
+		NumChunks:      numChunks,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureBuried,
+	}
+	uploadSession1.StartUploadSession()
+	session := models.UploadSession{}
+	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	suite.Nil(err)
+
+	dataMaps := []models.DataMap{}
+	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	suite.Nil(err)
+	for _, dm := range dataMaps {
+		dm.Message = "NOTEMPETY"
+		suite.DB.ValidateAndSave(&dm)
+	}
+
+	chunksWithLimit, err := models.GetPendingChunksBySession(session, 4)
+	suite.Nil(err)
+
+	suite.NotEqual(0, len(chunksWithLimit))
+	suite.Equal(4, len(chunksWithLimit))
 }
 
 func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorZero() {

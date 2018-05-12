@@ -67,8 +67,9 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		oyster_utils.LogToSegment("treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).
 			Set("sector", entry.Sector).
-			Set("idx", entry.Idx).
-			Set("address", treasureChunks[0].Address))
+			Set("chunk_idx", entry.Idx).
+			Set("address", treasureChunks[0].Address).
+			Set("message", treasureChunks[0].Message))
 	}
 	unburiedSession.TreasureStatus = models.TreasureBuried
 	unburiedSession.SetTreasureMap(treasureIndexMap)
@@ -85,9 +86,16 @@ func MarkBuriedMapsAsUnassigned() {
 
 	for _, readySession := range readySessions {
 
-		oyster_utils.LogToSegment("mark_data_maps_as_ready", analytics.NewProperties().
-			Set("genesis_hash", readySession.GenesisHash))
+		pendingChunks, err := models.GetPendingChunksBySession(readySession, 1)
+		if err != nil {
+			raven.CaptureError(err, nil)
+		}
 
-		err = readySession.BulkMarkDataMapsAsUnassigned()
+		if len(pendingChunks) > 0 {
+			oyster_utils.LogToSegment("mark_data_maps_as_ready", analytics.NewProperties().
+				Set("genesis_hash", readySession.GenesisHash))
+
+			err = readySession.BulkMarkDataMapsAsUnassigned()
+		}
 	}
 }

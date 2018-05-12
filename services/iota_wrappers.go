@@ -452,15 +452,40 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 	if checkBranchAndTrunk == false &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) {
 
+		oyster_utils.LogToSegment("chunk_matched_tangle", analytics.NewProperties().
+			Set("genesis_hash", chunkOnRecord.GenesisHash).
+			Set("chunk_idx", chunkOnRecord.ChunkIdx).
+			Set("address", chunkOnRecord.Address).
+			Set("db_message", chunkOnRecord.Message))
+
 		return true
 
 	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.TrunkTransaction), chunkOnRecord.TrunkTx) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.BranchTransaction), chunkOnRecord.BranchTx) {
 
+		oyster_utils.LogToSegment("chunk_matched_tangle", analytics.NewProperties().
+			Set("genesis_hash", chunkOnRecord.GenesisHash).
+			Set("chunk_idx", chunkOnRecord.ChunkIdx).
+			Set("address", chunkOnRecord.Address).
+			Set("db_message", chunkOnRecord.Message).
+			Set("db_trunk", chunkOnRecord.TrunkTx).
+			Set("db_branch", chunkOnRecord.BranchTx))
+
 		return true
 
 	} else {
+
+		oyster_utils.LogToSegment("resend_chunk_tangle_mismatch", analytics.NewProperties().
+			Set("genesis_hash", chunkOnRecord.GenesisHash).
+			Set("chunk_idx", chunkOnRecord.ChunkIdx).
+			Set("address", chunkOnRecord.Address).
+			Set("db_message", chunkOnRecord.Message).
+			Set("tangle_message", chunkOnTangle.SignatureMessageFragment).
+			Set("db_trunk", chunkOnRecord.TrunkTx).
+			Set("tangle_trunk", chunkOnTangle.TrunkTransaction).
+			Set("db_branch", chunkOnRecord.BranchTx).
+			Set("tangle_branch", chunkOnTangle.BranchTransaction))
 
 		return false
 	}
