@@ -19,12 +19,10 @@ import (
 	"math/big"
 	"crypto/ecdsa"
 	"errors"
-	"io/ioutil"
 	"time"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"strings"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 type Eth struct {
@@ -209,27 +207,48 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 		Addresses: []common.Address{brokerAddr},
 		Topics:  nil, // matches any topic list
 	}
+
 	// subscribe before passing it to outCh.
-	client.SubscribeFilterLogs(context.Background(), q, outCh)
+	sub, err := client.SubscribeFilterLogs(context.Background(), q, outCh)
+
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+		case log := <- outCh:
+			fmt.Printf("Log Data:%v", log.Data)
+
+			// need to add unpack abi result if
+			// the method call is for the contract
+			if err != nil {
+				fmt.Println("Failed to unpack:", err)
+			}
+
+			fmt.Println("Confirmed Address:", log.Address.Hex())
+
+			sub.Unsubscribe()
+
+			// TODO ensure confirmation type from "sendGas" or "sendPRL"
+			recordTransaction(log.Address, "")
+		}
+	}
 }
 
 // Send gas to the completed upload Ethereum account
 func sendGas(completedUploads []models.CompletedUpload) (error) {
 	for _, completedUpload := range completedUploads {
-		privateKey := completedUpload.ETHPrivateKey
 		// returns a raw transaction, we may need to store them to verify all transactions are completed
 		// mock value need to get amount, not in completed upload object
-		sendETH(stringToAddress(completedUpload.ETHAddr), big.NewInt(1000))
+		gasPrice, _ := getGasPrice()
+		sendETH(stringToAddress(completedUpload.ETHAddr), gasPrice)
 	}
 	return nil
 }
 
-// TODO finish getting data on which wallet and private key, main wallet or other?
 // Transfer funds from one Ethereum account to another.
 // We need to pass in the credentials, to allow the transaction to execute.
 func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 
-	// TODO transfer PRLs from(MainWalletAddress), to(Recipient, amount)
 	client, _ := sharedClient("")
 	// initialize the context
 	deadline := time.Now().Add(1000 * time.Millisecond)
@@ -248,7 +267,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 
 	// oysterby chainId 559966
 	chainId := big.NewInt(559966)
-	privateKey := ecdsa.PrivateKey{} // TODO Create MainWalletKey?
+	privateKey := ecdsa.PrivateKey{} // Instantiate MainWalletKey from env
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, err := types.SignTx(tx, signer, &privateKey)
 
@@ -273,13 +292,12 @@ func buryPrl(msg OysterCallMsg) (bool) {
 	rawTransaction := sendETH(msg.To, &msg.Amount)
 
 	if len(rawTransaction) < 0 {
-		// sending eth has failed TODO need more descriptive fail or log?
+		// sending eth has failed
 		return false
 	}
 
 	// initialize the context
-	deadline := time.Now().Add(1000 * time.Millisecond)
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	ctx, cancel := createContext()
 	defer cancel()
 	// shared client
 	client, _ := sharedClient("")
@@ -369,8 +387,7 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 func sendPRL(msg OysterCallMsg) (bool) {
 
 	// initialize the context
-	deadline := time.Now().Add(1000 * time.Millisecond)
-	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	ctx, cancel := createContext()
 	defer cancel()
 
 	// shared client
@@ -394,6 +411,7 @@ func sendPRL(msg OysterCallMsg) (bool) {
 
 	// successful contract message call
 	if len(rawTransaction) > 0 {
+		// TODO pull stash for subscribe to transfer
 		return true
 	} else {
 		return false
@@ -404,49 +422,56 @@ func sendPRL(msg OysterCallMsg) (bool) {
 func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, error) {
 
 	// invoke the smart contract bury() function with 'treasure'
-	// contract bury() public returns (bool success)
-	// OysterPearl: 0xf25186b5081ff5ce73482ad761db0eb0d25abfbf
+	// TODO OysterPearl
 	contractAddress := common.HexToAddress("0xf25186b5081ff5ce73482ad761db0eb0d25abfbf")
 
-	// oysterby chainId 559966
+	// oysterby chainId 559966 - env
 	chainId := big.NewInt(559966)
-	privateKey := ecdsa.PrivateKey{} // TODO Create MainWalletKey?
+	privateKey, err := crypto.HexToECDSA(MainWalletKey)
+	if err != nil {
+		fmt.Printf("Failed to parse secp256k1 private key")
+		return nil, err
+	}
 	client, _ := sharedClient("")
 	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
 
 	// get latest gas limit & price - current default gasLimit on oysterby 21000
-	gasLimit := uint64(21000) // may pull gas limit from estimate gas price
+	gasLimit := uint64(vm.GASLIMIT) // may pull gas limit from estimate gas price
 	gasPrice, _ := getGasPrice()
 
 	// create new transaction with 0 amount
 	tx := types.NewTransaction(nonce, contractAddress, big.NewInt(0), gasLimit, gasPrice, data)
 
 	signer := types.NewEIP155Signer(chainId)
-	signedTx, _ := types.SignTx(tx, signer, &privateKey)
+	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
 	return  signedTx, nil
 }
 
+// context helper to include the deadline initialization
+func createContext() (ctx context.Context, cancel context.CancelFunc) {
+	deadline := time.Now().Add(1000 * time.Millisecond)
+	return context.WithDeadline(context.Background(), deadline)
+}
 
-/* TODO will be using channels/workers for subscribe to transaction events
 
-	-there is an example of a channel/worker in iota_wrappers.go
+// TODO will be Use channels/workers for subscribe to transaction events
+// There is an example of a channel/worker in iota_wrappers.go
+// These methods live in models/completed_uploads.go
+func recordTransaction(address common.Address, status string) {
+	// when a successful transaction event, will need to change the status
+	// of the correct row in the completed_uploads table.
 
-	-when you see a successful transaction event, will need to change the status
-    of the correct row in the completed_uploads table.
+	// expect "address" to be the "to" address of the gas transaction or
+	// the "from" address of the PRL transaction.
 
-	-to indicate that a gas transfers has succeedded, call this method:
-
-    models.SetGasStatusByAddress(address, models.GasTransferSuccess)
-
-    -to indicate that a PRL transfer succeeded, call this:
-
-    models.SetPRLStatusByAddress(address, models.PRLClaimSuccess)
-
-    Both methods currently expect address to be a string (change that if you want)
-    and expect "address" to be the "to" address of the gas transaction or the "from"
-    address of the PRL transaction.  In other words, *not* the broker's main wallet
-    address.
-
-    These methods live in models/completed_uploads.go
-*/
+	// do *not* use the broker's main wallet address
+	switch status {
+	case "sendGas":
+		// gas transfers succeeded, call this method:
+		models.SetGasStatusByAddress(address.Hex(), models.GasTransferSuccess)
+	case "sendPRL":
+		// PRL transfer succeeded, call this:
+		models.SetPRLStatusByAddress(address.Hex(), models.PRLClaimSuccess)
+	}
+}

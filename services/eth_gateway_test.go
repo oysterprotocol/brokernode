@@ -214,7 +214,7 @@ func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
 	channel := make(chan types.Log)
 	s.gateway.SubscribeToTransfer(broker, channel)
 
-	fmt.Printf("Subscribed to :%v",channel)
+	fmt.Printf("Subscribed to :%v",<-channel)
 }
 
 
