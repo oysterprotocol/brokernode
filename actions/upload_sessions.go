@@ -3,8 +3,6 @@ package actions
 import (
 	"bytes"
 	"encoding/json"
-	"net/http"
-
 	"fmt"
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
@@ -14,7 +12,9 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
 	"math"
+	"net/http"
 	"strings"
+	"time"
 )
 
 type UploadSessionResource struct {
@@ -111,7 +111,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		// Should we be hardcoding the port?
 		betaURL := req.BetaIP + ":3000/api/v2/upload-sessions/beta"
 		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
-
+		defer betaRes.Body.Close() // we need to close the connection
 		if err != nil {
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
@@ -164,6 +164,8 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	go func() {
 		var sqlWhereClosures []string
 		chunksMap := make(map[string]chunkReq)
+		minChunkIdx := float64(0)
+		maxChunkIdx := float64(0)
 		for _, chunk := range req.Chunks {
 			var chunkIdx int
 			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
@@ -175,11 +177,15 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			key := sqlWhereForGenesisHashAndChunkIdx(uploadSession.GenesisHash, chunkIdx)
 			sqlWhereClosures = append(sqlWhereClosures, key)
 			chunksMap[key] = chunk
+			minChunkIdx = math.Min(minChunkIdx, float64(chunkIdx))
+			maxChunkIdx = math.Max(maxChunkIdx, float64(chunkIdx))
 		}
 
 		var dms []models.DataMap
-		rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
-		err := models.DB.RawQuery(rawQuery).All(&dms)
+		//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
+		err := models.DB.RawQuery(
+			"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
+			uploadSession.GenesisHash, minChunkIdx, maxChunkIdx).All(&dms)
 
 		if err != nil {
 			raven.CaptureError(err, nil)
@@ -224,9 +230,15 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			sectionUpdatedDms := updatedDms[lower:upper]
 
 			// Do an insert operation and dup by primary key.
-			rawQuery = fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
+
+			rawQuery := fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
 				dbOperation.GetColumns(), strings.Join(sectionUpdatedDms, ","))
+
 			err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+			for err != nil {
+				time.Sleep(300 * time.Millisecond)
+				err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+			}
 
 			remainder = remainder - SQL_BATCH_SIZE
 

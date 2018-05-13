@@ -38,7 +38,10 @@ func App() *buffalo.App {
 		})
 
 		// Setup sentry
-		raven.SetDSN(os.Getenv("SENTRY_DSN"))
+		ravenDSN := os.Getenv("SENTRY_DSN")
+		if ravenDSN != "" {
+			raven.SetDSN(ravenDSN)
+		}
 
 		// Automatically redirect to SSL
 		app.Use(ssl.ForceSSL(secure.Options{
