@@ -267,9 +267,9 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 
 	// oysterby chainId 559966
 	chainId := big.NewInt(559966)
-	privateKey := ecdsa.PrivateKey{} // Instantiate MainWalletKey from env
+	privateKey, _ := crypto.HexToECDSA(MainWalletKey)
 	signer := types.NewEIP155Signer(chainId)
-	signedTx, err := types.SignTx(tx, signer, &privateKey)
+	signedTx, err := types.SignTx(tx, signer, privateKey)
 
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
