@@ -10,6 +10,8 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
+
 	"github.com/pkg/errors"
 	"math"
 	"net/http"
@@ -69,6 +71,7 @@ const (
 
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
+
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -84,6 +87,14 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		ETHAddrAlpha:         nulls.NewString(alphaEthAddr),
 		ETHPrivateKey:        privKey,
 	}
+
+	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_alpha_session", analytics.NewProperties().
+		Set("id", alphaSession.ID).
+		Set("genesis_hash", alphaSession.GenesisHash).
+		Set("file_size_byes", alphaSession.FileSizeBytes).
+		Set("num_chunks", alphaSession.NumChunks).
+		Set("storage_years", alphaSession.StorageLengthInYears))
+
 	vErr, err := alphaSession.StartUploadSession()
 	if err != nil {
 		return err
@@ -154,6 +165,14 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	// Get session
 	uploadSession := &models.UploadSession{}
 	err := models.DB.Find(uploadSession, c.Param("id"))
+
+	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: updating_session", analytics.NewProperties().
+		Set("id", uploadSession.ID).
+		Set("genesis_hash", uploadSession.GenesisHash).
+		Set("file_size_byes", uploadSession.FileSizeBytes).
+		Set("num_chunks", uploadSession.NumChunks).
+		Set("storage_years", uploadSession.StorageLengthInYears))
+
 	if err != nil || uploadSession == nil {
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
@@ -162,6 +181,14 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	// Update dMaps to have chunks async
 	go func() {
+
+		defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: async_datamap_updates", analytics.NewProperties().
+			Set("id", uploadSession.ID).
+			Set("genesis_hash", uploadSession.GenesisHash).
+			Set("file_size_byes", uploadSession.FileSizeBytes).
+			Set("num_chunks", uploadSession.NumChunks).
+			Set("storage_years", uploadSession.StorageLengthInYears))
+
 		var sqlWhereClosures []string
 		chunksMap := make(map[string]chunkReq)
 		minChunkIdx := float64(0)
@@ -273,6 +300,14 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		ETHAddrBeta:          nulls.NewString(betaEthAddr),
 		ETHPrivateKey:        privKey,
 	}
+
+	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_beta_session", analytics.NewProperties().
+		Set("id", u.ID).
+		Set("genesis_hash", u.GenesisHash).
+		Set("file_size_byes", u.FileSizeBytes).
+		Set("num_chunks", u.NumChunks).
+		Set("storage_years", u.StorageLengthInYears))
+
 	vErr, err := u.StartUploadSession()
 
 	u.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
