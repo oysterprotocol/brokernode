@@ -186,7 +186,11 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 
 	for i := 0; i < len(a); i++ {
 		// TODO(pzhao5): figure a better way to hash it.
-		merged = append(merged, (a[i]+b[i])/2)
+		idx := (a[i] + b[i]) / 2
+		if idx == 0 {
+			idx = 1
+		}
+		merged = append(merged, idx)
 	}
 	return merged, nil
 }

@@ -34,12 +34,15 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 		}
 
 		chunks, err := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
-		AssignChunksToChannels(chunks, channels, iotaWrapper)
 
-		oyster_utils.LogToSegment("processing_chunks_for_session", analytics.NewProperties().
-			Set("genesis_hash", session.GenesisHash).
-			Set("num_chunks_processing", len(chunks)).
-			Set("num_ready_channels", len(channels)))
+		if len(chunks) > 0 {
+			AssignChunksToChannels(chunks, channels, iotaWrapper)
+
+			oyster_utils.LogToSegment("processing_chunks_for_session", analytics.NewProperties().
+				Set("genesis_hash", session.GenesisHash).
+				Set("num_chunks_processing", len(chunks)).
+				Set("num_ready_channels", len(channels)))
+		}
 
 		if len(chunks) == len(channels)*BundleSize {
 			// we have used up all the channels, no point in doing the for loop again
