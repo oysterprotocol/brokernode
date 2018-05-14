@@ -214,15 +214,15 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 		Addresses: []common.Address{brokerAddr},
 		Topics:  nil, // matches any topic list
 	}
-        
+
 	// subscribe before passing it to outCh.
-	/*
-	sub, err := client.SubscribeFilterLogs(context.Background(), q, outCh)
+	sub, _ := client.SubscribeFilterLogs(context.Background(), q, outCh)
 
 	for {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
+		/*
 		case log := <- outCh:
 			fmt.Printf("Log Data:%v", log.Data)
 
@@ -237,9 +237,9 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 			sub.Unsubscribe()
 
 			// TODO ensure confirmation type from "sendGas" or "sendPRL"
-			recordTransaction(log.Address, "")
+			recordTransaction(log.Address, "")*/
 		}
-	}*/
+	}
 }
 
 // Send gas to the completed upload Ethereum account
