@@ -84,7 +84,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		FileSizeBytes:        req.FileSizeBytes,
 		NumChunks:            req.NumChunks,
 		StorageLengthInYears: req.StorageLengthInYears,
-		ETHAddrAlpha:         nulls.NewString(alphaEthAddr),
+		ETHAddrAlpha:         nulls.NewString(alphaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
 	}
 
@@ -297,7 +297,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		StorageLengthInYears: req.StorageLengthInYears,
 		TotalCost:            req.Invoice.Cost,
 		ETHAddrAlpha:         req.Invoice.EthAddress,
-		ETHAddrBeta:          nulls.NewString(betaEthAddr),
+		ETHAddrBeta:          nulls.NewString(betaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
 	}
 
