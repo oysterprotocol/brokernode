@@ -2,6 +2,8 @@ package services
 
 import (
 	"fmt"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"math"
 	"os"
@@ -37,12 +39,19 @@ type IotaService struct {
 	VerifyChunkMessagesMatchRecord VerifyChunkMessagesMatchRecord
 	VerifyChunksMatchRecord        VerifyChunksMatchRecord
 	ChunksMatch                    ChunksMatch
+	VerifyTreasure                 VerifyTreasure
+}
+
+type ProcessingFrequency struct {
+	RecentProcessingTimes []time.Duration
+	Frequency             float64
 }
 
 type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
 type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
 type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
 type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
+type VerifyTreasure func([]string) (verify bool, err error)
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -54,6 +63,9 @@ type FilteredChunk struct {
 // https://github.com/iotaledger/giota/blob/master/transfer.go#L322
 const (
 	maxTimestampTrytes = "MMMMMMMMM"
+
+	// By a hard limit on the request for FindTransaction to IOTA
+	maxNumberOfAddressPerFindTransactionRequest = 1000
 )
 
 var (
@@ -61,15 +73,17 @@ var (
 	PowProcs    int
 	IotaWrapper IotaService
 	//This mutex was added by us.
-	mutex        = &sync.Mutex{}
-	seed         giota.Trytes
-	minDepth     = int64(giota.DefaultNumberOfWalks)
-	minWeightMag = int64(14)
-	bestPow      giota.PowFunc
-	powName      string
-	Channel      = map[string]PowChannel{}
-	wg           sync.WaitGroup
-	api          *giota.API
+	mutex           = &sync.Mutex{}
+	seed            giota.Trytes
+	minDepth        = int64(1)
+	minWeightMag    = int64(9)
+	bestPow         giota.PowFunc
+	powName         string
+	Channel         = map[string]PowChannel{}
+	wg              sync.WaitGroup
+	api             *giota.API
+	PoWFrequency    ProcessingFrequency
+	minPoWFrequency = 1
 )
 
 func init() {
@@ -83,9 +97,8 @@ func init() {
 
 	host_ip := os.Getenv("HOST_IP")
 	if host_ip == "" {
-		log.Println("No IRI host given")
 		raven.CaptureError(err, nil)
-		// panic("Invalid IRI host: Check the .env file for HOST_IP")
+		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
 	provider := "http://" + host_ip + ":14265"
@@ -101,14 +114,13 @@ func init() {
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
+		VerifyTreasure:                 verifyTreasure,
 	}
 
 	PowProcs = runtime.NumCPU()
 	if PowProcs != 1 {
 		PowProcs--
 	}
-
-	//makeFakeChunks()
 
 	channels := []models.ChunkChannel{}
 
@@ -133,23 +145,8 @@ func init() {
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
 	}
-}
 
-func makeFakeChunks() {
-
-	dataMaps := []models.DataMap{}
-
-	models.BuildDataMaps("GENHASH2", 49000)
-
-	_ = models.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
-
-	for i := 0; i < len(dataMaps); i++ {
-		dataMaps[i].Address = models.RandSeq(81)
-		dataMaps[i].Message = "TESTMESSAGE"
-		dataMaps[i].Status = models.Unassigned
-
-		models.DB.ValidateAndSave(&dataMaps[i])
-	}
+	PoWFrequency.Frequency = 5
 }
 
 func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
@@ -176,7 +173,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, minDepth, "")
 		if err != nil {
 			raven.CaptureError(err, nil)
 		}
@@ -209,16 +206,69 @@ func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel
 		ElapsedTime: time.Since(startTime),
 	})
 
+	PoWFrequency.RecentProcessingTimes = append(PoWFrequency.RecentProcessingTimes, time.Since(startTime))
+
 	if len(*(channel.ChunkTrackers)) > 10 {
 		*(channel.ChunkTrackers) = (*(channel.ChunkTrackers))[1:11]
 	}
+
+	if len(PoWFrequency.RecentProcessingTimes) > 10 {
+		PoWFrequency.RecentProcessingTimes = PoWFrequency.RecentProcessingTimes[1:11]
+	}
+
+	var totalTime time.Duration
+	for _, elapsedTime := range PoWFrequency.RecentProcessingTimes {
+		totalTime += elapsedTime
+	}
+
+	avgTimePerPoW := float64(totalTime/time.Second) / float64(len(PoWFrequency.RecentProcessingTimes))
+
+	PoWFrequency.Frequency = math.Max(avgTimePerPoW, float64(minPoWFrequency))
+}
+
+func GetProcessingFrequency() float64 {
+	return PoWFrequency.Frequency
+}
+
+// Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcations
+func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
+
+	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
+
+	numOfBatchRequest := int(math.Ceil(float64(len(addresses)) / float64(maxNumberOfAddressPerFindTransactionRequest)))
+
+	remainder := len(addresses)
+	for i := 0; i < numOfBatchRequest; i++ {
+		lower := i * maxNumberOfAddressPerFindTransactionRequest
+		upper := i*maxNumberOfAddressPerFindTransactionRequest + int(math.Min(float64(remainder), maxNumberOfAddressPerFindTransactionRequest))
+		req := giota.FindTransactionsRequest{
+			Addresses: addresses[lower:upper],
+		}
+		resp, err := api.FindTransactions(&req)
+		if err != nil {
+			return nil, err
+		}
+		transactionResp, err := api.GetTrytes(resp.Hashes)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, transaction := range transactionResp.Trytes {
+			list := addrToTransactionMap[transaction.Address]
+			list = append(list, transaction)
+			addrToTransactionMap[transaction.Address] = list
+		}
+		remainder = remainder - maxNumberOfAddressPerFindTransactionRequest
+	}
+
+	return addrToTransactionMap, nil
 }
 
 func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) error {
 
-	//defer oysterUtils.TimeTrack(time.Now(), "doPow_using_" + powName, analytics.NewProperties().
-	//	Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)))
+	defer oyster_utils.TimeTrack(time.Now(), "iota_wrappers: doPow_using_"+powName, analytics.NewProperties().
+		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes)))
 
 	var prev giota.Trytes
 	var err error
@@ -251,39 +301,29 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		prev = trytes[i].Hash()
 	}
 
-	go func(trytes []giota.Transaction) {
+	broadcastProperties := analytics.NewProperties().
+		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes))
+
+	go func(trytes []giota.Transaction, broadcastProperties analytics.Properties) {
 
 		err = api.BroadcastTransactions(trytes)
 
 		if err != nil {
 
 			// Async log
-			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "broadcast_fail_redoing_pow",
-			//	UserId: oysterUtils.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
-			//})
+			oyster_utils.LogToSegment("iota_wrappers: broadcast_FAIL", broadcastProperties)
 
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		} else {
 
-			fmt.Println("Broadcast Success!")
+			err = api.StoreTransactions(trytes)
+			fmt.Println("BROADCAST SUCCESS")
 
-			/*
-				TODO do we need this??
-			*/
-			//go BroadcastTxs(&trytes, broadcastNodes)
-
-			//go oysterUtils.SegmentClient.Enqueue(analytics.Track{
-			//	Event:  "broadcast_success",
-			//	UserId: oysterUtils.GetLocalIP(),
-			//	Properties: analytics.NewProperties().
-			//		Set("addresses", oysterUtils.MapTransactionsToAddrs(trytes)),
-			//})
+			// Async log
+			oyster_utils.LogToSegment("iota_wrappers: broadcast_success", broadcastProperties)
 		}
-	}(trytes)
+	}(trytes, broadcastProperties)
 
 	return nil
 }
@@ -404,6 +444,15 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	} else if len(response.Hashes) == 0 {
 		filteredChunks.NotAttached = chunks
 	}
+
+	if len(filteredChunks.MatchesTangle) > 0 {
+		oyster_utils.LogToSegment("iota_wrappers: chunks_matched_tangle", analytics.NewProperties().
+			Set("num_chunks", len(filteredChunks.MatchesTangle)))
+	}
+	if len(filteredChunks.NotAttached) > 0 {
+		oyster_utils.LogToSegment("iota_wrappers: not_attached", analytics.NewProperties().
+			Set("num_chunks", len(filteredChunks.NotAttached)))
+	}
 	return filteredChunks, err
 }
 
@@ -422,6 +471,61 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 
 	} else {
 
+		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
+			Set("genesis_hash", chunkOnRecord.GenesisHash).
+			Set("chunk_idx", chunkOnRecord.ChunkIdx).
+			Set("address", chunkOnRecord.Address).
+			Set("db_message", chunkOnRecord.Message).
+			Set("tangle_message", chunkOnTangle.SignatureMessageFragment).
+			Set("db_trunk", chunkOnRecord.TrunkTx).
+			Set("tangle_trunk", chunkOnTangle.TrunkTransaction).
+			Set("db_branch", chunkOnRecord.BranchTx).
+			Set("tangle_branch", chunkOnTangle.BranchTransaction))
+
 		return false
 	}
+}
+
+// Verify PoW of work.
+func verifyTreasure(addr []string) (bool, error) {
+
+	iotaAddr := make([]giota.Address, len(addr))
+
+	for i, address := range addr {
+		iotaAddr[i] = giota.Address(address)
+	}
+
+	transactionsMap, err := FindTransactions(iotaAddr)
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return false, err
+	}
+
+	if len(transactionsMap) != len(iotaAddr) {
+		return false, nil
+	}
+
+	isTransactionWithinTimePeriod := false
+	passedTimestamp := time.Now().AddDate(-1, 0, 0)
+
+	for _, iotaAddress := range iotaAddr {
+		if _, hasKey := transactionsMap[iotaAddress]; !hasKey {
+			return false, nil
+		}
+
+		transactions := transactionsMap[iotaAddress]
+		// Check one the transactions has submit within the passed 1 year.
+		for _, transaction := range transactions {
+			if transaction.Timestamp.After(passedTimestamp) {
+				isTransactionWithinTimePeriod = true
+				break
+			}
+		}
+		if !isTransactionWithinTimePeriod {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }

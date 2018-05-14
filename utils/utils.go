@@ -6,12 +6,12 @@ import (
 	"errors"
 	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
+	"log"
 	"math"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
-	"log"
 )
 
 const (
@@ -70,11 +70,16 @@ func ConvertToTrytes(bytes int) int {
 }
 
 // Return the total file chunk, including burying pearl
-func GetTotalFileChunkIncludingBuriedPearls(fileSizeInByte int) int {
+func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte int) int {
 	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
 
 	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
+}
+
+// Return the total file chunk, including burying pearl
+func GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks int) int {
+	return numChunks + int(math.Ceil(float64(numChunks)/float64(FileSectorInChunkSize)))
 }
 
 // Transforms index with correct position for insertion after considering the buried indexes.
@@ -114,7 +119,7 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 
 // Return the IdxMap for treasure to burried
 func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
-	mergedIndexes, err := mergeIndexes(alphaIndexes, betaIndexs)
+	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
 	var idxMap nulls.String
 	if err == nil {
 		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
@@ -173,7 +178,7 @@ func IntsSplit(a string, delim string) []int {
 
 // Private methods
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
-func mergeIndexes(a []int, b []int) ([]int, error) {
+func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		return nil, errors.New("Invalid input")
@@ -181,7 +186,19 @@ func mergeIndexes(a []int, b []int) ([]int, error) {
 
 	for i := 0; i < len(a); i++ {
 		// TODO(pzhao5): figure a better way to hash it.
-		merged = append(merged, (a[i]+b[i])/2)
+		idx := (a[i] + b[i]) / 2
+		if idx == 0 {
+			idx = 1
+		}
+		merged = append(merged, idx)
 	}
 	return merged, nil
+}
+
+func RandSeq(length int, sequence []rune) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = sequence[rand.Intn(len(sequence))]
+	}
+	return string(b)
 }

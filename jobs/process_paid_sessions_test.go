@@ -22,17 +22,17 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	testMap1 := `[{
 		"sector": 1,
 		"idx": ` + fmt.Sprint(treasureIndexes[5]) + `,
-		"key": "firstKeyFirstMap"
+		"key": "0000000001"
 		},
-		{ 
+		{
 		"sector": 2,
 		"idx": ` + fmt.Sprint(treasureIndexes[78]) + `,
-		"key": "secondKeyFirstMap"
+		"key": "0000000002"
 		},
 		{
 		"sector": 3,
 		"idx": ` + fmt.Sprint(treasureIndexes[199]) + `,
-		"key": "thirdKeyFirstMap"
+		"key": "0000000003"
 		}]`
 
 	// create another dummy TreasureIdxMap for the data maps
@@ -42,7 +42,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		"idx": 155,
 		"key": "firstKeySecondMap"
 		},
-		{ 
+		{
 		"sector": 2,
 		"idx": 204,
 		"key": "secondKeySecondMap"
@@ -56,10 +56,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "genHash1",
+		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
-		TreasureStatus: models.TreasureUnburied,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureBurying,
 		TreasureIdxMap: nulls.String{string(testMap1), true},
 	}
 
@@ -68,9 +69,10 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// create and start the upload session for the data maps that already have buried treasure
 	uploadSession2 := models.UploadSession{
 		GenesisHash:    "genHash2",
+		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusPaid,
+		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBuried,
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}
@@ -91,12 +93,15 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// verify that the "Message" field for every chunk in paidButUnburied is ""
 	for _, dMap := range paidButUnburied {
-		suite.Equal("", dMap.Message)
+		dMap.Message = "NOTEMPTY"
+		suite.DB.ValidateAndSave(&dMap)
 	}
 
 	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
 	for _, dMap := range paidAndBuried {
 		suite.NotEqual(models.Unassigned, dMap.Status)
+		dMap.Message = "NOTEMPTY"
+		suite.DB.ValidateAndSave(&dMap)
 	}
 
 	// call method under test
@@ -114,7 +119,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		if _, ok := treasureIndexes[dMap.ChunkIdx]; ok {
 			suite.NotEqual("", dMap.Message)
 		} else {
-			suite.Equal("", dMap.Message)
+			suite.Equal("NOTEMPTY", dMap.Message)
 		}
 		suite.Equal(models.Unassigned, dMap.Status)
 	}

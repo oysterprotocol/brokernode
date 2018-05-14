@@ -14,3 +14,5 @@ brokernode
 data/
 migrations/schema.sql
 .env
+*.env
+.DS_Store

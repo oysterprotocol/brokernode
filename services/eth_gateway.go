@@ -7,6 +7,8 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"os"
 	"sync"
@@ -27,7 +29,7 @@ import (
 
 type Eth struct {
 	SendGas             SendGas
-	ClaimPRLs           ClaimPRLs
+	ClaimUnusedPRLs     ClaimUnusedPRLs
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
 	SendETH             SendETH
@@ -90,7 +92,7 @@ func init() {
 
 	EthWrapper = Eth{
 		SendGas:         sendGas,
-		ClaimPRLs:       claimPRLs,
+		ClaimUnusedPRLs: claimUnusedPRLs,
 		GenerateEthAddr: generateEthAddr,
 		BuryPrl:         buryPrl,
 		SendETH:         sendETH,
@@ -148,15 +150,22 @@ func getGasPrice() (*big.Int, error) {
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
 	}
-
-	// there is no guarantee with estimate gas price
+	
+  // there is no guarantee with estimate gas price
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal("Client could not get gas price from network")
 	}
 	return gasPrice, nil
-}
+  
+  // TODO review this doesn't return gasPrice
+	// addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
+	// privKey = hex.EncodeToString(ethAccount.D.Bytes())
+	//oyster_utils.LogToSegment("eth_gateway: generated_new_eth_address", analytics.NewProperties().
+		//Set("eth_address", fmt.Sprint(addr)))
+	//return
 
+}
 
 // Check balance from a valid Ethereum network address
 func checkBalance(addr common.Address) (*big.Int) {
@@ -290,7 +299,7 @@ func buryPrl(msg OysterCallMsg) (bool) {
 
 	// dispense PRLs from the transaction address to each 'treasure' address
 	rawTransaction := sendETH(msg.To, &msg.Amount)
-
+  
 	if len(rawTransaction) < 0 {
 		// sending eth has failed
 		return false

@@ -80,6 +80,8 @@ func Test_TrackProcessingTime(t *testing.T) {
 
 	initialLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers)-1])
 
+	initialPoWFrequency := services.PoWFrequency.Frequency
+
 	services.TrackProcessingTime(startTime, 10, &powChannel)
 
 	newLastChunkRecord := ((*(powChannel.ChunkTrackers))[len(*powChannel.ChunkTrackers)-1])
@@ -98,5 +100,9 @@ func Test_TrackProcessingTime(t *testing.T) {
 	// check that there are only 10 records
 	if len(*powChannel.ChunkTrackers) != 10 {
 		t.Fatalf("TrackProcessingTime:  only supposed to hold the last 10 records")
+	}
+
+	if initialPoWFrequency == services.GetProcessingFrequency() {
+		t.Fatalf("TrackProcessingTime:  PoWFrequency.Frequency should have changed")
 	}
 }

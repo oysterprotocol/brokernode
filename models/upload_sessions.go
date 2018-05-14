@@ -2,13 +2,14 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/oysterprotocol/brokernode/utils"
 	"math"
+	"os"
 	"time"
 
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
-	// "github.com/gobuffalo/pop/slices"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
@@ -36,6 +37,7 @@ type UploadSession struct {
 	CreatedAt            time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
+	NumChunks            int       `json:"numChunks" db:"num_chunks"`
 	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
@@ -53,13 +55,15 @@ type UploadSession struct {
 }
 
 const (
-	PaymentStatusPending int = iota + 1
-	PaymentStatusPaid
+	PaymentStatusInvoiced int = iota + 1
+	PaymentStatusPending
+	PaymentStatusConfirmed
 	PaymentStatusError = -1
 )
 
 const (
-	TreasureUnburied int = iota + 1
+	TreasureGeneratingKeys int = iota + 1
+	TreasureBurying
 	TreasureBuried
 )
 
@@ -87,7 +91,8 @@ func (u UploadSessions) String() string {
 func (u *UploadSession) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: u.GenesisHash, Name: "GenesisHash"},
-		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSizeBytes"},
+		&validators.IntIsPresent{Field: u.NumChunks, Name: "NumChunks"},
+		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSize"},
 	), nil
 }
 
@@ -113,14 +118,37 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 		u.Type = SessionTypeAlpha
 	}
 
-	// Defaults to paymentStatusPending
-	if u.PaymentStatus == 0 {
-		u.PaymentStatus = PaymentStatusPending
-	}
+	switch oyster_utils.BrokerMode {
+	case oyster_utils.ProdMode:
+		// Defaults to paymentStatusPending
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusInvoiced
+		}
 
-	// Defaults to treasureUnburied
-	if u.TreasureStatus == 0 {
-		u.TreasureStatus = TreasureUnburied
+		// Defaults to treasureGeneratingKeys
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureGeneratingKeys
+		}
+	case oyster_utils.TestModeDummyTreasure:
+		// Defaults to paymentStatusPaid
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusConfirmed
+		}
+
+		// Defaults to treasureBurying
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureBurying
+		}
+	case oyster_utils.TestModeNoTreasure:
+		// Defaults to paymentStatusPaid
+		if u.PaymentStatus == 0 {
+			u.PaymentStatus = PaymentStatusConfirmed
+		}
+
+		// Defaults to treasureBuried
+		if u.TreasureStatus == 0 {
+			u.TreasureStatus = TreasureBuried
+		}
 	}
 
 	return nil
@@ -142,7 +170,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		return
 	}
 
-	vErr, err = BuildDataMaps(u.GenesisHash, u.FileSizeBytes)
+	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	return
 }
 
@@ -191,6 +219,7 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 			raven.CaptureError(err, nil)
 		}
 	}
+
 	return treasureIndex, err
 }
 
@@ -208,6 +237,103 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	return nil
 }
 
+// Sets the TreasureIdxMap with Sector, Idx, and Key
+func (u *UploadSession) MakeTreasureIdxMap(alphaIndexes []int, betaIndexs []int) {
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexs)
+	treasureIndexArray := make([]TreasureMap, 0)
+
+	key := ""
+
+	if oyster_utils.BrokerMode == oyster_utils.TestModeDummyTreasure {
+		key = os.Getenv("TEST_MODE_WALLET_KEY")
+	}
+
+	for i, mergedIndex := range mergedIndexes {
+		treasureIndexArray = append(treasureIndexArray, TreasureMap{
+			Sector: i,
+			Idx:    mergedIndex,
+			Key:    key, // TODO where are we getting the real keys?
+		})
+	}
+
+	treasureString, err := json.Marshal(treasureIndexArray)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
+	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	DB.ValidateAndSave(u)
+}
+
+func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
+	treasureMap, err := u.GetTreasureMap()
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+	treasureIndexArray := make([]int, 0)
+	for _, treasure := range treasureMap {
+		treasureIndexArray = append(treasureIndexArray, treasure.Idx)
+	}
+	return treasureIndexArray, err
+}
+
+func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
+	err := DB.RawQuery("UPDATE data_maps SET status = ? "+
+		"WHERE genesis_hash = ? AND status = ? AND message != ?",
+		Unassigned,
+		u.GenesisHash,
+		Pending,
+		DataMap{}.Message).All(&[]DataMap{})
+	return err
+}
+
 func getStoragePeg() int {
 	return 1 // TODO: write code to query smart contract to get real storage peg
+}
+
+func (u *UploadSession) GetPaymentStatus() string {
+	switch u.PaymentStatus {
+	case PaymentStatusInvoiced:
+		return "invoiced"
+	case PaymentStatusPending:
+		return "pending"
+	case PaymentStatusConfirmed:
+		return "confirmed"
+	default:
+		return "error"
+	}
+}
+
+func GetSessionsByAge() ([]UploadSession, error) {
+	sessionsByAge := []UploadSession{}
+
+	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
+		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureBuried).All(&sessionsByAge)
+
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return nil, err
+	}
+
+	return sessionsByAge, nil
+}
+
+// GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
+// we have not yet buried the treasure.
+func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
+	unburiedSessions := []UploadSession{}
+
+	err := DB.Where("payment_status = ? AND treasure_status = ?",
+		PaymentStatusConfirmed, TreasureBurying).All(&unburiedSessions)
+
+	return unburiedSessions, err
+}
+
+func GetReadySessions() ([]UploadSession, error) {
+	readySessions := []UploadSession{}
+
+	err := DB.Where("payment_status = ? AND treasure_status = ?",
+		PaymentStatusConfirmed, TreasureBuried).All(&readySessions)
+
+	return readySessions, err
 }

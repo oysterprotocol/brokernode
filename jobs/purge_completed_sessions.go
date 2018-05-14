@@ -3,6 +3,8 @@ package jobs
 import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 )
 
@@ -64,6 +66,7 @@ func PurgeCompletedSessions() {
 				if len(session) > 0 {
 					_, err = tx.ValidateAndSave(&models.StoredGenesisHash{
 						GenesisHash:   session[0].GenesisHash,
+						NumChunks:     session[0].NumChunks,
 						FileSizeBytes: session[0].FileSizeBytes,
 					})
 					if err != nil {
@@ -79,6 +82,10 @@ func PurgeCompletedSessions() {
 				if err != nil {
 					return err
 				}
+
+				oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
+					Set("genesis_hash", genesisHash).
+					Set("session_id", session[0].ID))
 
 				return nil
 			})

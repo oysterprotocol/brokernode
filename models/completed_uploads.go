@@ -13,25 +13,28 @@ import (
 )
 
 type CompletedUpload struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	CreatedAt     time.Time `json:"createdAt" db:"created_at"`
-	UpdatedAt     time.Time `json:"updatedAt" db:"updated_at"`
-	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
-	ETHAddr       string    `json:"ethAddr" db:"eth_addr"`
-	ETHPrivateKey string    `json:"ethPrivateKey" db:"eth_private_key"`
-	PRLStatus     int       `json:"prlStatus" db:"prl_status"`
-	GasStatus     int       `json:"gasStatus" db:"gas_status"`
+	ID            uuid.UUID         `json:"id" db:"id"`
+	CreatedAt     time.Time         `json:"createdAt" db:"created_at"`
+	UpdatedAt     time.Time         `json:"updatedAt" db:"updated_at"`
+	GenesisHash   string            `json:"genesisHash" db:"genesis_hash"`
+	ETHAddr       string            `json:"ethAddr" db:"eth_addr"`
+	ETHPrivateKey string            `json:"ethPrivateKey" db:"eth_private_key"`
+	PRLStatus     PRLClaimStatus    `json:"prlStatus" db:"prl_status"`
+	GasStatus     GasTransferStatus `json:"gasStatus" db:"gas_status"`
 }
 
+type PRLClaimStatus int
+type GasTransferStatus int
+
 const (
-	PRLClaimNotStarted int = iota + 1
+	PRLClaimNotStarted PRLClaimStatus = iota + 1
 	PRLClaimProcessing
 	PRLClaimSuccess
 	PRLClaimError = -1
 )
 
 const (
-	GasTransferNotStarted int = iota + 1
+	GasTransferNotStarted GasTransferStatus = iota + 1
 	GasTransferProcessing
 	GasTransferSuccess
 	GasTransferError = -1
@@ -121,29 +124,29 @@ func NewCompletedUpload(session UploadSession) error {
 	return err
 }
 
-func GetRowsByGasAndPRLStatus(gasStatus int, prlStatus int) (uploads []CompletedUpload, err error) {
+func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ? AND prl_status = ?", gasStatus, prlStatus).All(&uploads)
 	return uploads, err
 }
 
-func GetRowsByGasStatus(gasStatus int) (uploads []CompletedUpload, err error) {
+func GetRowsByGasStatus(gasStatus GasTransferStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ?", gasStatus).All(&uploads)
 	return uploads, err
 }
 
-func SetGasStatus(uploads []CompletedUpload, newGasStatus int) {
+func SetGasStatus(uploads []CompletedUpload, newGasStatus GasTransferStatus) {
 	for _, upload := range uploads {
 		upload.GasStatus = newGasStatus
 		DB.ValidateAndSave(&upload)
 	}
 }
 
-func GetRowsByPRLStatus(prlStatus int) (uploads []CompletedUpload, err error) {
+func GetRowsByPRLStatus(prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("prl_status = ?", prlStatus).All(&uploads)
 	return uploads, err
 }
 
-func SetPRLStatus(uploads []CompletedUpload, newPRLStatus int) {
+func SetPRLStatus(uploads []CompletedUpload, newPRLStatus PRLClaimStatus) {
 	for _, upload := range uploads {
 		upload.PRLStatus = newPRLStatus
 		DB.ValidateAndSave(&upload)
@@ -164,7 +167,7 @@ func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	return uploads, err
 }
 
-func SetGasStatusByAddress(transactionAddress string, newGasStatus int) {
+func SetGasStatusByAddress(transactionAddress string, newGasStatus GasTransferStatus) {
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
@@ -178,7 +181,7 @@ func SetGasStatusByAddress(transactionAddress string, newGasStatus int) {
 	DB.ValidateAndSave(&uploadRow)
 }
 
-func SetPRLStatusByAddress(transactionAddress string, newPRLStatus int) {
+func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatus) {
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {

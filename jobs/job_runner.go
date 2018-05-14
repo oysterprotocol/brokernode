@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var BundleSize = 10
+var BundleSize = 100
 
 var OysterWorker = worker.NewSimple()
 
@@ -42,7 +42,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "processUnassignedChunksHandler",
 		Args: worker.Args{
-			"duration": 20 * time.Second,
+			"duration": time.Duration(services.GetProcessingFrequency()) * time.Second,
 		},
 	}
 
@@ -58,7 +58,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "verifyDataMapsHandler",
 		Args: worker.Args{
-			"duration": 60 * time.Second,
+			"duration": 30 * time.Second,
 		},
 	}
 
@@ -66,7 +66,7 @@ func doWork(oysterWorker *worker.Simple) {
 		Queue:   "default",
 		Handler: "updateTimedOutDataMapsHandler",
 		Args: worker.Args{
-			"duration": 30 * time.Second,
+			"duration": 60 * time.Second,
 		},
 	}
 
@@ -115,8 +115,11 @@ var processUnassignedChunksHandler = func(args worker.Args) error {
 	processUnassignedChunksJob := worker.Job{
 		Queue:   "default",
 		Handler: "processUnassignedChunksHandler",
-		Args:    args,
+		Args: worker.Args{
+			"duration": time.Duration(services.GetProcessingFrequency()) * time.Second,
+		},
 	}
+
 	OysterWorker.PerformIn(processUnassignedChunksJob, processUnassignedChunksJob.Args["duration"].(time.Duration))
 
 	return nil

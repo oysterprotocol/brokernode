@@ -24,16 +24,16 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 
 	// populate data_maps
 	genHash := "someGenHash"
-	fileBytesCount := 18000
+	numChunks := 10
 
-	vErr, err := models.BuildDataMaps(genHash, fileBytesCount)
+	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(10, len(allDataMaps))
+	suite.Equal(numChunks+1, len(allDataMaps)) // 1  data map so 1 chunk has been added
 
 	// make first 6 data maps unverified
 	for i := 0; i < 6; i++ {

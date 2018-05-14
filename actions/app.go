@@ -38,7 +38,10 @@ func App() *buffalo.App {
 		})
 
 		// Setup sentry
-		raven.SetDSN(os.Getenv("SENTRY_DSN"))
+		ravenDSN := os.Getenv("SENTRY_DSN")
+		if ravenDSN != "" {
+			raven.SetDSN(ravenDSN)
+		}
 
 		// Automatically redirect to SSL
 		app.Use(ssl.ForceSSL(secure.Options{
@@ -68,6 +71,7 @@ func App() *buffalo.App {
 		apiV2.POST("upload-sessions", uploadSessionResource.Create)
 		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
 		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
+		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
 
 		// Webnodes
 		webnodeResource := WebnodeResource{}
@@ -81,6 +85,10 @@ func App() *buffalo.App {
 		transactionGenesisHashResource := TransactionGenesisHashResource{}
 		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
 		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
+
+		// Treasures
+		treasures := TreasuresResource{}
+		apiV2.POST("treasures", treasures.VerifyAndClaim)
 	}
 
 	return app
