@@ -29,7 +29,7 @@ import (
 
 type Eth struct {
 	SendGas             SendGas
-	ClaimUnusedPRLs     ClaimUnusedPRLs
+	ClaimUnusedPRLs     ClaimPRLs
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
 	SendETH             SendETH
@@ -38,7 +38,7 @@ type Eth struct {
 	SubscribeToTransfer SubscribeToTransfer
 	CheckBalance        CheckBalance
 	GetCurrentBlock     GetCurrentBlock
-	OysterCallMsg		OysterCallMsg
+	OysterCallMsg	    OysterCallMsg
 }
 
 type OysterCallMsg struct {
