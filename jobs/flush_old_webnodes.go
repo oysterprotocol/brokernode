@@ -22,7 +22,7 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 		raven.CaptureError(err, nil)
 	} else {
 		for i := 0; i < len(webnodes); i++ {
-			oyster_utils.LogToSegment("flush_old_webnode", analytics.NewProperties().
+			oyster_utils.LogToSegment("flush_old_wednodes: flushing_old_webnode", analytics.NewProperties().
 				Set("webnode_id", fmt.Sprint(webnodes[i].ID)).
 				Set("webnode_address", webnodes[i].Address))
 

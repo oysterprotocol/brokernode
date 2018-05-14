@@ -116,7 +116,7 @@ func generateEthAddr() (addr string, privKey string, err error) {
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
 	privKey = hex.EncodeToString(ethAccount.D.Bytes())
 
-	oyster_utils.LogToSegment("generated_new_eth_address", analytics.NewProperties().
+	oyster_utils.LogToSegment("eth_gateway: generated_new_eth_address", analytics.NewProperties().
 		Set("eth_address", fmt.Sprint(addr)))
 
 	return
@@ -130,7 +130,7 @@ func buryPrl() {
 		address, and invoke the smart contract bury() function on them.
 	*/
 
-	//oyster_utils.LogToSegment("bury_invoked", analytics.NewProperties().
+	//oyster_utils.LogToSegment("eth_gateway: bury_invoked", analytics.NewProperties().
 	//	Set("eth_address", fmt.Sprint(addr)))
 }
 
@@ -138,7 +138,7 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 	//gas, err := GetGasPrice()
 	//for _, completedUpload := range completedUploads {
 
-	//oyster_utils.LogToSegment("sending_gas", analytics.NewProperties().
+	//oyster_utils.LogToSegment("eth_gateway: sending_gas", analytics.NewProperties().
 	//	Set("eth_address_from", MainWalletAddress).
 	//	Set("eth_address_to", completedUpload.ETHAddr).
 	//	Set("genesis_hash", completedUpload.GenesisHash))
@@ -171,7 +171,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 	//	    subscribe to the event with SubscribeToTransfer.
 	//	*/
 
-	//oyster_utils.LogToSegment("send_unused_prls_back_to_broker", analytics.NewProperties().
+	//oyster_utils.LogToSegment("eth_gateway: send_unused_prls_back_to_broker", analytics.NewProperties().
 	//	Set("eth_address_from", completedUpload.ETHAddr).
 	//	Set("eth_address_to", MainWalletAddress).
 	//	Set("genesis_hash", completedUpload.GenesisHash))

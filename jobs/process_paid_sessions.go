@@ -64,7 +64,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		// delete the keys now that they have been buried
 		treasureIndexMap[i].Key = ""
 
-		oyster_utils.LogToSegment("treasure_payload_buried_in_data_map", analytics.NewProperties().
+		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).
 			Set("sector", entry.Sector).
 			Set("chunk_idx", entry.Idx).
@@ -92,7 +92,7 @@ func MarkBuriedMapsAsUnassigned() {
 		}
 
 		if len(pendingChunks) > 0 {
-			oyster_utils.LogToSegment("mark_data_maps_as_ready", analytics.NewProperties().
+			oyster_utils.LogToSegment("process_paid_sessions: mark_data_maps_as_ready", analytics.NewProperties().
 				Set("genesis_hash", readySession.GenesisHash))
 
 			err = readySession.BulkMarkDataMapsAsUnassigned()
