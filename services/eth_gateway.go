@@ -198,7 +198,7 @@ func getCurrentBlock() (*types.Block, error) {
 	}
 
 	// latest block event
-	fmt.Printf("latest block: %v\n", currentBlock.Number)
+	fmt.Printf("latest block: %v\n", currentBlock.Number())
 	return currentBlock, nil
 }
 
