@@ -196,7 +196,7 @@ func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 	completedUploads := []models.CompletedUpload{rowWithGasTransferSuccess}
 
 	// Claim PRL
-	err := s.gateway.ClaimPRLs(completedUploads)
+	err := s.gateway.ClaimUnusedPRLs(completedUploads)
 	if err != nil {
 		t.Fatal("Failed to claim PRLs")
 	} else {
