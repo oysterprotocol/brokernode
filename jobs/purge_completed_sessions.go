@@ -96,7 +96,7 @@ func PurgeCompletedSessions() {
 					return err
 				}
 
-				oyster_utils.LogToSegment("completed_session_purged", analytics.NewProperties().
+				oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
 					Set("genesis_hash", genesisHash).
 					Set("session_id", session[0].ID))
 

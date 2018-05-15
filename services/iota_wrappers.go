@@ -77,7 +77,7 @@ var (
 	//This mutex was added by us.
 	mutex           = &sync.Mutex{}
 	seed            giota.Trytes
-	minDepth        = int64(giota.DefaultNumberOfWalks)
+	minDepth        = int64(1)
 	minWeightMag    = int64(9)
 	bestPow         giota.PowFunc
 	powName         string
@@ -177,7 +177,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
+		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, minDepth, "")
 		if err != nil {
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
@@ -276,7 +276,7 @@ func findTransactions(addresses []giota.Address) (map[giota.Address][]giota.Tran
 func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) error {
 
-	defer oyster_utils.TimeTrack(time.Now(), "doPow_using_"+powName, analytics.NewProperties().
+	defer oyster_utils.TimeTrack(time.Now(), "iota_wrappers: doPow_using_"+powName, analytics.NewProperties().
 		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes)))
 
 	var prev giota.Trytes
@@ -321,7 +321,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		if err != nil {
 
 			// Async log
-			oyster_utils.LogToSegment("broadcast_FAIL", broadcastProperties)
+			oyster_utils.LogToSegment("iota_wrappers: broadcast_FAIL", broadcastProperties)
 
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
@@ -331,7 +331,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			fmt.Println("BROADCAST SUCCESS")
 
 			// Async log
-			oyster_utils.LogToSegment("broadcast_success", broadcastProperties)
+			oyster_utils.LogToSegment("iota_wrappers: broadcast_success", broadcastProperties)
 		}
 	}(trytes, broadcastProperties)
 
@@ -458,6 +458,15 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	} else if len(response.Hashes) == 0 {
 		filteredChunks.NotAttached = chunks
 	}
+
+	if len(filteredChunks.MatchesTangle) > 0 {
+		oyster_utils.LogToSegment("iota_wrappers: chunks_matched_tangle", analytics.NewProperties().
+			Set("num_chunks", len(filteredChunks.MatchesTangle)))
+	}
+	if len(filteredChunks.NotAttached) > 0 {
+		oyster_utils.LogToSegment("iota_wrappers: not_attached", analytics.NewProperties().
+			Set("num_chunks", len(filteredChunks.NotAttached)))
+	}
 	return filteredChunks, err
 }
 
@@ -466,31 +475,17 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 	if checkBranchAndTrunk == false &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) {
 
-		oyster_utils.LogToSegment("chunk_matched_tangle", analytics.NewProperties().
-			Set("genesis_hash", chunkOnRecord.GenesisHash).
-			Set("chunk_idx", chunkOnRecord.ChunkIdx).
-			Set("address", chunkOnRecord.Address).
-			Set("db_message", chunkOnRecord.Message))
-
 		return true
 
 	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.TrunkTransaction), chunkOnRecord.TrunkTx) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.BranchTransaction), chunkOnRecord.BranchTx) {
 
-		oyster_utils.LogToSegment("chunk_matched_tangle", analytics.NewProperties().
-			Set("genesis_hash", chunkOnRecord.GenesisHash).
-			Set("chunk_idx", chunkOnRecord.ChunkIdx).
-			Set("address", chunkOnRecord.Address).
-			Set("db_message", chunkOnRecord.Message).
-			Set("db_trunk", chunkOnRecord.TrunkTx).
-			Set("db_branch", chunkOnRecord.BranchTx))
-
 		return true
 
 	} else {
 
-		oyster_utils.LogToSegment("resend_chunk_tangle_mismatch", analytics.NewProperties().
+		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
 			Set("genesis_hash", chunkOnRecord.GenesisHash).
 			Set("chunk_idx", chunkOnRecord.ChunkIdx).
 			Set("address", chunkOnRecord.Address).

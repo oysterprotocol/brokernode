@@ -9,6 +9,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"math"
+	"time"
 )
 
 func init() {
@@ -43,8 +44,9 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 		if len(chunks) > 0 {
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
 
-			oyster_utils.LogToSegment("processing_chunks_for_session", analytics.NewProperties().
+			oyster_utils.LogToSegment("process_unassigned_chunks: processing_chunks_for_session", analytics.NewProperties().
 				Set("genesis_hash", session.GenesisHash).
+				Set("id", session.ID).
 				Set("num_chunks_processing", len(chunks)).
 				Set("num_ready_channels", len(channels)))
 		}
@@ -78,6 +80,10 @@ back into the array based on their chunk_idx, then we send to the channels.
 */
 func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []models.ChunkChannel, iotaWrapper services.IotaService, session models.UploadSession) {
 
+	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: filter_and_assign_chunks_to_channel", analytics.NewProperties().
+		Set("num_chunks", len(chunksIn)).
+		Set("num_channels", len(channels)))
+
 	for i := 0; i < len(chunksIn); i += services.MaxNumberOfAddressPerFindTransactionRequest {
 		end := i + services.MaxNumberOfAddressPerFindTransactionRequest
 
@@ -97,6 +103,15 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		}
 
 		if len(filteredChunks.MatchesTangle) > 0 {
+
+			addresses, indexes := models.MapChunkIndexesAndAddresses(filteredChunks.MatchesTangle)
+
+			oyster_utils.LogToSegment("process_unassigned_chunks: chunks_already_attached", analytics.NewProperties().
+				Set("genesis_hash", filteredChunks.MatchesTangle[0].GenesisHash).
+				Set("num_chunks", len(filteredChunks.MatchesTangle)).
+				Set("addresses", addresses).
+				Set("chunk_indexes", indexes))
+
 			for _, chunk := range filteredChunks.MatchesTangle {
 				chunk.Status = models.Complete
 				models.DB.ValidateAndSave(&chunk)
@@ -142,6 +157,10 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 		treasureChunksMapped[treasureChunk.ChunkIdx] = treasureChunk
 	}
 
+	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: reinsert_treasure_chunks", analytics.NewProperties().
+		Set("num_chunks", len(chunks)).
+		Set("num_treasure_chunks", len(treasureChunks)))
+
 	treasureChunksInserted := 0
 
 	// this puts the treasure chunks back into the array where they belong
@@ -152,7 +171,6 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 			i++ // skip an iteration
 		} else if _, ok := treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]; ok &&
 			i == len(chunks)-1 {
-			//chunks = append(chunks, []models.DataMap{treasureChunksMapped[chunks[i].ChunkIdx+idxTarget})
 			chunks = append(chunks, treasureChunksMapped[chunks[i].ChunkIdx+idxTarget])
 			treasureChunksInserted++
 			i++ // skip an iteration
@@ -185,8 +203,9 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 
 			addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
 
-			oyster_utils.LogToSegment("sending_chunks_to_channel", analytics.NewProperties().
-				Set("genesis_hash", chunks[0].GenesisHash).
+			oyster_utils.LogToSegment("process_unassigned_chunks: sending_chunks_to_channel", analytics.NewProperties().
+				Set("genesis_hash", chunks[i:end][0].GenesisHash).
+				Set("num_chunks", len(chunks[i:end])).
 				Set("channel_id", channels[j].ChannelID).
 				Set("addresses", addresses).
 				Set("chunk_indexes", indexes))

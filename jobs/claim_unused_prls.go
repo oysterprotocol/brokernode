@@ -49,7 +49,7 @@ func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 	if len(timedOutGasTransfers) > 0 {
 
 		for _, transfer := range timedOutGasTransfers {
-			oyster_utils.LogToSegment("gas_transfer_timed_out", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: gas_transfer_timed_out", analytics.NewProperties().
 				Set("eth_address_to", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}
@@ -69,7 +69,7 @@ func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 	if len(timedOutPRLTransfers) > 0 {
 
 		for _, transfer := range timedOutPRLTransfers {
-			oyster_utils.LogToSegment("unclaimed_prl_transfer_timed_out", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: unclaimed_prl_transfer_timed_out", analytics.NewProperties().
 				Set("eth_address_from", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}
@@ -89,7 +89,7 @@ func ResendErroredGasTransfers() {
 	if len(gasTransferErrors) > 0 {
 
 		for _, transfer := range gasTransferErrors {
-			oyster_utils.LogToSegment("gas_transfer_error", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: gas_transfer_error", analytics.NewProperties().
 				Set("eth_address_to", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}
@@ -109,7 +109,7 @@ func ResendErroredPRLTransfers() {
 	if len(prlTransferErrors) > 0 {
 
 		for _, transfer := range prlTransferErrors {
-			oyster_utils.LogToSegment("unclaimed_prl_transfer_error", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: unclaimed_prl_transfer_error", analytics.NewProperties().
 				Set("eth_address_from", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}
@@ -129,7 +129,7 @@ func SendGasForNewClaims() {
 	if len(needGas) > 0 {
 
 		for _, transfer := range needGas {
-			oyster_utils.LogToSegment("send_gas_for_new_claim", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: send_gas_for_new_claim", analytics.NewProperties().
 				Set("eth_address_to", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}
@@ -149,7 +149,7 @@ func StartNewClaims() {
 	if len(readyClaims) > 0 {
 
 		for _, transfer := range readyClaims {
-			oyster_utils.LogToSegment("unclaimed_prl_new_claim", analytics.NewProperties().
+			oyster_utils.LogToSegment("claim_unused_prls: unclaimed_prl_new_claim", analytics.NewProperties().
 				Set("eth_address_from", transfer.ETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
 		}

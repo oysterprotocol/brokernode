@@ -29,7 +29,7 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 
 		for _, timedOutDataMap := range timedOutDataMaps {
 
-			oyster_utils.LogToSegment("chunk_timed_out", analytics.NewProperties().
+			oyster_utils.LogToSegment("update_timed_out_data_maps: chunk_timed_out", analytics.NewProperties().
 				Set("address", timedOutDataMap.Address).
 				Set("genesis_hash", timedOutDataMap.GenesisHash).
 				Set("chunk_idx", timedOutDataMap.ChunkIdx))
