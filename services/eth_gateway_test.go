@@ -185,7 +185,7 @@ func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 	treasurePrivateKey := "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5"
 
 	// Claim PRL
-	claimed := s.gateway.ClaimUnusedPRLs(receiverAddress, treasureAddress, treasurePrivateKey)
+	claimed := s.gateway.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
 	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
@@ -193,6 +193,32 @@ func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 	}
 
 }
+
+// claim unused prl from completed upload
+func (s *EthereumTestSuite) claimUnusedPRL(t *testing.T) {
+
+	// Need to fake the completed uploads by populating with data
+	var rowWithGasTransferSuccess = models.CompletedUpload{
+		GenesisHash:   "RowWithGasTransferSuccess",
+		ETHAddr:       "0x5aeda56215b167893e80b4fe645ba6d5bab767de",
+		ETHPrivateKey: "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5",
+		PRLStatus:     models.PRLClaimNotStarted,
+		GasStatus:     models.GasTransferSuccess,
+	}
+
+	// mock completed upload
+	completedUploads := []models.CompletedUpload{rowWithGasTransferSuccess}
+
+	// Claim PRL
+	err := s.gateway.ClaimUnusedPRLs(completedUploads)
+	if err != nil {
+		t.Fatal("Failed to claim PRLs")
+	} else {
+		t.Log("PRLs have been successfully claimed")
+	}
+
+}
+
 
 // subscribe to transfer
 func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
