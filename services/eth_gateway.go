@@ -18,16 +18,17 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"crypto/ecdsa"
-	"errors"
 	"time"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"strings"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/pkg/errors"
 )
 
 type Eth struct {
 	SendGas             SendGas
-	ClaimUnusedPRLs     ClaimPRLs
+	ClaimPRL            ClaimPRL
+	ClaimUnusedPRLs     ClaimUnusedPRLs
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
 	SendETH             SendETH
@@ -60,7 +61,8 @@ type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string
 
 type BuryPrl func(msg OysterCallMsg) (bool)
 type SendPRL func(msg OysterCallMsg) (bool)
-type ClaimPRLs func([]models.CompletedUpload) error
+type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool)
+type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) (error)
 
 // Singleton client
 var (
@@ -90,7 +92,8 @@ func init() {
 
 	EthWrapper = Eth{
 		SendGas:         sendGas,
-		ClaimUnusedPRLs: claimPRLs,
+		ClaimPRL:        claimPRLs,
+		ClaimUnusedPRLs: claimUnusedPRLs,
 		GenerateEthAddr: generateEthAddr,
 		BuryPrl:         buryPrl,
 		SendETH:         sendETH,
@@ -334,31 +337,29 @@ func buryPrl(msg OysterCallMsg) (bool) {
 	}
 }
 
-// Claim PRLs from OysterPearl contract
-func claimPRLs(completedUploads []models.CompletedUpload) error {
-
+// ClaimUnusedPRLs parses the completedUploads and sends PRL to the MainWalletAddress
+func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 	// Contract claim(address _payout, address _fee) public returns (bool success)
 	for _, completedUpload := range completedUploads {
-		//1
-		//	    for each completed upload, get its PRL balance from its ETH
-		//		address (completedUpload.ETHAddr) by calling CheckBalance.
-		var ethAddr = stringToAddress(completedUpload.ETHAddr)
-		var balance = checkBalance(ethAddr)
+		//	for each completed upload, get its PRL balance from its ETH
+		//	address (completedUpload.ETHAddr) by calling CheckBalance.
+		ethAddr := stringToAddress(completedUpload.ETHAddr)
+		balance := checkBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
 			return errors.New("could not complete transaction due to zero balance for:"+completedUpload.ETHAddr)
 		}
-		//2.
-		//	    Then, using SendPRL, create a transaction with each
-		//	    completedUpload.ETHAddr as the "fromAddr" address, the broker's
-		//	    main wallet (MainWalletAddress) as the "toAddr" address,
-		var from = ethAddr
-		var to = MainWalletAddress
+		//	Then, using SendPRL, create a transaction with each
+		//	completedUpload.ETHAddr as the "fromAddr" address, the broker's
+		//	main wallet (MainWalletAddress) as the "toAddr" address,
+		from := ethAddr
+		to := MainWalletAddress
+		// privateKey := completedUpload.ETHPrivateKey
 		//3.
-		// 		and the PRL balance of completedUpload.ETHAddr as the "amt" to send,
-		// 		and subscribe to the event with SubscribeToTransfer.
+		// 	and the PRL balance of completedUpload.ETHAddr as the "amt" to send,
+		// 	and subscribe to the event with SubscribeToTransfer.
 		var amountToSend = balance
-		var gas = uint64(21000)           // TODO get gas source are we pulling from ETHAddr?
+		var gas = uint64(vm.GAS) // TODO get gas source are we pulling from ETHAddr?
 		gasPrice, _ := getGasPrice()
 
 		// prepare oyster message call
@@ -366,19 +367,53 @@ func claimPRLs(completedUploads []models.CompletedUpload) error {
 			From: from,
 			To: to,
 			Amount: *amountToSend,
-			Gas: gas,					 // TODO gas
-			GasPrice: *gasPrice,         // TODO ensure gas price is valid and sufficient
+			Gas: gas,
+			GasPrice: *gasPrice,
 			TotalWei: *big.NewInt(1), // TODO finish wei
 			Data: []byte(""), // setup data
 		}
+
+		// claimed := claimPRLs(to, from, privateKey)
+
 		// send transaction from completed upload eth addr to main wallet
+		// we may just do a straight transfer with network vs from contract
 		if !sendPRL(oysterMsg) {
-			// TODO more detailed error message
-			return errors.New("unable to send prl to main wallet")
+		  // TODO more detailed error message
+		  return errors.New("unable to send prl to main wallet")
 		}
 	}
 
 	return nil
+}
+
+// Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
+func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
+	// initialize the context
+	ctx, cancel := createContext()
+	defer cancel()
+	// shared client
+	client, _ := sharedClient("")
+	// abi
+	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
+	// oyster contract method bury() no args
+	claimPRL, _ := oysterABI.Pack("claim")
+	// build transaction and sign
+	signedTx, err := callOysterPearl(ctx, claimPRL)
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+
+	if err != nil {
+		return false
+	}
+	// pull signed transaction
+	ts := types.Transactions{signedTx}
+
+	// successful contract message call
+	if ts.Len() > 0 {
+		return true
+	} else {
+		return false
+	}
 }
 
 /*
