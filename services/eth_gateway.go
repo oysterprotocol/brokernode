@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"math/big"
 	"crypto/ecdsa"
-	"errors"
 	"time"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"strings"
@@ -27,10 +26,9 @@ import (
 
 type Eth struct {
 	SendGas             SendGas
-	ClaimUnusedPRLs     ClaimPRLs
+	ClaimUnusedPRLs     ClaimPRL
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
-	ClaimPrl            ClaimPRL
 	SendETH             SendETH
 	SendPRL             SendPRL
 	GetGasPrice         GetGasPrice
@@ -62,7 +60,6 @@ type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string
 type BuryPrl func(msg OysterCallMsg) (bool)
 type SendPRL func(msg OysterCallMsg) (bool)
 type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool)
-type ClaimPRLs func([]models.CompletedUpload) error
 
 // Singleton client
 var (
@@ -95,7 +92,6 @@ func init() {
 		ClaimUnusedPRLs: claimPRLs,
 		GenerateEthAddr: generateEthAddr,
 		BuryPrl:         buryPrl,
-		ClaimPrl:        claimPRL,
 		SendETH:         sendETH,
 		SendPRL:         sendPRL,
 		GetGasPrice:     getGasPrice,
@@ -338,7 +334,7 @@ func buryPrl(msg OysterCallMsg) (bool) {
 }
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
-func claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
+func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
 	// initialize the context
 	ctx, cancel := createContext()
 	defer cancel()
@@ -365,53 +361,6 @@ func claimPRL(receiverAddress common.Address, treasureAddress common.Address, tr
 	} else {
 		return false
 	}
-}
-
-// Claim PRLs from OysterPearl contract
-func claimPRLs(completedUploads []models.CompletedUpload) error {
-
-	// Contract claim(address _payout, address _fee) public returns (bool success)
-	for _, completedUpload := range completedUploads {
-		//1
-		//	    for each completed upload, get its PRL balance from its ETH
-		//		address (completedUpload.ETHAddr) by calling CheckBalance.
-		var ethAddr = stringToAddress(completedUpload.ETHAddr)
-		var balance = checkBalance(ethAddr)
-		if balance.Int64() <= 0 {
-			// need to log this error to apply a retry
-			return errors.New("could not complete transaction due to zero balance for:"+completedUpload.ETHAddr)
-		}
-		//2.
-		//	    Then, using SendPRL, create a transaction with each
-		//	    completedUpload.ETHAddr as the "fromAddr" address, the broker's
-		//	    main wallet (MainWalletAddress) as the "toAddr" address,
-		var from = ethAddr
-		var to = MainWalletAddress
-		//3.
-		// 		and the PRL balance of completedUpload.ETHAddr as the "amt" to send,
-		// 		and subscribe to the event with SubscribeToTransfer.
-		var amountToSend = balance
-		var gas = uint64(21000)           // TODO get gas source are we pulling from ETHAddr?
-		gasPrice, _ := getGasPrice()
-
-		// prepare oyster message call
-		var oysterMsg = OysterCallMsg{
-			From: from,
-			To: to,
-			Amount: *amountToSend,
-			Gas: gas,					 // TODO gas
-			GasPrice: *gasPrice,         // TODO ensure gas price is valid and sufficient
-			TotalWei: *big.NewInt(1), // TODO finish wei
-			Data: []byte(""), // setup data
-		}
-		// send transaction from completed upload eth addr to main wallet
-		if !sendPRL(oysterMsg) {
-			// TODO more detailed error message
-			return errors.New("unable to send prl to main wallet")
-		}
-	}
-
-	return nil
 }
 
 /*

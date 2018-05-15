@@ -11,7 +11,6 @@ import (
 	"math/big"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/oysterprotocol/brokernode/models"
 	"fmt"
 )
 
@@ -186,7 +185,7 @@ func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 	treasurePrivateKey := "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5"
 
 	// Claim PRL
-	claimed := s.gateway.ClaimPrl(receiverAddress, treasureAddress, treasurePrivateKey)
+	claimed := s.gateway.ClaimUnusedPRLs(receiverAddress, treasureAddress, treasurePrivateKey)
 	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
