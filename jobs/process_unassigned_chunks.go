@@ -104,13 +104,9 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
-			addresses, indexes := models.MapChunkIndexesAndAddresses(filteredChunks.MatchesTangle)
-
 			oyster_utils.LogToSegment("process_unassigned_chunks: chunks_already_attached", analytics.NewProperties().
 				Set("genesis_hash", filteredChunks.MatchesTangle[0].GenesisHash).
-				Set("num_chunks", len(filteredChunks.MatchesTangle)).
-				Set("addresses", addresses).
-				Set("chunk_indexes", indexes))
+				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
 			for _, chunk := range filteredChunks.MatchesTangle {
 				chunk.Status = models.Complete
