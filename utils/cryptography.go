@@ -4,6 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"encoding/hex"
+	"fmt"
+	"github.com/getsentry/raven-go"
 	"hash"
 )
 
@@ -35,6 +37,8 @@ func Decrypt(key string, cipherText string, nonce string) []byte {
 	panicOnErr(err)
 	data, err = gcm.Open(nil, nonceInBytes, data, nil)
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return nil
 	}
 	return data
@@ -50,6 +54,8 @@ func panicOnErr(err error) {
 	// this is just so that the same 3 lines aren't repeated
 	// throughout the encrypt/decrypt functions
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		panic(err.Error())
 	}
 }

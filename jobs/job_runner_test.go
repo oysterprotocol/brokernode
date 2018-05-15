@@ -50,6 +50,9 @@ func (suite *JobsSuite) SetupSuite() {
 		ChunksMatch: func(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
 			return false
 		},
+		FindTransactions: func([]giota.Address) (map[giota.Address][]giota.Transaction, error) {
+			return nil, nil
+		},
 	}
 }
 

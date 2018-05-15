@@ -97,6 +97,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 		c, err = ethclient.Dial(ethUrl)
 		if err != nil {
 			fmt.Println("Failed to connect to Etherum node.")
+			raven.CaptureError(err, nil)
 			return
 		}
 
@@ -110,6 +111,8 @@ func sharedClient() (c *ethclient.Client, err error) {
 func generateEthAddr() (addr string, privKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return
 	}
 
@@ -146,6 +149,8 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 	//	Eth.SendETH(MainWalletAddress, completedUpload.ETHAddr, float64(gas))
 	//}
 	//if err != nil {
+	//	fmt.Println(err)
+	//	raven.CaptureError(err, nil)
 	//	return err
 	//}
 	return nil
@@ -178,6 +183,8 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 
 	//}
 	//if err != nil {
+	//	fmt.Println(err)
+	//	raven.CaptureError(err, nil)
 	//	return err
 	//}
 

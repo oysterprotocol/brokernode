@@ -3,7 +3,6 @@ package services
 import (
 	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
-	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"math"
 	"os"
@@ -12,10 +11,11 @@ import (
 	"sync"
 	"time"
 
-	raven "github.com/getsentry/raven-go"
+	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 type ChunkTracker struct {
@@ -40,6 +40,7 @@ type IotaService struct {
 	VerifyChunksMatchRecord        VerifyChunksMatchRecord
 	ChunksMatch                    ChunksMatch
 	VerifyTreasure                 VerifyTreasure
+	FindTransactions               FindTransactions
 }
 
 type ProcessingFrequency struct {
@@ -52,6 +53,7 @@ type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks Filte
 type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
 type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
 type VerifyTreasure func([]string) (verify bool, err error)
+type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transaction, error)
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -65,7 +67,7 @@ const (
 	maxTimestampTrytes = "MMMMMMMMM"
 
 	// By a hard limit on the request for FindTransaction to IOTA
-	maxNumberOfAddressPerFindTransactionRequest = 1000
+	MaxNumberOfAddressPerFindTransactionRequest = 1000
 )
 
 var (
@@ -115,6 +117,7 @@ func init() {
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
 		VerifyTreasure:                 verifyTreasure,
+		FindTransactions:               findTransactions,
 	}
 
 	PowProcs = runtime.NumCPU()
@@ -168,6 +171,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
 
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		}
 
@@ -175,6 +179,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, giota.DefaultNumberOfWalks, "")
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		}
 
@@ -230,26 +235,30 @@ func GetProcessingFrequency() float64 {
 	return PoWFrequency.Frequency
 }
 
-// Finds Transactions with a list of addresses. Result in a map from Address to a list of Transcations
-func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
+// Finds Transactions with a list of addresses. Result in a map from Address to a list of Transactions
+func findTransactions(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
 
 	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
 
-	numOfBatchRequest := int(math.Ceil(float64(len(addresses)) / float64(maxNumberOfAddressPerFindTransactionRequest)))
+	numOfBatchRequest := int(math.Ceil(float64(len(addresses)) / float64(MaxNumberOfAddressPerFindTransactionRequest)))
 
 	remainder := len(addresses)
 	for i := 0; i < numOfBatchRequest; i++ {
-		lower := i * maxNumberOfAddressPerFindTransactionRequest
-		upper := i*maxNumberOfAddressPerFindTransactionRequest + int(math.Min(float64(remainder), maxNumberOfAddressPerFindTransactionRequest))
+		lower := i * MaxNumberOfAddressPerFindTransactionRequest
+		upper := i*MaxNumberOfAddressPerFindTransactionRequest + int(math.Min(float64(remainder), MaxNumberOfAddressPerFindTransactionRequest))
 		req := giota.FindTransactionsRequest{
 			Addresses: addresses[lower:upper],
 		}
 		resp, err := api.FindTransactions(&req)
 		if err != nil {
+			fmt.Println(err)
+			raven.CaptureError(err, nil)
 			return nil, err
 		}
 		transactionResp, err := api.GetTrytes(resp.Hashes)
 		if err != nil {
+			fmt.Println(err)
+			raven.CaptureError(err, nil)
 			return nil, err
 		}
 
@@ -258,7 +267,7 @@ func FindTransactions(addresses []giota.Address) (map[giota.Address][]giota.Tran
 			list = append(list, transaction)
 			addrToTransactionMap[transaction.Address] = list
 		}
-		remainder = remainder - maxNumberOfAddressPerFindTransactionRequest
+		remainder = remainder - MaxNumberOfAddressPerFindTransactionRequest
 	}
 
 	return addrToTransactionMap, nil
@@ -294,6 +303,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		mutex.Unlock()
 
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return err
 		}
@@ -403,6 +413,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	response, err := api.FindTransactions(&request)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return filteredChunks, err
 	}
@@ -412,6 +423,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	if response != nil && len(response.Hashes) > 0 {
 		trytesArray, err := api.GetTrytes(response.Hashes)
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return filteredChunks, err
 		}
@@ -500,9 +512,10 @@ func verifyTreasure(addr []string) (bool, error) {
 		iotaAddr[i] = giota.Address(address)
 	}
 
-	transactionsMap, err := FindTransactions(iotaAddr)
+	transactionsMap, err := findTransactions(iotaAddr)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return false, err
 	}

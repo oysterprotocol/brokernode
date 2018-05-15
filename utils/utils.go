@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
 	"log"
@@ -38,6 +40,8 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
@@ -52,6 +56,8 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)

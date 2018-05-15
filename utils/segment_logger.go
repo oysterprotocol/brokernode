@@ -35,7 +35,7 @@ func LogToSegment(name string, properties analytics.Properties) {
 func GetLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		return ""
+		return "cannot get local ip"
 	}
 	for _, address := range addrs {
 		// check the address type and if it is not a loopback the display it
@@ -45,7 +45,7 @@ func GetLocalIP() string {
 			}
 		}
 	}
-	return ""
+	return "cannot get local ip"
 }
 
 func MapTransactionsToAddrs(txs []giota.Transaction) (addrs []giota.Address) {

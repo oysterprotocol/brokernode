@@ -203,6 +203,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 		Error).All(&genesisHashesUnassigned)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return nil, err
 	}
@@ -223,6 +224,7 @@ func GetUnassignedChunks() (dataMaps []DataMap, err error) {
 	dataMaps = []DataMap{}
 	err = DB.Where("status = ? OR status = ?", Unassigned, Error).All(&dataMaps)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 	return dataMaps, err
@@ -240,6 +242,7 @@ func GetAllUnassignedChunksBySession(session UploadSession) (dataMaps []DataMap,
 	}
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 	return dataMaps, err
@@ -257,6 +260,7 @@ func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []
 	}
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 	return dataMaps, err
@@ -269,6 +273,7 @@ func GetPendingChunksBySession(session UploadSession, limit int) (dataMaps []Dat
 		session.GenesisHash, Pending, limit).All(&dataMaps)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 	return dataMaps, err
@@ -288,6 +293,7 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 		err := DB.Where("genesis_hash in (?)", genesisHashes...).All(&incompleteSessions)
 
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return nil, err
 		}

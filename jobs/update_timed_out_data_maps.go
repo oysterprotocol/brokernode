@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/getsentry/raven-go"
@@ -18,6 +19,7 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 
