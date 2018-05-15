@@ -30,6 +30,7 @@ type Eth struct {
 	ClaimUnusedPRLs     ClaimPRLs
 	GenerateEthAddr     GenerateEthAddr
 	BuryPrl             BuryPrl
+	ClaimPrl            ClaimPRL
 	SendETH             SendETH
 	SendPRL             SendPRL
 	GetGasPrice         GetGasPrice
@@ -60,6 +61,7 @@ type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string
 
 type BuryPrl func(msg OysterCallMsg) (bool)
 type SendPRL func(msg OysterCallMsg) (bool)
+type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool)
 type ClaimPRLs func([]models.CompletedUpload) error
 
 // Singleton client
@@ -93,6 +95,7 @@ func init() {
 		ClaimUnusedPRLs: claimPRLs,
 		GenerateEthAddr: generateEthAddr,
 		BuryPrl:         buryPrl,
+		ClaimPrl:        claimPRL,
 		SendETH:         sendETH,
 		SendPRL:         sendPRL,
 		GetGasPrice:     getGasPrice,
@@ -328,6 +331,36 @@ func buryPrl(msg OysterCallMsg) (bool) {
 
 	// successful contract message call
 	if len(rawTransaction) > 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+// Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
+func claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
+	// initialize the context
+	ctx, cancel := createContext()
+	defer cancel()
+	// shared client
+	client, _ := sharedClient("")
+	// abi
+	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
+	// oyster contract method bury() no args
+	claimPRL, _ := oysterABI.Pack("claim")
+	// build transaction and sign
+	signedTx, err := callOysterPearl(ctx, claimPRL)
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+
+	if err != nil {
+		return false
+	}
+	// pull signed transaction
+	ts := types.Transactions{signedTx}
+
+	// successful contract message call
+	if ts.Len() > 0 {
 		return true
 	} else {
 		return false
