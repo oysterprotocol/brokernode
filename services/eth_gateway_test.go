@@ -11,13 +11,8 @@ import (
 	"math/big"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/oysterprotocol/brokernode/models"
 	"fmt"
-)
-
-const (
-	localNetworkUrl = "http://127.0.0.1:7545"
-	oysterbyNetworkUrl = "http://54.197.3.171:8080"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 // Ethereum Test Suite
@@ -183,6 +178,26 @@ func (s *EthereumTestSuite) sendPRL(t *testing.T) {
 // claim prl
 func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 
+	// Receiver
+	receiverAddress := common.HexToAddress("0xC30efFC3509D56ef748d51f9580c81ff8e9c610E")
+
+	// Setup Found Treasure Properties
+	treasureAddress := common.HexToAddress("0x5aeda56215b167893e80b4fe645ba6d5bab767de")
+	treasurePrivateKey := "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5"
+
+	// Claim PRL
+	claimed := s.gateway.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
+	if !claimed {
+		t.Fatal("Failed to claim PRLs")
+	} else {
+		t.Log("PRLs have been successfully claimed")
+	}
+
+}
+
+// claim unused prl from completed upload
+func (s *EthereumTestSuite) claimUnusedPRL(t *testing.T) {
+
 	// Need to fake the completed uploads by populating with data
 	var rowWithGasTransferSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferSuccess",
@@ -204,6 +219,7 @@ func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 	}
 
 }
+
 
 // subscribe to transfer
 func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {

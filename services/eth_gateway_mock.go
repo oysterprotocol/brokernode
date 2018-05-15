@@ -13,7 +13,7 @@ func init() {
 func SetUpMock() {
 
 	EthMock = Eth{
-		ClaimUnusedPRLs: func([]models.CompletedUpload) error {
+		ClaimUnusedPRLs: func(completedUploads []models.CompletedUpload) error {
 			return nil
 		},
 		SendGas: func([]models.CompletedUpload) error {
