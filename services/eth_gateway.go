@@ -2,17 +2,9 @@ package services
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/joho/godotenv"
-	"github.com/oysterprotocol/brokernode/models"
-	"log"
-	"os"
-	"sync"
-
-	"crypto/ecdsa"
-	"errors"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -20,13 +12,16 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"math/big"
-	"crypto/ecdsa"
-	"time"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"strings"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/getsentry/raven-go"
+	"github.com/joho/godotenv"
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
+	"log"
+	"math/big"
+	"os"
+	"strings"
+	"sync"
+	"time"
 )
 
 type Eth struct {
@@ -63,10 +58,10 @@ type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string)
 
-type BuryPrl func(msg OysterCallMsg) (bool)
-type SendPRL func(msg OysterCallMsg) (bool)
-type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool)
-type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) (error)
+type BuryPrl func(msg OysterCallMsg) bool
+type SendPRL func(msg OysterCallMsg) bool
+type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool
+type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) error
 
 // Singleton client
 var (
@@ -95,14 +90,14 @@ func init() {
 	fmt.Println(ethUrl)
 
 	EthWrapper = Eth{
-		SendGas:         sendGas,
-		ClaimPRL:        claimPRLs,
-		ClaimUnusedPRLs: claimUnusedPRLs,
-		GenerateEthAddr: generateEthAddr,
-		BuryPrl:         buryPrl,
-		SendETH:         sendETH,
-		SendPRL:         sendPRL,
-		GetGasPrice:     getGasPrice,
+		SendGas:             sendGas,
+		ClaimPRL:            claimPRLs,
+		ClaimUnusedPRLs:     claimUnusedPRLs,
+		GenerateEthAddr:     generateEthAddr,
+		BuryPrl:             buryPrl,
+		SendETH:             sendETH,
+		SendPRL:             sendPRL,
+		GetGasPrice:         getGasPrice,
 		SubscribeToTransfer: subscribeToTransfer,
 		CheckBalance:        checkBalance,
 		GetCurrentBlock:     getCurrentBlock,
@@ -343,7 +338,7 @@ func buryPrl(msg OysterCallMsg) bool {
 }
 
 // ClaimUnusedPRLs parses the completedUploads and sends PRL to the MainWalletAddress
-func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
+func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 	// Contract claim(address _payout, address _fee) public returns (bool success)
 	for _, completedUpload := range completedUploads {
 		//	for each completed upload, get its PRL balance from its ETH
@@ -369,10 +364,10 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 
 		// prepare oyster message call
 		var oysterMsg = OysterCallMsg{
-			From: from,
-			To: to,
-			Amount: *amountToSend,
-			Gas: gas,
+			From:     from,
+			To:       to,
+			Amount:   *amountToSend,
+			Gas:      gas,
 			GasPrice: *gasPrice,
 			TotalWei: *big.NewInt(1), // TODO finish wei
 			Data:     []byte(""),     // setup data
@@ -383,8 +378,8 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 		// send transaction from completed upload eth addr to main wallet
 		// we may just do a straight transfer with network vs from contract
 		if !sendPRL(oysterMsg) {
-		  // TODO more detailed error message
-		  return errors.New("unable to send prl to main wallet")
+			// TODO more detailed error message
+			return errors.New("unable to send prl to main wallet")
 		}
 	}
 
@@ -392,7 +387,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 }
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
-func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
+func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool {
 	// initialize the context
 	ctx, cancel := createContext()
 	defer cancel()
