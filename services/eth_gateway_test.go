@@ -15,11 +15,6 @@ import (
 	"fmt"
 )
 
-const (
-	localNetworkUrl = "http://127.0.0.1:7545"
-	oysterbyNetworkUrl = "http://54.197.3.171:8080"
-)
-
 // Ethereum Test Suite
 type EthereumTestSuite struct {
 	suite.Suite
@@ -183,21 +178,16 @@ func (s *EthereumTestSuite) sendPRL(t *testing.T) {
 // claim prl
 func (s *EthereumTestSuite) claimPRL(t *testing.T) {
 
-	// Need to fake the completed uploads by populating with data
-	var rowWithGasTransferSuccess = models.CompletedUpload{
-		GenesisHash:   "RowWithGasTransferSuccess",
-		ETHAddr:       "0x5aeda56215b167893e80b4fe645ba6d5bab767de",
-		ETHPrivateKey: "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5",
-		PRLStatus:     models.PRLClaimNotStarted,
-		GasStatus:     models.GasTransferSuccess,
-	}
+	// Receiver
+	receiverAddress := common.HexToAddress("0xC30efFC3509D56ef748d51f9580c81ff8e9c610E")
 
-	// mock completed upload
-	completedUploads := []models.CompletedUpload{rowWithGasTransferSuccess}
+	// Setup Found Treasure Properties
+	treasureAddress := common.HexToAddress("0x5aeda56215b167893e80b4fe645ba6d5bab767de")
+	treasurePrivateKey := "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5"
 
 	// Claim PRL
-	err := s.gateway.ClaimUnusedPRLs(completedUploads)
-	if err != nil {
+	claimed := s.gateway.ClaimPrl(receiverAddress, treasureAddress, treasurePrivateKey)
+	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
 		t.Log("PRLs have been successfully claimed")
