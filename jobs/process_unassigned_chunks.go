@@ -212,6 +212,10 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 		raven.CaptureError(err, nil)
 	}
 
+	if len(chunks) == 0 {
+		return chunks, []models.DataMap{}
+	}
+
 	maxIdx := int(math.Max(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
 	minIdx := int(math.Min(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
 
@@ -226,9 +230,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 		return chunks, []models.DataMap{}
 	}
 
-	treasureChunksChecked := 0
-
-	for ok, i := true, 0; ok; ok = treasureChunksChecked < len(treasureMap) && i < len(chunks) {
+	for i := 0; i < len(chunks); i++ {
 		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
 			address := make([]giota.Address, 0, 1)
 			address = append(address, giota.Address(chunks[i].Address))
@@ -257,11 +259,9 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 				chunks[i].Status = models.Complete
 				models.DB.ValidateAndSave(&chunks[i])
 			}
-			treasureChunksChecked++
 		} else {
 			chunksToAttach = append(chunksToAttach, chunks[i])
 		}
-		i++
 	}
 
 	return chunksToAttach, treasureChunksToAttach

@@ -161,7 +161,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 		},
 		{
 		"sector": 1,
-		"idx": 23,
+		"idx": 20,
 		"key": "000000000000000000000000000000020000000000000000000000000000000002"
 		}]`
 
@@ -175,14 +175,20 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 		TreasureIdxMap: nulls.String{string(treasureMap), true},
 	}
 
-	uploadSession1.StartUploadSession()
+	for i := 0; i < numChunks; i++ {
+		suite.DB.ValidateAndSave(&models.DataMap{
+			ChunkIdx:    i,
+			GenesisHash: "genHash1",
+			Hash:        "SOMEHASH",
+		})
+	}
 
 	// set all data maps to unassigned
 	err := suite.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
 	suite.Nil(err)
 
 	treasureChunk := models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * from data_maps WHERE chunk_idx = ?", 23).First(&treasureChunk)
+	err = suite.DB.RawQuery("SELECT * from data_maps WHERE chunk_idx = ?", 20).First(&treasureChunk)
 	suite.Nil(err)
 
 	// setting the address to something that the findTransactions mock can check for
@@ -190,14 +196,15 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	suite.DB.ValidateAndSave(&treasureChunk)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * from data_maps").All(&dataMaps)
+	err = suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
 	suite.Nil(err)
+	suite.Equal(numChunks, len(dataMaps))
 
 	// call method under test
 	chunksToAttach, treasureChunks := jobs.HandleTreasureChunks(dataMaps, uploadSession1, IotaMock)
 
 	for _, chunk := range chunksToAttach {
-		suite.NotEqual(15, chunk.ChunkIdx)
+		suite.NotEqual(20, chunk.ChunkIdx)
 	}
 
 	suite.Equal(true, findTransactionsMockCalled_process_unassigned_chunks)
