@@ -11,7 +11,6 @@ import (
 	"math/big"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/oysterprotocol/brokernode/models"
 	"fmt"
 )
 
