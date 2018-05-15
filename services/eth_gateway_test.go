@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/core/types"
 	"fmt"
+	"github.com/oysterprotocol/brokernode/models"
 )
 
 // Ethereum Test Suite
