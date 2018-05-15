@@ -8,6 +8,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math"
 )
 
 func init() {
@@ -119,6 +120,9 @@ func SendPRLToTransactionAddresses(treasureChunks []models.DataMap, session mode
 // add the treasure chunks back into the array in the appropriate position
 func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataMap, session models.UploadSession) []models.DataMap {
 
+	if len(chunks) == 0 && len(treasureChunks) == 0 {
+		return []models.DataMap{}
+	}
 	if len(treasureChunks) == 0 {
 		return chunks
 	}
@@ -187,7 +191,7 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 				Set("addresses", addresses).
 				Set("chunk_indexes", indexes))
 
-			iotaWrapper.SendChunksToChannel(chunks, &channels[j])
+			iotaWrapper.SendChunksToChannel(chunks[i:end], &channels[j])
 		}
 		j++
 		i += BundleSize
@@ -207,11 +211,24 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
+
+	maxIdx := int(math.Max(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
+	minIdx := int(math.Min(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
+
 	treasureMap := make(map[int]bool)
 	for _, idx := range treasureIndexes {
-		treasureMap[idx] = true
+		if idx >= minIdx && idx <= maxIdx {
+			treasureMap[idx] = true
+		}
 	}
-	for i := 0; i < len(chunks); i++ {
+
+	if len(treasureMap) == 0 {
+		return chunks, []models.DataMap{}
+	}
+
+	treasureChunksChecked := 0
+
+	for ok, i := true, 0; ok; ok = treasureChunksChecked < len(treasureMap) && i < len(chunks) {
 		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
 			address := make([]giota.Address, 0, 1)
 			address = append(address, giota.Address(chunks[i].Address))
@@ -240,9 +257,11 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 				chunks[i].Status = models.Complete
 				models.DB.ValidateAndSave(&chunks[i])
 			}
+			treasureChunksChecked++
 		} else {
 			chunksToAttach = append(chunksToAttach, chunks[i])
 		}
+		i++
 	}
 
 	return chunksToAttach, treasureChunksToAttach

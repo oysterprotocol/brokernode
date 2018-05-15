@@ -391,6 +391,7 @@ func verifyChunkMessagesMatchRecord(chunks []models.DataMap) (filteredChunks Fil
 
 func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) (filteredChunks FilteredChunk, err error) {
 
+	filteredChunks = FilteredChunk{}
 	addresses := make([]giota.Address, 0, len(chunks))
 
 	for _, chunk := range chunks {
@@ -405,8 +406,11 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		}
 	}
 
+	if len(addresses) == 0 {
+		return filteredChunks, nil
+	}
+
 	request := giota.FindTransactionsRequest{
-		Command:   "findTransactions",
 		Addresses: addresses,
 	}
 
@@ -417,8 +421,6 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		raven.CaptureError(err, nil)
 		return filteredChunks, err
 	}
-
-	filteredChunks = FilteredChunk{}
 
 	if response != nil && len(response.Hashes) > 0 {
 		trytesArray, err := api.GetTrytes(response.Hashes)
