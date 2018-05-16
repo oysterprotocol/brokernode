@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math"
 	"os"
@@ -167,6 +168,8 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return
 	}
 
@@ -216,6 +219,7 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 		// only do this if the string value is valid
 		err = json.Unmarshal([]byte(u.TreasureIdxMap.String), &treasureIndex)
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		}
 	}
@@ -229,6 +233,7 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	DB.ValidateAndSave(u)
 	treasureString, err := json.Marshal(treasureIndexMap)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return err
 	}
@@ -258,6 +263,7 @@ func (u *UploadSession) MakeTreasureIdxMap(alphaIndexes []int, betaIndexs []int)
 
 	treasureString, err := json.Marshal(treasureIndexArray)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 
@@ -268,6 +274,7 @@ func (u *UploadSession) MakeTreasureIdxMap(alphaIndexes []int, betaIndexs []int)
 func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
 	treasureMap, err := u.GetTreasureMap()
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 	treasureIndexArray := make([]int, 0)
@@ -311,6 +318,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureBuried).All(&sessionsByAge)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return nil, err
 	}

@@ -1,6 +1,8 @@
 package jobs_test
 
 import (
+	"github.com/gobuffalo/pop/nulls"
+	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -10,7 +12,9 @@ import (
 var (
 	sendChunksToChannelMockCalled_process_unassigned_chunks              = false
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = false
+	findTransactionsMockCalled_process_unassigned_chunks                 = false
 	AllChunksCalled                                                      []models.DataMap
+	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
@@ -134,9 +138,189 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	suite.Equal(3, genHashMapOrder["genHash3"])
 }
 
+func (suite *JobsSuite) Test_HandleTreasureChunks() {
+
+	numChunks := 25
+
+	// reset back to generic mocks
+	defer suite.SetupSuite()
+
+	// make suite available inside mock methods
+	Suite = *suite
+
+	// assign the mock methods for this test
+	makeMocks_process_unassigned_chunks(&IotaMock)
+
+	// make 3 channels
+	models.MakeChannels(3)
+
+	treasureMap := `[{
+		"sector": 1,
+		"idx": 15,
+		"key": "000000000000000000000000000000010000000000000000000000000000000001"
+		},
+		{
+		"sector": 1,
+		"idx": 20,
+		"key": "000000000000000000000000000000020000000000000000000000000000000002"
+		}]`
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "genHash1",
+		NumChunks:      numChunks,
+		FileSizeBytes:  3000,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureBuried,
+		TreasureIdxMap: nulls.String{string(treasureMap), true},
+	}
+
+	for i := 0; i < numChunks; i++ {
+		suite.DB.ValidateAndSave(&models.DataMap{
+			ChunkIdx:    i,
+			GenesisHash: "genHash1",
+			Hash:        "SOMEHASH",
+		})
+	}
+
+	// set all data maps to unassigned
+	err := suite.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
+	suite.Nil(err)
+
+	treasureChunk := models.DataMap{}
+	err = suite.DB.RawQuery("SELECT * from data_maps WHERE chunk_idx = ?", 20).First(&treasureChunk)
+	suite.Nil(err)
+
+	// setting the address to something that the findTransactions mock can check for
+	treasureChunk.Address = fakeFindTransactionsAddress
+	suite.DB.ValidateAndSave(&treasureChunk)
+
+	dataMaps := []models.DataMap{}
+	err = suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	suite.Nil(err)
+	suite.Equal(numChunks, len(dataMaps))
+
+	// call method under test
+	chunksToAttach, treasureChunks := jobs.HandleTreasureChunks(dataMaps, uploadSession1, IotaMock)
+
+	for _, chunk := range chunksToAttach {
+		suite.NotEqual(20, chunk.ChunkIdx)
+	}
+
+	suite.Equal(true, findTransactionsMockCalled_process_unassigned_chunks)
+	suite.Equal(len(dataMaps)-2, len(chunksToAttach))
+	suite.Equal(1, len(treasureChunks))
+	suite.Equal(15, treasureChunks[0].ChunkIdx)
+}
+
+func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
+
+	numChunks := 25
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   "genHash1",
+		NumChunks:     numChunks,
+		FileSizeBytes: 3000,
+		Type:          models.SessionTypeAlpha,
+	}
+
+	nonTreasureChunks := []models.DataMap{}
+	treasureChunks := []models.DataMap{}
+
+	for i := 2; i < 25; i++ {
+		if i != 1 && i != 10 && i != 25 {
+			nonTreasureChunks = append(nonTreasureChunks, models.DataMap{
+				ChunkIdx: i,
+			})
+		}
+	}
+
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 1,
+	})
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 10,
+	})
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 25,
+	})
+
+	// call method under test
+	allChunks := jobs.InsertTreasureChunks(nonTreasureChunks, treasureChunks, uploadSession1)
+
+	suite.Equal(len(treasureChunks)+len(nonTreasureChunks), len(allChunks))
+
+	// verify chunks are in the expected (ascending) order
+	for i, chunk := range allChunks {
+		if chunk.ChunkIdx == 1 {
+			suite.Equal(2, allChunks[i+1].ChunkIdx)
+		}
+		if chunk.ChunkIdx == 10 {
+			suite.Equal(9, allChunks[i-1].ChunkIdx)
+			suite.Equal(11, allChunks[i+1].ChunkIdx)
+		}
+		if chunk.ChunkIdx == 25 {
+			suite.Equal(24, allChunks[i-1].ChunkIdx)
+		}
+	}
+}
+
+func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
+
+	numChunks := 25
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   "genHash1",
+		NumChunks:     numChunks,
+		FileSizeBytes: 3000,
+		Type:          models.SessionTypeBeta,
+	}
+
+	nonTreasureChunks := []models.DataMap{}
+	treasureChunks := []models.DataMap{}
+
+	for i := 25; i > 0; i-- {
+		if i != 1 && i != 10 && i != 25 {
+			nonTreasureChunks = append(nonTreasureChunks, models.DataMap{
+				ChunkIdx: i,
+			})
+		}
+	}
+
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 1,
+	})
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 10,
+	})
+	treasureChunks = append(treasureChunks, models.DataMap{
+		ChunkIdx: 25,
+	})
+
+	// call method under test
+	allChunks := jobs.InsertTreasureChunks(nonTreasureChunks, treasureChunks, uploadSession1)
+
+	suite.Equal(len(treasureChunks)+len(nonTreasureChunks), len(allChunks))
+
+	// verify chunks are in the expected (descending) order
+	for i, chunk := range allChunks {
+		if chunk.ChunkIdx == 1 {
+			suite.Equal(2, allChunks[i-1].ChunkIdx)
+		}
+		if chunk.ChunkIdx == 10 {
+			suite.Equal(9, allChunks[i+1].ChunkIdx)
+			suite.Equal(11, allChunks[i-1].ChunkIdx)
+		}
+		if chunk.ChunkIdx == 25 {
+			suite.Equal(24, allChunks[i+1].ChunkIdx)
+		}
+	}
+}
+
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks
 	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks
+	iotaMock.FindTransactions = findTransactions_process_unassigned_chunks
 }
 
 func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, channel *models.ChunkChannel) {
@@ -164,4 +348,18 @@ func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []mod
 		NotAttached:        notAttached,
 		DoesNotMatchTangle: doesNotMatchTangle,
 	}, err
+}
+
+func findTransactions_process_unassigned_chunks(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
+
+	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
+
+	if addresses[0] == giota.Address(fakeFindTransactionsAddress) {
+		// only add to the map if the address is the address we decided to check for
+		addrToTransactionMap[addresses[0]] = []giota.Transaction{}
+	}
+
+	findTransactionsMockCalled_process_unassigned_chunks = true
+
+	return addrToTransactionMap, nil
 }

@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/getsentry/raven-go"
 	"time"
 
@@ -171,6 +172,7 @@ func SetGasStatusByAddress(transactionAddress string, newGasStatus GasTransferSt
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return
 	}
@@ -185,6 +187,7 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 		return
 	}
@@ -198,6 +201,8 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 func DeleteCompletedClaims() error {
 	err := DB.RawQuery("DELETE from completed_uploads WHERE prl_status = ?", PRLClaimSuccess).All(&[]CompletedUpload{})
 	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		return err
 	}
 

@@ -97,6 +97,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	vErr, err := alphaSession.StartUploadSession()
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 
@@ -113,6 +114,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	if req.BetaIP != "" {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
+			fmt.Println(err)
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
@@ -124,6 +126,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
 		defer betaRes.Body.Close() // we need to close the connection
 		if err != nil {
+			fmt.Println(err)
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
@@ -138,6 +141,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	// Update alpha treasure idx map.
 	alphaSession.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 
@@ -174,6 +178,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		Set("storage_years", uploadSession.StorageLengthInYears))
 
 	if err != nil || uploadSession == nil {
+		fmt.Println(err)
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
 	}
@@ -215,6 +220,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			uploadSession.GenesisHash, minChunkIdx, maxChunkIdx).All(&dms)
 
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		}
 
@@ -270,6 +276,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			remainder = remainder - SQL_BATCH_SIZE
 
 			if err != nil {
+				fmt.Println(err)
 				raven.CaptureError(err, nil)
 				break
 			}
@@ -312,6 +319,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	u.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 

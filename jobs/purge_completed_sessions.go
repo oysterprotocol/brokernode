@@ -1,11 +1,12 @@
 package jobs
 
 import (
+	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"log"
 )
 
 func init() {
@@ -19,7 +20,8 @@ func PurgeCompletedSessions() {
 	err := models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps").All(&allGenesisHashesStruct)
 
 	if err != nil {
-		log.Panic(err)
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 	}
 
 	allGenesisHashes := make([]string, 0, len(allGenesisHashesStruct))
@@ -33,7 +35,8 @@ func PurgeCompletedSessions() {
 		models.Confirmed).All(&genesisHashesNotComplete)
 
 	if err != nil {
-		log.Panic(err)
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
 	}
 
 	notComplete := map[string]bool{}
@@ -53,6 +56,8 @@ func PurgeCompletedSessions() {
 
 				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
 				if err != nil {
+					fmt.Println(err)
+					raven.CaptureError(err, nil)
 					return err
 				}
 
@@ -60,6 +65,8 @@ func PurgeCompletedSessions() {
 
 				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session)
 				if err != nil {
+					fmt.Println(err)
+					raven.CaptureError(err, nil)
 					return err
 				}
 
@@ -70,16 +77,22 @@ func PurgeCompletedSessions() {
 						FileSizeBytes: session[0].FileSizeBytes,
 					})
 					if err != nil {
+						fmt.Println(err)
+						raven.CaptureError(err, nil)
 						return err
 					}
 					err = models.NewCompletedUpload(session[0])
 					if err != nil {
+						fmt.Println(err)
+						raven.CaptureError(err, nil)
 						return err
 					}
 				}
 
 				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
 				if err != nil {
+					fmt.Println(err)
+					raven.CaptureError(err, nil)
 					return err
 				}
 
@@ -113,7 +126,8 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 
 		_, err := tx.ValidateAndSave(&completedDataMap)
 		if err != nil {
-			log.Panic(err)
+			fmt.Println(err)
+			raven.CaptureError(err, nil)
 		}
 	}
 }

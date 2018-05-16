@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"errors"
+	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -23,6 +24,7 @@ func BuryTreasureInDataMaps() error {
 	unburiedSessions, err := models.GetSessionsThatNeedTreasure()
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 
@@ -30,6 +32,7 @@ func BuryTreasureInDataMaps() error {
 
 		treasureIndex, err := unburiedSession.GetTreasureMap()
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return err
 		}
@@ -44,6 +47,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 	for i, entry := range treasureIndexMap {
 		treasureChunks, err := models.GetDataMapByGenesisHashAndChunkIdx(unburiedSession.GenesisHash, entry.Idx)
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return err
 		}
@@ -57,6 +61,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		}
 		treasureChunks[0].Message, err = models.CreateTreasurePayload(entry.Key, treasureChunks[0].Hash, models.MaxSideChainLength)
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 			return err
 		}
@@ -81,6 +86,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 func MarkBuriedMapsAsUnassigned() {
 	readySessions, err := models.GetReadySessions()
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	}
 
@@ -88,6 +94,7 @@ func MarkBuriedMapsAsUnassigned() {
 
 		pendingChunks, err := models.GetPendingChunksBySession(readySession, 1)
 		if err != nil {
+			fmt.Println(err)
 			raven.CaptureError(err, nil)
 		}
 

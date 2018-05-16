@@ -19,6 +19,7 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 	err := models.DB.Where("updated_at <= ?", thresholdTime).All(&webnodes)
 
 	if err != nil {
+		fmt.Println(err)
 		raven.CaptureError(err, nil)
 	} else {
 		for i := 0; i < len(webnodes); i++ {

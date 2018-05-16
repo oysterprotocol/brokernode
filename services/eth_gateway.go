@@ -2,16 +2,9 @@ package services
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/joho/godotenv"
-	"github.com/oysterprotocol/brokernode/models"
-	"log"
-	"os"
-	"sync"
-
-	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,9 +12,15 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/getsentry/raven-go"
+	"github.com/joho/godotenv"
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
+	"log"
 	"math/big"
+	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -122,6 +121,7 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 		c, err = ethclient.Dial(ethUrl)
 		if err != nil {
 			fmt.Println("Failed to dial in to Ethereum node.")
+			raven.CaptureError(err, nil)
 			return
 		}
 		// Sets Singleton
