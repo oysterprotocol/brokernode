@@ -2,6 +2,7 @@ package actions
 
 import (
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -9,27 +10,34 @@ import (
 
 // Record data for VerifyTreasure method
 type mockVerifyTreasure struct {
+	hasCalled    bool
 	input_addr   []string
 	output_bool  bool
 	output_error error
 }
 
-func (as *ActionSuite) Test_VerifyAndClaim_NoError() {
-	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
-		"receiverEthAddr": "receiverEthAddr",
-		"genesisHash":     "123",
-	})
-
-	as.Equal(200, res.Code)
+// Record data for ClaimPRL method
+type mockClaimPrl struct {
+	hasCalled           bool
+	input_receiver_addr common.Address
+	input_treasure_addr common.Address
+	input_treasure_key  string
+	output_bool         bool
 }
 
-func (as *ActionSuite) Test_VerifyTreasure_Success() {
-	m := mockVerifyTreasure{
+func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
+	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
 	}
 	IotaWrapper = services.IotaService{
-		VerifyTreasure: m.verifyTreasure,
+		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
+	}
+	mockClaimPrl := mockClaimPrl{
+		output_bool: true,
+	}
+	EthWrapper = services.Eth{
+		ClaimPRL: mockClaimPrl.claimPRL,
 	}
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -37,10 +45,20 @@ func (as *ActionSuite) Test_VerifyTreasure_Success() {
 		"genesisHash":     "123",
 		"sectorIdx":       1,
 		"numChunks":       5,
+		"ethAddr":         "ethAddr",
+		"ethKey":          "ethKey",
 	})
 
-	as.Equal(5, len(m.input_addr))
 	as.Equal(200, res.Code)
+
+	// Check mockVerifyTreasure
+	as.True(mockVerifyTreasure.hasCalled)
+	as.Equal(5, len(mockVerifyTreasure.input_addr))
+	// Check mockClaimPrl
+	as.True(mockClaimPrl.hasCalled)
+	as.Equal(services.StringToAddress("receiverEthAddr"), mockClaimPrl.input_receiver_addr)
+	as.Equal(services.StringToAddress("ethAddr"), mockClaimPrl.input_treasure_addr)
+	as.Equal("ethKey", mockClaimPrl.input_treasure_key)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -68,7 +86,47 @@ func (as *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 		"numChunks":       5,
 	})
 
+	as.True(m.hasCalled)
 	as.Equal(5, len(m.input_addr))
+
+	// Parse response
+	resParsed := treasureRes{}
+	bodyBytes, err := ioutil.ReadAll(res.Body)
+	as.Nil(err)
+	err = json.Unmarshal(bodyBytes, &resParsed)
+	as.Nil(err)
+
+	as.Equal(false, resParsed.Success)
+}
+
+func (as *ActionSuite) Test_Claim_Failure() {
+	mockVerifyTreasure := mockVerifyTreasure{
+		output_bool:  true,
+		output_error: nil,
+	}
+	IotaWrapper = services.IotaService{
+		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
+	}
+	mockClaimPrl := mockClaimPrl{
+		output_bool: false,
+	}
+	EthWrapper = services.Eth{
+		ClaimPRL: mockClaimPrl.claimPRL,
+	}
+
+	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
+		"receiverEthAddr": "receiverEthAddr",
+		"genesisHash":     "123",
+		"sectorIdx":       1,
+		"numChunks":       5,
+		"ethAddr":         "ethAddr",
+		"ethKey":          "ethKey",
+	})
+
+	as.Equal(200, res.Code)
+
+	as.True(mockVerifyTreasure.hasCalled)
+	as.True(mockClaimPrl.hasCalled)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -82,6 +140,16 @@ func (as *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 
 // For mocking VerifyTreasure method
 func (v *mockVerifyTreasure) verifyTreasure(addr []string) (bool, error) {
+	v.hasCalled = true
 	v.input_addr = addr
 	return v.output_bool, v.output_error
+}
+
+// For mocking ClaimPRL method
+func (v *mockClaimPrl) claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasureKey string) bool {
+	v.hasCalled = true
+	v.input_receiver_addr = receiverAddress
+	v.input_treasure_addr = treasureAddress
+	v.input_treasure_key = treasureKey
+	return v.output_bool
 }

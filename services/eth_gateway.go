@@ -11,18 +11,18 @@ import (
 	"os"
 	"sync"
 
+	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"math/big"
-	"crypto/ecdsa"
-	"time"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"strings"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/pkg/errors"
+	"math/big"
+	"strings"
+	"time"
 )
 
 type Eth struct {
@@ -37,32 +37,32 @@ type Eth struct {
 	SubscribeToTransfer SubscribeToTransfer
 	CheckBalance        CheckBalance
 	GetCurrentBlock     GetCurrentBlock
-	OysterCallMsg	    OysterCallMsg
+	OysterCallMsg       OysterCallMsg
 }
 
 type OysterCallMsg struct {
-	From common.Address
-	To common.Address
-	Amount big.Int
+	From       common.Address
+	To         common.Address
+	Amount     big.Int
 	PrivateKey ecdsa.PrivateKey
-	Gas uint64
-	GasPrice big.Int
-	TotalWei big.Int
-	Data []byte
+	Gas        uint64
+	GasPrice   big.Int
+	TotalWei   big.Int
+	Data       []byte
 }
 
 type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GetGasPrice func() (*big.Int, error)
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
-type CheckBalance func(common.Address) (*big.Int)
+type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string)
 
-type BuryPrl func(msg OysterCallMsg) (bool)
-type SendPRL func(msg OysterCallMsg) (bool)
-type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool)
-type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) (error)
+type BuryPrl func(msg OysterCallMsg) bool
+type SendPRL func(msg OysterCallMsg) bool
+type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool
+type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) error
 
 // Singleton client
 var (
@@ -91,14 +91,14 @@ func init() {
 	fmt.Println(ethUrl)
 
 	EthWrapper = Eth{
-		SendGas:         sendGas,
-		ClaimPRL:        claimPRLs,
-		ClaimUnusedPRLs: claimUnusedPRLs,
-		GenerateEthAddr: generateEthAddr,
-		BuryPrl:         buryPrl,
-		SendETH:         sendETH,
-		SendPRL:         sendPRL,
-		GetGasPrice:     getGasPrice,
+		SendGas:             sendGas,
+		ClaimPRL:            claimPRLs,
+		ClaimUnusedPRLs:     claimUnusedPRLs,
+		GenerateEthAddr:     generateEthAddr,
+		BuryPrl:             buryPrl,
+		SendETH:             sendETH,
+		SendPRL:             sendPRL,
+		GetGasPrice:         getGasPrice,
 		SubscribeToTransfer: subscribeToTransfer,
 		CheckBalance:        checkBalance,
 		GetCurrentBlock:     getCurrentBlock,
@@ -116,7 +116,7 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 
 	if client != nil {
 		// override to allow custom node url
-		if len(netUrl)>0 {
+		if len(netUrl) > 0 {
 			ethUrl = netUrl
 		}
 		c, err = ethclient.Dial(ethUrl)
@@ -139,7 +139,7 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 }
 
 // returns represents the 20 byte address of an ethereum account.
-func stringToAddress(address string) common.Address {
+func StringToAddress(address string) common.Address {
 	return common.HexToAddress(address)
 }
 
@@ -151,32 +151,32 @@ func getGasPrice() (*big.Int, error) {
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
 	}
-	
-  // there is no guarantee with estimate gas price
+
+	// there is no guarantee with estimate gas price
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal("Client could not get gas price from network")
 	}
 	return gasPrice, nil
-  
-  // TODO review this doesn't return gasPrice
+
+	// TODO review this doesn't return gasPrice
 	// addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
 	// privKey = hex.EncodeToString(ethAccount.D.Bytes())
 	//oyster_utils.LogToSegment("eth_gateway: generated_new_eth_address", analytics.NewProperties().
-		//Set("eth_address", fmt.Sprint(addr)))
+	//Set("eth_address", fmt.Sprint(addr)))
 	//return
 
 }
 
 // Check balance from a valid Ethereum network address
-func checkBalance(addr common.Address) (*big.Int) {
+func checkBalance(addr common.Address) *big.Int {
 	// connect ethereum client
 	client, err := sharedClient("")
 	if err != nil {
 		log.Fatal("Could not initialize shared client")
 	}
 
-	balance, err := client.BalanceAt(context.Background(),addr, nil)  //Call(&bal, "eth_getBalance", addr, "latest")
+	balance, err := client.BalanceAt(context.Background(), addr, nil) //Call(&bal, "eth_getBalance", addr, "latest")
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
 		return big.NewInt(0)
@@ -213,9 +213,9 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 	currentBlock, _ := getCurrentBlock()
 	q := ethereum.FilterQuery{
 		FromBlock: currentBlock.Number(), // beginning of the queried range, nil means genesis block
-		ToBlock: nil, // end of the range, nil means latest block
+		ToBlock:   nil,                   // end of the range, nil means latest block
 		Addresses: []common.Address{brokerAddr},
-		Topics:  nil, // matches any topic list
+		Topics:    nil, // matches any topic list
 	}
 
 	// subscribe before passing it to outCh.
@@ -225,33 +225,33 @@ func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-		/*
-		case log := <- outCh:
-			fmt.Printf("Log Data:%v", log.Data)
+			/*
+				case log := <- outCh:
+					fmt.Printf("Log Data:%v", log.Data)
 
-			// need to add unpack abi result if
-			// the method call is for the contract
-			if err != nil {
-				fmt.Println("Failed to unpack:", err)
-			}
+					// need to add unpack abi result if
+					// the method call is for the contract
+					if err != nil {
+						fmt.Println("Failed to unpack:", err)
+					}
 
-			fmt.Println("Confirmed Address:", log.Address.Hex())
+					fmt.Println("Confirmed Address:", log.Address.Hex())
 
-			sub.Unsubscribe()
+					sub.Unsubscribe()
 
-			// TODO ensure confirmation type from "sendGas" or "sendPRL"
-			recordTransaction(log.Address, "")*/
+					// TODO ensure confirmation type from "sendGas" or "sendPRL"
+					recordTransaction(log.Address, "")*/
 		}
 	}
 }
 
 // Send gas to the completed upload Ethereum account
-func sendGas(completedUploads []models.CompletedUpload) (error) {
+func sendGas(completedUploads []models.CompletedUpload) error {
 	for _, completedUpload := range completedUploads {
 		// returns a raw transaction, we may need to store them to verify all transactions are completed
 		// mock value need to get amount, not in completed upload object
 		gasPrice, _ := getGasPrice()
-		sendETH(stringToAddress(completedUpload.ETHAddr), gasPrice)
+		sendETH(StringToAddress(completedUpload.ETHAddr), gasPrice)
 	}
 	return nil
 }
@@ -297,11 +297,11 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 }
 
 // Bury PRLs
-func buryPrl(msg OysterCallMsg) (bool) {
+func buryPrl(msg OysterCallMsg) bool {
 
 	// dispense PRLs from the transaction address to each 'treasure' address
 	rawTransaction := sendETH(msg.To, &msg.Amount)
-  
+
 	if len(rawTransaction) < 0 {
 		// sending eth has failed
 		return false
@@ -338,16 +338,16 @@ func buryPrl(msg OysterCallMsg) (bool) {
 }
 
 // ClaimUnusedPRLs parses the completedUploads and sends PRL to the MainWalletAddress
-func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
+func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 	// Contract claim(address _payout, address _fee) public returns (bool success)
 	for _, completedUpload := range completedUploads {
 		//	for each completed upload, get its PRL balance from its ETH
 		//	address (completedUpload.ETHAddr) by calling CheckBalance.
-		ethAddr := stringToAddress(completedUpload.ETHAddr)
+		ethAddr := StringToAddress(completedUpload.ETHAddr)
 		balance := checkBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
-			return errors.New("could not complete transaction due to zero balance for:"+completedUpload.ETHAddr)
+			return errors.New("could not complete transaction due to zero balance for:" + completedUpload.ETHAddr)
 		}
 		//	Then, using SendPRL, create a transaction with each
 		//	completedUpload.ETHAddr as the "fromAddr" address, the broker's
@@ -364,13 +364,13 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 
 		// prepare oyster message call
 		var oysterMsg = OysterCallMsg{
-			From: from,
-			To: to,
-			Amount: *amountToSend,
-			Gas: gas,
+			From:     from,
+			To:       to,
+			Amount:   *amountToSend,
+			Gas:      gas,
 			GasPrice: *gasPrice,
 			TotalWei: *big.NewInt(1), // TODO finish wei
-			Data: []byte(""), // setup data
+			Data:     []byte(""),     // setup data
 		}
 
 		// claimed := claimPRLs(to, from, privateKey)
@@ -378,8 +378,8 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 		// send transaction from completed upload eth addr to main wallet
 		// we may just do a straight transfer with network vs from contract
 		if !sendPRL(oysterMsg) {
-		  // TODO more detailed error message
-		  return errors.New("unable to send prl to main wallet")
+			// TODO more detailed error message
+			return errors.New("unable to send prl to main wallet")
 		}
 	}
 
@@ -387,7 +387,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) (error) {
 }
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
-func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) (bool) {
+func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool {
 	// initialize the context
 	ctx, cancel := createContext()
 	defer cancel()
@@ -426,8 +426,8 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	Once the payment is received, the brokers will split up the PRLs and begin work to attach the file to the IOTA tangle
 	so to answer your question, there won't be a main PRL wallet, the address is different for each session
 	however there will be a "main" ETH wallet, which is used to pay gas fees
- */
-func sendPRL(msg OysterCallMsg) (bool) {
+*/
+func sendPRL(msg OysterCallMsg) bool {
 
 	// initialize the context
 	ctx, cancel := createContext()
@@ -488,7 +488,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
-	return  signedTx, nil
+	return signedTx, nil
 }
 
 // context helper to include the deadline initialization
@@ -496,7 +496,6 @@ func createContext() (ctx context.Context, cancel context.CancelFunc) {
 	deadline := time.Now().Add(1000 * time.Millisecond)
 	return context.WithDeadline(context.Background(), deadline)
 }
-
 
 // TODO will be Use channels/workers for subscribe to transaction events
 // There is an example of a channel/worker in iota_wrappers.go
