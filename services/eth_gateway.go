@@ -139,7 +139,7 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 }
 
 // returns represents the 20 byte address of an ethereum account.
-func stringToAddress(address string) common.Address {
+func StringToAddress(address string) common.Address {
 	return common.HexToAddress(address)
 }
 
@@ -251,7 +251,7 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 		// returns a raw transaction, we may need to store them to verify all transactions are completed
 		// mock value need to get amount, not in completed upload object
 		gasPrice, _ := getGasPrice()
-		sendETH(stringToAddress(completedUpload.ETHAddr), gasPrice)
+		sendETH(StringToAddress(completedUpload.ETHAddr), gasPrice)
 	}
 	return nil
 }
@@ -343,7 +343,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 	for _, completedUpload := range completedUploads {
 		//	for each completed upload, get its PRL balance from its ETH
 		//	address (completedUpload.ETHAddr) by calling CheckBalance.
-		ethAddr := stringToAddress(completedUpload.ETHAddr)
+		ethAddr := StringToAddress(completedUpload.ETHAddr)
 		balance := checkBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
