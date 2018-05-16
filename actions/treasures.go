@@ -24,6 +24,7 @@ type treasureRes struct {
 	Success bool `json:"success"`
 }
 
+// Visible for Unit Test
 var IotaWrapper = services.IotaWrapper
 var EthWrapper = services.EthWrapper
 
@@ -36,9 +37,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
 	if err == nil && verify {
-		//msg := EthWrapper.OysterCallMsg{From: "from", To: "to", Amount: 10, PrivateKey: 1, Gas: 1, TotalWei: 1, Data: [01, 11, 10]}
-		//result := EthWrapper.ClaimPrl(msg)
-		//verify = result
+		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), services.StringToAddress(req.EthAddr), req.EthKey)
 	}
 
 	res := treasureRes{
