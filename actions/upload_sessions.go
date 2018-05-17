@@ -135,6 +135,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaSessionID = betaSessionRes.ID
 
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
+		alphaSession.ETHAddrBeta = betaSessionRes.UploadSession.ETHAddrBeta
 	}
 
 	err = models.DB.Save(&alphaSession)
