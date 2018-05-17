@@ -5,6 +5,13 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"math/big"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,27 +23,22 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/pkg/errors"
-	"log"
-	"math/big"
-	"os"
-	"strings"
-	"sync"
-	"time"
 )
 
 type Eth struct {
-	SendGas             SendGas
-	ClaimPRL            ClaimPRL
-	ClaimUnusedPRLs     ClaimUnusedPRLs
-	GenerateEthAddr     GenerateEthAddr
-	BuryPrl             BuryPrl
-	SendETH             SendETH
-	SendPRL             SendPRL
-	GetGasPrice         GetGasPrice
-	SubscribeToTransfer SubscribeToTransfer
-	CheckBalance        CheckBalance
-	GetCurrentBlock     GetCurrentBlock
-	OysterCallMsg       OysterCallMsg
+	SendGas
+	ClaimPRL
+	ClaimUnusedPRLs
+	GenerateEthAddr
+	BuryPrl
+	SendETH
+	SendPRL
+	GetGasPrice
+	WaitForTransfer
+	SubscribeToTransfer
+	CheckBalance
+	GetCurrentBlock
+	OysterCallMsg
 }
 
 type OysterCallMsg struct {
@@ -53,6 +55,7 @@ type OysterCallMsg struct {
 type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GetGasPrice func() (*big.Int, error)
+type WaitForTransfer func(brokerAddr common.Address) bool
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
@@ -98,6 +101,7 @@ func init() {
 		SendETH:             sendETH,
 		SendPRL:             sendPRL,
 		GetGasPrice:         getGasPrice,
+		WaitForTransfer:     waitForTransfer,
 		SubscribeToTransfer: subscribeToTransfer,
 		CheckBalance:        checkBalance,
 		GetCurrentBlock:     getCurrentBlock,
@@ -203,6 +207,12 @@ func getCurrentBlock() (*types.Block, error) {
 	// latest block event
 	fmt.Printf("latest block: %v\n", currentBlock.Number())
 	return currentBlock, nil
+}
+
+// WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
+// If it is completed return true, otherwise, return false (or time-out)
+func waitForTransfer(brokerAddr common.Address) bool {
+	return false
 }
 
 // SubscribeToTransfer will subscribe to transfer events
