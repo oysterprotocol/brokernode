@@ -65,6 +65,12 @@ type paymentStatusCreateRes struct {
 	PaymentStatus string `json:"paymentStatus"`
 }
 
+type notifyBetaReq struct {
+	ID            string `json:"id"`
+	PaymentStatus int    `json:"paymentStatus"`
+	AlphaEthAddr  string `json:"alphaEthAddr"`
+}
+
 const (
 	SQL_BATCH_SIZE = 10
 )
@@ -336,6 +342,30 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
 	return c.Render(200, r.JSON(res))
+}
+
+// NotifyBeta checks the request is from alpha brokernode and update its data.
+func (usr *UploadSessionResource) NotifyBeta(c buffalo.Context) error {
+	req := notifyBetaReq{}
+	oyster_utils.ParseReqBody(c.Request(), &req)
+
+	session := models.UploadSession{}
+	err := models.DB.Find(&session, req.ID)
+	if err != nil {
+		return err
+	}
+
+	// Prevent random actor to send to this request
+	if req.AlphaEthAddr != session.ETHAddrAlpha.String {
+		return errors.New("alphaEthAddr does not match")
+	}
+	session.PaymentStatus = req.PaymentStatus
+
+	err = models.DB.Save(&session)
+	if err != nil {
+		return err
+	}
+	return c.Render(200, r.JSON(map[string]bool{"success": true}))
 }
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
