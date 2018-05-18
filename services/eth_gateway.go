@@ -212,7 +212,34 @@ func getCurrentBlock() (*types.Block, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return true, otherwise, return false (or time-out)
 func waitForTransfer(brokerAddr common.Address) bool {
-	return false
+	c := make(chan types.Log)
+	client, _ := sharedClient("")
+	currentBlock, _ := getCurrentBlock()
+	q := ethereum.FilterQuery{
+		FromBlock: currentBlock.Number(), // beginning of the queried range, nil means genesis block
+		ToBlock:   nil,                   // end of the range, nil means latest block
+		Addresses: []common.Address{brokerAddr},
+		Topics:    nil, // matches any topic list
+	}
+
+	sub, err := client.SubscribeFilterLogs(context.Background(), q, c)
+	if err != nil {
+		return false
+	}
+
+	defer sub.Unsubscribe()
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Fatal(err)
+			return false
+		case <-time.After(5 * time.Minute):
+			log.Print("Timeout to wait for brokerAddr\n")
+			// Wait for 5 minutes to receive payment before timeout
+			return false
+			// TODO(astor): listen to the event and return true/false
+		}
+	}
 }
 
 // SubscribeToTransfer will subscribe to transfer events
