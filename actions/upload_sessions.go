@@ -158,7 +158,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Invoice:       invoice,
 	}
 
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID)
+	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, true)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -337,7 +337,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha, res.ID)
+	go waitForTransfer(res.UploadSession.ETHAddrAlpha, res.ID, false)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -363,7 +363,7 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
 
-func waitForTransfer(ethAddr string, uploadSessionId string) {
+func waitForTransfer(ethAddr string, uploadSessionId string, isAlpha bool) {
 	success := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
 
 	session := models.UploadSession{}
