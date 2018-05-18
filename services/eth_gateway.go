@@ -117,21 +117,19 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 	mtx.Lock()
 	defer mtx.Unlock()
 
-	if client != nil {
-		// override to allow custom node url
-		if len(netUrl) > 0 {
-			ethUrl = netUrl
-		}
-		c, err = ethclient.Dial(ethUrl)
-		if err != nil {
-			fmt.Println("Failed to dial in to Ethereum node.")
-			raven.CaptureError(err, nil)
-			return
-		}
-		// Sets Singleton
-		client = c
+	// override to allow custom node url
+	if len(netUrl) > 0 {
+		ethUrl = netUrl
 	}
-	return client, err
+	c, err = ethclient.Dial(ethUrl)
+	if err != nil {
+		fmt.Println("Failed to dial in to Ethereum node.")
+		raven.CaptureError(err, nil)
+		return
+	}
+	// Sets Singleton
+	client = c
+	return
 }
 
 // Generate an Ethereum address
@@ -212,9 +210,16 @@ func getCurrentBlock() (*types.Block, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return true, otherwise, return false (or time-out)
 func waitForTransfer(brokerAddr common.Address) bool {
-	c := make(chan types.Log)
-	client, _ := sharedClient("")
-	currentBlock, _ := getCurrentBlock()
+	client, err := sharedClient("")
+	if err != nil {
+		return false
+	}
+
+	currentBlock, err := getCurrentBlock()
+	if err != nil {
+		return false
+	}
+
 	q := ethereum.FilterQuery{
 		FromBlock: currentBlock.Number(), // beginning of the queried range, nil means genesis block
 		ToBlock:   nil,                   // end of the range, nil means latest block
@@ -222,7 +227,8 @@ func waitForTransfer(brokerAddr common.Address) bool {
 		Topics:    nil, // matches any topic list
 	}
 
-	sub, err := client.SubscribeFilterLogs(context.Background(), q, c)
+	logChan := make(chan types.Log)
+	sub, err := client.SubscribeFilterLogs(context.Background(), q, logChan)
 	if err != nil {
 		return false
 	}
@@ -297,7 +303,11 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 // We need to pass in the credentials, to allow the transaction to execute.
 func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 
-	client, _ := sharedClient("")
+	client, err := sharedClient("")
+	if err != nil {
+		return err.Error()
+	}
+
 	// initialize the context
 	deadline := time.Now().Add(1000 * time.Millisecond)
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
@@ -348,7 +358,11 @@ func buryPrl(msg OysterCallMsg) bool {
 	ctx, cancel := createContext()
 	defer cancel()
 	// shared client
-	client, _ := sharedClient("")
+	client, err := sharedClient("")
+	if err != nil {
+		return false
+	}
+
 	// abi
 	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
 	// oyster contract method bury() no args
@@ -429,7 +443,11 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	ctx, cancel := createContext()
 	defer cancel()
 	// shared client
-	client, _ := sharedClient("")
+	client, err := sharedClient("")
+	if err != nil {
+		return false
+	}
+
 	// abi
 	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
 	// oyster contract method bury() no args
@@ -471,7 +489,11 @@ func sendPRL(msg OysterCallMsg) bool {
 	defer cancel()
 
 	// shared client
-	client, _ := sharedClient("")
+	client, err := sharedClient("")
+	if err != nil {
+		return false
+	}
+
 	// abi
 	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
 	// oyster contract method transfer(address _to, uint256 _value)
@@ -512,7 +534,11 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 		fmt.Printf("Failed to parse secp256k1 private key")
 		return nil, err
 	}
-	client, _ := sharedClient("")
+	client, err := sharedClient("")
+	if err != nil {
+		return nil, err
+	}
+
 	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
 
 	// get latest gas limit & price - current default gasLimit on oysterby 21000
