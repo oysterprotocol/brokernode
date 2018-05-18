@@ -337,7 +337,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha, res.ID, false)
+	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, false)
 
 	return c.Render(200, r.JSON(res))
 }
