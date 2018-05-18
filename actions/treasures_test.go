@@ -34,19 +34,22 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
 	mockClaimPrl := mockClaimPrl{
-		output_bool: true,
+		output_bool:         true,
+		input_receiver_addr: common.HexToAddress("0x0D8e461687b7D06f86EC348E0c270b0F279855F0"),
 	}
 	EthWrapper = services.Eth{
-		ClaimPRL: mockClaimPrl.claimPRL,
+		ClaimPRL:                      mockClaimPrl.claimPRL,
+		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 	}
+
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": "receiverEthAddr",
 		"genesisHash":     "123",
 		"sectorIdx":       1,
 		"numChunks":       5,
-		"ethAddr":         "ethAddr",
-		"ethKey":          "ethKey",
+		"ethKey":          ethKey,
 	})
 
 	as.Equal(200, res.Code)
@@ -57,8 +60,10 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	// Check mockClaimPrl
 	as.True(mockClaimPrl.hasCalled)
 	as.Equal(services.StringToAddress("receiverEthAddr"), mockClaimPrl.input_receiver_addr)
-	as.Equal(services.StringToAddress("ethAddr"), mockClaimPrl.input_treasure_addr)
-	as.Equal("ethKey", mockClaimPrl.input_treasure_key)
+	address, err := EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+	as.Nil(err)
+	as.Equal(address, mockClaimPrl.input_treasure_addr)
+	as.Equal(ethKey, mockClaimPrl.input_treasure_key)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -111,7 +116,8 @@ func (as *ActionSuite) Test_Claim_Failure() {
 		output_bool: false,
 	}
 	EthWrapper = services.Eth{
-		ClaimPRL: mockClaimPrl.claimPRL,
+		ClaimPRL:                      mockClaimPrl.claimPRL,
+		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 	}
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -119,8 +125,7 @@ func (as *ActionSuite) Test_Claim_Failure() {
 		"genesisHash":     "123",
 		"sectorIdx":       1,
 		"numChunks":       5,
-		"ethAddr":         "ethAddr",
-		"ethKey":          "ethKey",
+		"ethKey":          "9999999999999999999999999999999999999999999999999999999999999999",
 	})
 
 	as.Equal(200, res.Code)
