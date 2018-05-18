@@ -71,6 +71,7 @@ func App() *buffalo.App {
 		apiV2.POST("upload-sessions", uploadSessionResource.Create)
 		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
 		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
+		apiV2.POST("upload-sessions/notifyBeta", uploadSessionResource.NotifyBeta)
 		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
 
 		// Webnodes

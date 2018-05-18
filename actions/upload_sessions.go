@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -336,6 +337,33 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
 	return c.Render(200, r.JSON(res))
+}
+
+// NotifyBeta checks the request is from alpha brokernode and update its data.
+func (usr *UploadSessionResource) NotifyBeta(c buffalo.Context) error {
+	session := models.UploadSession{}
+	err := models.DB.Find(&session, c.Param("id"))
+	if err != nil {
+		return err
+	}
+
+	alphaEthAddr := c.Param("alphaEthAddr")
+	// Prevent random actor to send to this request
+	if alphaEthAddr != session.ETHAddrAlpha.String {
+		return errors.New("alphaEthAddr does not match")
+	}
+
+	paymentStatus, err := strconv.Atoi(c.Param("paymentStatus"))
+	if err != nil {
+		return err
+	}
+	session.PaymentStatus = paymentStatus
+
+	err = models.DB.Save(&session)
+	if err != nil {
+		return err
+	}
+	return c.Render(200, r.JSON(map[string]bool{"success": true}))
 }
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
