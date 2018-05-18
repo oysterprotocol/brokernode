@@ -331,7 +331,8 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			fmt.Println("BROADCAST SUCCESS")
 
 			// Async log
-			oyster_utils.LogToSegment("iota_wrappers: broadcast_success", broadcastProperties)
+			/* TODO:  Remove completely?*/
+			// oyster_utils.LogToSegment("iota_wrappers: broadcast_success", broadcastProperties)
 		}
 	}(trytes, broadcastProperties)
 
@@ -459,14 +460,15 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		filteredChunks.NotAttached = chunks
 	}
 
-	if len(filteredChunks.MatchesTangle) > 0 {
-		oyster_utils.LogToSegment("iota_wrappers: chunks_matched_tangle", analytics.NewProperties().
-			Set("num_chunks", len(filteredChunks.MatchesTangle)))
-	}
-	if len(filteredChunks.NotAttached) > 0 {
-		oyster_utils.LogToSegment("iota_wrappers: not_attached", analytics.NewProperties().
-			Set("num_chunks", len(filteredChunks.NotAttached)))
-	}
+	/* TODO:  Remove completely?*/
+	//if len(filteredChunks.MatchesTangle) > 0 {
+	//	oyster_utils.LogToSegment("iota_wrappers: chunks_matched_tangle", analytics.NewProperties().
+	//		Set("num_chunks", len(filteredChunks.MatchesTangle)))
+	//}
+	//if len(filteredChunks.NotAttached) > 0 {
+	//	oyster_utils.LogToSegment("iota_wrappers: not_attached", analytics.NewProperties().
+	//		Set("num_chunks", len(filteredChunks.NotAttached)))
+	//}
 	return filteredChunks, err
 }
 
