@@ -223,7 +223,6 @@ func waitForTransfer(brokerAddr common.Address) bool {
 	}
 
 	sub, err := client.SubscribeFilterLogs(context.Background(), q, c)
-
 	if err != nil {
 		return false
 	}
@@ -235,7 +234,8 @@ func waitForTransfer(brokerAddr common.Address) bool {
 			log.Fatal(err)
 			return false
 		case <-time.After(5 * time.Minute):
-			// Timeout for 5minute for the payment to receive
+			log.Print("Timeout to wait for brokerAddr\n")
+			// Wait for 5 minutes to receive payment before timeout
 			return false
 			// TODO(astor): listen to the event and return true/false
 		}
