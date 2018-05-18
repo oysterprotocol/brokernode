@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -64,6 +63,12 @@ type UploadSessionUpdateReq struct {
 type paymentStatusCreateRes struct {
 	ID            string `json:"id"`
 	PaymentStatus string `json:"paymentStatus"`
+}
+
+type notifyBetaReq struct {
+	ID            string `json:"id"`
+	PaymentStatus int    `json:"paymentStatus"`
+	AlphaEthAddr  string `json:"alphaEthAddr"`
 }
 
 const (
@@ -341,23 +346,20 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 // NotifyBeta checks the request is from alpha brokernode and update its data.
 func (usr *UploadSessionResource) NotifyBeta(c buffalo.Context) error {
+	req := notifyBetaReq{}
+	oyster_utils.ParseReqBody(c.Request(), &req)
+
 	session := models.UploadSession{}
-	err := models.DB.Find(&session, c.Param("id"))
+	err := models.DB.Find(&session, req.ID)
 	if err != nil {
 		return err
 	}
 
-	alphaEthAddr := c.Param("alphaEthAddr")
 	// Prevent random actor to send to this request
-	if alphaEthAddr != session.ETHAddrAlpha.String {
+	if req.AlphaEthAddr != session.ETHAddrAlpha.String {
 		return errors.New("alphaEthAddr does not match")
 	}
-
-	paymentStatus, err := strconv.Atoi(c.Param("paymentStatus"))
-	if err != nil {
-		return err
-	}
-	session.PaymentStatus = paymentStatus
+	session.PaymentStatus = req.PaymentStatus
 
 	err = models.DB.Save(&session)
 	if err != nil {
