@@ -16,7 +16,6 @@ type treasureReq struct {
 	GenesisHash     string `json:"genesisHash"`
 	SectorIdx       int    `json:"sectorIdx"`
 	NumChunks       int    `json:"numChunks"`
-	EthAddr         string `json:"ethAddr"`
 	EthKey          string `json:"ethKey"`
 }
 
@@ -37,7 +36,8 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
 	if err == nil && verify {
-		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), services.StringToAddress(req.EthAddr), req.EthKey)
+		ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
+		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), ethAddr, req.EthKey)
 	}
 
 	res := treasureRes{

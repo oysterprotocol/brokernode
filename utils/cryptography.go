@@ -37,8 +37,6 @@ func Decrypt(key string, cipherText string, nonce string) []byte {
 	panicOnErr(err)
 	data, err = gcm.Open(nil, nonceInBytes, data, nil)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
 		return nil
 	}
 	return data

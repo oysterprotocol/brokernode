@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -30,6 +32,7 @@ type Eth struct {
 	ClaimPRL
 	ClaimUnusedPRLs
 	GenerateEthAddr
+	GenerateEthAddrFromPrivateKey
 	BuryPrl
 	SendETH
 	SendPRL
@@ -54,6 +57,7 @@ type OysterCallMsg struct {
 
 type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
+type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) bool
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
@@ -93,10 +97,11 @@ func init() {
 	fmt.Println(ethUrl)
 
 	EthWrapper = Eth{
-		SendGas:             sendGas,
-		ClaimPRL:            claimPRLs,
-		ClaimUnusedPRLs:     claimUnusedPRLs,
-		GenerateEthAddr:     generateEthAddr,
+		SendGas:                       sendGas,
+		ClaimPRL:                      claimPRLs,
+		ClaimUnusedPRLs:               claimUnusedPRLs,
+		GenerateEthAddr:               generateEthAddr,
+		GenerateEthAddrFromPrivateKey: generateEthAddrFromPrivateKey,
 		BuryPrl:             buryPrl,
 		SendETH:             sendETH,
 		SendPRL:             sendPRL,
@@ -140,6 +145,26 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
 	return addr, privateKey, err
+}
+
+// Generate an Ethereum address from a private key
+func generateEthAddrFromPrivateKey(privateKey string) (addr common.Address) {
+	if privateKey[0:2] != "0x" && privateKey[0:2] != "0X" {
+		privateKey = "0x" + privateKey
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKey)
+	ethAccount := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
+	return addr
+}
+
+// GenerateKey generates a public and private key pair.
+func generatePublicKeyFromPrivateKey(c elliptic.Curve, k *big.Int) *ecdsa.PrivateKey {
+	privateKey := new(ecdsa.PrivateKey)
+	privateKey.PublicKey.Curve = c
+	privateKey.D = k
+	privateKey.PublicKey.X, privateKey.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
+	return privateKey
 }
 
 // returns represents the 20 byte address of an ethereum account.

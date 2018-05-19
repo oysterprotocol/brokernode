@@ -3,22 +3,22 @@ package services_test
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/stretchr/testify/suite"
 	"math/big"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/core/types"
-	"fmt"
-	"github.com/oysterprotocol/brokernode/models"
 )
 
 // Ethereum Test Suite
 type EthereumTestSuite struct {
 	suite.Suite
-	gateway *services.Eth
+	gateway   *services.Eth
 	ethClient *ethclient.Client // used for testing
 }
 
@@ -41,8 +41,8 @@ func (s *EthereumTestSuite) tearDownSuite() {
 func (s *EthereumTestSuite) generateAddress(t *testing.T) {
 
 	// generate eth address using gateway
-	addr, privateKey, error := s.gateway.GenerateEthAddr()
-	if error != nil {
+	addr, privateKey, err := s.gateway.GenerateEthAddr()
+	if err != nil {
 		t.Fatalf("error creating ethereum network address")
 	}
 	// ensure address is correct format
@@ -56,18 +56,35 @@ func (s *EthereumTestSuite) generateAddress(t *testing.T) {
 	t.Logf("ethereum network address was generated %v\n", addr.Hex())
 }
 
+// generate address from private key test
+func Test_generateEthAddrFromPrivateKey(t *testing.T) {
+
+	// generate eth address using gateway
+	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+	if err != nil {
+		t.Fatalf("error creating ethereum network address")
+	}
+
+	generatedAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
+
+	// ensure address is what we expected
+	if originalAddr != generatedAddress {
+		t.Fatalf("generated address was %s but we expected %s", generatedAddress, originalAddr)
+	}
+}
+
 // get gas price from network test
 func (s *EthereumTestSuite) getGasPrice(t *testing.T) {
 
 	// get the suggested gas price
-	gasPrice, error := s.gateway.GetGasPrice()
-	if error != nil {
-		t.Fatalf("error retrieving gas price: %v\n",error)
+	gasPrice, err := s.gateway.GetGasPrice()
+	if err != nil {
+		t.Fatalf("error retrieving gas price: %v\n", err)
 	}
 	if s.Assert().NotNil(gasPrice) && gasPrice.Uint64() > 0 {
-		t.Logf("gas price verified: %v\n",gasPrice)
+		t.Logf("gas price verified: %v\n", gasPrice)
 	} else {
-		t.Fatalf("gas price less than zero: %v\n",gasPrice)
+		t.Fatalf("gas price less than zero: %v\n", gasPrice)
 	}
 }
 
@@ -83,20 +100,20 @@ func (s *EthereumTestSuite) checkBalance(t *testing.T) {
 	// Convert string address to byte[] address form
 	bal := s.gateway.CheckBalance(auth.From)
 	if bal.Uint64() > 0 {
-		t.Logf("balance verified: %v\n",bal)
+		t.Logf("balance verified: %v\n", bal)
 	} else {
-		t.Fatalf("balance less than zero: %v\n",bal)
+		t.Fatalf("balance less than zero: %v\n", bal)
 	}
 }
 
 func (s *EthereumTestSuite) getCurrentBlock(t *testing.T) {
 	// Get the current block from the network
-	block, error := services.EthWrapper.GetCurrentBlock()
-	if error != nil {
-		t.Fatalf("could not retrieve the current block: %v\n",error)
+	block, err := services.EthWrapper.GetCurrentBlock()
+	if err != nil {
+		t.Fatalf("could not retrieve the current block: %v\n", err)
 	}
 	if block != nil {
-		t.Logf("retrieved the current block: %v\n",block)
+		t.Logf("retrieved the current block: %v\n", block)
 	}
 }
 
@@ -111,7 +128,6 @@ func (s *EthereumTestSuite) sendEther(t *testing.T) {
 	// Send Ether to an Account
 	// WIP - Add once we update the send via contract method
 }
-
 
 //
 // Oyster Pearl Contract Tests
@@ -130,13 +146,13 @@ func (s *EthereumTestSuite) buryPRL(t *testing.T) {
 
 	// prepare oyster message call
 	var msg = services.OysterCallMsg{
-		From: common.HexToAddress("0x0d1d4e623d10f9fba5db95830f7d3839406c6af2"),
-		To: common.HexToAddress("0xf17f52151ebef6c7334fad080c5704d77216b732"),
-		Amount: *big.NewInt(1000),
-		Gas: big.NewInt(10000).Uint64(),
+		From:     common.HexToAddress("0x0d1d4e623d10f9fba5db95830f7d3839406c6af2"),
+		To:       common.HexToAddress("0xf17f52151ebef6c7334fad080c5704d77216b732"),
+		Amount:   *big.NewInt(1000),
+		Gas:      big.NewInt(10000).Uint64(),
 		GasPrice: *big.NewInt(1000),
 		TotalWei: *big.NewInt(100000),
-		Data: []byte(""), // setup data
+		Data:     []byte(""), // setup data
 	}
 
 	// Bury PRL
@@ -155,23 +171,23 @@ func (s *EthereumTestSuite) sendPRL(t *testing.T) {
 
 	// prepare oyster message call
 	var msg = services.OysterCallMsg{
-		From: common.HexToAddress("0x0d1d4e623d10f9fba5db95830f7d3839406c6af2"),
-		To: common.HexToAddress("0xf17f52151ebef6c7334fad080c5704d77216b732"),
-		Amount: *big.NewInt(1000),
-		Gas: big.NewInt(10000).Uint64(),
+		From:     common.HexToAddress("0x0d1d4e623d10f9fba5db95830f7d3839406c6af2"),
+		To:       common.HexToAddress("0xf17f52151ebef6c7334fad080c5704d77216b732"),
+		Amount:   *big.NewInt(1000),
+		Gas:      big.NewInt(10000).Uint64(),
 		GasPrice: *big.NewInt(1000),
 		TotalWei: *big.NewInt(100000),
-		Data: []byte(""), // setup data // TODO finalize by adding contract call to
+		Data:     []byte(""), // setup data // TODO finalize by adding contract call to
 	}
 
 	// Send PRL
 	var sent = s.gateway.SendPRL(msg)
 	if sent {
 		// successful prl send
-		t.Logf("Sent PRL to :%v",msg.From.Hex())
+		t.Logf("Sent PRL to :%v", msg.From.Hex())
 	} else {
 		// failed prl send
-		t.Fatalf("Failed to send PRL to:%v",msg.From.Hex())
+		t.Fatalf("Failed to send PRL to:%v", msg.From.Hex())
 	}
 }
 
@@ -220,7 +236,6 @@ func (s *EthereumTestSuite) claimUnusedPRL(t *testing.T) {
 
 }
 
-
 // subscribe to transfer
 func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
 
@@ -230,7 +245,5 @@ func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
 	channel := make(chan types.Log)
 	s.gateway.SubscribeToTransfer(broker, channel)
 
-	fmt.Printf("Subscribed to :%v",<-channel)
+	fmt.Printf("Subscribed to :%v", <-channel)
 }
-
-
