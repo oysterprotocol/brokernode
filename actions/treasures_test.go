@@ -60,8 +60,7 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	// Check mockClaimPrl
 	as.True(mockClaimPrl.hasCalled)
 	as.Equal(services.StringToAddress("receiverEthAddr"), mockClaimPrl.input_receiver_addr)
-	address, err := EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
-	as.Nil(err)
+	address := EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 	as.Equal(address, mockClaimPrl.input_treasure_addr)
 	as.Equal(ethKey, mockClaimPrl.input_treasure_key)
 

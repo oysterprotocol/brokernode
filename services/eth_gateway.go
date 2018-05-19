@@ -57,7 +57,7 @@ type OysterCallMsg struct {
 
 type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
-type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address, err error)
+type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) bool
 type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
@@ -148,23 +148,23 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 }
 
 // Generate an Ethereum address from a private key
-func generateEthAddrFromPrivateKey(privateKey string) (addr common.Address, err error) {
+func generateEthAddrFromPrivateKey(privateKey string) (addr common.Address) {
 	if privateKey[0:2] != "0x" && privateKey[0:2] != "0X" {
 		privateKey = "0x" + privateKey
 	}
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKey)
-	ethAccount, err := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	ethAccount := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
-	return addr, err
+	return addr
 }
 
 // GenerateKey generates a public and private key pair.
-func generatePublicKeyFromPrivateKey(c elliptic.Curve, k *big.Int) (*ecdsa.PrivateKey, error) {
+func generatePublicKeyFromPrivateKey(c elliptic.Curve, k *big.Int) *ecdsa.PrivateKey {
 	privateKey := new(ecdsa.PrivateKey)
 	privateKey.PublicKey.Curve = c
 	privateKey.D = k
 	privateKey.PublicKey.X, privateKey.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
-	return privateKey, nil
+	return privateKey
 }
 
 // returns represents the 20 byte address of an ethereum account.

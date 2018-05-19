@@ -35,9 +35,8 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	ethAddr, addrErr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
-
-	if err == nil && verify && addrErr == nil {
+	if err == nil && verify {
+		ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
 		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), ethAddr, req.EthKey)
 	}
 

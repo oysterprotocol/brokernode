@@ -65,10 +65,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 		t.Fatalf("error creating ethereum network address")
 	}
 
-	generatedAddress, err := services.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
-	if err != nil {
-		t.Fatalf("error generating eth address from private key: %v\n", err)
-	}
+	generatedAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
 
 	// ensure address is what we expected
 	if originalAddr != generatedAddress {
