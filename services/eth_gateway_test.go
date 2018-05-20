@@ -3,10 +3,8 @@ package services_test
 import (
 	"testing"
 
-	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/oysterprotocol/brokernode/models"
@@ -234,16 +232,4 @@ func (s *EthereumTestSuite) claimUnusedPRL(t *testing.T) {
 		t.Log("PRLs have been successfully claimed")
 	}
 
-}
-
-// subscribe to transfer
-func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
-
-	// Subscribe to a Transaction
-	// subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log)
-	broker := common.HexToAddress("")
-	channel := make(chan types.Log)
-	s.gateway.SubscribeToTransfer(broker, channel)
-
-	fmt.Printf("Subscribed to :%v", <-channel)
 }
