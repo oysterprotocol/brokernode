@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
-	"math"
 	"os"
 	"time"
 
@@ -14,17 +13,12 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-)
-
-// Enum for upload session type.
-const (
-	SessionTypeAlpha int = iota + 1
-	SessionTypeBeta
+	"github.com/shopspring/decimal"
 )
 
 type Invoice struct {
-	Cost       float64      `json:"cost"`
-	EthAddress nulls.String `json:"ethAddress"`
+	Cost       decimal.Decimal `json:"cost"`
+	EthAddress nulls.String    `json:"ethAddress"`
 }
 
 type TreasureMap struct {
@@ -43,17 +37,21 @@ type UploadSession struct {
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
 
-	ETHAddrAlpha  nulls.String `json:"ethAddrAlpha" db:"eth_addr_alpha"`
-	ETHAddrBeta   nulls.String `json:"ethAddrBeta" db:"eth_addr_beta"`
-	ETHPrivateKey string       `db:"eth_private_key"`
-	// TODO: Floats shouldn't be used for prices, use https://github.com/shopspring/decimal.
-	TotalCost      float64 `json:"totalCost" db:"total_cost"`
-	PaymentStatus  int     `json:"paymentStatus" db:"payment_status"`
-	TreasureStatus int     `json:"treasureStatus" db:"treasure_status"`
+	ETHAddrAlpha   nulls.String    `json:"ethAddrAlpha" db:"eth_addr_alpha"`
+	ETHAddrBeta    nulls.String    `json:"ethAddrBeta" db:"eth_addr_beta"`
+	ETHPrivateKey  string          `db:"eth_private_key"`
+	TotalCost      decimal.Decimal `json:"totalCost" db:"total_cost"`
+	PaymentStatus  int             `json:"paymentStatus" db:"payment_status"`
+	TreasureStatus int             `json:"treasureStatus" db:"treasure_status"`
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
-	// TreasureIdxMap slices.Int `json:"treasureIdxMap" db:"treasure_idx_map"`
 }
+
+// Enum for upload session type.
+const (
+	SessionTypeAlpha int = iota + 1
+	SessionTypeBeta
+)
 
 const (
 	PaymentStatusInvoiced int = iota + 1
@@ -67,6 +65,8 @@ const (
 	TreasureBurying
 	TreasureBuried
 )
+
+var StoragePeg = 64 // GB per year per PRL; TODO: query smart contract for real storage peg
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
@@ -203,13 +203,17 @@ func (u *UploadSession) GetInvoice() Invoice {
 }
 
 func (u *UploadSession) calculatePayment() {
-	storagePeg := getStoragePeg()
-	fileSizeGigaBytes := int(math.Ceil(float64(u.FileSizeBytes / 1000000000)))
-	if fileSizeGigaBytes < 1 {
-		fileSizeGigaBytes = 1
-	}
 
-	u.TotalCost = float64(storagePeg * u.StorageLengthInYears * fileSizeGigaBytes)
+	// convert all variables to decimal format
+	storagePeg := decimal.NewFromFloat(float64(GetStoragePeg()))
+	fileSizeInBytes := decimal.NewFromFloat(float64(u.FileSizeBytes))
+	storageLength := decimal.NewFromFloat(float64(u.StorageLengthInYears))
+
+	// calculate total cost
+	fileSizeInKB := fileSizeInBytes.Div(decimal.NewFromFloat(float64(oyster_utils.FileChunkSizeInByte)))
+	numSectors := fileSizeInKB.Div(decimal.NewFromFloat(float64(oyster_utils.FileSectorInChunkSize))).Ceil()
+	costPerYear := numSectors.Div(storagePeg)
+	u.TotalCost = costPerYear.Mul(storageLength)
 }
 
 func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
@@ -294,8 +298,8 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 	return err
 }
 
-func getStoragePeg() int {
-	return 1 // TODO: write code to query smart contract to get real storage peg
+func GetStoragePeg() int {
+	return StoragePeg // TODO: write code to query smart contract to get real storage peg
 }
 
 func (u *UploadSession) GetPaymentStatus() string {
