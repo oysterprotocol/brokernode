@@ -363,7 +363,7 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 }
 
 func waitForTransfer(ethAddr string, uploadSessionId string, isAlpha bool) {
-	success := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
+	success, _ := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
 
 	session := models.UploadSession{}
 	if err := models.DB.Find(&session, uploadSessionId); err != nil {
