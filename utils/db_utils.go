@@ -2,6 +2,7 @@ package oyster_utils
 
 import (
 	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/columns"
 	"github.com/gobuffalo/uuid"
@@ -37,7 +38,9 @@ type dbUpdateModel struct {
 func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
 	model := pop.Model{Value: vPtr}
 	if model.PrimaryKeyType() != "UUID" {
-		return nil, errors.New("Primary key is not UUID, did not support to generate this type of key")
+		err := errors.New("Primary key is not UUID, did not support to generate this type of key")
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 
 	cols := columns.ColumnsForStructWithAlias(vPtr, model.TableName(), model.As)
@@ -141,5 +144,7 @@ func getStringPresentation(v reflect.Value) string {
 		return fmt.Sprintf("'%s'", id.String())
 	}
 
-	panic(errors.Errorf("No implemented type %v", v.String()))
+	err := errors.Errorf("No implemented type %v", v.String())
+	raven.CaptureError(err, nil)
+	panic(err)
 }

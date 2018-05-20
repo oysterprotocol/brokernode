@@ -2,6 +2,7 @@ package oyster_utils
 
 import (
 	"errors"
+	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"strings"
 )
@@ -10,27 +11,26 @@ var (
 	TrytesAlphabet = []rune("9ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
-func init() {
-}
-
 func AsciiToTrytes(asciiString string) (string, error) {
-	var err error
-	trytes := ""
+	var b strings.Builder
+
 	for _, character := range asciiString {
 		var charCode = character
 
 		// If not recognizable ASCII character, return null
 		if charCode > 255 {
-			return trytes, err
+			err := errors.New("asciiString is not ASCII char in AsciiToTrytes method")
+			raven.CaptureError(err, nil)
+			return "", err
 		}
 
 		var firstValue = charCode % 27
 		var secondValue = (charCode - firstValue) / 27
 		var trytesValue = string(TrytesAlphabet[firstValue]) + string(TrytesAlphabet[secondValue])
-		trytes += string(trytesValue)
+		b.WriteString(string(trytesValue))
 	}
 
-	return trytes, err
+	return b.String(), nil
 }
 
 func TrytesToAsciiTrimmed(inputTrytes string) (string, error) {
@@ -49,10 +49,12 @@ func TrytesToAsciiTrimmed(inputTrytes string) (string, error) {
 func TrytesToAscii(inputTrytes string) (string, error) {
 	// If input length is odd, return an error
 	if len(inputTrytes)%2 != 0 {
-		return "", errors.New("TrytesToAscii needs input with an even number of characters!")
+		err := errors.New("TrytesToAscii needs input with an even number of characters!")
+		raven.CaptureError(err, nil)
+		return "", err
 	}
 
-	outputString := ""
+	var b strings.Builder
 	for i := 0; i < len(inputTrytes); i += 2 {
 		// get a trytes pair
 		trytes := string(inputTrytes[i]) + string(inputTrytes[i+1])
@@ -62,10 +64,10 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 
 		decimalValue := firstValue + secondValue*27
 		character := string(decimalValue)
-		outputString += character
+		b.WriteString(character)
 	}
 
-	return outputString, nil
+	return b.String(), nil
 }
 
 //TrytesToBytes and BytesToTrytes written by Chris Warner, thanks!

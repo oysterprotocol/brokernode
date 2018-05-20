@@ -25,7 +25,6 @@ func BuryTreasureInDataMaps() error {
 
 	if err != nil {
 		fmt.Println(err)
-		raven.CaptureError(err, nil)
 	}
 
 	for _, unburiedSession := range unburiedSessions {
@@ -33,7 +32,6 @@ func BuryTreasureInDataMaps() error {
 		treasureIndex, err := unburiedSession.GetTreasureMap()
 		if err != nil {
 			fmt.Println(err)
-			raven.CaptureError(err, nil)
 			return err
 		}
 
@@ -48,7 +46,6 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		treasureChunks, err := models.GetDataMapByGenesisHashAndChunkIdx(unburiedSession.GenesisHash, entry.Idx)
 		if err != nil {
 			fmt.Println(err)
-			raven.CaptureError(err, nil)
 			return err
 		}
 		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
@@ -62,7 +59,6 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		treasureChunks[0].Message, err = models.CreateTreasurePayload(entry.Key, treasureChunks[0].Hash, models.MaxSideChainLength)
 		if err != nil {
 			fmt.Println(err)
-			raven.CaptureError(err, nil)
 			return err
 		}
 		models.DB.ValidateAndSave(&treasureChunks[0])
@@ -87,7 +83,6 @@ func MarkBuriedMapsAsUnassigned() {
 	readySessions, err := models.GetReadySessions()
 	if err != nil {
 		fmt.Println(err)
-		raven.CaptureError(err, nil)
 	}
 
 	for _, readySession := range readySessions {
@@ -95,7 +90,6 @@ func MarkBuriedMapsAsUnassigned() {
 		pendingChunks, err := models.GetPendingChunksBySession(readySession, 1)
 		if err != nil {
 			fmt.Println(err)
-			raven.CaptureError(err, nil)
 		}
 
 		if len(pendingChunks) > 0 {

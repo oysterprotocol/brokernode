@@ -115,6 +115,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
 			fmt.Println(err)
+			raven.CaptureError(err, nil)
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
@@ -127,6 +128,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		defer betaRes.Body.Close() // we need to close the connection
 		if err != nil {
 			fmt.Println(err)
+			raven.CaptureError(err, nil)
 			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 			return err
 		}
@@ -139,12 +141,14 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 
 	err = models.DB.Save(&alphaSession)
-	// Update alpha treasure idx map.
-	alphaSession.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
 		fmt.Println(err)
+		raven.CaptureError(err, nil)
+		c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
 		return err
 	}
+	// Update alpha treasure idx map.
+	alphaSession.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 
 	if len(vErr.Errors) > 0 {
 		c.Render(422, r.JSON(vErr.Errors))
@@ -181,6 +185,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	if err != nil || uploadSession == nil {
 		fmt.Println(err)
+		raven.CaptureError(err, nil)
 		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
 		return err
 	}

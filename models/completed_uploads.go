@@ -127,11 +127,19 @@ func NewCompletedUpload(session UploadSession) error {
 
 func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ? AND prl_status = ?", gasStatus, prlStatus).All(&uploads)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
 	return uploads, err
 }
 
 func GetRowsByGasStatus(gasStatus GasTransferStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ?", gasStatus).All(&uploads)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
 	return uploads, err
 }
 
@@ -144,6 +152,10 @@ func SetGasStatus(uploads []CompletedUpload, newGasStatus GasTransferStatus) {
 
 func GetRowsByPRLStatus(prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("prl_status = ?", prlStatus).All(&uploads)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
 	return uploads, err
 }
 
@@ -158,6 +170,10 @@ func GetTimedOutGasTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("gas_status = ? AND updated_at <= ?",
 		GasTransferProcessing,
 		thresholdTime).All(&uploads)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
 	return uploads, err
 }
 
@@ -165,6 +181,10 @@ func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("prl_status = ? AND updated_at <= ?",
 		PRLClaimProcessing,
 		thresholdTime).All(&uploads)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
 	return uploads, err
 }
 

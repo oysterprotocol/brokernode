@@ -187,7 +187,9 @@ func IntsSplit(a string, delim string) []int {
 func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
-		return nil, errors.New("Invalid input")
+		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 
 	for i := 0; i < len(a); i++ {
