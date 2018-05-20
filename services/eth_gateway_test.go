@@ -235,15 +235,3 @@ func (s *EthereumTestSuite) claimUnusedPRL(t *testing.T) {
 	}
 
 }
-
-// subscribe to transfer
-func (s *EthereumTestSuite) subscribeToTransfer(t *testing.T) {
-
-	// Subscribe to a Transaction
-	// subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log)
-	broker := common.HexToAddress("")
-	channel := make(chan types.Log)
-	s.gateway.SubscribeToTransfer(broker, channel)
-
-	fmt.Printf("Subscribed to :%v", <-channel)
-}
