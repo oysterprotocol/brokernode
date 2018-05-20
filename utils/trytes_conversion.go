@@ -2,6 +2,7 @@ package oyster_utils
 
 import (
 	"errors"
+	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"strings"
 )
@@ -14,14 +15,13 @@ func init() {
 }
 
 func AsciiToTrytes(asciiString string) (string, error) {
-	var err error
 	trytes := ""
 	for _, character := range asciiString {
 		var charCode = character
 
 		// If not recognizable ASCII character, return null
 		if charCode > 255 {
-			return trytes, err
+			return trytes, nil
 		}
 
 		var firstValue = charCode % 27
@@ -30,7 +30,7 @@ func AsciiToTrytes(asciiString string) (string, error) {
 		trytes += string(trytesValue)
 	}
 
-	return trytes, err
+	return trytes, nil
 }
 
 func TrytesToAsciiTrimmed(inputTrytes string) (string, error) {
@@ -49,7 +49,9 @@ func TrytesToAsciiTrimmed(inputTrytes string) (string, error) {
 func TrytesToAscii(inputTrytes string) (string, error) {
 	// If input length is odd, return an error
 	if len(inputTrytes)%2 != 0 {
-		return "", errors.New("TrytesToAscii needs input with an even number of characters!")
+		err := errors.New("TrytesToAscii needs input with an even number of characters!")
+		raven.CaptureError(err, nil)
+		return "", err
 	}
 
 	outputString := ""

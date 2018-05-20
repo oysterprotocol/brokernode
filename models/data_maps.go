@@ -334,7 +334,12 @@ func insertsIntoDataMapsTable(columnsName string, values string) error {
 	}
 
 	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
-	return DB.RawQuery(rawQuery).All(&[]DataMap{})
+	err := DB.RawQuery(rawQuery).All(&[]DataMap{})
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
+
+	return err
 }
 
 // GetDataMapByGenesisHashAndChunkIdx lets you pass in genesis hash and chunk idx as
@@ -343,6 +348,9 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]Dat
 	dataMaps := []DataMap{}
 	err := DB.Where("genesis_hash = ?",
 		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
 	return dataMaps, err
 }
@@ -360,7 +368,7 @@ func MapChunkIndexesAndAddresses(chunks []DataMap) ([]string, []int) {
 	return addrs, indexes
 }
 
-func GetDataMap(genHash string, numChunks int) (dataMap []DataMap, vErr *validate.Errors) {
+func GetDataMap(genHash string, numChunks int) (dataMaps []DataMap, vErr *validate.Errors) {
 
 	fileChunksCount := numChunks
 
@@ -382,7 +390,14 @@ func GetDataMap(genHash string, numChunks int) (dataMap []DataMap, vErr *validat
 			Status:         Pending,
 		}
 		// Validate the data
-		vErr, _ = dataMap.Validate(nil)
+		var err error
+		vErr, err = dataMap.Validate(nil)
+		if err != nil {
+			raven.CaptureError(err, nil)
+			continue
+		}
+		dataMaps = append(dataMaps, dataMap)
+
 	}
 	return
 }

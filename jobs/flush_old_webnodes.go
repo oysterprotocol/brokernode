@@ -28,7 +28,10 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 				Set("webnode_address", webnodes[i].Address))
 
 			webnode := webnodes[i]
-			models.DB.Destroy(&webnode)
+			err := models.DB.Destroy(&webnode)
+			if err != nil {
+				raven.CaptureError(err, nil)
+			}
 		}
 	}
 }

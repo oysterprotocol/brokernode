@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
@@ -51,16 +52,23 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernode := models.Brokernode{}
 	t := models.Transaction{}
 
-	dataMapNotFound := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
+	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
 
 	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
-	brokernodeNotFound := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+	brokernodeNotFoundErr := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
-	if dataMapNotFound != nil || brokernodeNotFound != nil {
+	if dataMapNotFoundErr != nil || brokernodeNotFoundErr != nil {
+		if dataMapNotFoundErr != nil {
+			raven.CaptureError(dataMapNotFoundErr, nil)
+		}
+		if brokernodeNotFoundErr != nil {
+			raven.CaptureError(brokernodeNotFoundErr, nil)
+		}
+
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
-	models.DB.Transaction(func(tx *pop.Connection) error {
+	err := models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
 		tx.ValidateAndSave(&dataMap)
 
@@ -73,6 +81,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		tx.ValidateAndSave(&t)
 		return nil
 	})
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
 	res := transactionBrokernodeCreateRes{
 		ID: t.ID,

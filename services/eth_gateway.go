@@ -180,6 +180,7 @@ func getGasPrice() (*big.Int, error) {
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal("Client could not get gas price from network")
+		raven.CaptureError(err, nil)
 	}
 	return gasPrice, nil
 
@@ -203,6 +204,7 @@ func checkBalance(addr common.Address) *big.Int {
 	balance, err := client.BalanceAt(context.Background(), addr, nil) //Call(&bal, "eth_getBalance", addr, "latest")
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
+		raven.CaptureError(err, nil)
 		return big.NewInt(0)
 	}
 	return balance
@@ -221,6 +223,7 @@ func getCurrentBlock() (*types.Block, error) {
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		fmt.Printf("Could not get last block: %v\n", err)
+		raven.CaptureError(err, nil)
 		return nil, err
 	}
 
@@ -252,6 +255,7 @@ func waitForTransfer(brokerAddr common.Address) bool {
 	logChan := make(chan types.Log)
 	sub, err := client.SubscribeFilterLogs(context.Background(), q, logChan)
 	if err != nil {
+		raven.CaptureError(err, nil)
 		return false
 	}
 
@@ -260,6 +264,7 @@ func waitForTransfer(brokerAddr common.Address) bool {
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
+			raven.CaptureError(err, nil)
 			return false
 		case <-time.After(1 * time.Hour):
 			log.Print("Timeout to wait for brokerAddr\n")
@@ -330,6 +335,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
+		raven.CaptureError(err, nil)
 		return "", err
 	}
 
@@ -371,6 +377,7 @@ func buryPrl(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 
 	if err != nil {
+		raven.CaptureError(err, nil)
 		return false
 	}
 	// pull signed transaction
@@ -379,11 +386,7 @@ func buryPrl(msg OysterCallMsg) bool {
 	rawTransaction = string(ts.GetRlp(0))
 
 	// successful contract message call
-	if len(rawTransaction) > 0 {
-		return true
-	} else {
-		return false
-	}
+	return len(rawTransaction) > 0
 }
 
 // ClaimUnusedPRLs parses the completedUploads and sends PRL to the MainWalletAddress
@@ -396,7 +399,9 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 		balance := checkBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
-			return errors.New("could not complete transaction due to zero balance for:" + completedUpload.ETHAddr)
+			err := errors.New("could not complete transaction due to zero balance for:" + completedUpload.ETHAddr)
+			raven.CaptureError(err, nil)
+			return err
 		}
 		//	Then, using SendPRL, create a transaction with each
 		//	completedUpload.ETHAddr as the "fromAddr" address, the broker's
@@ -428,7 +433,9 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 		// we may just do a straight transfer with network vs from contract
 		if !sendPRL(oysterMsg) {
 			// TODO more detailed error message
-			return errors.New("unable to send prl to main wallet")
+			err := errors.New("unable to send prl to main wallet")
+			raven.CaptureError(err, nil)
+			return err
 		}
 	}
 
@@ -456,17 +463,14 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	err = client.SendTransaction(ctx, signedTx)
 
 	if err != nil {
+		raven.CaptureError(err, nil)
 		return false
 	}
 	// pull signed transaction
 	ts := types.Transactions{signedTx}
 
 	// successful contract message call
-	if ts.Len() > 0 {
-		return true
-	} else {
-		return false
-	}
+	return ts.Len() > 0
 }
 
 /*
@@ -502,6 +506,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 
 	if err != nil {
+		raven.CaptureError(err, nil)
 		return false
 	}
 	// pull signed transaction
@@ -510,12 +515,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	rawTransaction := string(ts.GetRlp(0))
 
 	// successful contract message call
-	if len(rawTransaction) > 0 {
-		// TODO pull stash for subscribe to transfer
-		return true
-	} else {
-		return false
-	}
+	return len(rawTransaction) > 0
 }
 
 // utility to call a method on OysterPearl contract
@@ -530,6 +530,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	privateKey, err := crypto.HexToECDSA(MainWalletKey)
 	if err != nil {
 		fmt.Printf("Failed to parse secp256k1 private key")
+		raven.CaptureError(err, nil)
 		return nil, err
 	}
 	client, err := sharedClient("")

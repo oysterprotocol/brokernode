@@ -182,6 +182,9 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
 	dMaps = &[]DataMap{}
 	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
 	return
 }
@@ -291,6 +294,9 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 		u.GenesisHash,
 		Pending,
 		DataMap{}.Message).All(&[]DataMap{})
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 	return err
 }
 
@@ -333,6 +339,9 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
 		PaymentStatusConfirmed, TreasureBurying).All(&unburiedSessions)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
 	return unburiedSessions, err
 }
@@ -342,6 +351,9 @@ func GetReadySessions() ([]UploadSession, error) {
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
 		PaymentStatusConfirmed, TreasureBuried).All(&readySessions)
+	if err != nil {
+		raven.CaptureError(err, nil)
+	}
 
 	return readySessions, err
 }
