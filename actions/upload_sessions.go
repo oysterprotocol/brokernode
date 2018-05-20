@@ -157,6 +157,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		BetaSessionID: betaSessionID,
 		Invoice:       invoice,
 	}
+	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, true)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -335,6 +336,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
+	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, false)
+
 	return c.Render(200, r.JSON(res))
 }
 
@@ -357,4 +360,24 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 
 func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
 	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
+}
+
+func waitForTransfer(ethAddr string, uploadSessionId string, isAlpha bool) {
+	success := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
+
+	session := models.UploadSession{}
+	if err := models.DB.Find(&session, uploadSessionId); err != nil {
+		return
+	}
+
+	if success {
+		session.PaymentStatus = models.PaymentStatusConfirmed
+	} else {
+		session.PaymentStatus = models.PaymentStatusError
+	}
+
+	if err := models.DB.Save(&session); err != nil {
+		return
+	}
+	// TODO(pzhao5): do other stuff here
 }
