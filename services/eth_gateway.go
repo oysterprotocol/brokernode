@@ -38,7 +38,6 @@ type Eth struct {
 	SendPRL
 	GetGasPrice
 	WaitForTransfer
-	SubscribeToTransfer
 	CheckBalance
 	GetCurrentBlock
 	OysterCallMsg
@@ -60,10 +59,9 @@ type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) bool
-type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
-type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string)
+type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string, err error)
 
 type BuryPrl func(msg OysterCallMsg) bool
 type SendPRL func(msg OysterCallMsg) bool
@@ -102,14 +100,13 @@ func init() {
 		ClaimUnusedPRLs:               claimUnusedPRLs,
 		GenerateEthAddr:               generateEthAddr,
 		GenerateEthAddrFromPrivateKey: generateEthAddrFromPrivateKey,
-		BuryPrl:             buryPrl,
-		SendETH:             sendETH,
-		SendPRL:             sendPRL,
-		GetGasPrice:         getGasPrice,
-		WaitForTransfer:     waitForTransfer,
-		SubscribeToTransfer: subscribeToTransfer,
-		CheckBalance:        checkBalance,
-		GetCurrentBlock:     getCurrentBlock,
+		BuryPrl:         buryPrl,
+		SendETH:         sendETH,
+		SendPRL:         sendPRL,
+		GetGasPrice:     getGasPrice,
+		WaitForTransfer: waitForTransfer,
+		CheckBalance:    checkBalance,
+		GetCurrentBlock: getCurrentBlock,
 	}
 }
 
@@ -269,30 +266,6 @@ func waitForTransfer(brokerAddr common.Address) bool {
 			// Wait for 1 hr to receive payment before timeout
 			return false
 			// TODO(astor): listen to the event and return true/false
-		}
-	}
-}
-
-// SubscribeToTransfer will subscribe to transfer events
-// sending PRL to the brokerAddr given.
-// Notifications will be sent in the out channel provided.
-func subscribeToTransfer(brokerAddr common.Address, outCh chan<- types.Log) {
-	client, _ := sharedClient("")
-	currentBlock, _ := getCurrentBlock()
-	q := ethereum.FilterQuery{
-		FromBlock: currentBlock.Number(), // beginning of the queried range, nil means genesis block
-		ToBlock:   nil,                   // end of the range, nil means latest block
-		Addresses: []common.Address{brokerAddr},
-		Topics:    nil, // matches any topic list
-	}
-
-	// subscribe before passing it to outCh.
-	sub, _ := client.SubscribeFilterLogs(context.Background(), q, outCh)
-
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
 			/*
 				case log := <- outCh:
 					fmt.Printf("Log Data:%v", log.Data)
@@ -326,11 +299,11 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 
 // Transfer funds from one Ethereum account to another.
 // We need to pass in the credentials, to allow the transaction to execute.
-func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
+func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err error) {
 
 	client, err := sharedClient("")
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 
 	// initialize the context
@@ -357,7 +330,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return err.Error()
+		return "", err
 	}
 
 	// pull signed transaction
@@ -372,9 +345,9 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string) {
 func buryPrl(msg OysterCallMsg) bool {
 
 	// dispense PRLs from the transaction address to each 'treasure' address
-	rawTransaction := sendETH(msg.To, &msg.Amount)
+	rawTransaction, err := sendETH(msg.To, &msg.Amount)
 
-	if len(rawTransaction) < 0 {
+	if err != nil || len(rawTransaction) == 0 {
 		// sending eth has failed
 		return false
 	}
