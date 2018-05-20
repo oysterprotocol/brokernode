@@ -303,7 +303,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err
 
 	client, err := sharedClient("")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// initialize the context
@@ -330,7 +330,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// pull signed transaction
