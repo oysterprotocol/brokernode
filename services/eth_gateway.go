@@ -58,7 +58,8 @@ type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
-type WaitForTransfer func(brokerAddr common.Address) bool
+type WaitForTransfer func(brokerAddr common.Address) (bool, error)
+type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
 type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string, err error)
@@ -234,15 +235,15 @@ func getCurrentBlock() (*types.Block, error) {
 
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return true, otherwise, return false (or time-out)
-func waitForTransfer(brokerAddr common.Address) bool {
+func waitForTransfer(brokerAddr common.Address) (bool, error) {
 	client, err := sharedClient("")
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	currentBlock, err := getCurrentBlock()
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	q := ethereum.FilterQuery{
@@ -256,7 +257,7 @@ func waitForTransfer(brokerAddr common.Address) bool {
 	sub, err := client.SubscribeFilterLogs(context.Background(), q, logChan)
 	if err != nil {
 		raven.CaptureError(err, nil)
-		return false
+		return false, err
 	}
 
 	defer sub.Unsubscribe()
@@ -265,11 +266,11 @@ func waitForTransfer(brokerAddr common.Address) bool {
 		case err := <-sub.Err():
 			log.Fatal(err)
 			raven.CaptureError(err, nil)
-			return false
+			return false, err
 		case <-time.After(1 * time.Hour):
 			log.Print("Timeout to wait for brokerAddr\n")
 			// Wait for 1 hr to receive payment before timeout
-			return false
+			return false, errors.New("Timeout")
 			// TODO(astor): listen to the event and return true/false
 			/*
 				case log := <- outCh:
