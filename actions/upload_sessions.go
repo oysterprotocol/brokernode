@@ -70,20 +70,13 @@ const (
 	SQL_BATCH_SIZE = 10
 )
 
-var ethWrapper = services.EthWrapper
-
-// Enable Unit Test.
-func SetEthWrapper(ethService services.Eth) {
-	ethWrapper = ethService
-}
-
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	alphaEthAddr, privKey, _ := ethWrapper.GenerateEthAddr()
+	alphaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
 
 	// Start Alpha Session.
 	alphaSession := models.UploadSession{
@@ -310,7 +303,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
-	betaEthAddr, privKey, _ := ethWrapper.GenerateEthAddr()
+	betaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
@@ -379,7 +372,7 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 
 func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string, isAlpha bool) {
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := ethWrapper.WaitForTransfer(transferAddr)
+	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
@@ -408,6 +401,6 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 			To:     services.StringToAddress(betaEthAddr),
 			Amount: splitedAmount,
 		}
-		ethWrapper.SendPRL(callMsg)
+		services.EthWrapper.SendPRL(callMsg)
 	}
 }
