@@ -66,7 +66,7 @@ const (
 	TreasureBuried
 )
 
-var StoragePeg = 64 // GB per year per PRL; TODO: query smart contract for real storage peg
+var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
@@ -205,13 +205,14 @@ func (u *UploadSession) GetInvoice() Invoice {
 func (u *UploadSession) calculatePayment() {
 
 	// convert all variables to decimal format
-	storagePeg := decimal.NewFromFloat(float64(GetStoragePeg()))
+	storagePeg := GetStoragePeg()
 	fileSizeInBytes := decimal.NewFromFloat(float64(u.FileSizeBytes))
 	storageLength := decimal.NewFromFloat(float64(u.StorageLengthInYears))
 
 	// calculate total cost
 	fileSizeInKB := fileSizeInBytes.Div(decimal.NewFromFloat(float64(oyster_utils.FileChunkSizeInByte)))
-	numSectors := fileSizeInKB.Div(decimal.NewFromFloat(float64(oyster_utils.FileSectorInChunkSize))).Ceil()
+	numChunks := fileSizeInKB.Add(decimal.NewFromFloat(float64(1))).Ceil()
+	numSectors := numChunks.Div(decimal.NewFromFloat(float64(oyster_utils.FileSectorInChunkSize))).Ceil()
 	costPerYear := numSectors.Div(storagePeg)
 	u.TotalCost = costPerYear.Mul(storageLength)
 }
@@ -298,7 +299,7 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 	return err
 }
 
-func GetStoragePeg() int {
+func GetStoragePeg() decimal.Decimal {
 	return StoragePeg // TODO: write code to query smart contract to get real storage peg
 }
 
