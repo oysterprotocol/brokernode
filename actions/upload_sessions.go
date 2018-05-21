@@ -407,6 +407,6 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	if err := models.DB.Save(&session); err != nil {
-		return
+		raven.CaptureError(err, nil)
 	}
 }
