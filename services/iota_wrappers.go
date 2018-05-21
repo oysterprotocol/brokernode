@@ -35,12 +35,12 @@ type PowChannel struct {
 }
 
 type IotaService struct {
-	SendChunksToChannel            SendChunksToChannel
-	VerifyChunkMessagesMatchRecord VerifyChunkMessagesMatchRecord
-	VerifyChunksMatchRecord        VerifyChunksMatchRecord
-	ChunksMatch                    ChunksMatch
-	VerifyTreasure                 VerifyTreasure
-	FindTransactions               FindTransactions
+	SendChunksToChannel
+	VerifyChunkMessagesMatchRecord
+	VerifyChunksMatchRecord
+	ChunksMatch
+	VerifyTreasure
+	FindTransactions
 }
 
 type ProcessingFrequency struct {
