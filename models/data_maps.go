@@ -114,6 +114,42 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
+func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
+
+	session := UploadSession{}
+
+	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+		return "", err
+	}
+
+	hashedSessionID := oyster_utils.HashString(fmt.Sprint(session.ID), sha3.New256())
+	hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(d.CreatedAt), sha3.New256())
+
+	decryptedKey := oyster_utils.Encrypt(hashedSessionID, unencryptedKey, hashedChunkCreationTime)
+	return hex.EncodeToString(decryptedKey), nil
+}
+
+func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
+
+	session := UploadSession{}
+
+	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+		return "", err
+	}
+
+	hashedSessionID := oyster_utils.HashString(fmt.Sprint(session.ID), sha3.New256())
+	hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(d.CreatedAt), sha3.New256())
+
+	decryptedKey := oyster_utils.Decrypt(hashedSessionID, encryptedKey, hashedChunkCreationTime)
+	return hex.EncodeToString(decryptedKey), nil
+}
+
 // Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.
 func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes int) []string {
 	var addr []string

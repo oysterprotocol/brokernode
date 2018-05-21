@@ -311,6 +311,37 @@ func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorOne() {
 		"XAWA9BXARCSCWATCVATCCBWAYAPCUCTCUATCCBXARCTCCBQCCB9BUACBBBSCSCVAQCABSCRCZASCBBTCR"})
 }
 
+func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
+	genHash := "genHash"
+	fileSizeBytes := 123
+
+	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            400,
+		StorageLengthInYears: 4,
+		ETHPrivateKey:        hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
+	}
+
+	_, err := u.StartUploadSession()
+
+	dataMap := models.DataMap{}
+	err = suite.DB.RawQuery("SELECT * from data_maps where genesis_hash = ?", u.GenesisHash).First(&dataMap)
+	suite.Nil(err)
+
+	ethKey = hex.EncodeToString([]byte("SOME_OTHER_PRIVATE_KEY"))
+
+	encryptedKey, err := dataMap.EncryptEthKey(ethKey)
+	suite.Nil(err)
+	suite.NotEqual(ethKey, encryptedKey)
+
+	decryptedKey, err := dataMap.DecryptEthKey(encryptedKey)
+	suite.Equal(ethKey, decryptedKey)
+}
+
 func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 
 	/*TODO

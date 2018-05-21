@@ -267,15 +267,16 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 			return
 		}
 
-		hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
-		hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(treasureChunks[0].CreatedAt), sha3.New256())
-
-		encryptedKey := oyster_utils.Encrypt(hashedSessionID, privateKeys[i], hashedChunkCreationTime)
+		encryptedKey, err := treasureChunks[0].EncryptEthKey(privateKeys[i])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		treasureIndexArray = append(treasureIndexArray, TreasureMap{
 			Sector: i,
 			Idx:    mergedIndex,
-			Key:    hex.EncodeToString(encryptedKey),
+			Key:    encryptedKey,
 		})
 	}
 

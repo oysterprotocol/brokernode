@@ -1,13 +1,11 @@
 package jobs
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 )
@@ -59,13 +57,13 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			return err
 		}
 
-		hashedSessionID := oyster_utils.HashString(fmt.Sprint(unburiedSession.ID), sha3.New256())
-		hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(treasureChunks[0].CreatedAt), sha3.New256())
+		decryptedKey, err := treasureChunks[0].DecryptEthKey(entry.Key)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
 
-		decryptedKey := oyster_utils.Decrypt(hashedSessionID, entry.Key, hashedChunkCreationTime)
-		keyInHex := hex.EncodeToString(decryptedKey)
-
-		treasureChunks[0].Message, err = models.CreateTreasurePayload(keyInHex, treasureChunks[0].Hash, models.MaxSideChainLength)
+		treasureChunks[0].Message, err = models.CreateTreasurePayload(decryptedKey, treasureChunks[0].Hash, models.MaxSideChainLength)
 		if err != nil {
 			fmt.Println(err)
 			return err
