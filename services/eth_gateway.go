@@ -149,6 +149,9 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
+	if privateKey[0] == '0' {
+		return generateEthAddr()
+	}
 	return addr, privateKey, err
 }
 
