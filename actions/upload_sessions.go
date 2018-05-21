@@ -11,6 +11,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math/big"
 
 	"github.com/pkg/errors"
 	"math"
@@ -69,13 +70,20 @@ const (
 	SQL_BATCH_SIZE = 10
 )
 
+var ethWrapper = services.EthWrapper
+
+// Enable Unit Test.
+func SetEthWrapper(ethService services.Eth) {
+	ethWrapper = ethService
+}
+
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	alphaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	alphaEthAddr, privKey, _ := ethWrapper.GenerateEthAddr()
 
 	// Start Alpha Session.
 	alphaSession := models.UploadSession{
@@ -161,7 +169,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		BetaSessionID: betaSessionID,
 		Invoice:       invoice,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, true)
+	go waitForTransferAndNotifyBeta(
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID, true)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -301,7 +310,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
-	betaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	betaEthAddr, privKey, _ := ethWrapper.GenerateEthAddr()
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
@@ -341,7 +350,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, false)
+	go waitForTransferAndNotifyBeta(
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID, false)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -367,22 +377,36 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
 
-func waitForTransfer(ethAddr string, uploadSessionId string, isAlpha bool) {
-	success, _ := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
+func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string, isAlpha bool) {
+	transferAddr := services.StringToAddress(alphaEthAddr)
+	balance, err := ethWrapper.WaitForTransfer(transferAddr)
+
+	paymentStatus := models.PaymentStatusConfirmed
+	if err != nil {
+		paymentStatus = models.PaymentStatusError
+	}
 
 	session := models.UploadSession{}
 	if err := models.DB.Find(&session, uploadSessionId); err != nil {
 		return
 	}
 
-	if success {
-		session.PaymentStatus = models.PaymentStatusConfirmed
-	} else {
-		session.PaymentStatus = models.PaymentStatusError
+	session.PaymentStatus = paymentStatus
+
+	// Alpha send half of it to Beta
+	if isAlpha {
+		var splitedAmount big.Int
+		splitedAmount.Set(balance)
+		splitedAmount.Div(balance, big.NewInt(2))
+		callMsg := services.OysterCallMsg{
+			From:   transferAddr,
+			To:     services.StringToAddress(betaEthAddr),
+			Amount: splitedAmount,
+		}
+		ethWrapper.SendPRL(callMsg)
 	}
 
 	if err := models.DB.Save(&session); err != nil {
 		return
 	}
-	// TODO(pzhao5): do other stuff here
 }
