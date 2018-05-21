@@ -1,10 +1,12 @@
 package models
 
 import (
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
-	"os"
+	"golang.org/x/crypto/sha3"
 	"time"
 
 	"github.com/getsentry/raven-go"
@@ -173,6 +175,8 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		return
 	}
 
+	u.EncryptSessionEthKey()
+
 	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	return
 }
@@ -251,21 +255,33 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 }
 
 // Sets the TreasureIdxMap with Sector, Idx, and Key
-func (u *UploadSession) MakeTreasureIdxMap(alphaIndexes []int, betaIndexs []int) {
-	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexs)
+func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []string) {
+
 	treasureIndexArray := make([]TreasureMap, 0)
 
-	key := ""
-
-	if oyster_utils.BrokerMode == oyster_utils.TestModeDummyTreasure {
-		key = os.Getenv("TEST_MODE_WALLET_KEY")
-	}
-
 	for i, mergedIndex := range mergedIndexes {
+		treasureChunks, err := GetDataMapByGenesisHashAndChunkIdx(u.GenesisHash, mergedIndex)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
+			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in MakeTreasureIdxMap, or " +
+				"found duplicate chunks")
+			raven.CaptureError(err, nil)
+			return
+		}
+
+		encryptedKey, err := treasureChunks[0].EncryptEthKey(privateKeys[i])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		treasureIndexArray = append(treasureIndexArray, TreasureMap{
 			Sector: i,
 			Idx:    mergedIndex,
-			Key:    key, // TODO where are we getting the real keys?
+			Key:    encryptedKey,
 		})
 	}
 
@@ -320,6 +336,25 @@ func (u *UploadSession) GetPaymentStatus() string {
 	default:
 		return "error"
 	}
+}
+
+func (u *UploadSession) EncryptSessionEthKey() {
+	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
+	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+
+	encryptedKey := oyster_utils.Encrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
+
+	u.ETHPrivateKey = hex.EncodeToString(encryptedKey)
+	DB.ValidateAndSave(u)
+}
+
+func (u *UploadSession) DecryptSessionEthKey() string {
+	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
+	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+
+	decryptedKey := oyster_utils.Decrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
+
+	return hex.EncodeToString(decryptedKey)
 }
 
 func GetSessionsByAge() ([]UploadSession, error) {

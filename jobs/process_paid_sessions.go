@@ -56,7 +56,14 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			raven.CaptureError(err, nil)
 			return err
 		}
-		treasureChunks[0].Message, err = models.CreateTreasurePayload(entry.Key, treasureChunks[0].Hash, models.MaxSideChainLength)
+
+		decryptedKey, err := treasureChunks[0].DecryptEthKey(entry.Key)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		treasureChunks[0].Message, err = models.CreateTreasurePayload(decryptedKey, treasureChunks[0].Hash, models.MaxSideChainLength)
 		if err != nil {
 			fmt.Println(err)
 			return err

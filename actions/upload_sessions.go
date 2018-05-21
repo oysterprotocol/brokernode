@@ -116,7 +116,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		if err != nil {
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
-			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
+			c.Error(400, err)
 			return err
 		}
 
@@ -129,7 +129,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		if err != nil {
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
-			c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
+			c.Error(400, err)
 			return err
 		}
 		betaSessionRes := &uploadSessionCreateBetaRes{}
@@ -144,11 +144,33 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	if err != nil {
 		fmt.Println(err)
 		raven.CaptureError(err, nil)
-		c.Render(400, r.JSON(map[string]string{"Error starting Beta": err.Error()}))
+		c.Error(400, err)
+		return err
+	}
+
+	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	if err != nil {
+		// not doing error handling here, relying on beta to throw the error since returning
+		// an error here breaks the unit tests
+		fmt.Println(err)
+	}
+
+	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	if err != nil {
+		err := errors.New("Could not generate eth keys: " + err.Error())
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+	if len(mergedIndexes) != len(privateKeys) {
+		err := errors.New("privateKeys and mergedIndexes should have the same length")
+		raven.CaptureError(err, nil)
+		fmt.Println(err)
+		c.Error(400, err)
 		return err
 	}
 	// Update alpha treasure idx map.
-	alphaSession.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	if len(vErr.Errors) > 0 {
 		c.Render(422, r.JSON(vErr.Errors))
@@ -183,12 +205,19 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		Set("num_chunks", uploadSession.NumChunks).
 		Set("storage_years", uploadSession.StorageLengthInYears))
 
-	if err != nil || uploadSession == nil {
+	if err != nil {
 		fmt.Println(err)
 		raven.CaptureError(err, nil)
-		c.Render(400, r.JSON(map[string]string{"Error finding session": errors.WithStack(err).Error()}))
+		c.Error(400, err)
 		return err
 	}
+	if uploadSession == nil {
+		err := errors.New("Error finding sessions")
+		raven.CaptureError(err, nil)
+		c.Error(400, err)
+		return err
+	}
+
 	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
 
 	// Update dMaps to have chunks async
@@ -323,10 +352,9 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Set("storage_years", u.StorageLengthInYears))
 
 	vErr, err := u.StartUploadSession()
-
-	u.MakeTreasureIdxMap(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
 		fmt.Println(err)
+		c.Error(400, err)
 		return err
 	}
 
@@ -334,6 +362,28 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		c.Render(422, r.JSON(vErr.Errors))
 		return err
 	}
+
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	if err != nil {
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	if err != nil {
+		err := errors.New("Could not generate eth keys: " + err.Error())
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+	if len(mergedIndexes) != len(privateKeys) {
+		err := errors.New("privateKeys and mergedIndexes should have the same length")
+		raven.CaptureError(err, nil)
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	res := uploadSessionCreateBetaRes{
 		UploadSession:       u,
@@ -350,8 +400,15 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	session := models.UploadSession{}
 	err := models.DB.Find(&session, c.Param("id"))
 
-	if (err != nil || session == models.UploadSession{}) {
-		//TODO: Return better error response when ID does not exist
+	if err != nil {
+		c.Error(400, err)
+		raven.CaptureError(err, nil)
+		return err
+	}
+	if (session == models.UploadSession{}) {
+		err := errors.New("Did not find session that matched id" + c.Param("id"))
+		raven.CaptureError(err, nil)
+		c.Error(400, err)
 		return err
 	}
 

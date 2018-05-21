@@ -1,7 +1,6 @@
 package jobs_test
 
 import (
-	"fmt"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
@@ -16,24 +15,6 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	treasureIndexes[5] = 5
 	treasureIndexes[78] = 78
 	treasureIndexes[199] = 199
-
-	// create a dummy TreasureIdxMap for the data maps
-	// that need to get treasure buried
-	testMap1 := `[{
-		"sector": 1,
-		"idx": ` + fmt.Sprint(treasureIndexes[5]) + `,
-		"key": "0000000001"
-		},
-		{
-		"sector": 2,
-		"idx": ` + fmt.Sprint(treasureIndexes[78]) + `,
-		"key": "0000000002"
-		},
-		{
-		"sector": 3,
-		"idx": ` + fmt.Sprint(treasureIndexes[199]) + `,
-		"key": "0000000003"
-		}]`
 
 	// create another dummy TreasureIdxMap for the data maps
 	// who already have treasure buried
@@ -61,10 +42,13 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureBurying,
-		TreasureIdxMap: nulls.String{string(testMap1), true},
 	}
 
 	uploadSession1.StartUploadSession()
+	mergedIndexes := []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
+	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
+
+	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	// create and start the upload session for the data maps that already have buried treasure
 	uploadSession2 := models.UploadSession{
