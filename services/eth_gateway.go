@@ -58,7 +58,7 @@ type OysterCallMsg struct {
 
 type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
-type GenerateKeys func(int) (privateKeys []string)
+type GenerateKeys func(int) (privateKeys []string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) (bool, error)
@@ -141,25 +141,34 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 
 // Generate an Ethereum address
 func generateEthAddr() (addr common.Address, privateKey string, err error) {
-	ethAccount, _ := crypto.GenerateKey()
+	ethAccount, err := crypto.GenerateKey()
+	if err != nil {
+		fmt.Printf("Could not generate eth key: %v\n", err)
+		raven.CaptureError(err, nil)
+		return addr, "", err
+	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
 	return addr, privateKey, err
 }
 
 // Generate an array of eth keys
-func generateKeys(numKeys int) []string {
+func generateKeys(numKeys int) ([]string, error) {
 	var keys []string
+	var err error
 	for i := 0; i < numKeys; i++ {
 		key := ""
 		if oyster_utils.BrokerMode == oyster_utils.TestModeDummyTreasure {
 			key = os.Getenv("TEST_MODE_WALLET_KEY")
 		} else {
-			_, key, _ = generateEthAddr()
+			_, key, err = generateEthAddr()
+			if err != nil {
+				return keys, err
+			}
 		}
 		keys = append(keys, key)
 	}
-	return keys
+	return keys, nil
 }
 
 // Generate an Ethereum address from a private key

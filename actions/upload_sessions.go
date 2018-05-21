@@ -155,7 +155,13 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		fmt.Println(err)
 	}
 
-	privateKeys := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	if err != nil {
+		err := errors.New("Could not generate eth keys: " + err.Error())
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
 	if len(mergedIndexes) != len(privateKeys) {
 		err := errors.New("privateKeys and mergedIndexes should have the same length")
 		raven.CaptureError(err, nil)
@@ -207,6 +213,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	}
 	if uploadSession == nil {
 		err := errors.New("Error finding sessions")
+		raven.CaptureError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -362,7 +369,13 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		c.Error(400, err)
 		return err
 	}
-	privateKeys := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	if err != nil {
+		err := errors.New("Could not generate eth keys: " + err.Error())
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
 	if len(mergedIndexes) != len(privateKeys) {
 		err := errors.New("privateKeys and mergedIndexes should have the same length")
 		raven.CaptureError(err, nil)
@@ -393,7 +406,9 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 		return err
 	}
 	if (session == models.UploadSession{}) {
-		c.Error(400, errors.New("Did not find session that matched id"))
+		err := errors.New("Did not find session that matched id" + c.Param("id"))
+		raven.CaptureError(err, nil)
+		c.Error(400, err)
 		return err
 	}
 

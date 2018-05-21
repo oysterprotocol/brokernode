@@ -283,7 +283,8 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
 	ms.Nil(err)
-	privateKeys := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	ms.Nil(err)
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	actualIndexes, err := u.GetTreasureIndexes()
 
