@@ -163,7 +163,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Invoice:       invoice,
 	}
 	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID, true)
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -344,7 +344,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
 	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID, false)
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -370,7 +370,7 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
 
-func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string, isAlpha bool) {
+func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
 	transferAddr := services.StringToAddress(alphaEthAddr)
 	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
 
@@ -392,14 +392,14 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	// Alpha send half of it to Beta
-	if isAlpha && paymentStatus == models.PaymentStatusConfirmed {
-		var splitedAmount big.Int
-		splitedAmount.Set(balance)
-		splitedAmount.Div(balance, big.NewInt(2))
+	if session.Type == models.SessionTypeAlpha && paymentStatus == models.PaymentStatusConfirmed {
+		var splitAmount big.Int
+		splitAmount.Set(balance)
+		splitAmount.Div(balance, big.NewInt(2))
 		callMsg := services.OysterCallMsg{
 			From:   transferAddr,
 			To:     services.StringToAddress(betaEthAddr),
-			Amount: splitedAmount,
+			Amount: splitAmount,
 		}
 		services.EthWrapper.SendPRL(callMsg)
 	}
