@@ -21,7 +21,7 @@ const (
 	ByteToTrytes = 2
 
 	// One chunk unit as represents as 1KB
-	FileChunkSizeInByte = 1000
+	FileChunkSizeInByte = 1024
 
 	// Number of 1KB chunk in one Sector
 	FileSectorInChunkSize = 1000000

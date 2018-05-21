@@ -305,7 +305,7 @@ func (ms *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 
 	fileSizeBytes := 9000000
 
-	models.StoragePeg = 64
+	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
 
 	u := models.UploadSession{
@@ -322,7 +322,7 @@ func (ms *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 	ms.Equal(0, len(vErr.Errors))
 
 	// expecting to be charged for 1 full sector even though we aren't using the whole sector
-	ms.Equal(decimal.NewFromFloatWithExponent(0.04687500000000001, -16), invoice.Cost)
+	ms.Equal(decimal.New(468750000000000, -16), invoice.Cost)
 }
 
 func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
@@ -336,7 +336,7 @@ func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
 	fileSizeBytes := 1500000000
 
-	models.StoragePeg = 64
+	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
 
 	u := models.UploadSession{
@@ -353,10 +353,10 @@ func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 	ms.Equal(0, len(vErr.Errors))
 
 	// expecting to be charged for 2 full sectors even though we're only using 1.5
-	ms.Equal(decimal.NewFromFloatWithExponent(0.09375000000000001, -16), invoice.Cost)
+	ms.Equal(decimal.New(937500000000000, -16), invoice.Cost)
 }
 
-func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
+func (ms *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
 	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
@@ -365,9 +365,9 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 
 	defer func() { models.StoragePeg = currentStoragePeg }()
 
-	fileSizeBytes := 2000000000
+	fileSizeBytes := 1999999 * oyster_utils.FileChunkSizeInByte
 
-	models.StoragePeg = 64
+	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
 
 	u := models.UploadSession{
@@ -383,7 +383,38 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
-	// expecting to be charged for 2 full sectors
-	// should be same price as previous test
-	ms.Equal(decimal.NewFromFloatWithExponent(0.09375000000000001, -16), invoice.Cost)
+	// expecting to be charged for 2 sectors
+	ms.Equal(decimal.New(937500000000000, -16), invoice.Cost)
+}
+
+func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
+
+	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	currentStoragePeg := models.StoragePeg
+
+	defer func() { models.StoragePeg = currentStoragePeg }()
+
+	fileSizeBytes := 2000000 * oyster_utils.FileChunkSizeInByte
+
+	models.StoragePeg = decimal.NewFromFloat(float64(64))
+	storageLengthInYears := 3
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          "genHash",
+		NumChunks:            2,
+		FileSizeBytes:        fileSizeBytes,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	vErr, err := u.StartUploadSession()
+	invoice := u.GetInvoice()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	// expecting to be charged for 3 sectors
+	// we are 1 chunk over
+	ms.Equal(decimal.New(1406250000000000, -16), invoice.Cost)
 }
