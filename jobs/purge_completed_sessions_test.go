@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"encoding/hex"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
@@ -17,7 +18,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		Type:          models.SessionTypeBeta,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: "SOME_PRIVATE_KEY",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
@@ -138,6 +139,5 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(nil, err)
 
 	suite.Equal("SOME_BETA_ETH_ADDRESS", completedUploads[0].ETHAddr)
-	suite.Equal("SOME_PRIVATE_KEY", completedUploads[0].ETHPrivateKey)
 	suite.Equal("genHash1", completedUploads[0].GenesisHash)
 }

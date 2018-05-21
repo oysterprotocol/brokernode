@@ -1,10 +1,11 @@
 package models_test
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"os"
 	"time"
 )
 
@@ -214,34 +215,10 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 
 	genHash := "genHashTest"
 	fileSizeBytes := 123
-	numChunks := 2
+	numChunks := 250
 	storageLengthInYears := 3
-	alphaIndexes := []int{2, 1200000, 2340000}
-	betaIndexes := []int{888888, 1900000, 2777777}
-
-	// This map seems pointless but it makes the testing
-	// in the for loop later on a bit simpler
-	t := map[int]models.TreasureMap{}
-	t[0] = models.TreasureMap{
-		Sector: 0,
-		Idx:    444445,
-		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
-	}
-	t[1] = models.TreasureMap{
-		Sector: 1,
-		Idx:    1550000,
-		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
-	}
-	t[2] = models.TreasureMap{
-		Sector: 2,
-		Idx:    2558888,
-		Key:    os.Getenv("TEST_MODE_WALLET_KEY"),
-	}
-
-	treasureIndexArray := make([]models.TreasureMap, 0)
-	treasureIndexArray = append(treasureIndexArray, t[0])
-	treasureIndexArray = append(treasureIndexArray, t[1])
-	treasureIndexArray = append(treasureIndexArray, t[2])
+	alphaIndexes := []int{2, 121, 245}
+	betaIndexes := []int{9, 89, 230}
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
@@ -251,14 +228,29 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	}
 
 	vErr, err := u.StartUploadSession()
-	u.MakeTreasureIdxMap(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+
+	ms.Nil(err)
+	privateKeys := []string{
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+	}
+
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	treasureIdxMap, err := u.GetTreasureMap()
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
+	ms.Equal(0, treasureIdxMap[0].Sector)
+	ms.Equal(1, treasureIdxMap[1].Sector)
+	ms.Equal(2, treasureIdxMap[2].Sector)
+
 	// When we update MergeIndexes to hash the indexes, this test will start failing
-	ms.Equal(treasureIndexArray, treasureIdxMap)
+	ms.Equal(5, treasureIdxMap[0].Idx)
+	ms.Equal(105, treasureIdxMap[1].Idx)
+	ms.Equal(237, treasureIdxMap[2].Idx)
 }
 
 func (ms *ModelSuite) Test_GetTreasureIndexes() {
@@ -268,10 +260,10 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 	genHash := "genHashTest"
 	fileSizeBytes := 123
-	numChunks := 2
+	numChunks := 250
 	storageLengthInYears := 3
-	alphaIndexes := []int{2, 1200000, 2340000}
-	betaIndexes := []int{888888, 1900000, 2777777}
+	alphaIndexes := []int{2, 121, 245}
+	betaIndexes := []int{9, 89, 230}
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
@@ -281,17 +273,46 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 	}
 
 	expectedIndexes := make([]int, 0)
-	expectedIndexes = append(expectedIndexes, 444445)
-	expectedIndexes = append(expectedIndexes, 1550000)
-	expectedIndexes = append(expectedIndexes, 2558888)
+	expectedIndexes = append(expectedIndexes, 5)
+	expectedIndexes = append(expectedIndexes, 105)
+	expectedIndexes = append(expectedIndexes, 237)
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
-	u.MakeTreasureIdxMap(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+	ms.Nil(err)
+	privateKeys := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	actualIndexes, err := u.GetTreasureIndexes()
 
 	// When we update MergeIndexes to hash the indexes, this test will start failing
 	ms.Equal(expectedIndexes, actualIndexes)
+}
+
+func (ms *ModelSuite) Test_EncryptAndDecryptEthKey() {
+	genHash := "genHash"
+	fileSizeBytes := 123
+
+	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            400,
+		StorageLengthInYears: 4,
+		ETHPrivateKey:        ethKey,
+	}
+
+	vErr, err := u.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	ms.NotEqual(ethKey, u.ETHPrivateKey) // it should be encrypted by now
+
+	decryptedKey := u.DecryptSessionEthKey()
+
+	ms.Equal(ethKey, decryptedKey)
 }

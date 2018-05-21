@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"encoding/hex"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -190,49 +191,49 @@ func testSetup(suite *JobsSuite) {
 	RowWithGasTransferNotStarted = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferNotStarted",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferNotStarted",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferNotStarted",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferNotStarted")),
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferNotStarted,
 	}
 	RowWithGasTransferProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferProcessing",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferProcessing",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferProcessing",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferProcessing")),
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferProcessing,
 	}
 	RowWithGasTransferSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferSuccess",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferSuccess",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferSuccess",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferSuccess")),
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferSuccess,
 	}
 	RowWithGasTransferError = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferError",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferError",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferError",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferError")),
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferError,
 	}
 	RowWithPRLClaimProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimProcessing",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimProcessing",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimProcessing",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimProcessing")),
 		PRLStatus:     models.PRLClaimProcessing,
 		GasStatus:     models.GasTransferSuccess,
 	}
 	RowWithPRLClaimSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimSuccess",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimSuccess",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimSuccess",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimSuccess")),
 		PRLStatus:     models.PRLClaimSuccess,
 		GasStatus:     models.GasTransferSuccess,
 	}
 	RowWithPRLClaimError = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimError",
 		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimError",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimError",
+		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimError")),
 		PRLStatus:     models.PRLClaimError,
 		GasStatus:     models.GasTransferSuccess,
 	}
