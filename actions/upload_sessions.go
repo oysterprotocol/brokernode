@@ -388,13 +388,18 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 
 	session := models.UploadSession{}
 	if err := models.DB.Find(&session, uploadSessionId); err != nil {
+		raven.CaptureError(err, nil)
 		return
 	}
 
 	session.PaymentStatus = paymentStatus
+	if err := models.DB.Save(&session); err != nil {
+		raven.CaptureError(err, nil)
+		return
+	}
 
 	// Alpha send half of it to Beta
-	if isAlpha {
+	if isAlpha && paymentStatus == models.PaymentStatusConfirmed {
 		var splitedAmount big.Int
 		splitedAmount.Set(balance)
 		splitedAmount.Div(balance, big.NewInt(2))
@@ -404,9 +409,5 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 			Amount: splitedAmount,
 		}
 		ethWrapper.SendPRL(callMsg)
-	}
-
-	if err := models.DB.Save(&session); err != nil {
-		raven.CaptureError(err, nil)
 	}
 }
