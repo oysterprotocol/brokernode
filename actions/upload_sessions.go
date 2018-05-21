@@ -11,6 +11,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math/big"
 
 	"github.com/pkg/errors"
 	"math"
@@ -183,7 +184,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		BetaSessionID: betaSessionID,
 		Invoice:       invoice,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, true)
+	go waitForTransferAndNotifyBeta(
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -391,7 +393,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransfer(res.UploadSession.ETHAddrAlpha.String, res.ID, false)
+	go waitForTransferAndNotifyBeta(
+		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -424,22 +427,37 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
 }
 
-func waitForTransfer(ethAddr string, uploadSessionId string, isAlpha bool) {
-	success, _ := services.EthWrapper.WaitForTransfer(services.StringToAddress(ethAddr))
+func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
+	transferAddr := services.StringToAddress(alphaEthAddr)
+	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
+
+	paymentStatus := models.PaymentStatusConfirmed
+	if err != nil {
+		paymentStatus = models.PaymentStatusError
+	}
 
 	session := models.UploadSession{}
 	if err := models.DB.Find(&session, uploadSessionId); err != nil {
+		raven.CaptureError(err, nil)
 		return
 	}
 
-	if success {
-		session.PaymentStatus = models.PaymentStatusConfirmed
-	} else {
-		session.PaymentStatus = models.PaymentStatusError
-	}
-
+	session.PaymentStatus = paymentStatus
 	if err := models.DB.Save(&session); err != nil {
+		raven.CaptureError(err, nil)
 		return
 	}
-	// TODO(pzhao5): do other stuff here
+
+	// Alpha send half of it to Beta
+	if session.Type == models.SessionTypeAlpha && paymentStatus == models.PaymentStatusConfirmed {
+		var splitAmount big.Int
+		splitAmount.Set(balance)
+		splitAmount.Div(balance, big.NewInt(2))
+		callMsg := services.OysterCallMsg{
+			From:   transferAddr,
+			To:     services.StringToAddress(betaEthAddr),
+			Amount: splitAmount,
+		}
+		services.EthWrapper.SendPRL(callMsg)
+	}
 }
