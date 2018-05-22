@@ -61,8 +61,7 @@ type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GenerateKeys func(int) (privateKeys []string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
-type WaitForTransfer func(brokerAddr common.Address) (bool, error)
-type SubscribeToTransfer func(brokerAddr common.Address, outCh chan<- types.Log)
+type WaitForTransfer func(brokerAddr common.Address) (*big.Int, error)
 type CheckBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (rawTransaction string, err error)
@@ -263,16 +262,16 @@ func getCurrentBlock() (*types.Block, error) {
 }
 
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
-// If it is completed return true, otherwise, return false (or time-out)
-func waitForTransfer(brokerAddr common.Address) (bool, error) {
+// If it is completed return number of PRL.
+func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
 	client, err := sharedClient()
 	if err != nil {
-		return false, err
+		return big.NewInt(0), err
 	}
 
 	currentBlock, err := getCurrentBlock()
 	if err != nil {
-		return false, err
+		return big.NewInt(0), err
 	}
 
 	q := ethereum.FilterQuery{
@@ -286,7 +285,7 @@ func waitForTransfer(brokerAddr common.Address) (bool, error) {
 	sub, err := client.SubscribeFilterLogs(context.Background(), q, logChan)
 	if err != nil {
 		raven.CaptureError(err, nil)
-		return false, err
+		return big.NewInt(0), err
 	}
 
 	defer sub.Unsubscribe()
@@ -295,11 +294,11 @@ func waitForTransfer(brokerAddr common.Address) (bool, error) {
 		case err := <-sub.Err():
 			log.Fatal(err)
 			raven.CaptureError(err, nil)
-			return false, err
+			return big.NewInt(0), err
 		case <-time.After(1 * time.Hour):
 			log.Print("Timeout to wait for brokerAddr\n")
 			// Wait for 1 hr to receive payment before timeout
-			return false, errors.New("Timeout")
+			return big.NewInt(0), errors.New("Timeout")
 			// TODO(astor): listen to the event and return true/false
 			/*
 				case log := <- outCh:
