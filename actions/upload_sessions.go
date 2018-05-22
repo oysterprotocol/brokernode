@@ -428,6 +428,11 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 }
 
 func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
+
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		return
+	}
+
 	transferAddr := services.StringToAddress(alphaEthAddr)
 	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
 
