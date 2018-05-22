@@ -74,12 +74,13 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 
 // Singleton client
 var (
-	ethUrl            string
-	MainWalletAddress common.Address
-	MainWalletKey     string
-	client            *ethclient.Client
-	mtx               sync.Mutex
-	EthWrapper        Eth
+	ethUrl              string
+	oysterPearlContract string
+	MainWalletAddress   common.Address
+	MainWalletKey       string
+	client              *ethclient.Client
+	mtx                 sync.Mutex
+	EthWrapper          Eth
 )
 
 func init() {
@@ -92,6 +93,7 @@ func init() {
 
 	MainWalletAddress := os.Getenv("MAIN_WALLET_ADDRESS")
 	MainWalletKey := os.Getenv("MAIN_WALLET_KEY")
+	oysterPearlContract := os.Getenv("OYSTER_PEARL")
 	ethUrl := os.Getenv("ETH_NODE_URL")
 
 	fmt.Println(MainWalletAddress)
@@ -116,18 +118,14 @@ func init() {
 }
 
 // Shared client provides access to the underlying Ethereum client
-func sharedClient(netUrl string) (c *ethclient.Client, err error) {
+func sharedClient() (c *ethclient.Client, err error) {
 	if client != nil {
 		return client, nil
 	}
 	// check-lock-check pattern to avoid excessive locking.
 	mtx.Lock()
 	defer mtx.Unlock()
-
-	// override to allow custom node url
-	if len(netUrl) > 0 {
-		ethUrl = netUrl
-	}
+	// ethereum private network
 	c, err = ethclient.Dial(ethUrl)
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
@@ -203,7 +201,7 @@ func StringToAddress(address string) common.Address {
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
 	// connect ethereum client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
 	}
@@ -228,7 +226,7 @@ func getGasPrice() (*big.Int, error) {
 // Check balance from a valid Ethereum network address
 func checkBalance(addr common.Address) *big.Int {
 	// connect ethereum client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not initialize shared client")
 	}
@@ -245,7 +243,7 @@ func checkBalance(addr common.Address) *big.Int {
 // Get current block from blockchain
 func getCurrentBlock() (*types.Block, error) {
 	// connect ethereum client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not connect to Ethereum network", err)
 		return nil, err
@@ -267,7 +265,7 @@ func getCurrentBlock() (*types.Block, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return true, otherwise, return false (or time-out)
 func waitForTransfer(brokerAddr common.Address) (bool, error) {
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return false, err
 	}
@@ -338,7 +336,7 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 // We need to pass in the credentials, to allow the transaction to execute.
 func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err error) {
 
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return "", err
 	}
@@ -394,7 +392,7 @@ func buryPrl(msg OysterCallMsg) bool {
 	ctx, cancel := createContext()
 	defer cancel()
 	// shared client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return false
 	}
@@ -480,7 +478,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	ctx, cancel := createContext()
 	defer cancel()
 	// shared client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return false
 	}
@@ -523,7 +521,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	defer cancel()
 
 	// shared client
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return false
 	}
@@ -554,8 +552,8 @@ func sendPRL(msg OysterCallMsg) bool {
 func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, error) {
 
 	// invoke the smart contract bury() function with 'treasure'
-	// TODO OysterPearl
-	contractAddress := common.HexToAddress("0xf25186b5081ff5ce73482ad761db0eb0d25abfbf")
+	// Oyster Pearl on Ethereum Network
+	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// oysterby chainId 559966 - env
 	chainId := big.NewInt(559966)
@@ -565,7 +563,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 		raven.CaptureError(err, nil)
 		return nil, err
 	}
-	client, err := sharedClient("")
+	client, err := sharedClient()
 	if err != nil {
 		return nil, err
 	}
