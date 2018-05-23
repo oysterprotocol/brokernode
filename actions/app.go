@@ -30,7 +30,7 @@ func App() *buffalo.App {
 			LooseSlash:   true,
 			SessionStore: sessions.Null{},
 			PreWares: []buffalo.PreWare{
-				cors.Default().Handler,
+				cors.AllowAll().Handler,
 			},
 			SessionName: "_brokernode_session",
 			WorkerOff:   false,
