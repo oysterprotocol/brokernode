@@ -73,8 +73,8 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 
 // Singleton client
 var (
-	ethUrl              string
 	oysterPearlContract string
+	chainId             int64
 	MainWalletAddress   common.Address
 	MainWalletKey       string
 	client              *ethclient.Client
@@ -82,22 +82,26 @@ var (
 	EthWrapper          Eth
 )
 
+
 func init() {
 	// Load ENV variables
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Println("Error loading .env file")
 		raven.CaptureError(err, nil)
 	}
 
-	MainWalletAddress := os.Getenv("MAIN_WALLET_ADDRESS")
+	MainWalletAddress := common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
 	MainWalletKey := os.Getenv("MAIN_WALLET_KEY")
+	chainId := os.Getenv("CHAIN_ID")
 	oysterPearlContract := os.Getenv("OYSTER_PEARL")
 	ethUrl := os.Getenv("ETH_NODE_URL")
 
-	fmt.Println(MainWalletAddress)
-	fmt.Println(MainWalletKey)
-	fmt.Println(ethUrl)
+	fmt.Printf("Ethereum Network Address: %v\n", ethUrl)
+	fmt.Printf("Ethereum Network Chain ID: %v\n", chainId)
+	fmt.Printf("MainWallet Address: %v\n", MainWalletAddress)
+	fmt.Printf("MainWallet Key: %v\n", MainWalletKey)
+	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
 
 	EthWrapper = Eth{
 		SendGas:                       sendGas,
@@ -124,8 +128,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	// check-lock-check pattern to avoid excessive locking.
 	mtx.Lock()
 	defer mtx.Unlock()
-	// ethereum private network
-	c, err = ethclient.Dial(ethUrl)
+	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
 		raven.CaptureError(err, nil)
@@ -212,14 +215,33 @@ func getGasPrice() (*big.Int, error) {
 		raven.CaptureError(err, nil)
 	}
 	return gasPrice, nil
+}
 
-	// TODO review this doesn't return gasPrice
-	// addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
-	// privKey = hex.EncodeToString(ethAccount.D.Bytes())
-	//oyster_utils.LogToSegment("eth_gateway: generated_new_eth_address", analytics.NewProperties().
-	//Set("eth_address", fmt.Sprint(addr)))
-	//return
+// Get Estimated Gas Price for a Transaction
+func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, gasPrice big.Int, value big.Int) (uint64, error) {
+	// connect ethereum client
+	client, err := sharedClient()
+	if err != nil {
+		log.Fatal("Could not get gas price from network")
+		return 0, nil
+	}
 
+	// compose eth message
+	msg := new(ethereum.CallMsg)
+	msg.To = &to
+	msg.From = from
+	msg.Data = nil
+	msg.Gas = gas
+	msg.GasPrice = &gasPrice
+	msg.Value =  &value
+
+	// estimated gas price
+	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
+	if err != nil {
+		log.Fatal("Client could not get gas price estimate from network")
+		raven.CaptureError(err, nil)
+	}
+	return estimatedGasPrice, nil
 }
 
 // Check balance from a valid Ethereum network address
@@ -348,18 +370,33 @@ func sendETH(toAddr common.Address, amount *big.Int) (rawTransaction string, err
 	// generate nonce
 	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
 
-	// get latest gas limit & price - current default gasLimit on oysterby 21000
-	gasLimit := uint64(21000) // may pull gas limit from estimate gas price
-	gasPrice, _ := getGasPrice()
+	// default gasLimit on oysterby 4294967295
+	// gas * price + value
+
+	gasPrice := big.NewInt(36505)//getGasPrice()
+	currentBlock, _ := getCurrentBlock()
+	gasLimit := currentBlock.GasLimit()
+
+	estimate, failedEstimate := getEstimatedGasPrice(toAddr, MainWalletAddress, 0, *gasPrice, *amount)
+	if failedEstimate != nil {
+		return "", failedEstimate
+	}
+
+	estimatedGas := new(big.Int).SetUint64(estimate)
 
 	// create new transaction
-	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, gasPrice, nil)
+	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, estimatedGas, nil)
 
 	// oysterby chainId 559966
-	chainId := big.NewInt(559966)
+	chainId := big.NewInt(chainId)
+	// MainWalletKey
 	privateKey, _ := crypto.HexToECDSA(MainWalletKey)
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, err := types.SignTx(tx, signer, privateKey)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return "", err
+	}
 
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
@@ -566,6 +603,12 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	if err != nil {
 		return nil, err
 	}
+	token, err := NewOysterPearl(contractAddress, client)
+	if err != nil {
+		fmt.Print("Unable to instantiate OysterPearl")
+	}
+	name, err := token.Name(nil)
+	fmt.Printf("OysterPearl :%v",name)
 
 	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
 
