@@ -415,6 +415,19 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 		return err
 	}
 
+	// Force to check the status
+	if session.PaymentStatus != models.PaymentStatusConfirmed {
+		balance := EthWrapper.CheckBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		if balance.Int64() > 0 {
+			previousPaymentStatus := session.PaymentStatus
+			session.PaymentStatus = models.PaymentStatusConfirmed
+			err = models.DB.Save(&session)
+			if err != nil {
+				session.PaymentStatus = previousPaymentStatus
+			}
+		}
+	}
+
 	res := paymentStatusCreateRes{
 		ID:            session.ID.String(),
 		PaymentStatus: session.GetPaymentStatus(),
