@@ -2,6 +2,7 @@ package oyster_utils
 
 import (
 	"github.com/gobuffalo/pop/nulls"
+	"math/big"
 	"testing"
 )
 
@@ -246,6 +247,36 @@ func Test_IntsSplit_EmptyString(t *testing.T) {
 	v := IntsSplit("", "_")
 
 	compareIntsArray(t, v, []int{})
+}
+
+func Test_ConvertToWeiUnit(t *testing.T) {
+	v := ConvertToWeiUnit(big.NewFloat(0.2))
+
+	assertTrue(v.Cmp(big.NewInt(200000000000000000)) == 0, t, "")
+}
+
+func Test_ConvertToWeiUnit_SmallValue(t *testing.T) {
+	v := ConvertToWeiUnit(big.NewFloat(0.000000000000000002))
+
+	assertTrue(v.Cmp(big.NewInt(2)) == 0, t, "")
+}
+
+func Test_ConvertToWeiUnit_ConsiderAsZero(t *testing.T) {
+	v := ConvertToWeiUnit(big.NewFloat(0.0000000000000000002))
+
+	assertTrue(v.Cmp(big.NewInt(0)) == 0, t, "")
+}
+
+func Test_ConvertToPrlUnit(t *testing.T) {
+	v := ConvertToPrlUnit(big.NewInt(200000000000000000))
+
+	assertTrue(v.String() == big.NewFloat(.2).String(), t, "")
+}
+
+func Test_ConvertToPrlUnit_SmallValue(t *testing.T) {
+	v := ConvertToPrlUnit(big.NewInt(2))
+
+	assertTrue(v.String() == big.NewFloat(.000000000000000002).String(), t, "")
 }
 
 // Private helper methods
