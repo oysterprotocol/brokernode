@@ -39,7 +39,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 
 	uploadSession2 := models.UploadSession{
@@ -48,7 +48,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 
 	uploadSession3 := models.UploadSession{
@@ -57,7 +57,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 
 	uploadSession4 := models.UploadSession{
@@ -66,7 +66,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -171,7 +171,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 		TreasureIdxMap: nulls.String{string(treasureMap), true},
 	}
 
