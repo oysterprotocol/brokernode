@@ -41,7 +41,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -57,7 +57,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}
 
@@ -129,7 +129,6 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	suite.Equal(3, len(treasureIndex))
 
 	for _, entry := range treasureIndex {
-		suite.Equal("", entry.Key)
 		_, ok := treasureIndexes[entry.Idx]
 		suite.Equal(true, ok)
 	}

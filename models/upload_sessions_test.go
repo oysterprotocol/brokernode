@@ -7,6 +7,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
+	"math/big"
 	"time"
 )
 
@@ -140,7 +141,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
 		GenesisHash:    "genHash2",
@@ -148,7 +149,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
 		GenesisHash:    "genHash3",
@@ -156,7 +157,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession4 := models.UploadSession{ // will not be in the array
 		GenesisHash:    "genHash4",
@@ -164,7 +165,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 	uploadSession5 := models.UploadSession{ // will not be in the array
 		GenesisHash:    "genHash5",
@@ -172,7 +173,7 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPending,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
@@ -439,4 +440,45 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 	// expecting to be charged for 3 sectors
 	// we are 1 chunk over
 	ms.Equal(decimal.New(1406250000000000, -16), invoice.Cost)
+}
+
+func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
+	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	totalCost := 5
+	numSectors := 3
+
+	genHash := "genHash"
+	fileSizeBytes := 123
+	numChunks := 250
+	storageLengthInYears := 3
+	mergedIndexes := []int{2, 121, 245}
+	privateKeys := []string{
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+	}
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+	u.NumChunks = 2500000
+	u.TotalCost = decimal.NewFromFloat(float64(totalCost))
+	ms.DB.ValidateAndUpdate(&u)
+
+	prlsPerTreasure, err := u.GetPRLsPerTreasure()
+	ms.Nil(err)
+
+	expectedPRLsPerTreasure := new(big.Float).Quo(
+		new(big.Float).SetInt(big.NewInt(int64(totalCost))),
+		new(big.Float).SetInt(big.NewInt(int64(numSectors))))
+
+	ms.Equal(expectedPRLsPerTreasure, prlsPerTreasure)
 }

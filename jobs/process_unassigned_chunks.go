@@ -9,6 +9,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"math"
+	"math/big"
 	"time"
 )
 
@@ -118,14 +119,60 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
 
-		SendPRLToTransactionAddresses(treasureChunksNeedAttaching, session)
+		StageTreasures(treasureChunksNeedAttaching, session)
 
 		SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 	}
 }
 
-func SendPRLToTransactionAddresses(treasureChunks []models.DataMap, session models.UploadSession) {
-	// TODO:  call methods in eth_gateway.go to send the PRLs to the treasure addresses
+func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
+	if len(treasureChunks) == 0 {
+		return
+	}
+	treasureIdxMapArray, err := session.GetTreasureMap()
+	if err != nil {
+		fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+	if len(treasureIdxMapArray) == 0 {
+		fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + "treasureIdxMapArray is empty")
+		return
+	}
+
+	treasureIdxMap := make(map[int]models.TreasureMap)
+	for _, treasureIdxEntry := range treasureIdxMapArray {
+		treasureIdxMap[treasureIdxEntry.Idx] = treasureIdxEntry
+	}
+
+	prlPerTreasure, err := session.GetPRLsPerTreasure()
+	fmt.Println(prlPerTreasure)
+
+	/*TODO: get prlPerTreasure in wei*/
+	// do something to convert prlPerTreasure to wei
+
+	prlInWei := big.NewInt(100000000000)
+
+	for _, treasureChunk := range treasureChunks {
+		if _, ok := treasureIdxMap[treasureChunk.ChunkIdx]; ok {
+			decryptedKey, err := treasureChunk.DecryptEthKey(treasureIdxMap[treasureChunk.ChunkIdx].Key)
+			if err != nil {
+				fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + err.Error())
+				// already captured error in upstream function
+				return
+			}
+			ethAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+			treasureToBury := models.Treasure{
+				ETHAddr: ethAddress.Hex(),
+				Address: treasureChunk.Address,
+				Message: treasureChunk.Message,
+			}
+
+			treasureToBury.SetPRLAmount(prlInWei)
+
+			models.DB.ValidateAndSave(&treasureToBury)
+		}
+	}
 }
 
 // add the treasure chunks back into the array in the appropriate position

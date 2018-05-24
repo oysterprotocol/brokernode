@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
@@ -17,6 +18,14 @@ func ProcessPaidSessions() {
 
 	BuryTreasureInDataMaps()
 	MarkBuriedMapsAsUnassigned()
+
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+		SendPRLsToWaitingTreasureAddresses()
+		InvokeBury()
+
+		// TODO:  add methods to check status of pending transactions, or subscribe to them and update
+		// PRLStatus in the row in the DB.
+	}
 }
 
 func BuryTreasureInDataMaps() error {
@@ -42,7 +51,7 @@ func BuryTreasureInDataMaps() error {
 
 func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models.UploadSession) error {
 
-	for i, entry := range treasureIndexMap {
+	for _, entry := range treasureIndexMap {
 		treasureChunks, err := models.GetDataMapByGenesisHashAndChunkIdx(unburiedSession.GenesisHash, entry.Idx)
 		if err != nil {
 			fmt.Println(err)
@@ -69,8 +78,6 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			return err
 		}
 		models.DB.ValidateAndSave(&treasureChunks[0])
-		// delete the keys now that they have been buried
-		treasureIndexMap[i].Key = ""
 
 		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).
@@ -79,8 +86,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			Set("address", treasureChunks[0].Address).
 			Set("message", treasureChunks[0].Message))
 	}
-	unburiedSession.TreasureStatus = models.TreasureBuried
-	unburiedSession.SetTreasureMap(treasureIndexMap)
+	unburiedSession.TreasureStatus = models.TreasureInDataMapComplete
 	models.DB.ValidateAndSave(unburiedSession)
 	return nil
 }
@@ -105,5 +111,72 @@ func MarkBuriedMapsAsUnassigned() {
 
 			err = readySession.BulkMarkDataMapsAsUnassigned()
 		}
+	}
+}
+
+func SendPRLsToWaitingTreasureAddresses() {
+
+	waitingForPRLS, err := models.GetTreasuresToBuryByPRLStatus(models.PRLWaiting)
+	if err != nil {
+		fmt.Println("Cannot get treasures awaiting PRLs in process_paid_sessions: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	if len(waitingForPRLS) == 0 {
+		return
+	}
+
+	for _, waitingAddress := range waitingForPRLS {
+		sendPRL(waitingAddress)
+	}
+}
+
+func InvokeBury() {
+	readyToInvokeBury, err := models.GetTreasuresToBuryByPRLStatus(models.PRLConfirmed)
+	if err != nil {
+		fmt.Println("Cannot get treasures awaiting bury() in process_paid_sessions: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	fmt.Println(readyToInvokeBury)
+
+	// TODO:  do whatever we need to do to invoke bury() on these treasures
+}
+
+func sendPRL(treasureToBury models.Treasure) {
+
+	gas, err := services.EthWrapper.GetGasPrice()
+	if err != nil {
+		fmt.Println("Cannot send PRL to treasure address: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	balance := services.EthWrapper.CheckBalance(services.MainWalletAddress)
+	if balance.Int64() <= 0 || balance.Int64() < treasureToBury.GetPRLAmount().Int64() {
+		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " + fmt.Sprint(balance.Int64()) + " amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+		return
+	}
+
+	// TODO:  What else do I need here?
+	callMsg := services.OysterCallMsg{
+		From:   services.MainWalletAddress,
+		To:     services.StringToAddress(treasureToBury.ETHAddr),
+		Amount: *treasureToBury.GetPRLAmount(),
+		Gas:    gas.Uint64(),
+	}
+
+	sendSuccess := services.EthWrapper.SendPRL(callMsg)
+	if !sendSuccess {
+		errorString := "Failure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " + treasureToBury.ETHAddr
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+	} else {
+		treasureToBury.PRLStatus = models.PRLPending
+		models.DB.ValidateAndUpdate(&treasureToBury)
 	}
 }
