@@ -89,7 +89,8 @@ func init() {
 		raven.CaptureError(err, nil)
 	}
 
-	MainWalletAddress := os.Getenv("MAIN_WALLET_ADDRESS")
+	MainWalletAddressString := os.Getenv("MAIN_WALLET_ADDRESS")
+	MainWalletAddress = StringToAddress(MainWalletAddressString)
 	MainWalletKey := os.Getenv("MAIN_WALLET_KEY")
 	ethUrl := os.Getenv("ETH_NODE_URL")
 
@@ -205,6 +206,7 @@ func getGasPrice() (*big.Int, error) {
 	client, err := sharedClient("")
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
+		raven.CaptureError(err, nil)
 	}
 
 	// there is no guarantee with estimate gas price
@@ -214,14 +216,6 @@ func getGasPrice() (*big.Int, error) {
 		raven.CaptureError(err, nil)
 	}
 	return gasPrice, nil
-
-	// TODO review this doesn't return gasPrice
-	// addr = crypto.PubkeyToAddress(ethAccount.PublicKey).Hex()
-	// privKey = hex.EncodeToString(ethAccount.D.Bytes())
-	//oyster_utils.LogToSegment("eth_gateway: generated_new_eth_address", analytics.NewProperties().
-	//Set("eth_address", fmt.Sprint(addr)))
-	//return
-
 }
 
 // Check balance from a valid Ethereum network address

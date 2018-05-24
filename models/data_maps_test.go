@@ -205,7 +205,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
@@ -238,7 +238,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
@@ -273,7 +273,7 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
