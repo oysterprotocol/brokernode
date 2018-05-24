@@ -343,6 +343,7 @@ func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
 		err = errors.New("length of treasure indexes does not match totalSectors in models/upload_sessions.go")
 		fmt.Println(err)
 		raven.CaptureError(err, nil)
+		return big.NewFloat(0), err
 	}
 
 	prlPerSector := new(big.Float).Quo(prlTotalFloat, big.NewFloat(totalSectors))

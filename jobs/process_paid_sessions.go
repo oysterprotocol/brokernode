@@ -24,7 +24,7 @@ func ProcessPaidSessions() {
 		InvokeBury()
 
 		// TODO:  add methods to check status of pending transactions, or subscribe to them and update
-		// PRLStatus in the row in the DB.
+		// PRLStatus in the row in the DB, and add tests for these methods once we know they work.
 	}
 }
 

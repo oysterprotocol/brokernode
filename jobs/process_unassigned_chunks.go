@@ -9,7 +9,6 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"math"
-	"math/big"
 	"time"
 )
 
@@ -126,6 +125,8 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 }
 
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
+	/*TODO add tests for this method*/
+
 	if len(treasureChunks) == 0 {
 		return
 	}
@@ -146,12 +147,13 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 	}
 
 	prlPerTreasure, err := session.GetPRLsPerTreasure()
-	fmt.Println(prlPerTreasure)
+	if err != nil {
+		fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + err.Error())
+		// captured error in upstream method
+		return
+	}
 
-	/*TODO: get prlPerTreasure in wei*/
-	// do something to convert prlPerTreasure to wei
-
-	prlInWei := big.NewInt(100000000000)
+	prlInWei := oyster_utils.ConvertToWeiUnit(prlPerTreasure)
 
 	for _, treasureChunk := range treasureChunks {
 		if _, ok := treasureIdxMap[treasureChunk.ChunkIdx]; ok {
