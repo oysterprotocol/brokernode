@@ -229,7 +229,7 @@ func checkBalance(addr common.Address) *big.Int {
 	// connect ethereum client
 	client, err := sharedClient("")
 	if err != nil {
-		log.Fatal("Could not initialize shared client")
+		return big.NewInt(0)
 	}
 
 	balance, err := client.BalanceAt(context.Background(), addr, nil) //Call(&bal, "eth_getBalance", addr, "latest")
