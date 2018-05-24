@@ -223,7 +223,7 @@ func ConvertToWeiUnit(prl *big.Float) *big.Int {
 }
 
 /* Convert wei unit to PRL unit */
-func ConvertToPrlUnit(wei *big.Int) *big.Float {
+func ConverFromWeiUnit(wei *big.Int) *big.Float {
 	weiInFloat := new(big.Float).SetInt(wei)
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
 }

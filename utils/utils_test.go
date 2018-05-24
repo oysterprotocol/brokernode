@@ -268,13 +268,13 @@ func Test_ConvertToWeiUnit_ConsiderAsZero(t *testing.T) {
 }
 
 func Test_ConvertToPrlUnit(t *testing.T) {
-	v := ConvertToPrlUnit(big.NewInt(200000000000000000))
+	v := ConverFromWeiUnit(big.NewInt(200000000000000000))
 
 	assertTrue(v.String() == big.NewFloat(.2).String(), t, "")
 }
 
 func Test_ConvertToPrlUnit_SmallValue(t *testing.T) {
-	v := ConvertToPrlUnit(big.NewInt(2))
+	v := ConverFromWeiUnit(big.NewInt(2))
 
 	assertTrue(v.String() == big.NewFloat(.000000000000000002).String(), t, "")
 }
