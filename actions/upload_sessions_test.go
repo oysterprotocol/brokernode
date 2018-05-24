@@ -190,6 +190,10 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 	as.Equal("confirmed", resParsed.PaymentStatus)
 	as.True(mockCheckBalance.hasCalled)
 	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
+
+	err = as.DB.Find(&session, resParsed.ID)
+	as.Nil(err)
+	as.True(session.PaymentStatus == models.PaymentStatusConfirmed)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
@@ -226,6 +230,10 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 	as.Equal("invoiced", resParsed.PaymentStatus)
 	as.True(mockCheckBalance.hasCalled)
 	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
+
+	err = as.DB.Find(&session, resParsed.ID)
+	as.Nil(err)
+	as.True(session.PaymentStatus == models.PaymentStatusInvoiced)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
