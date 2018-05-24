@@ -482,3 +482,22 @@ func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
 
 	ms.Equal(expectedPRLsPerTreasure, prlsPerTreasure)
 }
+
+func (ms *ModelSuite) Test_PaymentStatus() {
+	u := models.UploadSession{}
+
+	u.PaymentStatus = models.PaymentStatusConfirmed
+	ms.Equal(u.GetPaymentStatus(), "confirmed")
+
+	u.PaymentStatus = models.PaymentStatusInvoiced
+	ms.Equal(u.GetPaymentStatus(), "invoiced")
+
+	u.PaymentStatus = models.PaymentStatusPending
+	ms.Equal(u.GetPaymentStatus(), "pending")
+
+	u.PaymentStatus = 100
+	ms.Equal(u.GetPaymentStatus(), "error")
+
+	u.PaymentStatus = models.PaymentStatusError
+	ms.Equal(u.GetPaymentStatus(), "error")
+}

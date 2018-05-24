@@ -25,6 +25,12 @@ type mockSendPrl struct {
 	output_bool bool
 }
 
+type mockCheckBalance struct {
+	hasCalled  bool
+	input_addr common.Address
+	output_int *big.Int
+}
+
 func (as *ActionSuite) Test_UploadSessionsCreate() {
 	mockWaitForTransfer := mockWaitForTransfer{
 		output_error: nil,
@@ -119,6 +125,10 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
+	mockCheckBalance := mockCheckBalance{}
+	EthWrapper = services.Eth{
+		CheckBalance: mockCheckBalance.checkBalance,
+	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
@@ -143,10 +153,17 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	as.Nil(err)
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
+	as.False(mockCheckBalance.hasCalled)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComplete() {
 	//setup
+	mockCheckBalance := mockCheckBalance{
+		output_int: big.NewInt(10),
+	}
+	EthWrapper = services.Eth{
+		CheckBalance: mockCheckBalance.checkBalance,
+	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
@@ -170,11 +187,23 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Pending() {
 	err = json.Unmarshal(bodyBytes, &resParsed)
 	as.Nil(err)
 
-	as.Equal("pending", resParsed.PaymentStatus)
+	as.Equal("confirmed", resParsed.PaymentStatus)
+	as.True(mockCheckBalance.hasCalled)
+	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
+
+	err = as.DB.Find(&session, resParsed.ID)
+	as.Nil(err)
+	as.True(session.PaymentStatus == models.PaymentStatusConfirmed)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Invoiced() {
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
 	//setup
+	mockCheckBalance := mockCheckBalance{
+		output_int: big.NewInt(0),
+	}
+	EthWrapper = services.Eth{
+		CheckBalance: mockCheckBalance.checkBalance,
+	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
@@ -199,34 +228,12 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Invoiced() {
 	as.Nil(err)
 
 	as.Equal("invoiced", resParsed.PaymentStatus)
-}
+	as.True(mockCheckBalance.hasCalled)
+	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Error() {
-	//setup
-	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
-		FileSizeBytes: 123,
-		NumChunks:     2,
-		PaymentStatus: models.PaymentStatusError,
-	}
-
-	uploadSession1.StartUploadSession()
-
-	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
-	as.Equal(err, nil)
-
-	//execute method
-	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
-
-	// Parse response
-	resParsed := paymentStatusCreateRes{}
-	bodyBytes, err := ioutil.ReadAll(res.Body)
+	err = as.DB.Find(&session, resParsed.ID)
 	as.Nil(err)
-	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
-
-	as.Equal("error", resParsed.PaymentStatus)
+	as.True(session.PaymentStatus == models.PaymentStatusInvoiced)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
@@ -252,4 +259,10 @@ func (v *mockSendPrl) sendPrl(msg services.OysterCallMsg) bool {
 	v.hasCalled = true
 	v.input_msg = msg
 	return v.output_bool
+}
+
+func (v *mockCheckBalance) checkBalance(addr common.Address) *big.Int {
+	v.hasCalled = true
+	v.input_addr = addr
+	return v.output_int
 }
