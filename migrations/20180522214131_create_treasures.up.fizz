@@ -1,6 +1,7 @@
 create_table("treasures", func(t) {
 	t.Column("id", "uuid", {"primary": true})
 	t.Column("eth_addr", "string", {})
+	t.Column("eth_key", "string", {})
 	t.Column("prl_amount", "string", {})
 	t.Column("prl_status", "int", {})
 	t.Column("message", "MEDIUMTEXT", {"null": true})

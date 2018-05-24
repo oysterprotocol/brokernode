@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"encoding/hex"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -28,12 +29,13 @@ func (ms *ModelSuite) Test_Get_And_Set_PRL_Amount() {
 
 	prlAmount := big.NewInt(5000000000000000000)
 
-	ethAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+	ethAddr, key, _ := services.EthWrapper.GenerateEthAddr()
 	iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 	iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 
 	treasureToBury := models.Treasure{
 		ETHAddr: ethAddr.Hex(),
+		ETHKey:  key,
 		Message: iotaMessage,
 		Address: iotaAddr,
 	}
@@ -42,6 +44,27 @@ func (ms *ModelSuite) Test_Get_And_Set_PRL_Amount() {
 	returnedPrlAmount := treasureToBury.GetPRLAmount()
 
 	ms.Equal(prlAmount, returnedPrlAmount)
+}
+
+func (ms *ModelSuite) Test_EncryptAndDecryptEthPrivateKey() {
+
+	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
+	ethAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+	iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
+	iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
+
+	treasureToBury := models.Treasure{
+		ETHAddr: ethAddr.Hex(),
+		ETHKey:  ethKey,
+		Message: iotaMessage,
+		Address: iotaAddr,
+	}
+
+	ms.DB.ValidateAndCreate(&treasureToBury)
+	ms.Equal(false, ethKey == treasureToBury.ETHKey)
+
+	decryptedKey := treasureToBury.DecryptTreasureEthKey()
+	ms.Equal(true, ethKey == decryptedKey)
 }
 
 func generateTreasuresToBuryOfEachStatus(ms *ModelSuite, numToCreateOfEachStatus int) {
@@ -66,19 +89,20 @@ func generateTreasuresToBuryOfEachStatus(ms *ModelSuite, numToCreateOfEachStatus
 func generateTreasuresToBury(ms *ModelSuite, numToCreateOfEachStatus int, status models.PRLStatus) {
 	prlAmount := big.NewInt(500000000000000000)
 	for i := 0; i < numToCreateOfEachStatus; i++ {
-		ethAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+		ethAddr, key, _ := services.EthWrapper.GenerateEthAddr()
 		iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 		iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 
 		treasureToBury := models.Treasure{
 			PRLStatus: status,
 			ETHAddr:   ethAddr.Hex(),
+			ETHKey:    key,
 			Message:   iotaMessage,
 			Address:   iotaAddr,
 		}
 
 		treasureToBury.SetPRLAmount(prlAmount)
 
-		ms.DB.ValidateAndSave(&treasureToBury)
+		ms.DB.ValidateAndCreate(&treasureToBury)
 	}
 }

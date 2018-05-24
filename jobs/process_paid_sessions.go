@@ -21,6 +21,7 @@ func ProcessPaidSessions() {
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
 		SendPRLsToWaitingTreasureAddresses()
+		SendGasToTreasureAddresses()
 		InvokeBury()
 
 		// TODO:  add methods to check status of pending transactions, or subscribe to them and update
@@ -132,17 +133,38 @@ func SendPRLsToWaitingTreasureAddresses() {
 	}
 }
 
+func SendGasToTreasureAddresses() {
+	waitingForGas, err := models.GetTreasuresToBuryByPRLStatus(models.PRLConfirmed)
+	if err != nil {
+		fmt.Println("Cannot get treasures awaiting gas in process_paid_sessions: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	if len(waitingForGas) == 0 {
+		return
+	}
+
+	for _, waitingAddress := range waitingForGas {
+		sendGas(waitingAddress)
+	}
+}
+
 func InvokeBury() {
-	readyToInvokeBury, err := models.GetTreasuresToBuryByPRLStatus(models.PRLConfirmed)
+	readyToInvokeBury, err := models.GetTreasuresToBuryByPRLStatus(models.GasConfirmed)
 	if err != nil {
 		fmt.Println("Cannot get treasures awaiting bury() in process_paid_sessions: " + err.Error())
 		// already captured error in upstream function
 		return
 	}
 
-	fmt.Println(readyToInvokeBury)
+	if len(readyToInvokeBury) == 0 {
+		return
+	}
 
-	// TODO:  do whatever we need to do to invoke bury() on these treasures
+	for _, buryAddress := range readyToInvokeBury {
+		buryPRL(buryAddress)
+	}
 }
 
 func sendPRL(treasureToBury models.Treasure) {
@@ -154,9 +176,11 @@ func sendPRL(treasureToBury models.Treasure) {
 		return
 	}
 
+	// TODO:  Need balance of PRL, need to have at least enough ETH for gas for transaction
 	balance := services.EthWrapper.CheckBalance(services.MainWalletAddress)
 	if balance.Int64() <= 0 || balance.Int64() < treasureToBury.GetPRLAmount().Int64() {
-		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " + fmt.Sprint(balance.Int64()) + " amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
+		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " +
+			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
 		err := errors.New(errorString)
 		raven.CaptureError(err, nil)
 		return
@@ -172,11 +196,80 @@ func sendPRL(treasureToBury models.Treasure) {
 
 	sendSuccess := services.EthWrapper.SendPRL(callMsg)
 	if !sendSuccess {
-		errorString := "Failure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " + treasureToBury.ETHAddr
+		errorString := "Failure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " +
+			treasureToBury.ETHAddr
 		err := errors.New(errorString)
 		raven.CaptureError(err, nil)
 	} else {
 		treasureToBury.PRLStatus = models.PRLPending
+		models.DB.ValidateAndUpdate(&treasureToBury)
+	}
+}
+
+func sendGas(treasureToBury models.Treasure) {
+
+	gas, err := services.EthWrapper.GetGasPrice()
+	if err != nil {
+		fmt.Println("Cannot send Gas to treasure address: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	// TODO:  Need balance of ETH, need to have at least enough ETH for gas for transaction along with the gas
+	// we are sending to the treasure address
+	balance := services.EthWrapper.CheckBalance(services.MainWalletAddress)
+	if balance.Int64() <= 0 || balance.Int64() < gas.Int64() {
+		errorString := "Cannot send Gas to treasure address due to insufficient balance in wallet.  balance: " +
+			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(gas.Int64())
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+		return
+	}
+
+	_, err = services.EthWrapper.SendETH(services.StringToAddress(treasureToBury.ETHAddr), gas)
+	if err != nil {
+		errorString := "Failure sending " + fmt.Sprint(gas.Int64()) + " Gas to " + treasureToBury.ETHAddr
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+	} else {
+		treasureToBury.PRLStatus = models.GasPending
+		models.DB.ValidateAndUpdate(&treasureToBury)
+	}
+}
+
+func buryPRL(treasureToBury models.Treasure) {
+
+	// TODO:  Need balance of PRL, it should be more than 0
+	// TODO:  Need balance of ETH, it should be more than 0
+
+	/* TODO: Need separate methods for getting balances of PRL and ETH?
+
+	This method is only getting PRL or ETH, not sure which, but need balances of both
+
+	*/
+	balanceOfPRL := services.EthWrapper.CheckBalance(services.StringToAddress(treasureToBury.ETHAddr))
+	balanceOfETH := services.EthWrapper.CheckBalance(services.StringToAddress(treasureToBury.ETHAddr))
+
+	if balanceOfPRL.Int64() <= 0 || balanceOfETH.Int64() <= 0 {
+		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet.  balance of PRL: " +
+			fmt.Sprint(balanceOfPRL.Int64()) + "; balance of ETH: " + fmt.Sprint(balanceOfETH.Int64())
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+		return
+	}
+
+	// TODO:  What else do I need here?
+	callMsg := services.OysterCallMsg{
+		To: services.StringToAddress(treasureToBury.ETHAddr),
+	}
+
+	success := services.EthWrapper.BuryPrl(callMsg)
+	if !success {
+		errorString := "Failure bury  " + treasureToBury.ETHAddr
+		err := errors.New(errorString)
+		raven.CaptureError(err, nil)
+	} else {
+		treasureToBury.PRLStatus = models.BuryPending
 		models.DB.ValidateAndUpdate(&treasureToBury)
 	}
 }
