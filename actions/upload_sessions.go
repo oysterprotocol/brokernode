@@ -76,7 +76,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	alphaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
 	// Start Alpha Session.
 	alphaSession := models.UploadSession{
@@ -156,7 +156,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		fmt.Println(err)
 	}
 
-	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
 	if err != nil {
 		err := errors.New("Could not generate eth keys: " + err.Error())
 		fmt.Println(err)
@@ -332,7 +332,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
-	betaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	betaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
@@ -371,7 +371,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		c.Error(400, err)
 		return err
 	}
-	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
 	if err != nil {
 		err := errors.New("Could not generate eth keys: " + err.Error())
 		fmt.Println(err)
@@ -434,7 +434,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
+	balance, err := EthWrapper.WaitForTransfer(transferAddr)
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
@@ -463,6 +463,6 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 			To:     services.StringToAddress(betaEthAddr),
 			Amount: splitAmount,
 		}
-		services.EthWrapper.SendPRL(callMsg)
+		EthWrapper.SendPRL(callMsg)
 	}
 }

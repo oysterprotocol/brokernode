@@ -11,6 +11,7 @@ import (
 	"github.com/gobuffalo/x/sessions"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/rs/cors"
 	"github.com/unrolled/secure"
 )
@@ -19,6 +20,10 @@ import (
 // application is being run. Default is "development".
 var ENV = envy.Get("GO_ENV", "development")
 var app *buffalo.App
+
+// Visible for Unit Test
+var IotaWrapper = services.IotaWrapper
+var EthWrapper = services.EthWrapper
 
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
@@ -30,7 +35,7 @@ func App() *buffalo.App {
 			LooseSlash:   true,
 			SessionStore: sessions.Null{},
 			PreWares: []buffalo.PreWare{
-				cors.Default().Handler,
+				cors.AllowAll().Handler,
 			},
 			SessionName: "_brokernode_session",
 			WorkerOff:   false,

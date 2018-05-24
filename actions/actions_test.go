@@ -1,14 +1,22 @@
 package actions
 
 import (
-	"github.com/oysterprotocol/brokernode/utils"
 	"testing"
 
 	"github.com/gobuffalo/suite"
+	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type ActionSuite struct {
 	*suite.Action
+}
+
+func (suite *ActionSuite) SetupTest() {
+	suite.Action.SetupTest()
+
+	EthWrapper = services.EthWrapper
+	IotaWrapper = services.IotaWrapper
 }
 
 func Test_ActionSuite(t *testing.T) {
