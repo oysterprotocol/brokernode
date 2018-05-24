@@ -166,13 +166,14 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 			ethAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
 				ETHAddr: ethAddress.Hex(),
+				ETHKey:  decryptedKey,
 				Address: treasureChunk.Address,
 				Message: treasureChunk.Message,
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)
 
-			models.DB.ValidateAndSave(&treasureToBury)
+			models.DB.ValidateAndCreate(&treasureToBury)
 		}
 	}
 }

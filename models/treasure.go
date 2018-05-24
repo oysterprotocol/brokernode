@@ -1,23 +1,29 @@
 package models
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
+	"github.com/oysterprotocol/brokernode/utils"
+	"golang.org/x/crypto/sha3"
 	"math/big"
 	"time"
 )
 
 type PRLStatus int
 
+// IMPORTANT:  Do not remove Message and Address from
+// this struct; they are used for encryption
 type Treasure struct {
 	ID        uuid.UUID `json:"id" db:"id"`
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 	ETHAddr   string    `json:"ethAddr" db:"eth_addr"`
+	ETHKey    string    `json:"ethKey" db:"eth_key"`
 	PRLAmount string    `json:"prlAmount" db:"prl_amount"`
 	PRLStatus PRLStatus `json:"prlStatus" db:"prl_status"`
 	Message   string    `json:"message" db:"message"`
@@ -71,10 +77,11 @@ func (t *Treasure) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) 
 
 func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to PRLWaiting.
-
 	if t.PRLStatus == 0 {
 		t.PRLStatus = PRLWaiting
 	}
+
+	t.EncryptTreasureEthKey()
 
 	return nil
 }
@@ -87,7 +94,7 @@ func (t *Treasure) SetPRLAmount(bigInt *big.Int) (string, error) {
 		return "", err
 	}
 	t.PRLAmount = string(prlAmountAsBytes)
-	DB.ValidateAndSave(t)
+	DB.ValidateAndUpdate(t)
 
 	return t.PRLAmount, nil
 }
@@ -116,4 +123,18 @@ func GetAllTreasuresToBury() ([]Treasure, error) {
 	allTreasures := []Treasure{}
 	err := DB.RawQuery("SELECT * from treasures").All(&allTreasures)
 	return allTreasures, err
+}
+
+func (t *Treasure) EncryptTreasureEthKey() {
+	hashedMessage := oyster_utils.HashString(t.Message, sha3.New256())
+	hashedAddress := oyster_utils.HashString(t.Address, sha3.New256())
+	encryptedKey := oyster_utils.Encrypt(hashedMessage, t.ETHKey, hashedAddress)
+	t.ETHKey = hex.EncodeToString(encryptedKey)
+}
+
+func (t *Treasure) DecryptTreasureEthKey() string {
+	hashedMessage := oyster_utils.HashString(t.Message, sha3.New256())
+	hashedAddress := oyster_utils.HashString(t.Address, sha3.New256())
+	decryptedKey := oyster_utils.Decrypt(hashedMessage, t.ETHKey, hashedAddress)
+	return hex.EncodeToString(decryptedKey)
 }
