@@ -266,6 +266,12 @@ func getCurrentBlock() (*types.Block, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return number of PRL.
 func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
+	balance := checkBalance(brokerAddr)
+	if balance.Int64() > 0 {
+		// Has balance already, don't need to wait for it.
+		return balance, nil
+	}
+
 	client, err := sharedClient("")
 	if err != nil {
 		return big.NewInt(0), err
