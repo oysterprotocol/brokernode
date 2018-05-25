@@ -172,16 +172,6 @@ func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes i
 // BuildDataMaps builds the datamap and inserts them into the DB.
 func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err error) {
 
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-	fmt.Println(genHash)
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-	fmt.Println("GENHASH")
-
 	fileChunksCount := numChunks
 
 	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
