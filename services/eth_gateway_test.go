@@ -21,6 +21,11 @@ import (
 )
 
 //
+// Ethereum Constants
+//
+var oneEther  = big.NewInt(1000000000000000000)
+
+//
 // Ethereum Tests
 //
 
@@ -122,7 +127,7 @@ func Test_sendEth(t *testing.T) {
 	// test account accepting ether
 	testAcct := common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
 	// transfer 1 ether
-	transferValue := big.NewInt(1000000000000000000)
+	transferValue := oneEther
 
 	// Send ether to test account
 	txs, err := services.EthWrapper.SendETH(testAcct, transferValue)
