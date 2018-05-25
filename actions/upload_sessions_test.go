@@ -72,6 +72,9 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 
 	as.True(mockWaitForTransfer.hasCalled)
 	as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
+
+	// mockCheckBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
+	// it again.
 	as.False(mockSendPrl.hasCalled)
 
 	verifyPaymentConfirmation(as, resParsed.ID)
