@@ -425,6 +425,7 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 			if err != nil {
 				session.PaymentStatus = previousPaymentStatus
 			}
+			checkAndSendHalfPrlToBeta(session, balance)
 		}
 	}
 
@@ -467,15 +468,29 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	// Alpha send half of it to Beta
-	if session.Type == models.SessionTypeAlpha && paymentStatus == models.PaymentStatusConfirmed {
-		var splitAmount big.Int
-		splitAmount.Set(balance)
-		splitAmount.Div(balance, big.NewInt(2))
-		callMsg := services.OysterCallMsg{
-			From:   transferAddr,
-			To:     services.StringToAddress(betaEthAddr),
-			Amount: splitAmount,
-		}
-		EthWrapper.SendPRL(callMsg)
+	checkAndSendHalfPrlToBeta(session, balance)
+}
+
+func checkAndSendHalfPrlToBeta(session models.UploadSession, balance *big.Int) {
+	if session.Type != models.SessionTypeAlpha ||
+		session.PaymentStatus != models.PaymentStatusConfirmed ||
+		session.ETHAddrBeta.String == "" {
+		return
 	}
+
+	betaAddr := services.StringToAddress(session.ETHAddrBeta.String)
+	betaBalance := EthWrapper.CheckBalance(betaAddr)
+	if betaBalance.Int64() > 0 {
+		return
+	}
+
+	var splitAmount big.Int
+	splitAmount.Set(balance)
+	splitAmount.Div(balance, big.NewInt(2))
+	callMsg := services.OysterCallMsg{
+		From:   services.StringToAddress(session.ETHAddrAlpha.String),
+		To:     betaAddr,
+		Amount: splitAmount,
+	}
+	EthWrapper.SendPRL(callMsg)
 }

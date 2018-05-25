@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 )
@@ -71,8 +72,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 
 	as.True(mockWaitForTransfer.hasCalled)
 	as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
-	as.True(mockSendPrl.hasCalled)
-	as.Equal(big.NewInt(50), &mockSendPrl.input_msg.Amount)
+	as.False(mockSendPrl.hasCalled)
 
 	verifyPaymentConfirmation(as, resParsed.ID)
 }
@@ -136,21 +136,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 		PaymentStatus: models.PaymentStatusConfirmed,
 	}
 
-	uploadSession1.StartUploadSession()
-
-	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
-	as.Equal(err, nil)
-
-	//execute method
-	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
-
-	// Parse response
-	resParsed := paymentStatusCreateRes{}
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
-	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	resParsed := getPaymentStatus(uploadSession1, as)
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
 	as.False(mockCheckBalance.hasCalled)
@@ -161,39 +147,33 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 	mockCheckBalance := mockCheckBalance{
 		output_int: big.NewInt(10),
 	}
+	mockSendPrl := mockSendPrl{}
 	EthWrapper = services.Eth{
 		CheckBalance: mockCheckBalance.checkBalance,
+		SendPRL:      mockSendPrl.sendPrl,
 	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "genHash1",
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusPending,
+		ETHAddrAlpha:  nulls.NewString("alpha"),
+		ETHAddrBeta:   nulls.NewString("beta"),
 	}
 
-	uploadSession1.StartUploadSession()
-
-	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
-	as.Equal(err, nil)
-
-	//execute method
-	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
-
-	// Parse response
-	resParsed := paymentStatusCreateRes{}
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
-	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	resParsed := getPaymentStatus(uploadSession1, as)
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
-	as.True(mockCheckBalance.hasCalled)
-	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
 
-	err = as.DB.Find(&session, resParsed.ID)
-	as.Nil(err)
-	as.True(session.PaymentStatus == models.PaymentStatusConfirmed)
+	// checkBalance has been called twice. 1st for Alpha, and 2nd for Beta, we only record Beta addr
+	// Since both time, it returns a positive balance, thus, alpha won't call sendPrl method.
+	as.True(mockCheckBalance.hasCalled)
+	as.False(mockSendPrl.hasCalled)
+	as.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckBalance.input_addr)
+
+	session := models.UploadSession{}
+	as.Nil(as.DB.Find(&session, resParsed.ID))
+	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
@@ -209,13 +189,61 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusInvoiced,
+		ETHAddrAlpha:  nulls.NewString("alpha"),
 	}
 
-	uploadSession1.StartUploadSession()
+	resParsed := getPaymentStatus(uploadSession1, as)
+
+	as.Equal("invoiced", resParsed.PaymentStatus)
+	as.True(mockCheckBalance.hasCalled)
+	as.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckBalance.input_addr)
 
 	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
-	as.Equal(err, nil)
+	as.Nil(as.DB.Find(&session, resParsed.ID))
+	as.Equal(models.PaymentStatusInvoiced, session.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
+	mockCheckBalance := mockCheckBalance{
+		output_int: big.NewInt(10),
+	}
+	mockSendPrl := mockSendPrl{}
+	EthWrapper = services.Eth{
+		CheckBalance: mockCheckBalance.checkBalance,
+		SendPRL:      mockSendPrl.sendPrl,
+	}
+
+	uploadSession1 := models.UploadSession{
+		Type:          models.SessionTypeBeta,
+		GenesisHash:   "genHash1",
+		FileSizeBytes: 123,
+		NumChunks:     2,
+		PaymentStatus: models.PaymentStatusInvoiced,
+		ETHAddrAlpha:  nulls.NewString("alpha"),
+	}
+
+	resParsed := getPaymentStatus(uploadSession1, as)
+
+	as.Equal("confirmed", resParsed.PaymentStatus)
+	as.True(mockCheckBalance.hasCalled)
+	as.False(mockSendPrl.hasCalled)
+
+	session := models.UploadSession{}
+	as.Nil(as.DB.Find(&session, resParsed.ID))
+	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
+}
+
+func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
+	//res := as.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
+
+	//TODO: Return better error response when ID does not exist
+}
+
+func getPaymentStatus(seededUploadSession models.UploadSession, as *ActionSuite) paymentStatusCreateRes {
+	seededUploadSession.StartUploadSession()
+
+	session := models.UploadSession{}
+	as.Nil(as.DB.Where("genesis_hash = ?", seededUploadSession.GenesisHash).First(&session))
 
 	//execute method
 	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
@@ -224,22 +252,10 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 	resParsed := paymentStatusCreateRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	as.Nil(err)
-	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
 
-	as.Equal("invoiced", resParsed.PaymentStatus)
-	as.True(mockCheckBalance.hasCalled)
-	as.Equal(services.StringToAddress(session.ETHAddrAlpha.String), mockCheckBalance.input_addr)
+	as.Nil(json.Unmarshal(bodyBytes, &resParsed))
 
-	err = as.DB.Find(&session, resParsed.ID)
-	as.Nil(err)
-	as.True(session.PaymentStatus == models.PaymentStatusInvoiced)
-}
-
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
-	//res := as.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
-
-	//TODO: Return better error response when ID does not exist
+	return resParsed
 }
 
 func verifyPaymentConfirmation(as *ActionSuite, sessionId string) {
