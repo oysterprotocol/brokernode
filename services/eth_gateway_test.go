@@ -118,18 +118,26 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 
 // wip - send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	t.Skip(nil)
+	
 	// test account accepting ether
-	testAcct := common.HexToAddress("f10a2706e98ef86b6866ae6cab2e0ca501fdf091")
-	transferValue := new(big.Int).SetUint64(1)
+	testAcct := common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
+	// transfer 1 ether
+	transferValue := big.NewInt(1000000000000000000)
 
 	// Send ether to test account
-	raw, err := services.EthWrapper.SendETH(testAcct, transferValue)
+	txs, err := services.EthWrapper.SendETH(testAcct, transferValue)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v", transferValue, testAcct.Hex())
 		t.Fatalf("transaction error: %v", err)
 	}
-	t.Logf("raw transaction : %v", raw)
+	for tx := range txs {
+		transaction := txs[tx]
+		t.Logf("tx to     : %v", transaction.To().Hash().String())
+		// subscribe to transaction hash
+		t.Logf("tx hash   : %v", transaction.Hash().String())
+		t.Logf("tx amount : %v", transaction.Value())
+		t.Logf("tx cost   : %v", transaction.Cost())
+	}
 }
 
 //
@@ -138,7 +146,7 @@ func Test_sendEth(t *testing.T) {
 
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
-
+	t.Skip(nil)
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
@@ -172,6 +180,7 @@ func Test_deployOysterPearl(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
+	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial("http://54.86.134.172:8080")
 	// prl test 1 0x1be77862769ab791c4f95f8a2cbd0d3e07a3fd1f
@@ -188,25 +197,28 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 
 // test sending PRLs from OysterPearl Contract
 func Test_transferPRLFromOysterPearl(t *testing.T) {
-
+	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial("http://54.86.134.172:8080")
-	oysterPearl, err := services.NewOysterPearl(common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d"), backend)
+	test1PRLAcct := common.HexToAddress("0x1be77862769ab791c4f95f8a2cbd0d3e07a3fd1f")
+	//test2PRLAcct := common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
+	passPhrase := "oysterby4000"
+	oysterContract := common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d")
+	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
 	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v",err)
+		t.Fatalf("unable to access contract instance at : %v",err)
 	}
 
 	walletKey := os.Getenv("MAIN_WALLET_KEY")
-	t.Logf("using wallet key:%v", walletKey)
+	t.Logf("using wallet key store: %v", walletKey)
 
 	// Create an authorized transactor and spend 1 PRL
-	auth, err := bind.NewTransactor(strings.NewReader(walletKey), "oysterby4000")
+	auth, err := bind.NewTransactor(strings.NewReader(walletKey), passPhrase)
 	if err != nil {
-		t.Fatalf("unable to create a new transactor :%v", err)
+		t.Fatalf("unable to create a new transactor : %v", err)
 	}
 
-	//test1PRLAcct := common.HexToAddress("0x1be77862769ab791c4f95f8a2cbd0d3e07a3fd1f")
-	//test2PRLAcct := common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
+	t.Logf("authorized transactor : %v", auth.From.Hex())
 
 	// wrap the oyster pearl contract instance into a session
 	session := &services.OysterPearlSession{
@@ -220,8 +232,20 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 			GasLimit: big.NewInt(3141592).Uint64(),
 		},
 	}
-	session.Name()
-	session.Transfer(common.HexToAddress("0x0000000000000000000000000000000000000000"), big.NewInt(1))
+
+	// transfer single prl
+	tx, err := session.Transfer(test1PRLAcct, big.NewInt(1))
+
+	if err != nil {
+		t.Fatalf("transfer failed : %v", err)
+	}
+	t.Logf("tx sent : %v", tx.Value())
+	bal, err := session.BalanceOf(test1PRLAcct)
+	if err != nil {
+		t.Fatalf("balance of failed : %v", err)
+	}
+
+	t.Logf("new balance: %v", bal.Uint64())
 }
 
 //
