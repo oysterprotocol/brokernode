@@ -138,7 +138,7 @@ func testNewCompletedUpload(ms *ModelSuite) {
 	fileBytesCount := 2500
 
 	err := models.NewCompletedUpload(models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeBeta,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
@@ -148,7 +148,7 @@ func testNewCompletedUpload(ms *ModelSuite) {
 	ms.Equal(nil, err)
 
 	err = models.NewCompletedUpload(models.UploadSession{
-		GenesisHash:   "genHash2",
+		GenesisHash:   "abcdeff2",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeAlpha,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
@@ -158,7 +158,7 @@ func testNewCompletedUpload(ms *ModelSuite) {
 	ms.Equal(nil, err)
 
 	err = models.NewCompletedUpload(models.UploadSession{ // no session type
-		GenesisHash:   "genHash3",
+		GenesisHash:   "abcdeff3",
 		FileSizeBytes: fileBytesCount,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
@@ -174,12 +174,12 @@ func testNewCompletedUpload(ms *ModelSuite) {
 	ms.Equal(2, len(completedUploads))
 
 	for _, completedUpload := range completedUploads {
-		ms.Equal(true, completedUpload.GenesisHash == "genHash1" ||
-			completedUpload.GenesisHash == "genHash2")
-		if completedUpload.GenesisHash == "genHash1" {
+		ms.Equal(true, completedUpload.GenesisHash == "abcdeff1" ||
+			completedUpload.GenesisHash == "abcdeff2")
+		if completedUpload.GenesisHash == "abcdeff1" {
 			ms.Equal("SOME_BETA_ETH_ADDRESS", completedUpload.ETHAddr)
 		}
-		if completedUpload.GenesisHash == "genHash2" {
+		if completedUpload.GenesisHash == "abcdeff2" {
 			ms.Equal("SOME_ALPHA_ETH_ADDRESS", completedUpload.ETHAddr)
 		}
 	}
