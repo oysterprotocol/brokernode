@@ -126,15 +126,15 @@ func GetAllTreasuresToBury() ([]Treasure, error) {
 }
 
 func (t *Treasure) EncryptTreasureEthKey() {
-	hashedMessage := oyster_utils.HashString(t.Message, sha3.New256())
-	hashedAddress := oyster_utils.HashString(t.Address, sha3.New256())
+	hashedMessage := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Message)), sha3.New256())
+	hashedAddress := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Address)), sha3.New256())
 	encryptedKey := oyster_utils.Encrypt(hashedMessage, t.ETHKey, hashedAddress)
 	t.ETHKey = hex.EncodeToString(encryptedKey)
 }
 
 func (t *Treasure) DecryptTreasureEthKey() string {
-	hashedMessage := oyster_utils.HashString(t.Message, sha3.New256())
-	hashedAddress := oyster_utils.HashString(t.Address, sha3.New256())
+	hashedMessage := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Message)), sha3.New256())
+	hashedAddress := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Address)), sha3.New256())
 	decryptedKey := oyster_utils.Decrypt(hashedMessage, t.ETHKey, hashedAddress)
 	return hex.EncodeToString(decryptedKey)
 }

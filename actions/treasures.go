@@ -29,6 +29,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
+
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
 	if err == nil && verify {

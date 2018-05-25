@@ -125,8 +125,8 @@ func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
 		return "", err
 	}
 
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(session.ID), sha3.New256())
-	hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(d.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(session.ID))), sha3.New256())
+	hashedChunkCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(d.CreatedAt))), sha3.New256())
 
 	decryptedKey := oyster_utils.Encrypt(hashedSessionID, unencryptedKey, hashedChunkCreationTime)
 	return hex.EncodeToString(decryptedKey), nil
@@ -143,8 +143,8 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 		return "", err
 	}
 
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(session.ID), sha3.New256())
-	hashedChunkCreationTime := oyster_utils.HashString(fmt.Sprint(d.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(session.ID))), sha3.New256())
+	hashedChunkCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(d.CreatedAt))), sha3.New256())
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, encryptedKey, hashedChunkCreationTime)
 	return hex.EncodeToString(decryptedKey), nil
@@ -156,21 +156,31 @@ func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes i
 
 	currHash := genHash
 	for i := 0; i < sectorIdx*oyster_utils.FileSectorInChunkSize; i++ {
-		currHash = oyster_utils.HashString(currHash, sha256.New())
+		currHash = oyster_utils.HashHex(currHash, sha256.New())
 	}
 
 	for i := 0; i < maxNumOfHashes; i++ {
-		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
+		obfuscatedHash := oyster_utils.HashHex(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		addr = append(addr, currAddr)
-		currHash = oyster_utils.HashString(currHash, sha256.New())
+		currHash = oyster_utils.HashHex(currHash, sha256.New())
 	}
 	return addr
 }
 
 // BuildDataMaps builds the datamap and inserts them into the DB.
 func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err error) {
+
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
+	fmt.Println(genHash)
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
+	fmt.Println("GENHASH")
 
 	fileChunksCount := numChunks
 
@@ -185,7 +195,8 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 	currHash := genHash
 	insertionCount := 0
 	for i := 0; i < fileChunksCount; i++ {
-		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
+
+		obfuscatedHash := oyster_utils.HashHex(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		dataMap := DataMap{
@@ -200,7 +211,7 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 		vErr, _ = dataMap.Validate(nil)
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
 
-		currHash = oyster_utils.HashString(currHash, sha256.New())
+		currHash = oyster_utils.HashHex(currHash, sha256.New())
 
 		insertionCount++
 		if insertionCount >= MaxNumberOfValueForInsertOperation {
@@ -220,7 +231,7 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 
 	currentHash := sha256Hash
 	for i := 0; i <= keyLocation; i++ {
-		currentHash = oyster_utils.HashString(currentHash, sha3.New256())
+		currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
 	}
 
 	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, sha256Hash)
@@ -251,7 +262,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 	}
 
 	// return value is an interface like this:
-	// genHashes := []interface{}{"genHash1", "genHash2", "genHash3", "genHash4"}
+	// genHashes := []interface{}{"abcdeff1", "abcdeff2", "abcdeff3", "abcdeff4"}
 	// need it in this form for "Where in {?)" queries
 	return genHashInterface, nil
 }
@@ -414,7 +425,7 @@ func GetDataMap(genHash string, numChunks int) (dataMaps []DataMap, vErr *valida
 
 	currHash := genHash
 	for i := 0; i < fileChunksCount; i++ {
-		obfuscatedHash := oyster_utils.HashString(currHash, sha512.New384())
+		obfuscatedHash := oyster_utils.HashHex(currHash, sha512.New384())
 		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
 
 		dataMap := DataMap{

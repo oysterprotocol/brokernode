@@ -48,6 +48,14 @@ func HashString(str string, shaAlg hash.Hash) (h string) {
 	return
 }
 
+func HashHex(hexStr string, shaAlg hash.Hash) (h string) {
+	input, err := hex.DecodeString(hexStr)
+	panicOnErr(err)
+	shaAlg.Write(input)
+	h = hex.EncodeToString(shaAlg.Sum(nil))
+	return
+}
+
 func panicOnErr(err error) {
 	// this is just so that the same 3 lines aren't repeated
 	// throughout the encrypt/decrypt functions

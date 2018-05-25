@@ -47,7 +47,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	}
 
 	res := as.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
-		"genesisHash":          "genesisHashTest",
+		"genesisHash":          "abcdef",
 		"fileSizeBytes":        123,
 		"numChunks":            2,
 		"storageLengthInYears": 1,
@@ -61,7 +61,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	as.Nil(err)
 
 	as.Equal(200, res.Code)
-	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
+	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
 	as.NotEqual(0, resParsed.Invoice.Cost)
@@ -92,7 +92,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	}
 
 	res := as.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
-		"genesisHash":          "genesisHashTest",
+		"genesisHash":          "abcdef",
 		"fileSizeBytes":        123,
 		"numChunks":            2,
 		"storageLengthInYears": 1,
@@ -107,7 +107,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Nil(err)
 
 	as.Equal(200, res.Code)
-	as.Equal("genesisHashTest", resParsed.UploadSession.GenesisHash)
+	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
 	as.True(1 == len(resParsed.BetaTreasureIndexes))
@@ -130,7 +130,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 		CheckBalance: mockCheckBalance.checkBalance,
 	}
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusConfirmed,
@@ -139,7 +139,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	uploadSession1.StartUploadSession()
 
 	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := as.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	as.Equal(err, nil)
 
 	//execute method
@@ -165,7 +165,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 		CheckBalance: mockCheckBalance.checkBalance,
 	}
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusPending,
@@ -174,7 +174,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 	uploadSession1.StartUploadSession()
 
 	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := as.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	as.Equal(err, nil)
 
 	//execute method
@@ -205,7 +205,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 		CheckBalance: mockCheckBalance.checkBalance,
 	}
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusInvoiced,
@@ -214,7 +214,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 	uploadSession1.StartUploadSession()
 
 	session := models.UploadSession{}
-	err := as.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := as.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	as.Equal(err, nil)
 
 	//execute method
