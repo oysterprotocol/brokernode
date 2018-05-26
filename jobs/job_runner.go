@@ -3,15 +3,22 @@ package jobs
 import (
 	"github.com/gobuffalo/buffalo/worker"
 	"github.com/oysterprotocol/brokernode/services"
+	"reflect"
+	"runtime"
 	"time"
 )
 
-var BundleSize = 100
+const (
+	BundleSize = 100
+	Duration   = "duration"
+)
 
 var OysterWorker = worker.NewSimple()
 
-var IotaWrapper = services.IotaWrapper
-var EthWrapper = services.EthWrapper
+var (
+	IotaWrapper = services.IotaWrapper
+	EthWrapper  = services.EthWrapper
+)
 
 func init() {
 	registerHandlers(OysterWorker)
@@ -20,173 +27,126 @@ func init() {
 }
 
 func registerHandlers(oysterWorker *worker.Simple) {
-	oysterWorker.Register("flushOldWebnodesHandler", flushOldWebnodesHandler)
-	oysterWorker.Register("processUnassignedChunksHandler", processUnassignedChunksHandler)
-	oysterWorker.Register("purgeCompletedSessionsHandler", purgeCompletedSessionsHandler)
-	oysterWorker.Register("verifyDataMapsHandler", verifyDataMapsHandler)
-	oysterWorker.Register("updateTimedOutDataMapsHandler", updateTimedOutDataMapsHandler)
-	oysterWorker.Register("processPaidSessionsHandler", processPaidSessionsHandler)
-	oysterWorker.Register("claimUnusedPRLsHandler", claimUnusedPRLsHandler)
+	oysterWorker.Register(getFunctionName(flushOldWebnodesHandler), flushOldWebnodesHandler)
+	oysterWorker.Register(getFunctionName(processUnassignedChunksHandler), processUnassignedChunksHandler)
+	oysterWorker.Register(getFunctionName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler)
+	oysterWorker.Register(getFunctionName(verifyDataMapsHandler), verifyDataMapsHandler)
+	oysterWorker.Register(getFunctionName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
+	oysterWorker.Register(getFunctionName(processPaidSessionsHandler), processPaidSessionsHandler)
+	oysterWorker.Register(getFunctionName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
+	oysterWorker.Register(getFunctionName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
 }
 
 func doWork(oysterWorker *worker.Simple) {
-	flushOldWebnodesJob := worker.Job{
-		Queue:   "default",
-		Handler: "flushOldWebnodesHandler",
-		Args: worker.Args{
-			"duration": 5 * time.Minute,
-		},
-	}
+	oysterWorkerPerformIn(flushOldWebnodesHandler,
+		worker.Args{
+			Duration: 5 * time.Minute,
+		})
 
-	processUnassignedChunksJob := worker.Job{
-		Queue:   "default",
-		Handler: "processUnassignedChunksHandler",
-		Args: worker.Args{
-			"duration": time.Duration(services.GetProcessingFrequency()) * time.Second,
-		},
-	}
+	oysterWorkerPerformIn(processUnassignedChunksHandler,
+		worker.Args{
+			Duration: time.Duration(services.GetProcessingFrequency()) * time.Second,
+		})
 
-	purgeCompletedSessionsJob := worker.Job{
-		Queue:   "default",
-		Handler: "purgeCompletedSessionsHandler",
-		Args: worker.Args{
-			"duration": 60 * time.Second,
-		},
-	}
+	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
+		worker.Args{
+			Duration: 60 * time.Second,
+		})
 
-	verifyDataMapsJob := worker.Job{
-		Queue:   "default",
-		Handler: "verifyDataMapsHandler",
-		Args: worker.Args{
-			"duration": 30 * time.Second,
-		},
-	}
+	oysterWorkerPerformIn(verifyDataMapsHandler,
+		worker.Args{
+			Duration: 30 * time.Second,
+		})
 
-	updateTimedOutDataMapsJob := worker.Job{
-		Queue:   "default",
-		Handler: "updateTimedOutDataMapsHandler",
-		Args: worker.Args{
-			"duration": 60 * time.Second,
-		},
-	}
+	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
+		worker.Args{
+			Duration: 60 * time.Second,
+		})
 
-	processPaidSessionsJob := worker.Job{
-		Queue:   "default",
-		Handler: "processPaidSessionsHandler",
-		Args: worker.Args{
-			"duration": 30 * time.Second,
-		},
-	}
+	oysterWorkerPerformIn(processPaidSessionsHandler,
+		worker.Args{
+			Duration: 30 * time.Second,
+		})
 
-	claimUnusedPRLsJob := worker.Job{
-		Queue:   "default",
-		Handler: "claimUnusedPRLsHandler",
-		Args: worker.Args{
-			"duration": 10 * time.Minute,
-		},
-	}
+	oysterWorkerPerformIn(claimUnusedPRLsHandler,
+		worker.Args{
+			Duration: 10 * time.Minute,
+		})
 
-	oysterWorker.PerformIn(flushOldWebnodesJob, flushOldWebnodesJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(processUnassignedChunksJob, processUnassignedChunksJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(purgeCompletedSessionsJob, purgeCompletedSessionsJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(verifyDataMapsJob, verifyDataMapsJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(updateTimedOutDataMapsJob, updateTimedOutDataMapsJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(processPaidSessionsJob, processPaidSessionsJob.Args["duration"].(time.Duration))
-	oysterWorker.PerformIn(claimUnusedPRLsJob, claimUnusedPRLsJob.Args["duration"].(time.Duration))
+	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
+		worker.Args{
+			Duration: 24 * time.Hour,
+		})
 }
 
-var flushOldWebnodesHandler = func(args worker.Args) error {
+func flushOldWebnodesHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-20 * time.Minute) // webnodes older than 20 minutes get deleted
 	FlushOldWebNodes(thresholdTime)
 
-	flushOldWebnodesJob := worker.Job{
-		Queue:   "default",
-		Handler: "flushOldWebnodesHandler",
-		Args:    args,
-	}
-	OysterWorker.PerformIn(flushOldWebnodesJob, flushOldWebnodesJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(flushOldWebnodesHandler, args)
 	return nil
 }
 
-var processUnassignedChunksHandler = func(args worker.Args) error {
+func processUnassignedChunksHandler(args worker.Args) error {
 	ProcessUnassignedChunks(IotaWrapper)
 
-	processUnassignedChunksJob := worker.Job{
-		Queue:   "default",
-		Handler: "processUnassignedChunksHandler",
-		Args: worker.Args{
-			"duration": time.Duration(services.GetProcessingFrequency()) * time.Second,
-		},
-	}
-
-	OysterWorker.PerformIn(processUnassignedChunksJob, processUnassignedChunksJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(processUnassignedChunksHandler, args)
 	return nil
 }
 
-var purgeCompletedSessionsHandler = func(args worker.Args) error {
+func purgeCompletedSessionsHandler(args worker.Args) error {
 	PurgeCompletedSessions()
 
-	purgeCompletedSessionsJob := worker.Job{
-		Queue:   "default",
-		Handler: "purgeCompletedSessionsHandler",
-		Args:    args,
-	}
-	OysterWorker.PerformIn(purgeCompletedSessionsJob, purgeCompletedSessionsJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(purgeCompletedSessionsHandler, args)
 	return nil
 }
 
-var verifyDataMapsHandler = func(args worker.Args) error {
+func verifyDataMapsHandler(args worker.Args) error {
 	VerifyDataMaps(IotaWrapper)
 
-	verifyDataMapsJob := worker.Job{
-		Queue:   "default",
-		Handler: "verifyDataMapsHandler",
-		Args:    args,
-	}
-	OysterWorker.PerformIn(verifyDataMapsJob, verifyDataMapsJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(verifyDataMapsHandler, args)
 	return nil
 }
 
-var updateTimedOutDataMapsHandler = func(args worker.Args) error {
+func updateTimedOutDataMapsHandler(args worker.Args) error {
 	UpdateTimeOutDataMaps(time.Now().Add(-1 * time.Minute))
 
-	updateTimedOutDataMapsJob := worker.Job{
-		Queue:   "default",
-		Handler: "updateTimedOutDataMapsHandler",
-		Args:    args,
-	}
-	OysterWorker.PerformIn(updateTimedOutDataMapsJob, updateTimedOutDataMapsJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(updateTimedOutDataMapsHandler, args)
 	return nil
 }
 
-var processPaidSessionsHandler = func(args worker.Args) error {
+func processPaidSessionsHandler(args worker.Args) error {
 	ProcessPaidSessions()
 
-	processPaidSessionsJob := worker.Job{
-		Queue:   "default",
-		Handler: "processPaidSessionsHandler",
-		Args:    args,
-	}
-	OysterWorker.PerformIn(processPaidSessionsJob, processPaidSessionsJob.Args["duration"].(time.Duration))
-
+	oysterWorkerPerformIn(processPaidSessionsHandler, args)
 	return nil
 }
 
-var claimUnusedPRLsHandler = func(args worker.Args) error {
+func claimUnusedPRLsHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
 	ClaimUnusedPRLs(EthWrapper, thresholdTime)
 
-	claimUnusedPRLsJob := worker.Job{
+	oysterWorkerPerformIn(claimUnusedPRLsHandler, args)
+	return nil
+}
+
+func removeUnpaidUploadSessionHandler(args worker.Args) error {
+	RemoveUpaidUploadSession()
+
+	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
+	return nil
+}
+
+func oysterWorkerPerformIn(handler worker.Handler, args worker.Args) {
+	job := worker.Job{
 		Queue:   "default",
-		Handler: "claimUnusedPRLsHandler",
+		Handler: getFunctionName(handler),
 		Args:    args,
 	}
-	OysterWorker.PerformIn(claimUnusedPRLsJob, claimUnusedPRLsJob.Args["duration"].(time.Duration))
+	OysterWorker.PerformIn(job, args[Duration].(time.Duration))
+}
 
-	return nil
+// Return the name of the function format as package_name.function_name
+func getFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
