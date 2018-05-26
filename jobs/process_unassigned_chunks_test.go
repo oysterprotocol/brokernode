@@ -21,8 +21,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	numChunks := 31
 
-	// reset back to generic mocks
-	defer suite.SetupSuite()
+	// // reset back to generic mocks
+	// defer suite.SetupSuite()
 
 	// make suite available inside mock methods
 	Suite = *suite
@@ -141,9 +141,6 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 func (suite *JobsSuite) Test_HandleTreasureChunks() {
 
 	numChunks := 25
-
-	// reset back to generic mocks
-	defer suite.SetupSuite()
 
 	// make suite available inside mock methods
 	Suite = *suite

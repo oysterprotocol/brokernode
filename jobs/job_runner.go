@@ -126,7 +126,7 @@ func processPaidSessionsHandler(args worker.Args) error {
 
 func claimUnusedPRLsHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
-	ClaimUnusedPRLs(EthWrapper, thresholdTime)
+	ClaimUnusedPRLs(thresholdTime)
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler, args)
 	return nil

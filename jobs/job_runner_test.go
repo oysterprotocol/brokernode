@@ -1,12 +1,14 @@
 package jobs_test
 
 import (
+	"testing"
+
 	"github.com/gobuffalo/suite"
 	"github.com/iotaledger/giota"
+	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"testing"
 )
 
 var IotaMock services.IotaService
@@ -17,7 +19,13 @@ type JobsSuite struct {
 
 var Suite JobsSuite
 
-func (suite *JobsSuite) SetupSuite() {
+func (suite *JobsSuite) SetupTest() {
+	suite.Model.SetupTest()
+
+	// Reset the jobs's IotaWrapper, EthWrapper before each test.
+	// Some tests may override this value.
+	jobs.IotaWrapper = services.IotaWrapper
+	jobs.EthWrapper = services.EthWrapper
 
 	/*
 		This creates a "generic" mock of our iota wrapper. we can assign

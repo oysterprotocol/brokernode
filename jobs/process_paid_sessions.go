@@ -8,11 +8,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"log"
 )
-
-func init() {
-}
 
 func ProcessPaidSessions() {
 
@@ -61,9 +57,8 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
 			errString := "did not find a chunk that matched genesis_hash and chunk_idx in process_paid_sessions, or " +
 				"found duplicate chunks"
-			log.Println(errString)
 			err = errors.New(errString)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err)
 			return err
 		}
 
@@ -199,7 +194,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		errorString := "Failure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " +
 			treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 	} else {
 		treasureToBury.PRLStatus = models.PRLPending
 		models.DB.ValidateAndUpdate(&treasureToBury)
@@ -222,7 +217,7 @@ func sendGas(treasureToBury models.Treasure) {
 		errorString := "Cannot send Gas to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(gas.Int64())
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return
 	}
 
@@ -230,7 +225,7 @@ func sendGas(treasureToBury models.Treasure) {
 	if err != nil {
 		errorString := "Failure sending " + fmt.Sprint(gas.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 	} else {
 		treasureToBury.PRLStatus = models.GasPending
 		models.DB.ValidateAndUpdate(&treasureToBury)
@@ -254,7 +249,7 @@ func buryPRL(treasureToBury models.Treasure) {
 		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet.  balance of PRL: " +
 			fmt.Sprint(balanceOfPRL.Int64()) + "; balance of ETH: " + fmt.Sprint(balanceOfETH.Int64())
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return
 	}
 
@@ -267,7 +262,7 @@ func buryPRL(treasureToBury models.Treasure) {
 	if !success {
 		errorString := "Failure bury  " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 	} else {
 		treasureToBury.PRLStatus = models.BuryPending
 		models.DB.ValidateAndUpdate(&treasureToBury)

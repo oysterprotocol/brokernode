@@ -2,16 +2,12 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
-	"gopkg.in/segmentio/analytics-go.v3"
 	"time"
 
-	raven "github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
-
-func init() {
-}
 
 func FlushOldWebNodes(thresholdTime time.Time) {
 
@@ -19,19 +15,17 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 	err := models.DB.Where("updated_at <= ?", thresholdTime).All(&webnodes)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	} else {
-		for i := 0; i < len(webnodes); i++ {
-			oyster_utils.LogToSegment("flush_old_wednodes: flushing_old_webnode", analytics.NewProperties().
-				Set("webnode_id", fmt.Sprint(webnodes[i].ID)).
-				Set("webnode_address", webnodes[i].Address))
+		oyster_utils.LogIfError(err)
+		return
+	}
 
-			webnode := webnodes[i]
-			err := models.DB.Destroy(&webnode)
-			if err != nil {
-				raven.CaptureError(err, nil)
-			}
-		}
+	for i := 0; i < len(webnodes); i++ {
+		oyster_utils.LogToSegment("flush_old_wednodes: flushing_old_webnode", analytics.NewProperties().
+			Set("webnode_id", fmt.Sprint(webnodes[i].ID)).
+			Set("webnode_address", webnodes[i].Address))
+
+		webnode := webnodes[i]
+		err := models.DB.Destroy(&webnode)
+		oyster_utils.LogIfError(err)
 	}
 }

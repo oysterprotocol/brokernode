@@ -3,23 +3,15 @@ package jobs
 import (
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"log"
 	"time"
 )
 
-var ethWrapper = services.EthWrapper
-
-func init() {
-}
-
-func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
+func ClaimUnusedPRLs(thresholdTime time.Time) {
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
-		SetEthWrapper(ethService)
-
 		ResendTimedOutGasTransfers(thresholdTime)
 		ResendTimedOutPRLTransfers(thresholdTime)
 
@@ -31,10 +23,6 @@ func ClaimUnusedPRLs(ethService services.Eth, thresholdTime time.Time) {
 
 		PurgeCompletedClaims()
 	}
-}
-
-func SetEthWrapper(ethService services.Eth) {
-	ethWrapper = ethService
 }
 
 // for gas transfers that are still processing by the time of the threshold
@@ -160,7 +148,7 @@ func StartNewClaims() {
 
 // wraps calls eth_gatway's SendGas method and sets GasStatus to GasTransferProcessing
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
-	err := ethWrapper.SendGas(uploadsThatNeedGas)
+	err := EthWrapper.SendGas(uploadsThatNeedGas)
 	if err != nil {
 		log.Println("Error sending gas.")
 		raven.CaptureError(err, nil)
@@ -172,7 +160,7 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 
 // wraps calls eth_gatway's ClaimUnusedPRLs method and sets GasStatus to GasTransferProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
-	err := ethWrapper.ClaimUnusedPRLs(uploadsWithUnclaimedPRLs)
+	err := EthWrapper.ClaimUnusedPRLs(uploadsWithUnclaimedPRLs)
 	if err != nil {
 		log.Println("Error claiming PRL.")
 		raven.CaptureError(err, nil)
