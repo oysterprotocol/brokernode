@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
 	"log"
 	"math"
@@ -15,6 +13,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/getsentry/raven-go"
+	"github.com/gobuffalo/pop/nulls"
 )
 
 const (
@@ -226,4 +227,12 @@ func ConvertToWeiUnit(prl *big.Float) *big.Int {
 func ConverFromWeiUnit(wei *big.Int) *big.Float {
 	weiInFloat := new(big.Float).SetInt(wei)
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
+}
+
+/* Log any error if it is not nil. */
+func LogIfError(err error) {
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
 }

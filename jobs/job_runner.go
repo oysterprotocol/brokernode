@@ -1,13 +1,13 @@
 package jobs
 
 import (
-	"fmt"
-	raven "github.com/getsentry/raven-go"
-	"github.com/gobuffalo/buffalo/worker"
-	"github.com/oysterprotocol/brokernode/services"
 	"reflect"
 	"runtime"
 	"time"
+
+	"github.com/gobuffalo/buffalo/worker"
+	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 const (
@@ -29,14 +29,14 @@ func init() {
 }
 
 func registerHandlers(oysterWorker *worker.Simple) {
-	logIfError(oysterWorker.Register(getHandlerName(flushOldWebnodesHandler), flushOldWebnodesHandler))
-	logIfError(oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler))
-	logIfError(oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler))
-	logIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler))
-	logIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler))
-	logIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler))
-	logIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
-	logIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(flushOldWebnodesHandler), flushOldWebnodesHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler))
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -145,14 +145,7 @@ func oysterWorkerPerformIn(handler worker.Handler, args worker.Args) {
 		Handler: getHandlerName(handler),
 		Args:    args,
 	}
-	logIfError(OysterWorker.PerformIn(job, args[Duration].(time.Duration)))
-}
-
-func logIfError(err error) {
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(OysterWorker.PerformIn(job, args[Duration].(time.Duration)))
 }
 
 // Return the name of the handler in full path.
