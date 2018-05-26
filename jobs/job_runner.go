@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"fmt"
+	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo/worker"
 	"github.com/oysterprotocol/brokernode/services"
 	"reflect"
@@ -27,14 +29,14 @@ func init() {
 }
 
 func registerHandlers(oysterWorker *worker.Simple) {
-	oysterWorker.Register(getFunctionName(flushOldWebnodesHandler), flushOldWebnodesHandler)
-	oysterWorker.Register(getFunctionName(processUnassignedChunksHandler), processUnassignedChunksHandler)
-	oysterWorker.Register(getFunctionName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler)
-	oysterWorker.Register(getFunctionName(verifyDataMapsHandler), verifyDataMapsHandler)
-	oysterWorker.Register(getFunctionName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
-	oysterWorker.Register(getFunctionName(processPaidSessionsHandler), processPaidSessionsHandler)
-	oysterWorker.Register(getFunctionName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
-	oysterWorker.Register(getFunctionName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
+	logIfError(oysterWorker.Register(getHandlerName(flushOldWebnodesHandler), flushOldWebnodesHandler))
+	logIfError(oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler))
+	logIfError(oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler))
+	logIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler))
+	logIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler))
+	logIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler))
+	logIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
+	logIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler))
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -140,13 +142,21 @@ func removeUnpaidUploadSessionHandler(args worker.Args) error {
 func oysterWorkerPerformIn(handler worker.Handler, args worker.Args) {
 	job := worker.Job{
 		Queue:   "default",
-		Handler: getFunctionName(handler),
+		Handler: getHandlerName(handler),
 		Args:    args,
 	}
-	OysterWorker.PerformIn(job, args[Duration].(time.Duration))
+	logIfError(OysterWorker.PerformIn(job, args[Duration].(time.Duration)))
 }
 
-// Return the name of the function format as package_name.function_name
-func getFunctionName(i interface{}) string {
+func logIfError(err error) {
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
+}
+
+// Return the name of the handler in full path.
+// ex: github.com/oysterprotocol/brokernode/jobs.flushOldWebnodesHandler
+func getHandlerName(i worker.Handler) string {
 	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
