@@ -1,27 +1,18 @@
 package jobs
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
-func init() {
-}
-
 func UpdateTimeOutDataMaps(thresholdTime time.Time) {
-
 	timedOutDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err)
 
 	if len(timedOutDataMaps) > 0 {
 

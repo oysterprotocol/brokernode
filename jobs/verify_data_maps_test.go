@@ -11,9 +11,6 @@ var (
 )
 
 func (suite *JobsSuite) Test_VerifyDataMaps() {
-	// reset back to generic mocks
-	defer suite.SetupSuite()
-
 	// make suite available inside mock methods
 	Suite = *suite
 

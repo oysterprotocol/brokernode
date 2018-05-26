@@ -12,16 +12,10 @@ import (
 	"time"
 )
 
-func init() {
-}
-
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
 	sessions, err := models.GetSessionsByAge()
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err)
 
 	if len(sessions) > 0 {
 		GetSessionUnassignedChunks(sessions, iotaWrapper)
@@ -31,10 +25,8 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper services.IotaService) {
 	for _, session := range sessions {
 		channels, err := models.GetReadyChannels()
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err)
+
 		if len(channels) <= 0 {
 			break
 		}
@@ -97,10 +89,7 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		chunks, treasureChunksNeedAttaching := HandleTreasureChunks(chunksIn[i:end], session, iotaWrapper)
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(chunks)
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err)
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
@@ -272,10 +261,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err)
 
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
