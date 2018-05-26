@@ -17,7 +17,6 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 			return big.NewInt(0)
 		},
 	}
-
 	addStartUploadSession(suite, "UploadSessionsAndDataMap_Expired", models.PaymentStatusInvoiced, true)
 	addStartUploadSession(suite, "UploadSessionsAndDataMap_NoExpired", models.PaymentStatusInvoiced, false)
 
@@ -40,7 +39,6 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 			return big.NewInt(10)
 		},
 	}
-
 	addStartUploadSession(suite, "HasBalance", models.PaymentStatusInvoiced, true)
 
 	jobs.RemoveUnpaidUploadSession()
@@ -54,7 +52,6 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 			return big.NewInt(0)
 		},
 	}
-
 	addOnlySession(suite, "OnlyRemoveUploadSession_Expired", models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, "OnlyRemoveUploadSession_NoExpired", models.PaymentStatusInvoiced, false)
 
