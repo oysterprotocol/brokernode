@@ -133,7 +133,7 @@ func claimUnusedPRLsHandler(args worker.Args) error {
 }
 
 func removeUnpaidUploadSessionHandler(args worker.Args) error {
-	RemoveUpaidUploadSession()
+	RemoveUnpaidUploadSession()
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
 	return nil
