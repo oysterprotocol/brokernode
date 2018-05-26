@@ -22,7 +22,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "UploadSessionsAndDataMap_NoExpired")
+	verifyData(suite, "UploadSessionsAndDataMap_NoExpired", true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
@@ -30,7 +30,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "AllPaid")
+	verifyData(suite, "AllPaid", true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
@@ -43,7 +43,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "HasBalance")
+	verifyData(suite, "HasBalance", true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
@@ -57,7 +57,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "OnlyRemoveUploadSession_NoExpired")
+	verifyData(suite, "OnlyRemoveUploadSession_NoExpired", false)
 }
 
 func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus int, isExpired bool) {
@@ -102,15 +102,18 @@ func addOnlySession(suite *JobsSuite, genesisHash string, paymentStatus int, isE
 	}
 }
 
-func verifyData(suite *JobsSuite, expectedDenesisHash string) {
+func verifyData(suite *JobsSuite, expectedDenesisHash string, expectToHaveDataMap bool) {
 	var sessions []models.UploadSession
 	suite.Nil(suite.DB.RawQuery("SELECT * from upload_sessions").All(&sessions))
 	suite.Equal(1, len(sessions))
 	suite.Equal(expectedDenesisHash, sessions[0].GenesisHash)
 
-	var dataMaps []models.DataMap
-	suite.Nil(suite.DB.RawQuery("SELECT * from data_maps").All(&dataMaps))
-	for _, dataMap := range dataMaps {
-		suite.Equal(expectedDenesisHash, dataMap.GenesisHash)
+	if expectToHaveDataMap {
+		var dataMaps []models.DataMap
+		suite.Nil(suite.DB.RawQuery("SELECT * from data_maps").All(&dataMaps))
+		suite.True(len(dataMaps) > 0)
+		for _, dataMap := range dataMaps {
+			suite.Equal(expectedDenesisHash, dataMap.GenesisHash)
+		}
 	}
 }
