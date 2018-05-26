@@ -223,7 +223,7 @@ func checkBalance(addr common.Address) *big.Int {
 	// connect ethereum client
 	client, err := sharedClient("")
 	if err != nil {
-		log.Fatal("Could not initialize shared client")
+		return big.NewInt(0)
 	}
 
 	balance, err := client.BalanceAt(context.Background(), addr, nil) //Call(&bal, "eth_getBalance", addr, "latest")
@@ -260,6 +260,12 @@ func getCurrentBlock() (*types.Block, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return number of PRL.
 func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
+	balance := checkBalance(brokerAddr)
+	if balance.Int64() > 0 {
+		// Has balance already, don't need to wait for it.
+		return balance, nil
+	}
+
 	client, err := sharedClient("")
 	if err != nil {
 		return big.NewInt(0), err
