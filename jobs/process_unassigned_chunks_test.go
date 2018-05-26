@@ -21,9 +21,6 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	numChunks := 31
 
-	// // reset back to generic mocks
-	// defer suite.SetupSuite()
-
 	// make suite available inside mock methods
 	Suite = *suite
 

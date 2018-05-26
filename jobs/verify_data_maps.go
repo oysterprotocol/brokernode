@@ -7,10 +7,10 @@ import (
 )
 
 func VerifyDataMaps(IotaWrapper services.IotaService) {
-
 	unverifiedDataMaps := []models.DataMap{}
 
-	oyster_utils.LogIfError(models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps))
+	err := models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps)
+	oyster_utils.LogIfError(err)
 
 	if len(unverifiedDataMaps) > 0 {
 		for i := 0; i < len(unverifiedDataMaps); i += BundleSize {
@@ -26,7 +26,6 @@ func VerifyDataMaps(IotaWrapper services.IotaService) {
 }
 
 func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.DataMap) {
-
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
 	oyster_utils.LogIfError(err)
 
