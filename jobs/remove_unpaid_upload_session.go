@@ -29,7 +29,7 @@ func RemoveUnpaidUploadSession() {
 
 		err := models.DB.Transaction(func(tx *pop.Connection) error {
 			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&[]models.DataMap{}); err != nil {
-				return nil
+				return err
 			}
 			if err := tx.RawQuery("DELETE from upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{}); err != nil {
 				return err
