@@ -9,7 +9,7 @@ import (
 func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 
 	// populate data_maps
-	genHash := "someGenHash"
+	genHash := "abcdef"
 	numChunks := 10
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)

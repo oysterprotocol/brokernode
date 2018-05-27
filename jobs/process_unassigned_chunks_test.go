@@ -31,7 +31,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	models.MakeChannels(3)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -40,7 +40,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	}
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:    "genHash2",
+		GenesisHash:    "abcdeff2",
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
@@ -49,7 +49,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	}
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:    "genHash3",
+		GenesisHash:    "abcdeff3",
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -58,7 +58,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	}
 
 	uploadSession4 := models.UploadSession{
-		GenesisHash:    "genHash4",
+		GenesisHash:    "abcdeff4",
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
@@ -73,17 +73,17 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	// set uploadSession4 to be the oldest
 	err := suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-20*time.Second), "genHash4").All(&[]models.UploadSession{})
+		time.Now().Add(-20*time.Second), "abcdeff4").All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession2 to next oldest
 	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-15*time.Second), "genHash2").All(&[]models.UploadSession{})
+		time.Now().Add(-15*time.Second), "abcdeff2").All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession1 to next oldest after uploadSession2
 	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-10*time.Second), "genHash1").All(&[]models.UploadSession{})
+		time.Now().Add(-10*time.Second), "abcdeff1").All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// uploadSession3 will be the newest
@@ -124,15 +124,15 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		}
 	}
 
-	suite.Equal(true, genHashMapIdx["genHash4"][0] > genHashMapIdx["genHash4"][len(genHashMapIdx["genHash4"])-1])
-	suite.Equal(true, genHashMapIdx["genHash2"][0] > genHashMapIdx["genHash2"][len(genHashMapIdx["genHash2"])-1])
-	suite.Equal(true, genHashMapIdx["genHash1"][0] < genHashMapIdx["genHash1"][len(genHashMapIdx["genHash1"])-1])
-	suite.Equal(true, genHashMapIdx["genHash3"][0] < genHashMapIdx["genHash3"][len(genHashMapIdx["genHash3"])-1])
+	suite.Equal(true, genHashMapIdx["abcdeff4"][0] > genHashMapIdx["abcdeff4"][len(genHashMapIdx["abcdeff4"])-1])
+	suite.Equal(true, genHashMapIdx["abcdeff2"][0] > genHashMapIdx["abcdeff2"][len(genHashMapIdx["abcdeff2"])-1])
+	suite.Equal(true, genHashMapIdx["abcdeff1"][0] < genHashMapIdx["abcdeff1"][len(genHashMapIdx["abcdeff1"])-1])
+	suite.Equal(true, genHashMapIdx["abcdeff3"][0] < genHashMapIdx["abcdeff3"][len(genHashMapIdx["abcdeff3"])-1])
 
-	suite.Equal(0, genHashMapOrder["genHash4"])
-	suite.Equal(1, genHashMapOrder["genHash2"])
-	suite.Equal(2, genHashMapOrder["genHash1"])
-	suite.Equal(3, genHashMapOrder["genHash3"])
+	suite.Equal(0, genHashMapOrder["abcdeff4"])
+	suite.Equal(1, genHashMapOrder["abcdeff2"])
+	suite.Equal(2, genHashMapOrder["abcdeff1"])
+	suite.Equal(3, genHashMapOrder["abcdeff3"])
 }
 
 func (suite *JobsSuite) Test_HandleTreasureChunks() {
@@ -160,7 +160,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 		}]`
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -172,7 +172,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	for i := 0; i < numChunks; i++ {
 		suite.DB.ValidateAndSave(&models.DataMap{
 			ChunkIdx:    i,
-			GenesisHash: "genHash1",
+			GenesisHash: "abcdeff1",
 			Hash:        "SOMEHASH",
 		})
 	}
@@ -212,7 +212,7 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeAlpha,
@@ -264,7 +264,7 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeBeta,

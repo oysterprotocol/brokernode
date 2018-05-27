@@ -12,7 +12,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	numChunks := 3
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "genHash1",
+		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -26,7 +26,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(nil, err)
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:   "genHash2",
+		GenesisHash:   "abcdeff2",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -37,7 +37,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(nil, err)
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:   "genHash3",
+		GenesisHash:   "abcdeff3",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -76,7 +76,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	// set all chunks of first data map to complete or confirmed
 	allDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&allDone)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&allDone)
 	suite.Equal(nil, err)
 
 	for _, dataMap := range allDone {
@@ -90,7 +90,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	// set one chunk of second data map to complete
 	someDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&someDone)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&someDone)
 	suite.Equal(nil, err)
 
 	someDone[0].Status = models.Complete
@@ -126,18 +126,18 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(1, len(storedGenHashes))
 	suite.Equal(1, len(completedUploads))
 
-	// for good measure, verify that it's only "genHash1" in completed_data_maps
-	// and that "genHash1" is not in data_maps at all
+	// for good measure, verify that it's only "abcdeff1" in completed_data_maps
+	// and that "abcdeff1" is not in data_maps at all
 	genHash1InDataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1InDataMaps)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1InDataMaps)
 	suite.Equal(0, len(genHash1InDataMaps))
 	suite.Equal(nil, err)
 
 	genHash1Completed := []models.CompletedDataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1Completed)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1Completed)
 	suite.Equal(numChunks+1, len(genHash1Completed))
 	suite.Equal(nil, err)
 
 	suite.Equal("SOME_BETA_ETH_ADDRESS", completedUploads[0].ETHAddr)
-	suite.Equal("genHash1", completedUploads[0].GenesisHash)
+	suite.Equal("abcdeff1", completedUploads[0].GenesisHash)
 }

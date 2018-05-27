@@ -369,8 +369,8 @@ func (u *UploadSession) GetPaymentStatus() string {
 }
 
 func (u *UploadSession) EncryptSessionEthKey() {
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
-	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt))), sha3.New256())
 
 	encryptedKey := oyster_utils.Encrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
 
@@ -379,8 +379,8 @@ func (u *UploadSession) EncryptSessionEthKey() {
 }
 
 func (u *UploadSession) DecryptSessionEthKey() string {
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
-	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt))), sha3.New256())
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
 
