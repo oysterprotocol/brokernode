@@ -112,7 +112,7 @@ func MakeAddress(hashString string) string {
 		return PadWith9s(result, 81)
 	}
 
-	fmt.Println("\n\nIOTA Addr: %v\n\n", result)
+	fmt.Printf("\n\nIOTA Addr: %v\n\n", result)
 
 	return result
 }
