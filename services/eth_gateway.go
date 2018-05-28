@@ -456,7 +456,10 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	defer cancel()
 
 	// wallet key access
-	walletKey := getWallet()
+	walletKey, err := getWallet()
+	if err != nil {
+		return types.Transactions{}, err
+	}
 	walletAddress := walletKey.Address
 	// generate nonce
 	nonce, _ := client.NonceAt(ctx, walletAddress, nil)
@@ -711,7 +714,10 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	// oysterby chainId 559966 - env
 	chainId := big.NewInt(559966)
 
-	walletKey := getWallet()
+	walletKey, err := getWallet()
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := sharedClient()
 	if err != nil {
@@ -720,6 +726,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	token, err := NewOysterPearl(contractAddress, client)
 	if err != nil {
 		fmt.Print("Unable to instantiate OysterPearl")
+		return nil, err
 	}
 	name, err := token.Name(nil)
 	fmt.Printf("OysterPearl :%v", name)
@@ -741,24 +748,28 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 }
 
 // utility to access the wallet keystore
-func getWallet() *keystore.Key {
+func getWallet() (*keystore.Key, error) {
 
 	// load local test wallet key, may need to pull ahead vs on-demand
 	walletKeyJSON, err := ioutil.ReadFile("./testdata/key.prv")
 	if err != nil {
 		fmt.Printf("error loading the walletKey : %v", err)
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 	// decrypt wallet
 	walletKey, err := keystore.DecryptKey(walletKeyJSON, "oysterby4000")
 	if err != nil {
 		fmt.Printf("walletKey err : %v", err)
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 
 	walletAddress := walletKey.Address
 
 	fmt.Printf("using wallet key store from: %v", walletAddress.Hex())
 
-	return walletKey
+	return walletKey, nil
 }
 
 // utility context helper to include the deadline initialization
