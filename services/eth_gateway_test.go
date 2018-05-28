@@ -3,29 +3,29 @@ package services_test
 import (
 	"testing"
 
-	"github.com/oysterprotocol/brokernode/services"
-	"github.com/ethereum/go-ethereum/common"
-	"math/big"
-	"github.com/ethereum/go-ethereum/crypto"
+	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
-	"github.com/ethereum/go-ethereum/core"
-	"time"
-	"github.com/ethereum/go-ethereum/params"
-	"log"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"context"
-	"github.com/oysterprotocol/brokernode/models"
-	"io/ioutil"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
+	"io/ioutil"
+	"log"
+	"math/big"
+	"time"
 )
 
 //
 // Ethereum Constants
 //
 var oneEther = big.NewInt(1000000000000000000)
-var onePrl   = big.NewInt(1000000000000000000)
+var onePrl = big.NewInt(1000000000000000000)
 
 // TX_HASH = 0xd87157b84528173156a1ff06fd452300c6efaee6ea4f3d53730f190dad630327
 //curl -H "Content-Type: application/json" -X POST --data \
@@ -101,11 +101,11 @@ func Test_getGasPrice(t *testing.T) {
 }
 
 // check balance on test network test
-func Test_checkBalance(t *testing.T) {
+func Test_checkETHBalance(t *testing.T) {
 
 	// test balance for an ether account
 	// Convert string address to byte[] address form
-	bal := services.EthWrapper.CheckBalance(ethAddress01)
+	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
 	if bal.Uint64() > 0 {
 		t.Logf("balance verified: %v\n", bal)
 	} else {
@@ -180,7 +180,7 @@ func Test_sendEthAndWaitForTransfer(t *testing.T) {
 	t.Skip(nil)
 	// transfer 1/3 of an ether
 	transferValue := oneEther
-	
+
 	// Send ether to test account
 	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
 	if err != nil {
@@ -196,7 +196,7 @@ func Test_sendEthAndWaitForTransfer(t *testing.T) {
 		t.Logf("tx amount : %v", transaction.Value())
 		t.Logf("tx cost   : %v", transaction.Cost())
 	}
-	
+
 	newBal, waitErr := services.EthWrapper.WaitForTransfer(ethAddress02)
 	if waitErr != nil {
 		t.Fatalf("wait for transfer error : %v", newBal)
@@ -223,12 +223,12 @@ func Test_deployOysterPearl(t *testing.T) {
 
 	// deploy a token contract on the simulated blockchain
 	_, _, token, err := services.DeployOysterPearl(&bind.TransactOpts{
-		Nonce:big.NewInt(0),
-		From:auth.From,
-		GasLimit:params.GenesisGasLimit,
+		Nonce:    big.NewInt(0),
+		From:     auth.From,
+		GasLimit: params.GenesisGasLimit,
 		GasPrice: big.NewInt(1),
 		Context:  ctx,
-		Signer:auth.Signer,
+		Signer:   auth.Signer,
 	}, sim)
 	if err != nil {
 		log.Fatalf("failed to deploy oyster token contract: %v", err)
@@ -248,7 +248,7 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 	// prl test 1 0x1be77862769ab791c4f95f8a2cbd0d3e07a3fd1f
 	oysterPearl, err := services.NewOysterPearl(common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d"), backend)
 	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v",err)
+		t.Fatalf("unable to access contract instance at :%v", err)
 	}
 	name, err := oysterPearl.Name(nil)
 	if err != nil {
@@ -266,7 +266,7 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 	// instance of the oyster pearl contract
 	oysterPearl, err := services.NewOysterPearl(common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d"), backend)
 	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v",err)
+		t.Fatalf("unable to access contract instance at :%v", err)
 	}
 	balance, err := oysterPearl.BalanceOf(nil, prlAddress01)
 	if err != nil {
@@ -277,7 +277,7 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 
 // test sending PRLs from OysterPearl Contract
 func Test_transferPRLFromOysterPearl(t *testing.T) {
-	
+
 	// test ethClient
 	var backend, _ = ethclient.Dial("ws://54.86.134.172:8547")
 	//passPhrase := "oysterby4000"
@@ -285,11 +285,11 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
 
 	if err != nil {
-		t.Fatalf("unable to access contract instance at : %v",err)
+		t.Fatalf("unable to access contract instance at : %v", err)
 	}
-	
+
 	t.Logf("oysterPearl : %v", oysterPearl)
-	
+
 	// load local test wallet key, may need to pull ahead vs on-demand
 	walletKeyJSON, err := ioutil.ReadFile("./testdata/key.prv")
 	if err != nil {
@@ -300,7 +300,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 		fmt.Printf("walletKey err : %v", err)
 	}
 	walletAddress := walletKey.Address
-	
+
 	t.Logf("using wallet key store from: %v", walletAddress)
 
 	// Create an authorized transactor and spend 1 PRL
@@ -308,48 +308,47 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to create a new transactor : %v", err)
 	}
-	
+
 	t.Logf("authorized transactor : %v", auth.From.Hex())
-	
+
 	//tx := types.NewTransaction()
-	
+
 	// block, _ := services.EthWrapper.GetCurrentBlock()
-	
+
 	/*
-	// wrap the oyster pearl contract instance into a session
-	session := &services.OysterPearlSession{
-		Contract: oysterPearl,
-		CallOpts: bind.CallOpts{
-			Pending: true,
-		},
-		TransactOpts: bind.TransactOpts{
-			From:     auth.From,
-			Signer:   auth.Signer,
-			GasLimit: block.GasLimit(),
-		},
-	}
+		// wrap the oyster pearl contract instance into a session
+		session := &services.OysterPearlSession{
+			Contract: oysterPearl,
+			CallOpts: bind.CallOpts{
+				Pending: true,
+			},
+			TransactOpts: bind.TransactOpts{
+				From:     auth.From,
+				Signer:   auth.Signer,
+				GasLimit: block.GasLimit(),
+			},
+		}
 
-	// transfer single prl
-	tx, err := session.Transfer(prlAddress01, onePrl)
+		// transfer single prl
+		tx, err := session.Transfer(prlAddress01, onePrl)
 
-	if err != nil {
-		t.Fatalf("transfer failed : %v", err)
-	}
-	t.Logf("tx sent : %v", tx.Value())
-	bal, err := session.BalanceOf(prlAddress01)
-	
-	if err != nil {
-		t.Fatalf("balance of failed : %v", err)
-	}
+		if err != nil {
+			t.Fatalf("transfer failed : %v", err)
+		}
+		t.Logf("tx sent : %v", tx.Value())
+		bal, err := session.BalanceOf(prlAddress01)
 
-	t.Logf("new balance: %v", bal.Uint64())
+		if err != nil {
+			t.Fatalf("balance of failed : %v", err)
+		}
+
+		t.Logf("new balance: %v", bal.Uint64())
 	*/
 }
 
 //
 // Oyster Pearl Tests
 // all tests below will exercise the contract methods in the simulator and the private oysterby network.
-
 
 // bury prl TODO provide simulated backend test and private network test
 func Test_buryPRL(t *testing.T) {
@@ -428,7 +427,6 @@ func Test_claimPRL(t *testing.T) {
 	}
 
 }
-
 
 // claim unused prl from completed upload TODO provide simulated backend test and private network test
 func Test_claimUnusedPRL(t *testing.T) {

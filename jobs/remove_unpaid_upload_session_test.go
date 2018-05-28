@@ -13,7 +13,7 @@ import (
 
 func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 	jobs.EthWrapper = services.Eth{
-		CheckBalance: func(addr common.Address) *big.Int {
+		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
 	}
@@ -40,7 +40,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
 
 func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 	jobs.EthWrapper = services.Eth{
-		CheckBalance: func(addr common.Address) *big.Int {
+		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
 	}
@@ -54,7 +54,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 
 func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 	jobs.EthWrapper = services.Eth{
-		CheckBalance: func(addr common.Address) *big.Int {
+		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
 	}
