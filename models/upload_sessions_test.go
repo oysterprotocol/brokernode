@@ -476,7 +476,8 @@ func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
 
 	expectedPRLsPerTreasure := new(big.Float).Quo(
 		new(big.Float).SetInt(big.NewInt(int64(totalCost))),
-		new(big.Float).SetInt(big.NewInt(int64(numSectors))))
+		new(big.Float).SetInt(big.NewInt(int64(numSectors*2))))
+	// multiplying numSectors x2, since brokers get to keep half the PRL
 
 	ms.Equal(expectedPRLsPerTreasure, prlsPerTreasure)
 }
