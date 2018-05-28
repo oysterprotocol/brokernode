@@ -106,8 +106,7 @@ func init() {
 		raven.CaptureError(err, nil)
 	}
 
-	MainWalletAddressString := os.Getenv("MAIN_WALLET_ADDRESS")
-	MainWalletAddress = StringToAddress(MainWalletAddressString)
+	MainWalletAddress = common.HexToAddress("0x" + os.Getenv("MAIN_WALLET_ADDRESS"))
 	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
 	oysterPearlContract := os.Getenv("OYSTER_PEARL")
 	EthUrl = os.Getenv("ETH_NODE_URL")
@@ -290,7 +289,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	}
 
 	// instance of the oyster pearl contract
-	OysterPearlAddress := common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d")
+	OysterPearlAddress := common.HexToAddress("1844b21593262668b7248d0f57a220caaba46ab9")
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
 		fmt.Printf("unable to access contract instance at :%v", err)
@@ -744,7 +743,8 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 func getWallet() *keystore.Key {
 
 	// load local test wallet key, may need to pull ahead vs on-demand
-	walletKeyJSON, err := ioutil.ReadFile("./testdata/key.prv")
+	walletKeyJSON, err := ioutil.ReadFile("services/testdata/key.prv")
+
 	if err != nil {
 		fmt.Printf("error loading the walletKey : %v", err)
 	}
