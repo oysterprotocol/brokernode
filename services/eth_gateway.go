@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getsentry/raven-go"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
@@ -506,7 +507,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 
 	// oysterby chainId 559966
 	// chainId := big.NewInt(559966)
-	chainId := big.NewInt(1)
+	chainId := params.MainnetChainConfig.ChainId
 
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, err := types.SignTx(tx, signer, privateKey)
@@ -806,7 +807,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 
 	// oysterby chainId 559966 - env
 	// chainId := big.NewInt(559966)
-	chainId := big.NewInt(1)
+	chainId := params.MainnetChainConfig.ChainId
 
 	/*TODO: get this keystore stuff working or remove it*/
 	//walletKey := getWallet()
