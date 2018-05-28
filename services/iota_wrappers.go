@@ -91,7 +91,7 @@ var (
 func init() {
 
 	// Load ENV variables
-	err := godotenv.Load("../.env")
+	err := godotenv.Load()
 	if err != nil {
 		log.Printf(".env file : %v", err)
 		raven.CaptureError(err, nil)
