@@ -10,12 +10,10 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -535,37 +533,36 @@ func buryPrl(msg OysterCallMsg) bool {
 		// sending eth has failed
 		return false
 	}
-
-	// initialize the context
-	ctx, cancel := createContext()
-	defer cancel()
+	
 	// shared client
-	client, err := sharedClient()
+	client, _ := sharedClient()
+	// contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+	walletKey := getWallet()
+	
+	// Create an authorized transactor
+	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	if auth == nil {
+		fmt.Printf("unable to create a new transactor")
+	}
+	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	// current block
+	block, _ := getCurrentBlock()
+	// transact
+	oysterPearl, err := NewOysterPearl(contractAddress, client)
 	if err != nil {
-		return false
+		fmt.Print("Unable to instantiate OysterPearl")
 	}
 	
-	// abi
-	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
-	// oyster contract method bury() no args
-	buryPRL, _ := oysterABI.Pack("bury")
-	// build transaction and sign
-	signedTx, err := callOysterPearl(ctx, buryPRL)
-	// send transaction
-	err = client.SendTransaction(ctx, signedTx)
-
-	if err != nil {
-		raven.CaptureError(err, nil)
-		return false
-	}
-	// pull signed transaction
-	ts := types.Transactions{signedTx}
+	tx, err := oysterPearl.Bury(&bind.TransactOpts {
+		From:     auth.From,
+		Signer:   auth.Signer,
+		GasLimit: block.GasLimit(),
+	})
 	
-	// return raw transaction
-	//rawTransaction = string(ts.GetRlp(0))
-
-	// successful contract message call
-	return ts.Len() > 0
+	printTx(tx)
+	
+	return tx != nil
 }
 
 // ClaimUnusedPRLs parses the completedUploads and sends PRL to the MainWalletAddress
@@ -627,33 +624,37 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
 func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool {
-	// initialize the context
-	ctx, cancel := createContext()
-	defer cancel()
+	
 	// shared client
-	client, err := sharedClient()
-	if err != nil {
-		return false
+	client, _ := sharedClient()
+	// contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+	walletKey := getWallet()
+	
+	// Create an authorized transactor
+	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	if auth == nil {
+		fmt.Printf("unable to create a new transactor")
 	}
-
-	// abi
-	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
-	// oyster contract method bury() no args
-	claimPRL, _ := oysterABI.Pack("claim")
-	// build transaction and sign
-	signedTx, err := callOysterPearl(ctx, claimPRL)
-	// send transaction
-	err = client.SendTransaction(ctx, signedTx)
-
+	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	// current block
+	block, _ := getCurrentBlock()
+	// transact
+	oysterPearl, err := NewOysterPearl(contractAddress, client)
 	if err != nil {
-		raven.CaptureError(err, nil)
-		return false
+		fmt.Print("Unable to instantiate OysterPearl")
 	}
-	// pull signed transaction
-	ts := types.Transactions{signedTx}
-
-	// successful contract message call
-	return ts.Len() > 0
+	prlBalance := checkPRLBalance(treasureAddress)
+	tx, err := oysterPearl.Claim(&bind.TransactOpts {
+		From:     auth.From,
+		Signer:   auth.Signer,
+		GasLimit: block.GasLimit(),
+		Value:prlBalance,
+	}, receiverAddress, treasureAddress)
+	
+	printTx(tx)
+	
+	return tx != nil
 }
 
 /*
@@ -669,43 +670,57 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 */
 func sendPRL(msg OysterCallMsg) bool {
 
-	// initialize the context
-	ctx, cancel := createContext()
-	defer cancel()
-
 	// shared client
-	client, err := sharedClient()
-	if err != nil {
-		return false
+	client, _ := sharedClient()
+	// contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+	walletKey := getWallet()
+	
+	// Create an authorized transactor
+	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	if auth == nil {
+		fmt.Printf("unable to create a new transactor")
 	}
-
-	// abi
-	oysterABI, err := abi.JSON(strings.NewReader(OysterPearlABI))
-	// oyster contract method transfer(address _to, uint256 _value)
-	sendPRL, _ := oysterABI.Pack("transfer", msg.To.Hex(), msg.Amount)
-	// build transaction and sign
-	signedTx, err := callOysterPearl(ctx, sendPRL)
-	// send transaction
-	err = client.SendTransaction(ctx, signedTx)
-
+	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	// current block
+	block, _ := getCurrentBlock()
+	// transact
+	/*
+		From   common.Address // Ethereum account to send the transaction from
+		Nonce  *big.Int       // Nonce to use for the transaction execution (nil = use pending state)
+		Signer SignerFn       // Method to use for signing the transaction (mandatory)
+		Value    *big.Int // Funds to transfer along along the transaction (nil = 0 = no funds)
+		GasPrice *big.Int // Gas price to use for the transaction execution (nil = gas price oracle)
+		GasLimit uint64   // Gas limit to set for the transaction execution (0 = estimate)
+		Context context.Context // Network context to support cancellation and timeouts (nil = no timeout)
+	*/
+	oysterPearl, err := NewOysterPearl(contractAddress, client)
+	if err != nil {
+		fmt.Print("Unable to instantiate OysterPearl")
+	}
+	name, err := oysterPearl.Name(nil)
+	fmt.Printf("OysterPearl :%v",name)
+	
+	// transfer
+	tx, err := oysterPearl.Transfer(&bind.TransactOpts {
+		From:     auth.From,
+		Signer:   auth.Signer,
+		GasLimit: block.GasLimit(),
+		Value:&msg.Amount,
+	}, msg.To, &msg.Amount)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return false
 	}
-	// pull signed transaction
-	ts := types.Transactions{signedTx}
-	// return raw transaction
-	rawTransaction := string(ts.GetRlp(0))
-
-	// successful contract message call
-	return len(rawTransaction) > 0
+	
+	printTx(tx)
+	
+	return tx != nil
 }
 
 // utility to call a method on OysterPearl contract
 func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, error) {
-
-	// invoke the smart contract bury() function with 'treasure'
-	// Oyster Pearl on Ethereum Network
+	
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// oysterby chainId 559966 - env
@@ -725,8 +740,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	fmt.Printf("OysterPearl :%v",name)
 
 	nonce, _ := client.NonceAt(ctx, walletKey.Address, nil)
-
-	// get latest gas limit & price - current default gasLimit on oysterby 21000
+	
 	currentBlock, err := getCurrentBlock()
 	gasLimit := currentBlock.GasLimit()
 	gasPrice, _ := getGasPrice()
@@ -782,4 +796,12 @@ func recordTransaction(address common.Address, status string) {
 		// PRL transfer succeeded, call this:
 		models.SetPRLStatusByAddress(address.Hex(), models.PRLClaimSuccess)
 	}
+}
+
+// utility to print
+func printTx(tx *types.Transaction) {
+	fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
+	fmt.Printf("tx hash   : %v\n", tx.Hash().String())
+	fmt.Printf("tx amount : %v\n", tx.Value())
+	fmt.Printf("tx cost   : %v\n", tx.Cost())
 }

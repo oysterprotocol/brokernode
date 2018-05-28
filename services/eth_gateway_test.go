@@ -24,7 +24,7 @@ import (
 // Ethereum Constants
 //
 var oneEther = big.NewInt(1000000000000000000)
-var onePrl   = big.NewInt(1000000000000000000)
+var onePrl   = big.NewInt(1)
 
 // TX_HASH = 0xd87157b84528173156a1ff06fd452300c6efaee6ea4f3d53730f190dad630327
 //curl -H "Content-Type: application/json" -X POST --data \
@@ -42,11 +42,12 @@ var ethAddress02 = common.HexToAddress("0x6abf0cdedd33e2bd6b574e0d81cdcaca817148
 //
 // PRL Addresses
 //
-var prlAddress01    = common.HexToAddress("0x73da066d94fc41f11c2672ed9ecd39127da30976")
-var prlAddress02    = common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
+var prlBankAddress    = common.HexToAddress("0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f")
+var prlAddress01      = common.HexToAddress("0x73da066d94fc41f11c2672ed9ecd39127da30976")
+var prlAddress02      = common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
 
 // Oysterby PRL Contract
-var oysterContract  = common.HexToAddress("0x317CE293F9C6a7070bF474917FE6F37E21FBCBBE")
+var oysterContract  = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
 // PRL Distribution Contract
 var prlDistribution = common.HexToAddress("0x08e6c245e21799c43970cd3193c59c1f6f2469ca")
 
@@ -277,7 +278,7 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_stakePRLFromOysterPearl(t *testing.T) {
-	
+	t.Skip(nil)
 	// contract
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
@@ -320,29 +321,11 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	
 }
 
-// testing token balanceOf from OysterPearl Contract account
-// basic test which validates the balanceOf a PRL address
-func Test_balanceOfFromOysterPearl(t *testing.T) {
-	
-	// test ethClient
-	var backend, _ = ethclient.Dial(oysterbyNetwork)
-	// instance of the oyster pearl contract
-	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
-	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v", err)
-	}
-	// balance
-	balance, err := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlAddress01)
-	//session.BalanceOf(prlAddress01)
-	if err != nil {
-		t.Fatalf("unable to access balanceOf name")
-	}
-	t.Logf("oyster pearl address balance :%v", balance)
-}
-
 // test sending PRLs from OysterPearl Contract
+// issue > transfer failed : replacement transaction underpriced
+// solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
-	
+	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	//passPhrase := "oysterby4000"
@@ -367,10 +350,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	
 	t.Logf("authorized transactor : %v", auth.From.Hex())
 	
-	//ctx := context.Background()
-	//nonce, _ := backend.NonceAt(ctx, walletAddress, nil)
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	//gasPrice, _ := services.EthWrapper.GetGasPrice()
 	
 	opts := bind.TransactOpts{
 		From:     auth.From,
@@ -448,24 +428,26 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 // all tests below will exercise the contract methods in the simulator and the private oysterby network.
 
 
-// bury prl TODO provide simulated backend test and private network test
+// bury prl
 func Test_buryPRL(t *testing.T) {
 	t.Skip(nil)
 	// PRL based addresses
 	from := prlAddress01
 	to := prlAddress02
+	
 	// Gas Price
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	// prepare oyster message call
+	
 	var msg = services.OysterCallMsg{
 		From:     from,
 		To:       to,
 		Amount:   *onePrl,
 		Gas:      block.GasLimit(),
 		GasPrice: *gasPrice,
-		TotalWei: *onePrl,
-		Data:     []byte(""), // setup data
+		// this unit needs conversion
+		TotalWei: *onePrl.Mul(onePrl, big.NewInt(18)),
+		Data:     nil, // setup data
 	}
 
 	// Bury PRL
@@ -481,27 +463,27 @@ func Test_buryPRL(t *testing.T) {
 
 // send prl
 func Test_sendPRL(t *testing.T) {
-	t.Skip(nil)
+	
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	// prepare oyster message call
+	
 	var msg = services.OysterCallMsg{
-		From:     prlAddress01,
-		To:       prlAddress02,
-		Amount:   *onePrl,
+		From:     prlBankAddress,
+		To:       prlAddress01,
+		Amount:   *big.NewInt(100),
 		Gas:      block.GasLimit(),
 		GasPrice: *gasPrice,
-		TotalWei: *onePrl,
+		//TotalWei: *big.NewInt(100).Mul(big.NewInt(100), big.NewInt(18)),
 		Data:     nil,
 	}
 	// Send PRL
 	var sent = services.EthWrapper.SendPRL(msg)
 	if sent {
 		// successful prl send
-		t.Logf("Sent PRL to :%v", msg.From.Hex())
+		t.Logf("Sent PRL to :%v", msg.To.Hex())
 	} else {
 		// failed prl send
-		t.Fatalf("Failed to send PRL to:%v", msg.From.Hex())
+		t.Fatalf("Failed to send PRL to:%v", msg.To.Hex())
 	}
 }
 
@@ -524,7 +506,6 @@ func Test_claimPRL(t *testing.T) {
 	}
 
 }
-
 
 // claim unused prl from completed upload
 func Test_claimUnusedPRL(t *testing.T) {
@@ -549,4 +530,27 @@ func Test_claimUnusedPRL(t *testing.T) {
 		t.Log("PRLs have been successfully claimed")
 	}
 
+}
+
+// testing token balanceOf from OysterPearl Contract account
+// basic test which validates the balanceOf a PRL address
+func Test_balanceOfFromOysterPearl(t *testing.T) {
+	
+	// test ethClient
+	var backend, _ = ethclient.Dial(oysterbyNetwork)
+	// instance of the oyster pearl contract
+	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
+	if err != nil {
+		t.Fatalf("unable to access contract instance at :%v", err)
+	}
+	
+	// oysterby balances
+	bankBalance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlBankAddress)
+	prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlAddress01)
+	prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlAddress02)
+	
+	t.Logf("oyster pearl bank address balance :%v", bankBalance)
+	t.Logf("oyster pearl 01 address balance :%v", prl01Balance)
+	t.Logf("oyster pearl 02 address balance :%v", prl02Balance)
+	
 }
