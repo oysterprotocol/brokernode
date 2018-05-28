@@ -46,6 +46,7 @@ type Eth struct {
 	CheckPRLBalance
 	GetCurrentBlock
 	GetConfirmationCount
+	GetWallet
 	OysterCallMsg
 }
 
@@ -81,6 +82,7 @@ type CheckPRLBalance func(common.Address) *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
+type GetWallet func() (*keystore.Key)
 
 type BuryPrl func(msg OysterCallMsg) bool
 type SendPRL func(msg OysterCallMsg) bool
@@ -101,8 +103,9 @@ var (
 
 func init() {
 	// Load ENV variables
-	err := godotenv.Load("../.env")
+	err := godotenv.Load()
 	if err != nil {
+		godotenv.Load("../.env")
 		log.Printf(".env error: %v", err)
 		raven.CaptureError(err, nil)
 	}
@@ -126,15 +129,16 @@ func init() {
 		GenerateEthAddr:               generateEthAddr,
 		GenerateKeys:                  generateKeys,
 		GenerateEthAddrFromPrivateKey: generateEthAddrFromPrivateKey,
-		BuryPrl:         buryPrl,
-		SendETH:         sendETH,
-		SendPRL:         sendPRL,
-		GetGasPrice:     getGasPrice,
-		WaitForTransfer: waitForTransfer,
-		CheckBalance:    checkBalance,
-		CheckPRLBalance:    checkPRLBalance,
-		GetCurrentBlock: getCurrentBlock,
-		GetConfirmationCount: getConfirmationCount,
+		BuryPrl:                       buryPrl,
+		SendETH:                       sendETH,
+		SendPRL:                       sendPRL,
+		GetGasPrice:                   getGasPrice,
+		WaitForTransfer:               waitForTransfer,
+		CheckBalance:                  checkBalance,
+		CheckPRLBalance:               checkPRLBalance,
+		GetCurrentBlock:               getCurrentBlock,
+		GetConfirmationCount:          getConfirmationCount,
+		GetWallet:                     getWallet,
 	}
 }
 
@@ -752,7 +756,7 @@ func getWallet() (*keystore.Key) {
 	
 	walletAddress := walletKey.Address
 	
-	fmt.Printf("using wallet key store from: %v", walletAddress.Hex())
+	fmt.Printf("using wallet key store from: %v\n", walletAddress.Hex())
 	
 	return walletKey
 }
