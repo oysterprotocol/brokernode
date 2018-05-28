@@ -578,7 +578,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 		//	for each completed upload, get its PRL balance from its ETH
 		//	address (completedUpload.ETHAddr) by calling CheckETHBalance.
 		ethAddr := common.HexToAddress(completedUpload.ETHAddr)
-		balance := checkETHBalance(ethAddr)
+		balance := checkPRLBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
 			err := errors.New("could not complete transaction due to zero balance for:" + completedUpload.ETHAddr)
