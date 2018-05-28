@@ -3,21 +3,21 @@ package services_test
 import (
 	"testing"
 
-	"github.com/oysterprotocol/brokernode/services"
-	"github.com/ethereum/go-ethereum/common"
-	"math/big"
-	"github.com/ethereum/go-ethereum/crypto"
+	"context"
+	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"time"
-	"github.com/ethereum/go-ethereum/params"
-	"log"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"context"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/oysterprotocol/brokernode/models"
-	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/oysterprotocol/brokernode/services"
+	"log"
+	"math/big"
+	"time"
 )
 
 //
@@ -121,11 +121,11 @@ func Test_getGasPrice(t *testing.T) {
 }
 
 // check balance on test network test
-func Test_checkBalance(t *testing.T) {
+func Test_checkETHBalance(t *testing.T) {
 
 	// test balance for an ether account
 	// Convert string address to byte[] address form
-	bal := services.EthWrapper.CheckBalance(ethAddress01)
+	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
 	if bal.Uint64() > 0 {
 		t.Logf("balance verified: %v\n", bal)
 	} else {
@@ -200,7 +200,7 @@ func Test_sendEthAndWaitForTransfer(t *testing.T) {
 	t.Skip(nil)
 	// transfer 1/3 of an ether
 	transferValue := oneEther
-	
+
 	// Send ether to test account
 	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
 	if err != nil {
@@ -216,8 +216,8 @@ func Test_sendEthAndWaitForTransfer(t *testing.T) {
 		t.Logf("tx amount : %v", transaction.Value())
 		t.Logf("tx cost   : %v", transaction.Cost())
 	}
-	
-	newBal, waitErr := services.EthWrapper.WaitForTransfer(ethAddress02)
+
+	newBal, waitErr := services.EthWrapper.WaitForTransfer(ethAddress02, "eth")
 	if waitErr != nil {
 		t.Fatalf("wait for transfer error : %v", newBal)
 	}
@@ -243,12 +243,12 @@ func Test_deployOysterPearl(t *testing.T) {
 
 	// deploy a token contract on the simulated blockchain
 	_, _, token, err := services.DeployOysterPearl(&bind.TransactOpts{
-		Nonce:big.NewInt(0),
-		From:auth.From,
-		GasLimit:params.GenesisGasLimit,
+		Nonce:    big.NewInt(0),
+		From:     auth.From,
+		GasLimit: params.GenesisGasLimit,
 		GasPrice: big.NewInt(1),
 		Context:  ctx,
-		Signer:auth.Signer,
+		Signer:   auth.Signer,
 	}, sim)
 	if err != nil {
 		log.Fatalf("failed to deploy oyster token contract: %v", err)
@@ -266,7 +266,7 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
 	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v",err)
+		t.Fatalf("unable to access contract instance at :%v", err)
 	}
 	name, err := oysterPearl.Name(nil)
 	if err != nil {
@@ -300,7 +300,7 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	}
 	t.Logf("authorized transactor : %v", auth.From.Hex())
 	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v",err)
+		t.Fatalf("unable to access contract instance at :%v", err)
 	}
 	//
 	// transact
@@ -325,29 +325,31 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 // issue > transfer failed : replacement transaction underpriced
 // solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
+
 	t.Skip(nil)
+
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	//passPhrase := "oysterby4000"
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
 
 	if err != nil {
-		t.Fatalf("unable to access contract instance at : %v",err)
+		t.Fatalf("unable to access contract instance at : %v", err)
 	}
-	
+
 	t.Logf("oysterPearl : %v", oysterPearl)
 	
 	walletKey := services.EthWrapper.GetWallet()
 	walletAddress := walletKey.Address
-	
-	t.Logf("using wallet key store from: %v\n", walletAddress.Hex())
+
+	t.Logf("using wallet key store from: %v", walletAddress)
 
 	// Create an authorized transactor and spend 1 PRL
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
 	if err != nil {
 		t.Fatalf("unable to create a new transactor : %v", err)
 	}
-	
+
 	t.Logf("authorized transactor : %v", auth.From.Hex())
 	
 	block, _ := services.EthWrapper.GetCurrentBlock()
@@ -366,67 +368,11 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	
 	printTx(*tx)
 	
-/*
-	tx := types.NewTransaction(nonce, prlAddress01, onePrl.Mul(onePrl, big.NewInt(10)), block.GasLimit(), gasPrice, nil)
-	
-	chainId := big.NewInt(559966)
-	
-	signer := types.NewEIP155Signer(chainId)
-	signedTx, err := types.SignTx(tx, signer, walletKey.PrivateKey)
-	if err != nil {
-		t.Fatalf("error signing transaction : %v", err)
-	}
-	err = backend.SendTransaction(ctx, signedTx)
-	if err != nil {
-		t.Fatalf("unable to send transaction : %v", err)
-	}
-	// pull signed transaction(s)
-	txs := types.Transactions{signedTx}
-	
-	for tx := range txs {
-		transaction := txs[tx]
-		fmt.Printf("tx to     : %v\n", transaction.To().Hash().String())
-		// subscribe to transaction hash
-		fmt.Printf("tx hash   : %v\n", transaction.Hash().String())
-		fmt.Printf("tx amount : %v\n", transaction.Value())
-		fmt.Printf("tx cost   : %v\n", transaction.Cost())
-	}
-	*/
-	/*
-	// wrap the oyster pearl contract instance into a session
-	session := &services.OysterPearlSession{
-		Contract: oysterPearl,
-		CallOpts: bind.CallOpts{
-			Pending: true,
-		},
-		TransactOpts: bind.TransactOpts{
-			From:     auth.From,
-			Signer:   auth.Signer,
-			GasLimit: block.GasLimit(),
-		},
-	}
-
-	// transfer single prl
-	tx, err := session.Transfer(prlAddress01, onePrl)
-
-	if err != nil {
-		t.Fatalf("transfer failed : %v", err)
-	}
-	t.Logf("tx sent : %v", tx.Value())
-	bal, err := session.BalanceOf(prlAddress01)
-	
-	if err != nil {
-		t.Fatalf("balance of failed : %v", err)
-	}
-
-	t.Logf("new balance: %v", bal.Uint64())
-	*/
 }
 
 //
 // Oyster Pearl Tests
 // all tests below will exercise the contract methods in the simulator and the private oysterby network.
-
 
 // bury prl
 func Test_buryPRL(t *testing.T) {
@@ -532,6 +478,7 @@ func Test_claimUnusedPRL(t *testing.T) {
 
 }
 
+
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
@@ -554,3 +501,4 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 	t.Logf("oyster pearl 02 address balance :%v", prl02Balance)
 	
 }
+

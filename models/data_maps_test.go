@@ -26,22 +26,43 @@ var encryptedTreasureCases = []hashAddressConversion{
 }
 
 func (ms *ModelSuite) Test_BuildDataMaps() {
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	numChunks := 7
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
-	expectedHashes := []string{ // 1 extra chunk for treasure
-		"ef7edf0decd95c9e094184dca8641b68bb3ca0f69fec086341893816c68f7d9d408131fa01a66cf95f05b2a038185db9",
-		"86ad8449bd1b32bcd86d86cfe7b3b6453f391c0c0df57956a2dff53f55709af3cd43a983ef46263cf8e361ae15734b33",
-		"fbb914b1ba9cc663be0eb7b2570209af5caccfe5b7bba65e832c683072a969715e1b23866ce97ddb765fefe9b991e652",
-		"e697116fd36a697f327f4682fd6f72250933bc61184fc36ff89badf749779aadf643b2e4f3fcd22fa9c07a6ce89c99a5",
-		"167b2e33d17a4a96c6ad7216cd49c664b056efd30c08d65a354d1a5eb9cc9dbcb2f639495269f7ef5e56b8e62777edfc",
-		"73ad9b9ba83acbf49a714980e660ead44f3fb574ee807d05d4ab728cfc9ecd1cd2f2a0a608948ea968d383db037a6d6c",
-		"173b5a6ced53b7a84aa9f789bab0485418e949a3571ed964dde9b54618d38f212d496831cf083cc0b46d6d51e78461c7",
-		"d9e71ab7477e1632c4deb766fa8ba05f25b9a27e2b99ba47a6b77f2bebe63c1de839fd4803f3d90c6cb6cc7f66c945df",
+	expectedObfuscatedHashes := []string{ // 1 extra chunk for treasure
+		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
+		"cdfdb810ee1607917c8bacbfbf95d35dab9281abb01968c2a27349476b53aa35024fae410955327233523229677da827",
+		"d5a3eda969c62842840e58fe7a1982fdcf9eb758e2ebd545289d6daa706b506a6a4833cd134992be9c73fe4c1e1d15ff",
+		"40bd29065a1ade39140a0a168949eb4bbaa9bd0bd3b52b27755e104d724cf21cb5854b26ed9de5daa6d9fbf032f7952b",
+		"a19d743743d8c4982ebc8c08ec0fa0a530f7b865ee83240299dd057a4800ed5e7e942191d02e12d4b65987328f15d2e3",
+		"619832ffc818c2b22a47c4e43053c570695f0266e5351ce4e2313eb2cf1f0749f8a18826234bbd83a052eea8bbb201ad",
+		"8ca84cd55f3991a1624fddf8147e2a7c14393f4b79a7f62775f40d3723181cee9252cdb3c7b6fb1276ad40bd7c2f7ac8",
+		"b24d9a1ec8ae5897eaa67a3ee7e7c8982c03d18ea84c4b537e11f480d347e550aecef582e7883d4c29969f299836792e",
+	}
+	expectedHashChainHashes := []string{ // 1 extra chunk for treasure
+		"abcdef",
+		"995da3cf545787d65f9ced52674e92ee8171c87c7a4008aa4349ec47d21609a7",
+		"4533a01d26697df306b3380e08f4fae30f488d2985e6449e9bd9bd86849ddbc6",
+		"93d62b82fa8169af012ca0d3c13f6c5d94d06daf4f769ee45595a049a4805524",
+		"fea47151e3dbd670f1bded7b2393093e8dde50d6ccb541f5f51689005cf88ab1",
+		"c694406b4d98e3bb23416c1111099bc4c7317a81b40d53e68ce7afe4d9aa716f",
+		"ab1c8e2baa271bf67fb5ba7083b06c66a2ac41db3e4d25728e80d16a3dfb746b",
+		"7f907764c0d12a50daa3b38fc2fc888637640f5c91a4b81f5879da99c8e35653",
+		"f9e9eef8afa6a7edbe108dc9d178fcc114cb2e9403a552e61c7e247889b3d536",
+	}
+	expectedAddresses := []string{
+		"EHAEYFLCUFVALBLAJGNHQ9PDXCFBSHWDYFMFGCODTGTFXALEZG9CPADFDEAINAGDXDNCZEEGKEUBIHWBA",
+		"PGJIVFP9VHV9G9JEPDDEJFBGBGNEVGLCIFKEUDIFNFY9WCEG9FGDSBQBZCBCHFZAB9YBLFKBI9DCWAFDX",
+		"XGAFUHGFXCIGMALBXDN9GCKINDY9VDJIRGWEUFGCJHSHXGOBMAVEADHFDDZCZBYCYCRBXAPGS9SBKEAGU",
+		"JB9GNAF9ICZ9FHCBT9J9J9V9BESBSHUBXFGF9GK9VGSFPALAIDMCP9WBFDVBZHAASFYDUBKAUHVEMHBHD",
+		"ZEVEHDABMB9HGGQESAZFEEH9THO9YECFUADIVFTCVHWDIAB9REEHE9NDRB99UHMCRDMEFAJESGSAR9WGT",
+		"PCQEWALIKGX9EGPFOAQBGGLHUABCHGDDXCNCB9UCMHZAAALHJHVAHBPFRGDAG9SBEIZEAEKAHAUB9GWDY",
+		"EEFFVBXGNCCBJEZEQCYBEHEIT9RDOAPDT9CBIBUBMDEFCILAIDAIM9ABHAX9AAVHKEACPGQFJGTFHIR9J",
+		"PFWBSECAKGLFGCPERHDFNDHBOHOHKGQEQAC9TGGEFFVBUBBCRDQ9AITDVGQBMHZBLFQGBIVDOHAEGBVBN",
 	}
 
 	dMaps := []models.DataMap{}
@@ -50,7 +71,9 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	ms.Equal(numChunks+1, len(dMaps))
 
 	for i, dMap := range dMaps {
-		ms.Equal(expectedHashes[i], dMap.ObfuscatedHash)
+		ms.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)
+		ms.Equal(expectedHashChainHashes[i], dMap.Hash)
+		ms.Equal(expectedAddresses[i], dMap.Address)
 	}
 }
 
@@ -67,7 +90,7 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 		currentHash := tc.sha256Hash
 
 		for i := 0; i <= maxSideChainLength; i++ {
-			currentHash = oyster_utils.HashString(currentHash, sha3.New256())
+			currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
 			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
 			if result != nil {
 				ms.Equal(true, strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
@@ -82,19 +105,19 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 	numChunks := 10
 
-	vErr, err := models.BuildDataMaps("genHash1", numChunks)
+	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash2", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash3", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash4", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash5", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
@@ -102,13 +125,13 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 	genHash2 := []models.DataMap{} // 1 error
 	genHash3 := []models.DataMap{} // all unassigned
 	genHash4 := []models.DataMap{} // all error
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
 	suite.Equal(err, nil)
 
 	genHash1[1].Status = models.Unassigned
@@ -132,8 +155,8 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 	suite.Equal(4, len(genHashes))
 
 	for _, genHash := range genHashes {
-		if genHash == "genHash5" {
-			suite.Failf("FAIL", "genHash5 should not be in the array")
+		if genHash == "abcdeff5" {
+			suite.Failf("FAIL", "abcdeff5 should not be in the array")
 		}
 	}
 }
@@ -141,19 +164,19 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 func (suite *ModelSuite) Test_GetUnassignedChunks() {
 	numChunks := 2
 
-	vErr, err := models.BuildDataMaps("genHash1", numChunks)
+	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash2", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash3", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash4", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
-	vErr, err = models.BuildDataMaps("genHash5", numChunks)
+	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
 	suite.Equal(0, len(vErr.Errors))
 
@@ -161,13 +184,13 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 	genHash2 := []models.DataMap{} // 1 error
 	genHash3 := []models.DataMap{} // all unassigned
 	genHash4 := []models.DataMap{} // all error
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
 	suite.Equal(err, nil)
-	err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
 	suite.Equal(err, nil)
 
 	genHash1[1].Status = models.Unassigned
@@ -190,7 +213,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 	suite.Equal(err, nil)
 
 	for _, unassignedChunk := range unassignedChunks {
-		if unassignedChunk.GenesisHash == "genHash5" {
+		if unassignedChunk.GenesisHash == "abcdeff5" {
 			suite.Failf("FAIL", "a chunk with genHash5 should not be in the array")
 		}
 	}
@@ -200,20 +223,20 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	numChunks := 5
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		FileSizeBytes:  8000,
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
-	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		dm.Message = "NOTEMPETY"
@@ -233,20 +256,20 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	numChunks := 5
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		FileSizeBytes:  8000,
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
-	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		dm.Message = "NOTEMPETY"
@@ -268,20 +291,20 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 	numChunks := 5
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		FileSizeBytes:  8000,
 		NumChunks:      numChunks,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession1.StartUploadSession()
 	session := models.UploadSession{}
-	err := suite.DB.Where("genesis_hash = ?", "genHash1").First(&session)
+	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&dataMaps)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		dm.Message = "NOTEMPETY"
@@ -296,23 +319,23 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 }
 
 func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorZero() {
-	hashes := models.ComputeSectorDataMapAddress("genHash", 0, 2)
+	hashes := models.ComputeSectorDataMapAddress("abcdef", 0, 2)
 
-	suite.Equal(hashes, []string{
-		"UCVAUCSC9BXAABUCUAQCUAUAUCPCRCYAQCXACBQCQCBBBBPCSCVASCXAABUAWAYACBUAQCBB9BTCQCUCP",
-		"UCZA9BYAWARCYAPCUAQCBBQCTCPCUC9BSCPCXAZAVAZAWAUCCBTCUA9BXAUAVAXAUAPCWAPCPCPCXATCU"})
+	suite.Equal([]string{
+		"EHAEYFLCUFVALBLAJGNHQ9PDXCFBSHWDYFMFGCODTGTFXALEZG9CPADFDEAINAGDXDNCZEEGKEUBIHWBA",
+		"PGJIVFP9VHV9G9JEPDDEJFBGBGNEVGLCIFKEUDIFNFY9WCEG9FGDSBQBZCBCHFZAB9YBLFKBI9DCWAFDX"}, hashes)
 }
 
 func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorOne() {
-	hashes := models.ComputeSectorDataMapAddress("genHash", 1, 2)
+	hashes := models.ComputeSectorDataMapAddress("abcdef", 1, 2)
 
-	suite.Equal(hashes, []string{
-		"VAQCPCRCQC9BYAYAUCSCABVA9BVAYA9BUASCSC9BQCZASCYASCYAABWAXABBCBYAUAQCAB9BSCTCQCABP",
-		"XAWA9BXARCSCWATCVATCCBWAYAPCUCTCUATCCBXARCTCCBQCCB9BUACBBBSCSCVAQCABSCRCZASCBBTCR"})
+	suite.Equal([]string{
+		"UDUDRFQ9UEUCEI9C9IQBXERBBGBIWFDENHHFKEYEAC9EYCT9MG9GDCI9BAMDM9EHIFKD9IJFFEUCYFRFP",
+		"YHVFOAWCTEGBN9RCVEKIP9EFLBCENFZ9F9HF9DG9XGG9YFGDH9FFT9GIICIBPCDESHLDXB9AIHEFNBM9D"}, hashes)
 }
 
 func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
-	genHash := "genHash"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
@@ -355,25 +378,25 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 	//fileBytesCount := 2000
 	//
 	//uploadSession1 := models.UploadSession{
-	//	GenesisHash:   "genHash1",
+	//	GenesisHash:   "abcdeff1",
 	//	FileSizeBytes: fileBytesCount,
 	//	Type:          models.SessionTypeAlpha,
 	//}
 	//
 	//uploadSession2 := models.UploadSession{
-	//	GenesisHash:   "genHash2",
+	//	GenesisHash:   "abcdeff2",
 	//	FileSizeBytes: fileBytesCount,
 	//	Type:          models.SessionTypeBeta,
 	//}
 	//
 	//uploadSession3 := models.UploadSession{
-	//	GenesisHash:   "genHash3",
+	//	GenesisHash:   "abcdeff3",
 	//	FileSizeBytes: fileBytesCount,
 	//	Type:          models.SessionTypeAlpha,
 	//}
 	//
 	//uploadSession4 := models.UploadSession{
-	//	GenesisHash:   "genHash4",
+	//	GenesisHash:   "abcdeff4",
 	//	FileSizeBytes: fileBytesCount,
 	//	Type:          models.SessionTypeBeta,
 	//}
@@ -387,13 +410,13 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 	//genHash2 := []models.DataMap{}
 	//genHash3 := []models.DataMap{}
 	//genHash4 := []models.DataMap{}
-	//err := suite.DB.Where("genesis_hash = ?", "genHash1").All(&genHash1)
+	//err := suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
 	//suite.Equal(err, nil)
-	//err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&genHash2)
+	//err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
 	//suite.Equal(err, nil)
-	//err = suite.DB.Where("genesis_hash = ?", "genHash3").All(&genHash3)
+	//err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
 	//suite.Equal(err, nil)
-	//err = suite.DB.Where("genesis_hash = ?", "genHash4").All(&genHash4)
+	//err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
 	//suite.Equal(err, nil)
 	//
 	//genHash1[0].Status = models.Unassigned
@@ -422,20 +445,20 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 	//
 	//hashAndTypeMap, err := models.AttachUnassignedChunksToGenHashMap(genHashes)
 	//
-	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["genHash1"].Type)
-	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["genHash2"].Type)
-	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["genHash3"].Type)
-	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["genHash4"].Type)
+	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["abcdeff1"].Type)
+	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["abcdeff2"].Type)
+	//suite.Equal(models.SessionTypeAlpha, hashAndTypeMap["abcdeff3"].Type)
+	//suite.Equal(models.SessionTypeBeta, hashAndTypeMap["abcdeff4"].Type)
 	//
-	//suite.Equal(6, len(hashAndTypeMap["genHash1"].Chunks))
-	//suite.Equal(20, len(hashAndTypeMap["genHash2"].Chunks))
-	//suite.Equal(0, len(hashAndTypeMap["genHash3"].Chunks))
-	//suite.Equal(0, len(hashAndTypeMap["genHash4"].Chunks))
+	//suite.Equal(6, len(hashAndTypeMap["abcdeff1"].Chunks))
+	//suite.Equal(20, len(hashAndTypeMap["abcdeff2"].Chunks))
+	//suite.Equal(0, len(hashAndTypeMap["abcdeff3"].Chunks))
+	//suite.Equal(0, len(hashAndTypeMap["abcdeff4"].Chunks))
 
-	//suite.Equal(0, hashAndTypeMap["genHash1"].Chunks[0].ChunkIdx)
-	//suite.Equal(0, hashAndTypeMap["genHash2"].Chunks[0].ChunkIdx)
-	//suite.Equal(0, hashAndTypeMap["genHash3"].Chunks[0].ChunkIdx)
-	//suite.Equal(0, hashAndTypeMap["genHash4"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["abcdeff1"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["abcdeff2"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["abcdeff3"].Chunks[0].ChunkIdx)
+	//suite.Equal(0, hashAndTypeMap["abcdeff4"].Chunks[0].ChunkIdx)
 
 	//fmt.Println(len(hashAndTypeMap))
 }

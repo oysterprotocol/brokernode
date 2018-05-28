@@ -36,12 +36,12 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
 	uploadSession1.StartUploadSession()
@@ -52,12 +52,12 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// create and start the upload session for the data maps that already have buried treasure
 	uploadSession2 := models.UploadSession{
-		GenesisHash:    "genHash2",
+		GenesisHash:    "abcdeff2",
 		NumChunks:      500,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}
 
@@ -65,11 +65,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// verify that we have successfully created all the data maps
 	paidButUnburied := []models.DataMap{}
-	err := suite.DB.Where("genesis_hash = ?", "genHash1").All(&paidButUnburied)
+	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
 	suite.Equal(nil, err)
 
 	paidAndBuried := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&paidAndBuried)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
 	suite.Equal(nil, err)
 
 	suite.NotEqual(0, len(paidButUnburied))
@@ -92,7 +92,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	jobs.ProcessPaidSessions()
 
 	paidButUnburied = []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").All(&paidButUnburied)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
 	suite.Equal(nil, err)
 
 	/* Verify the following:
@@ -109,7 +109,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	}
 
 	paidAndBuried = []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash2").All(&paidAndBuried)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
 	suite.Equal(nil, err)
 
 	// verify that all chunks in paidAndBuried have statuses changed to Unassigned
@@ -120,7 +120,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// get the session that was originally paid but unburied, and verify that all the
 	// keys are now "" but that we still have a value for the Idx
 	paidAndUnburiedSession := models.UploadSession{}
-	err = suite.DB.Where("genesis_hash = ?", "genHash1").First(&paidAndUnburiedSession)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&paidAndUnburiedSession)
 	suite.Equal(nil, err)
 
 	treasureIndex, err := paidAndUnburiedSession.GetTreasureMap()
@@ -129,7 +129,6 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	suite.Equal(3, len(treasureIndex))
 
 	for _, entry := range treasureIndex {
-		suite.Equal("", entry.Key)
 		_, ok := treasureIndexes[entry.Idx]
 		suite.Equal(true, ok)
 	}

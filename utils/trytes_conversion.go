@@ -1,6 +1,7 @@
 package oyster_utils
 
 import (
+	"encoding/hex"
 	"errors"
 	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
@@ -95,7 +96,13 @@ func BytesToTrytes(b []byte) giota.Trytes {
 }
 
 func MakeAddress(hashString string) string {
-	result := string(BytesToTrytes([]byte(hashString)))
+	bytes, err := hex.DecodeString(hashString)
+	if err != nil {
+		raven.CaptureError(err, nil)
+		return ""
+	}
+
+	result := string(BytesToTrytes(bytes))
 
 	if len(result) > 81 {
 		return result[0:81]

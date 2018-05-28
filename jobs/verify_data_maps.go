@@ -1,24 +1,16 @@
 package jobs
 
 import (
-	"fmt"
-	raven "github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func init() {
-}
-
 func VerifyDataMaps(IotaWrapper services.IotaService) {
-
 	unverifiedDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps)
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err)
 
 	if len(unverifiedDataMaps) > 0 {
 		for i := 0; i < len(unverifiedDataMaps); i += BundleSize {
@@ -34,13 +26,8 @@ func VerifyDataMaps(IotaWrapper services.IotaService) {
 }
 
 func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.DataMap) {
-
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
-
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err)
 
 	if len(filteredChunks.MatchesTangle) > 0 {
 

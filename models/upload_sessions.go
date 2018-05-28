@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
+	"math"
+	"math/big"
 	"time"
 
 	"github.com/getsentry/raven-go"
@@ -64,8 +66,8 @@ const (
 
 const (
 	TreasureGeneratingKeys int = iota + 1
-	TreasureBurying
-	TreasureBuried
+	TreasureInDataMapPending
+	TreasureInDataMapComplete
 )
 
 var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
@@ -140,7 +142,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 
 		// Defaults to treasureBurying
 		if u.TreasureStatus == 0 {
-			u.TreasureStatus = TreasureBurying
+			u.TreasureStatus = TreasureInDataMapPending
 		}
 	case oyster_utils.TestModeNoTreasure:
 		// Defaults to paymentStatusPaid
@@ -150,7 +152,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 
 		// Defaults to treasureBuried
 		if u.TreasureStatus == 0 {
-			u.TreasureStatus = TreasureBuried
+			u.TreasureStatus = TreasureInDataMapComplete
 		}
 	}
 
@@ -164,9 +166,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 // StartUploadSession will generate dataMaps and save the session and dataMaps
 // to the DB.
 func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
-	if u.Type == SessionTypeAlpha {
-		u.calculatePayment()
-	}
+	u.calculatePayment()
 
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
@@ -321,6 +321,37 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 	return err
 }
 
+func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
+
+	indexes, err := u.GetTreasureIndexes()
+	if err != nil {
+		fmt.Println("Cannot get prls per treasures in models/upload_sessions.go" + err.Error())
+		// captured error in upstream method
+		return big.NewFloat(0), err
+	}
+
+	prlTotal := u.TotalCost.Rat()
+	numerator := prlTotal.Num()
+	denominator := prlTotal.Denom()
+
+	prlTotalFloat := new(big.Float).Quo(new(big.Float).SetInt(numerator), new(big.Float).SetInt(denominator))
+	prlTotalToBuryFloat := new(big.Float).Quo(prlTotalFloat, new(big.Float).SetInt(big.NewInt(int64(2))))
+
+	totalChunks := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(u.NumChunks)
+	totalSectors := float64(math.Ceil(float64(totalChunks) / float64(oyster_utils.FileSectorInChunkSize)))
+
+	if int(totalSectors) != len(indexes) {
+		err = errors.New("length of treasure indexes does not match totalSectors in models/upload_sessions.go")
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+		return big.NewFloat(0), err
+	}
+
+	prlPerSector := new(big.Float).Quo(prlTotalToBuryFloat, big.NewFloat(totalSectors))
+
+	return prlPerSector, nil
+}
+
 func GetStoragePeg() decimal.Decimal {
 	return StoragePeg // TODO: write code to query smart contract to get real storage peg
 }
@@ -339,8 +370,8 @@ func (u *UploadSession) GetPaymentStatus() string {
 }
 
 func (u *UploadSession) EncryptSessionEthKey() {
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
-	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt))), sha3.New256())
 
 	encryptedKey := oyster_utils.Encrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
 
@@ -349,8 +380,8 @@ func (u *UploadSession) EncryptSessionEthKey() {
 }
 
 func (u *UploadSession) DecryptSessionEthKey() string {
-	hashedSessionID := oyster_utils.HashString(fmt.Sprint(u.ID), sha3.New256())
-	hashedCreationTime := oyster_utils.HashString(fmt.Sprint(u.CreatedAt), sha3.New256())
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt))), sha3.New256())
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
 
@@ -361,7 +392,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureBuried).All(&sessionsByAge)
+		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureInDataMapComplete).All(&sessionsByAge)
 
 	if err != nil {
 		fmt.Println(err)
@@ -378,7 +409,7 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusConfirmed, TreasureBurying).All(&unburiedSessions)
+		PaymentStatusConfirmed, TreasureInDataMapPending).All(&unburiedSessions)
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}
@@ -390,7 +421,7 @@ func GetReadySessions() ([]UploadSession, error) {
 	readySessions := []UploadSession{}
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusConfirmed, TreasureBuried).All(&readySessions)
+		PaymentStatusConfirmed, TreasureInDataMapComplete).All(&readySessions)
 	if err != nil {
 		raven.CaptureError(err, nil)
 	}

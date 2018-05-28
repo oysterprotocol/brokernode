@@ -76,7 +76,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	alphaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
 	// Start Alpha Session.
 	alphaSession := models.UploadSession{
@@ -156,7 +156,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		fmt.Println(err)
 	}
 
-	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
 	if err != nil {
 		err := errors.New("Could not generate eth keys: " + err.Error())
 		fmt.Println(err)
@@ -332,7 +332,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
 	// Generates ETH address.
-	betaEthAddr, privKey, _ := services.EthWrapper.GenerateEthAddr()
+	betaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
@@ -371,7 +371,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		c.Error(400, err)
 		return err
 	}
-	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
+	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
 	if err != nil {
 		err := errors.New("Could not generate eth keys: " + err.Error())
 		fmt.Println(err)
@@ -415,6 +415,20 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 		return err
 	}
 
+	// Force to check the status
+	if session.PaymentStatus != models.PaymentStatusConfirmed {
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		if balance.Int64() > 0 {
+			previousPaymentStatus := session.PaymentStatus
+			session.PaymentStatus = models.PaymentStatusConfirmed
+			err = models.DB.Save(&session)
+			if err != nil {
+				session.PaymentStatus = previousPaymentStatus
+			}
+			checkAndSendHalfPrlToBeta(session, balance)
+		}
+	}
+
 	res := paymentStatusCreateRes{
 		ID:            session.ID.String(),
 		PaymentStatus: session.GetPaymentStatus(),
@@ -428,8 +442,13 @@ func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string 
 }
 
 func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
+
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		return
+	}
+
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := services.EthWrapper.WaitForTransfer(transferAddr)
+	balance, err := EthWrapper.WaitForTransfer(transferAddr)
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
@@ -449,15 +468,29 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	// Alpha send half of it to Beta
-	if session.Type == models.SessionTypeAlpha && paymentStatus == models.PaymentStatusConfirmed {
-		var splitAmount big.Int
-		splitAmount.Set(balance)
-		splitAmount.Div(balance, big.NewInt(2))
-		callMsg := services.OysterCallMsg{
-			From:   transferAddr,
-			To:     services.StringToAddress(betaEthAddr),
-			Amount: splitAmount,
-		}
-		services.EthWrapper.SendPRL(callMsg)
+	checkAndSendHalfPrlToBeta(session, balance)
+}
+
+func checkAndSendHalfPrlToBeta(session models.UploadSession, balance *big.Int) {
+	if session.Type != models.SessionTypeAlpha ||
+		session.PaymentStatus != models.PaymentStatusConfirmed ||
+		session.ETHAddrBeta.String == "" {
+		return
 	}
+
+	betaAddr := services.StringToAddress(session.ETHAddrBeta.String)
+	betaBalance := EthWrapper.CheckPRLBalance(betaAddr)
+	if betaBalance.Int64() > 0 {
+		return
+	}
+
+	var splitAmount big.Int
+	splitAmount.Set(balance)
+	splitAmount.Div(balance, big.NewInt(2))
+	callMsg := services.OysterCallMsg{
+		From:   services.StringToAddress(session.ETHAddrAlpha.String),
+		To:     betaAddr,
+		Amount: splitAmount,
+	}
+	EthWrapper.SendPRL(callMsg)
 }

@@ -14,6 +14,9 @@ import (
 	"time"
 )
 
+/*SqlTimeFormat is used for time.Time.Format method */
+const SqlTimeFormat = "2006-01-02 15:04:05"
+
 type ValueT interface{}
 
 // Interface for DB Update operation.
@@ -138,7 +141,7 @@ func getStringPresentation(v reflect.Value) string {
 	case "time.Time":
 		t := v.Interface().(time.Time)
 		// This is the format SQL like.
-		return fmt.Sprintf("'%s'", t.Format("2006-01-02 15:04:05"))
+		return fmt.Sprintf("'%s'", t.Format(SqlTimeFormat))
 	case "uuid.UUID":
 		id := v.Interface().(uuid.UUID)
 		return fmt.Sprintf("'%s'", id.String())

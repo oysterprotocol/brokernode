@@ -5,15 +5,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop/nulls"
 	"io/ioutil"
 	"log"
 	"math"
+	"math/big"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/getsentry/raven-go"
+	"github.com/gobuffalo/pop/nulls"
 )
 
 const (
@@ -31,6 +33,9 @@ const (
 
 	// Separator to join []string array
 	StringsJoinDelim = ", "
+
+	// These are the multipliers for PRL denominations.
+	PrlInWeiUnit = 1e18
 )
 
 // ParseReqBody take a request and parses the body to the target interface.
@@ -209,4 +214,25 @@ func RandSeq(length int, sequence []rune) string {
 		b[i] = sequence[rand.Intn(len(sequence))]
 	}
 	return string(b)
+}
+
+/* Convert PRL unit to wei unit. */
+func ConvertToWeiUnit(prl *big.Float) *big.Int {
+	f := new(big.Float).Mul(prl, big.NewFloat(float64(PrlInWeiUnit)))
+	wei, _ := f.Int(new(big.Int)) // ignore the accuracy
+	return wei
+}
+
+/* Convert wei unit to PRL unit */
+func ConverFromWeiUnit(wei *big.Int) *big.Float {
+	weiInFloat := new(big.Float).SetInt(wei)
+	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
+}
+
+/* Log any error if it is not nil. */
+func LogIfError(err error) {
+	if err != nil {
+		fmt.Println(err)
+		raven.CaptureError(err, nil)
+	}
 }

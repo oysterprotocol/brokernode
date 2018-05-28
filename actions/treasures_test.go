@@ -46,7 +46,7 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": "receiverEthAddr",
-		"genesisHash":     "123",
+		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
 		"ethKey":          ethKey,
@@ -85,7 +85,7 @@ func (as *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": "receiverEthAddr",
-		"genesisHash":     "123",
+		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
 	})
@@ -121,7 +121,7 @@ func (as *ActionSuite) Test_Claim_Failure() {
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": "receiverEthAddr",
-		"genesisHash":     "123",
+		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
 		"ethKey":          "9999999999999999999999999999999999999999999999999999999999999999",

@@ -11,5 +11,4 @@ var _ = grift.Namespace("db", func() {
 		// Add DB seeding stuff here
 		return nil
 	})
-
 })

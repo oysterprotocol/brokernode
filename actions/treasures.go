@@ -23,16 +23,13 @@ type treasureRes struct {
 	Success bool `json:"success"`
 }
 
-// Visible for Unit Test
-var IotaWrapper = services.IotaWrapper
-var EthWrapper = services.EthWrapper
-
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
+
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
 	if err == nil && verify {

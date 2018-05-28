@@ -32,7 +32,7 @@ func (suite *JobsSuite) Test_ClaimUnusedPRLs() {
 
 	makeEthMocks_claim_unused_prls(&EthMock)
 
-	jobs.SetEthWrapper(EthMock)
+	jobs.EthWrapper = EthMock
 
 	testSetup(suite)
 

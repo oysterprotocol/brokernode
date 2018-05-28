@@ -7,11 +7,12 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
+	"math/big"
 	"time"
 )
 
 func (ms *ModelSuite) Test_StartUploadSession() {
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 2
@@ -40,7 +41,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 }
 
 func (ms *ModelSuite) Test_DataMapsForSession() {
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 3
@@ -57,11 +58,9 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 	ms.Equal(0, len(vErr.Errors))
 
 	expectedHashes := []string{
-		"ef7edf0decd95c9e094184dca8641b68bb3ca0f69fec086341893816c68f7d9d408131fa01a66cf95f05b2a038185db9",
-		"86ad8449bd1b32bcd86d86cfe7b3b6453f391c0c0df57956a2dff53f55709af3cd43a983ef46263cf8e361ae15734b33",
-		"fbb914b1ba9cc663be0eb7b2570209af5caccfe5b7bba65e832c683072a969715e1b23866ce97ddb765fefe9b991e652",
-		"e697116fd36a697f327f4682fd6f72250933bc61184fc36ff89badf749779aadf643b2e4f3fcd22fa9c07a6ce89c99a5",
-		"167b2e33d17a4a96c6ad7216cd49c664b056efd30c08d65a354d1a5eb9cc9dbcb2f639495269f7ef5e56b8e62777edfc",
+		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
+		"cdfdb810ee1607917c8bacbfbf95d35dab9281abb01968c2a27349476b53aa35024fae410955327233523229677da827",
+		"d5a3eda969c62842840e58fe7a1982fdcf9eb758e2ebd545289d6daa706b506a6a4833cd134992be9c73fe4c1e1d15ff",
 	}
 
 	dMaps, err := u.DataMapsForSession()
@@ -73,7 +72,7 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 }
 
 func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 3
@@ -135,44 +134,44 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 	ms.Nil(err)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "genHash1",
+		GenesisHash:    "abcdeff1",
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
-		GenesisHash:    "genHash2",
+		GenesisHash:    "abcdeff2",
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
-		GenesisHash:    "genHash3",
+		GenesisHash:    "abcdeff3",
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBuried,
+		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 	uploadSession4 := models.UploadSession{ // will not be in the array
-		GenesisHash:    "genHash4",
+		GenesisHash:    "abcdeff4",
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 	uploadSession5 := models.UploadSession{ // will not be in the array
-		GenesisHash:    "genHash5",
+		GenesisHash:    "abcdeff5",
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusPending,
-		TreasureStatus: models.TreasureBurying,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
@@ -193,19 +192,19 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 
 	// set uploadSession3 to be the oldest
 	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-10*time.Second), "genHash3").All(&[]models.UploadSession{})
+		time.Now().Add(-10*time.Second), "abcdeff3").All(&[]models.UploadSession{})
 
 	// set uploadSession2 to be the newest
 	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(10*time.Second), "genHash2").All(&[]models.UploadSession{})
+		time.Now().Add(10*time.Second), "abcdeff2").All(&[]models.UploadSession{})
 
 	sessions, err := models.GetSessionsByAge()
 	ms.Nil(err)
 
 	//verify that the oldest session (uploadSession3) is first in the array
-	ms.Equal("genHash3", sessions[0].GenesisHash)
-	ms.Equal("genHash1", sessions[1].GenesisHash)
-	ms.Equal("genHash2", sessions[2].GenesisHash)
+	ms.Equal("abcdeff3", sessions[0].GenesisHash)
+	ms.Equal("abcdeff1", sessions[1].GenesisHash)
+	ms.Equal("abcdeff2", sessions[2].GenesisHash)
 	ms.Equal(3, len(sessions))
 }
 
@@ -214,7 +213,7 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 250
 	storageLengthInYears := 3
@@ -259,7 +258,7 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
-	genHash := "genHashTest"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 250
 	storageLengthInYears := 3
@@ -294,7 +293,7 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 }
 
 func (ms *ModelSuite) Test_EncryptAndDecryptEthKey() {
-	genHash := "genHash"
+	genHash := "abcdef"
 	fileSizeBytes := 123
 
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
@@ -332,7 +331,7 @@ func (ms *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "genHash",
+		GenesisHash:          "abcdef",
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -363,7 +362,7 @@ func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "genHash",
+		GenesisHash:          "abcdef",
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -394,7 +393,7 @@ func (ms *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "genHash",
+		GenesisHash:          "abcdef",
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -425,7 +424,7 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "genHash",
+		GenesisHash:          "abcdef",
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -439,4 +438,65 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 	// expecting to be charged for 3 sectors
 	// we are 1 chunk over
 	ms.Equal(decimal.New(1406250000000000, -16), invoice.Cost)
+}
+
+func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
+	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	totalCost := 5
+	numSectors := 3
+
+	genHash := "abcdef"
+	fileSizeBytes := 123
+	numChunks := 250
+	storageLengthInYears := 3
+	mergedIndexes := []int{2, 121, 245}
+	privateKeys := []string{
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+	}
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+	u.NumChunks = 2500000
+	u.TotalCost = decimal.NewFromFloat(float64(totalCost))
+	ms.DB.ValidateAndUpdate(&u)
+
+	prlsPerTreasure, err := u.GetPRLsPerTreasure()
+	ms.Nil(err)
+
+	expectedPRLsPerTreasure := new(big.Float).Quo(
+		new(big.Float).SetInt(big.NewInt(int64(totalCost))),
+		new(big.Float).SetInt(big.NewInt(int64(numSectors*2))))
+	// multiplying numSectors x2, since brokers get to keep half the PRL
+
+	ms.Equal(expectedPRLsPerTreasure, prlsPerTreasure)
+}
+
+func (ms *ModelSuite) Test_PaymentStatus() {
+	u := models.UploadSession{}
+
+	u.PaymentStatus = models.PaymentStatusConfirmed
+	ms.Equal(u.GetPaymentStatus(), "confirmed")
+
+	u.PaymentStatus = models.PaymentStatusInvoiced
+	ms.Equal(u.GetPaymentStatus(), "invoiced")
+
+	u.PaymentStatus = models.PaymentStatusPending
+	ms.Equal(u.GetPaymentStatus(), "pending")
+
+	u.PaymentStatus = 100
+	ms.Equal(u.GetPaymentStatus(), "error")
+
+	u.PaymentStatus = models.PaymentStatusError
+	ms.Equal(u.GetPaymentStatus(), "error")
 }
