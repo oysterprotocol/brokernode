@@ -606,7 +606,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 			Amount:   *amountToSend,
 			Gas:      gas,
 			GasPrice: *gasPrice,
-			TotalWei: balance,
+			TotalWei: *balance,
 			Data:     nil, // setup data
 		}
 
