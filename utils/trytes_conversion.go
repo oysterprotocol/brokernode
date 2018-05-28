@@ -3,9 +3,11 @@ package oyster_utils
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
+	"strings"
+
 	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
-	"strings"
 )
 
 var (
@@ -109,8 +111,10 @@ func MakeAddress(hashString string) string {
 	} else if len(result) < 81 {
 		return PadWith9s(result, 81)
 	}
-	return result
 
+	fmt.Println("\n\nIOTA Addr: %v\n\n", result)
+
+	return result
 }
 
 func PadWith9s(stringToPad string, desiredLength int) string {
