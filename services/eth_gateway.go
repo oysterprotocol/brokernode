@@ -41,7 +41,7 @@ type Eth struct {
 	SendPRL
 	GetGasPrice
 	WaitForTransfer
-	CheckBalance
+	CheckETHBalance
 	CheckPRLBalance
 	GetCurrentBlock
 	GetConfirmationCount
@@ -75,8 +75,8 @@ type GenerateKeys func(int) (privateKeys []string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) (*big.Int, error)
-type CheckBalance func(common.Address) *big.Int
-type CheckPRLBalance func(common.Address) *big.Int
+type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
+type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
@@ -132,7 +132,7 @@ func init() {
 		SendPRL:              sendPRL,
 		GetGasPrice:          getGasPrice,
 		WaitForTransfer:      waitForTransfer,
-		CheckBalance:         checkBalance,
+		CheckETHBalance:      checkETHBalance,
 		CheckPRLBalance:      checkPRLBalance,
 		GetCurrentBlock:      getCurrentBlock,
 		GetConfirmationCount: getConfirmationCount,
@@ -265,7 +265,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 }
 
 // Check balance from a valid Ethereum network address
-func checkBalance(addr common.Address) *big.Int {
+func checkETHBalance(addr common.Address) *big.Int {
 	// connect ethereum client
 	client, err := sharedClient()
 	if err != nil {
@@ -370,7 +370,7 @@ func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return number of PRL.
 func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
-	balance := checkBalance(brokerAddr)
+	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
 		// Has balance already, don't need to wait for it.
 		return balance, nil
@@ -425,7 +425,7 @@ func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
 			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 			// ensure confirmation type from "sendGas" or "sendPRL"
 			// recordTransaction(log.Address, "")
-			return checkBalance(brokerAddr), nil
+			return checkPRLBalance(brokerAddr), nil
 		}
 	}
 }
@@ -475,7 +475,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
-	balance := checkBalance(walletAddress)
+	balance := checkETHBalance(walletAddress)
 	fmt.Printf("balance : %v\n", balance)
 
 	// balance too low return error
@@ -576,9 +576,9 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 	// Contract claim(address _payout, address _fee) public returns (bool success)
 	for _, completedUpload := range completedUploads {
 		//	for each completed upload, get its PRL balance from its ETH
-		//	address (completedUpload.ETHAddr) by calling CheckBalance.
+		//	address (completedUpload.ETHAddr) by calling CheckETHBalance.
 		ethAddr := common.HexToAddress(completedUpload.ETHAddr)
-		balance := checkBalance(ethAddr)
+		balance := checkPRLBalance(ethAddr)
 		if balance.Int64() <= 0 {
 			// need to log this error to apply a retry
 			err := errors.New("could not complete transaction due to zero balance for:" + completedUpload.ETHAddr)

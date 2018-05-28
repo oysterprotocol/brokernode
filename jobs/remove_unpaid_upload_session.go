@@ -22,7 +22,7 @@ func RemoveUnpaidUploadSession() {
 	}
 
 	for _, session := range sessions {
-		balance := EthWrapper.CheckBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			continue
 		}

@@ -172,7 +172,7 @@ func sendPRL(treasureToBury models.Treasure) {
 	}
 
 	// TODO:  Need balance of PRL, need to have at least enough ETH for gas for transaction
-	balance := services.EthWrapper.CheckBalance(services.MainWalletAddress)
+	balance := services.EthWrapper.CheckPRLBalance(services.MainWalletAddress)
 	if balance.Int64() <= 0 || balance.Int64() < treasureToBury.GetPRLAmount().Int64() {
 		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
@@ -212,7 +212,7 @@ func sendGas(treasureToBury models.Treasure) {
 
 	// TODO:  Need balance of ETH, need to have at least enough ETH for gas for transaction along with the gas
 	// we are sending to the treasure address
-	balance := services.EthWrapper.CheckBalance(services.MainWalletAddress)
+	balance := services.EthWrapper.CheckETHBalance(services.MainWalletAddress)
 	if balance.Int64() <= 0 || balance.Int64() < gas.Int64() {
 		errorString := "Cannot send Gas to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(gas.Int64())
@@ -237,13 +237,8 @@ func buryPRL(treasureToBury models.Treasure) {
 	// TODO:  Need balance of PRL, it should be more than 0
 	// TODO:  Need balance of ETH, it should be more than 0
 
-	/* TODO: Need separate methods for getting balances of PRL and ETH?
-
-	This method is only getting PRL or ETH, not sure which, but need balances of both
-
-	*/
-	balanceOfPRL := services.EthWrapper.CheckBalance(services.StringToAddress(treasureToBury.ETHAddr))
-	balanceOfETH := services.EthWrapper.CheckBalance(services.StringToAddress(treasureToBury.ETHAddr))
+	balanceOfPRL := services.EthWrapper.CheckPRLBalance(services.StringToAddress(treasureToBury.ETHAddr))
+	balanceOfETH := services.EthWrapper.CheckETHBalance(services.StringToAddress(treasureToBury.ETHAddr))
 
 	if balanceOfPRL.Int64() <= 0 || balanceOfETH.Int64() <= 0 {
 		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet.  balance of PRL: " +
