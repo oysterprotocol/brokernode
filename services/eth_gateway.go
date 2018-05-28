@@ -370,7 +370,7 @@ func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
 // If it is completed return number of PRL.
 func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
-	balance := checkETHBalance(brokerAddr)
+	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
 		// Has balance already, don't need to wait for it.
 		return balance, nil
@@ -425,7 +425,7 @@ func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
 			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 			// ensure confirmation type from "sendGas" or "sendPRL"
 			// recordTransaction(log.Address, "")
-			return checkETHBalance(brokerAddr), nil
+			return checkPRLBalance(brokerAddr), nil
 		}
 	}
 }
