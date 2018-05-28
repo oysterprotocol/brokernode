@@ -417,7 +417,7 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 
 	// Force to check the status
 	if session.PaymentStatus != models.PaymentStatusConfirmed {
-		balance := EthWrapper.CheckBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			previousPaymentStatus := session.PaymentStatus
 			session.PaymentStatus = models.PaymentStatusConfirmed
@@ -479,7 +479,7 @@ func checkAndSendHalfPrlToBeta(session models.UploadSession, balance *big.Int) {
 	}
 
 	betaAddr := services.StringToAddress(session.ETHAddrBeta.String)
-	betaBalance := EthWrapper.CheckBalance(betaAddr)
+	betaBalance := EthWrapper.CheckPRLBalance(betaAddr)
 	if betaBalance.Int64() > 0 {
 		return
 	}

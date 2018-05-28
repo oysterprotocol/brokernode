@@ -26,7 +26,7 @@ type mockSendPrl struct {
 	output_bool bool
 }
 
-type mockCheckBalance struct {
+type mockCheckPRLBalance struct {
 	hasCalled  bool
 	input_addr common.Address
 	output_int *big.Int
@@ -73,7 +73,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	as.True(mockWaitForTransfer.hasCalled)
 	as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 
-	// mockCheckBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
+	// mockCheckPRLBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
 	// it again.
 	as.False(mockSendPrl.hasCalled)
 
@@ -128,9 +128,9 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
-	mockCheckBalance := mockCheckBalance{}
+	mockCheckPRLBalance := mockCheckPRLBalance{}
 	EthWrapper = services.Eth{
-		CheckBalance: mockCheckBalance.checkBalance,
+		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
@@ -142,18 +142,18 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	resParsed := getPaymentStatus(uploadSession1, as)
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
-	as.False(mockCheckBalance.hasCalled)
+	as.False(mockCheckPRLBalance.hasCalled)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComplete() {
 	//setup
-	mockCheckBalance := mockCheckBalance{
+	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
 	EthWrapper = services.Eth{
-		CheckBalance: mockCheckBalance.checkBalance,
-		SendPRL:      mockSendPrl.sendPrl,
+		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
+		SendPRL:         mockSendPrl.sendPrl,
 	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
@@ -168,11 +168,11 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
 
-	// checkBalance has been called twice. 1st for Alpha, and 2nd for Beta, we only record Beta addr
+	// checkPRLBalance has been called twice. 1st for Alpha, and 2nd for Beta, we only record Beta addr
 	// Since both time, it returns a positive balance, thus, alpha won't call sendPrl method.
-	as.True(mockCheckBalance.hasCalled)
+	as.True(mockCheckPRLBalance.hasCalled)
 	as.False(mockSendPrl.hasCalled)
-	as.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckBalance.input_addr)
+	as.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	as.Nil(as.DB.Find(&session, resParsed.ID))
@@ -181,11 +181,11 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
 	//setup
-	mockCheckBalance := mockCheckBalance{
+	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(0),
 	}
 	EthWrapper = services.Eth{
-		CheckBalance: mockCheckBalance.checkBalance,
+		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
@@ -198,8 +198,8 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 	resParsed := getPaymentStatus(uploadSession1, as)
 
 	as.Equal("invoiced", resParsed.PaymentStatus)
-	as.True(mockCheckBalance.hasCalled)
-	as.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckBalance.input_addr)
+	as.True(mockCheckPRLBalance.hasCalled)
+	as.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	as.Nil(as.DB.Find(&session, resParsed.ID))
@@ -207,13 +207,13 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
-	mockCheckBalance := mockCheckBalance{
+	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
 	EthWrapper = services.Eth{
-		CheckBalance: mockCheckBalance.checkBalance,
-		SendPRL:      mockSendPrl.sendPrl,
+		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
+		SendPRL:         mockSendPrl.sendPrl,
 	}
 
 	uploadSession1 := models.UploadSession{
@@ -228,7 +228,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 	resParsed := getPaymentStatus(uploadSession1, as)
 
 	as.Equal("confirmed", resParsed.PaymentStatus)
-	as.True(mockCheckBalance.hasCalled)
+	as.True(mockCheckPRLBalance.hasCalled)
 	as.False(mockSendPrl.hasCalled)
 
 	session := models.UploadSession{}
@@ -280,7 +280,7 @@ func (v *mockSendPrl) sendPrl(msg services.OysterCallMsg) bool {
 	return v.output_bool
 }
 
-func (v *mockCheckBalance) checkBalance(addr common.Address) *big.Int {
+func (v *mockCheckPRLBalance) checkPRLBalance(addr common.Address) *big.Int {
 	v.hasCalled = true
 	v.input_addr = addr
 	return v.output_int
