@@ -598,9 +598,6 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 		var amountToSend = balance
 		var gas = gasLimit.GasLimit()
 		gasPrice, _ := getGasPrice()
-		// wei unit
-		oneWei := big.NewInt(1000000000000000000)
-		totalWei := oneWei.Mul(oneWei, balance)
 
 		// prepare oyster message call
 		var oysterMsg = OysterCallMsg{
@@ -609,7 +606,7 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 			Amount:   *amountToSend,
 			Gas:      gas,
 			GasPrice: *gasPrice,
-			TotalWei: *totalWei,
+			TotalWei: *balance,
 			Data:     nil, // setup data
 		}
 
