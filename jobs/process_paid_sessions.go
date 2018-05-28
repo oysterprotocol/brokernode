@@ -3,6 +3,8 @@ package jobs
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -181,12 +183,26 @@ func sendPRL(treasureToBury models.Treasure) {
 		return
 	}
 
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	privateKeyString := services.MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := services.EthWrapper.GeneratePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
+
+	fmt.Println("treasureToBury.Ethaddr")
+	fmt.Println(treasureToBury.ETHAddr)
+
 	// TODO:  What else do I need here?
 	callMsg := services.OysterCallMsg{
-		From:   services.MainWalletAddress,
-		To:     services.StringToAddress(treasureToBury.ETHAddr),
-		Amount: *treasureToBury.GetPRLAmount(),
-		Gas:    gas.Uint64(),
+		From:       services.MainWalletAddress,
+		To:         services.StringToAddress(treasureToBury.ETHAddr),
+		Amount:     *treasureToBury.GetPRLAmount(),
+		Gas:        gas.Uint64(),
+		PrivateKey: *privateKey,
 	}
 
 	sendSuccess := services.EthWrapper.SendPRL(callMsg)

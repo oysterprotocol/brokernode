@@ -34,6 +34,7 @@ type Eth struct {
 	GenerateEthAddr
 	GenerateKeys
 	GenerateEthAddrFromPrivateKey
+	GeneratePublicKeyFromPrivateKey
 	BuryPrl
 	SendETH
 	SendPRL
@@ -72,6 +73,7 @@ type SendGas func([]models.CompletedUpload) error
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GenerateKeys func(int) (privateKeys []string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
+type GeneratePublicKeyFromPrivateKey func(c elliptic.Curve, k *big.Int) *ecdsa.PrivateKey
 type GetGasPrice func() (*big.Int, error)
 type WaitForTransfer func(brokerAddr common.Address) (*big.Int, error)
 type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
@@ -121,12 +123,13 @@ func init() {
 	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
 
 	EthWrapper = Eth{
-		SendGas:                       sendGas,
-		ClaimPRL:                      claimPRLs,
-		ClaimUnusedPRLs:               claimUnusedPRLs,
-		GenerateEthAddr:               generateEthAddr,
-		GenerateKeys:                  generateKeys,
-		GenerateEthAddrFromPrivateKey: generateEthAddrFromPrivateKey,
+		SendGas:                         sendGas,
+		ClaimPRL:                        claimPRLs,
+		ClaimUnusedPRLs:                 claimUnusedPRLs,
+		GenerateEthAddr:                 generateEthAddr,
+		GenerateKeys:                    generateKeys,
+		GenerateEthAddrFromPrivateKey:   generateEthAddrFromPrivateKey,
+		GeneratePublicKeyFromPrivateKey: generatePublicKeyFromPrivateKey,
 		BuryPrl:              buryPrl,
 		SendETH:              sendETH,
 		SendPRL:              sendPRL,
@@ -291,7 +294,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	}
 
 	// instance of the oyster pearl contract
-	OysterPearlAddress := common.HexToAddress("0x84e07b9833af3d3c8e07b71b1c9c041ec5909d5d")
+	OysterPearlAddress := common.HexToAddress("1844b21593262668b7248d0f57a220caaba46ab9")
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
 		fmt.Printf("unable to access contract instance at :%v", err)
@@ -456,9 +459,22 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	ctx, cancel := createContext()
 	defer cancel()
 
+	/*TODO: get this keystore stuff working or remove it*/
 	// wallet key access
-	walletKey := getWallet()
-	walletAddress := walletKey.Address
+	//walletKey := getWallet()
+	//walletAddress := walletKey.Address
+
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	walletAddress := MainWalletAddress
+	privateKeyString := MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
+
 	// generate nonce
 	nonce, _ := client.NonceAt(ctx, walletAddress, nil)
 
@@ -491,7 +507,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	chainId := big.NewInt(559966)
 
 	signer := types.NewEIP155Signer(chainId)
-	signedTx, err := types.SignTx(tx, signer, walletKey.PrivateKey)
+	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return types.Transactions{}, err
@@ -543,11 +559,24 @@ func buryPrl(msg OysterCallMsg) bool {
 	// shared client
 	client, _ := sharedClient()
 	// contractAddress := common.HexToAddress(oysterPearlContract)
-	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
-	walletKey := getWallet()
+	contractAddress := common.HexToAddress("1844b21593262668b7248d0f57a220caaba46ab9")
+
+	/*TODO: get this keystore stuff working or remove it*/
+	//walletKey := getWallet()
+
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	//walletAddress := MainWalletAddress
+	privateKeyString := MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	auth := bind.NewKeyedTransactor(privateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -631,11 +660,24 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	// shared client
 	client, _ := sharedClient()
 	// contractAddress := common.HexToAddress(oysterPearlContract)
-	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
-	walletKey := getWallet()
+	contractAddress := common.HexToAddress("1844b21593262668b7248d0f57a220caaba46ab9")
+
+	/*TODO: get this keystore stuff working or remove it*/
+	//walletKey := getWallet()
+
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	//walletAddress := MainWalletAddress
+	privateKeyString := MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	auth := bind.NewKeyedTransactor(privateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -673,14 +715,48 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 */
 func sendPRL(msg OysterCallMsg) bool {
 
+	fmt.Println(msg)
+	fmt.Println("msg.To")
+	fmt.Println(msg.To)
+	fmt.Println("msg.Gas")
+	fmt.Println(msg.Gas)
+	fmt.Println("msg.Data")
+	fmt.Println(msg.Data)
+	fmt.Println("msg.Amount")
+	fmt.Println(msg.Amount)
+	fmt.Println("msg.From")
+	fmt.Println(msg.From)
+	fmt.Println("msg.GasPrice")
+	fmt.Println(msg.GasPrice)
+	fmt.Println("msg.PrivateKey")
+	fmt.Println(msg.PrivateKey)
+	fmt.Println(msg.PrivateKey.D)
+	fmt.Println(msg.PrivateKey.X)
+	fmt.Println(msg.PrivateKey.Y)
+	fmt.Println("msg.TotalWei")
+	fmt.Println(msg.TotalWei)
+
 	// shared client
 	client, _ := sharedClient()
 	// contractAddress := common.HexToAddress(oysterPearlContract)
-	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
-	walletKey := getWallet()
+	contractAddress := common.HexToAddress("1844b21593262668b7248d0f57a220caaba46ab9")
+
+	/*TODO: get this keystore stuff working or remove it*/
+	//walletKey := getWallet()
+
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	//walletAddress := MainWalletAddress
+	privateKeyString := MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
+	auth := bind.NewKeyedTransactor(privateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -729,7 +805,19 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	// oysterby chainId 559966 - env
 	chainId := big.NewInt(559966)
 
-	walletKey := getWallet()
+	/*TODO: get this keystore stuff working or remove it*/
+	//walletKey := getWallet()
+
+	// TODO:  pull the lines below this out if keystore stuff gets fixed
+	walletAddress := MainWalletAddress
+	privateKeyString := MainWalletKey
+
+	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
+		privateKeyString = "0x" + privateKeyString
+	}
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	client, err := sharedClient()
 	if err != nil {
@@ -742,7 +830,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	name, err := token.Name(nil)
 	fmt.Printf("OysterPearl :%v", name)
 
-	nonce, _ := client.NonceAt(ctx, walletKey.Address, nil)
+	nonce, _ := client.NonceAt(ctx, walletAddress, nil)
 
 	currentBlock, err := getCurrentBlock()
 	gasLimit := currentBlock.GasLimit()
@@ -752,7 +840,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	tx := types.NewTransaction(nonce, contractAddress, big.NewInt(0), gasLimit, gasPrice, data)
 
 	signer := types.NewEIP155Signer(chainId)
-	signedTx, _ := types.SignTx(tx, signer, walletKey.PrivateKey)
+	signedTx, _ := types.SignTx(tx, signer, privateKey)
 
 	return signedTx, nil
 }

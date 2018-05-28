@@ -67,7 +67,7 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{
-			Duration: 30 * time.Second,
+			Duration: 10 * time.Second,
 		})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
