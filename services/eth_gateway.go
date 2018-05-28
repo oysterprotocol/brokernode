@@ -73,7 +73,7 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 
 // Singleton client
 var (
-	ethUrl            string
+	EthUrl            string
 	MainWalletAddress common.Address
 	MainWalletKey     string
 	client            *ethclient.Client
@@ -91,12 +91,15 @@ func init() {
 
 	MainWalletAddressString := os.Getenv("MAIN_WALLET_ADDRESS")
 	MainWalletAddress = StringToAddress(MainWalletAddressString)
-	MainWalletKey := os.Getenv("MAIN_WALLET_KEY")
-	ethUrl := os.Getenv("ETH_NODE_URL")
+	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
+	EthUrl = os.Getenv("ETH_NODE_URL")
 
+	fmt.Println("Using main wallet address: ")
 	fmt.Println(MainWalletAddress)
+	fmt.Println("Using main wallet key: ")
 	fmt.Println(MainWalletKey)
-	fmt.Println(ethUrl)
+	fmt.Println("Using eth node url: ")
+	fmt.Println(EthUrl)
 
 	EthWrapper = Eth{
 		SendGas:                       sendGas,
@@ -126,9 +129,9 @@ func sharedClient(netUrl string) (c *ethclient.Client, err error) {
 
 	// override to allow custom node url
 	if len(netUrl) > 0 {
-		ethUrl = netUrl
+		EthUrl = netUrl
 	}
-	c, err = ethclient.Dial(ethUrl)
+	c, err = ethclient.Dial(EthUrl)
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
 		raven.CaptureError(err, nil)
