@@ -17,20 +17,25 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 			return big.NewInt(0)
 		},
 	}
-	addStartUploadSession(suite, "UploadSessionsAndDataMap_Expired", models.PaymentStatusInvoiced, true)
-	addStartUploadSession(suite, "UploadSessionsAndDataMap_NoExpired", models.PaymentStatusInvoiced, false)
+	UploadSessionsAndDataMap_Expired := "aaaaaa"
+	UploadSessionsAndDataMap_NoExpired := "bbbbbb"
+
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "UploadSessionsAndDataMap_NoExpired", true)
+	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
-	addStartUploadSession(suite, "AllPaid", models.PaymentStatusConfirmed, true)
+	AllPaid := "aaaaaa"
+
+	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "AllPaid", true)
+	verifyData(suite, AllPaid, true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
@@ -39,11 +44,12 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 			return big.NewInt(10)
 		},
 	}
-	addStartUploadSession(suite, "HasBalance", models.PaymentStatusInvoiced, true)
+	HasBalance := "aaaaaa"
+	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "HasBalance", true)
+	verifyData(suite, HasBalance, true)
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
@@ -52,12 +58,15 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 			return big.NewInt(0)
 		},
 	}
-	addOnlySession(suite, "OnlyRemoveUploadSession_Expired", models.PaymentStatusInvoiced, true)
-	addOnlySession(suite, "OnlyRemoveUploadSession_NoExpired", models.PaymentStatusInvoiced, false)
+	OnlyRemoveUploadSession_Expired := "aaaaaa"
+	OnlyRemoveUploadSession_NoExpired := "bbbbbb"
+
+	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
+	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
 
 	jobs.RemoveUnpaidUploadSession()
 
-	verifyData(suite, "OnlyRemoveUploadSession_NoExpired", false)
+	verifyData(suite, OnlyRemoveUploadSession_NoExpired, false)
 }
 
 func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus int, isExpired bool) {
@@ -102,18 +111,18 @@ func addOnlySession(suite *JobsSuite, genesisHash string, paymentStatus int, isE
 	}
 }
 
-func verifyData(suite *JobsSuite, expectedDenesisHash string, expectToHaveDataMap bool) {
+func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMap bool) {
 	var sessions []models.UploadSession
 	suite.Nil(suite.DB.RawQuery("SELECT * from upload_sessions").All(&sessions))
 	suite.Equal(1, len(sessions))
-	suite.Equal(expectedDenesisHash, sessions[0].GenesisHash)
+	suite.Equal(expectedGenesisHash, sessions[0].GenesisHash)
 
 	if expectToHaveDataMap {
 		var dataMaps []models.DataMap
 		suite.Nil(suite.DB.RawQuery("SELECT * from data_maps").All(&dataMaps))
 		suite.True(len(dataMaps) > 0)
 		for _, dataMap := range dataMaps {
-			suite.Equal(expectedDenesisHash, dataMap.GenesisHash)
+			suite.Equal(expectedGenesisHash, dataMap.GenesisHash)
 		}
 	}
 }
