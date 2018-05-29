@@ -647,12 +647,11 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	if err != nil {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
-	prlBalance := checkPRLBalance(treasureAddress)
+
 	tx, err := oysterPearl.Claim(&bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Value:    prlBalance,
 	}, receiverAddress, treasureAddress)
 
 	printTx(tx)
@@ -791,9 +790,6 @@ func RunOnMainETHNetwork() {
 	//TODO:  Add a getMainWallet() method and replace the lines below this with calls
 	// to getMainWallet()
 	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
-	privateKeyString := normalizePrivateKeyString(MainWalletKey)
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 
 	fmt.Println("Using main wallet address: ")
 	fmt.Println(MainWalletAddress)
@@ -802,6 +798,10 @@ func RunOnMainETHNetwork() {
 	fmt.Println("Using eth node url: ")
 	fmt.Println(EthUrl)
 	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
+
+	privateKeyString := normalizePrivateKeyString(MainWalletKey)
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 }
 
 func RunOnTestNet() {

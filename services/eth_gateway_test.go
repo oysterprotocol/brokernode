@@ -3,6 +3,11 @@ package services_test
 import (
 	"context"
 	"fmt"
+	"log"
+	"math/big"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
@@ -13,10 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-	"log"
-	"math/big"
-	"testing"
-	"time"
 )
 
 //
@@ -79,8 +80,9 @@ func Test_generateAddress(t *testing.T) {
 		t.Fatalf("error creating ethereum network address")
 	}
 	// ensure address is correct format
-	if common.IsHexAddress(addr.Hex()) {
-		t.Fatalf("could not create a valid ethereum network address:%v", addr.Hex())
+
+	if common.IsHexAddress(addr.String()) {
+		t.Fatalf("could not create a valid ethereum network address:%v", addr.String())
 	}
 	// ensure private key was returned
 	if privateKey == "" {
