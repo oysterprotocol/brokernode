@@ -790,9 +790,6 @@ func RunOnMainETHNetwork() {
 	//TODO:  Add a getMainWallet() method and replace the lines below this with calls
 	// to getMainWallet()
 	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
-	privateKeyString := normalizePrivateKeyString(MainWalletKey)
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 
 	fmt.Println("Using main wallet address: ")
 	fmt.Println(MainWalletAddress)
@@ -801,6 +798,10 @@ func RunOnMainETHNetwork() {
 	fmt.Println("Using eth node url: ")
 	fmt.Println(EthUrl)
 	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
+
+	privateKeyString := normalizePrivateKeyString(MainWalletKey)
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 }
 
 func RunOnTestNet() {
