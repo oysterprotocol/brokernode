@@ -94,15 +94,15 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 
 // Singleton client
 var (
-	EthUrl              string
-	oysterPearlContract string
-	chainId             *big.Int
-	MainWalletAddress   common.Address
-	MainWalletKey       string
-	privateKey          *ecdsa.PrivateKey
-	client              *ethclient.Client
-	mtx                 sync.Mutex
-	EthWrapper          Eth
+	EthUrl               string
+	oysterPearlContract  string
+	chainId              *big.Int
+	MainWalletAddress    common.Address
+	MainWalletKey        string
+	MainWalletPrivateKey *ecdsa.PrivateKey
+	client               *ethclient.Client
+	mtx                  sync.Mutex
+	EthWrapper           Eth
 )
 
 func init() {
@@ -494,7 +494,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	chainId := params.MainnetChainConfig.ChainId
 
 	signer := types.NewEIP155Signer(chainId)
-	signedTx, err := types.SignTx(tx, signer, privateKey)
+	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return types.Transactions{}, err
@@ -548,7 +548,7 @@ func buryPrl(msg OysterCallMsg) bool {
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(privateKey)
+	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -635,7 +635,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(privateKey)
+	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -698,7 +698,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(privateKey)
+	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
 	if auth == nil {
 		fmt.Printf("unable to create a new transactor")
 	}
@@ -812,7 +812,7 @@ func RunOnMainETHNetwork() {
 	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
 	privateKeyString := normalizePrivateKeyString(MainWalletKey)
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	privateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 
 	fmt.Println("Using main wallet address: ")
 	fmt.Println(MainWalletAddress)
@@ -826,7 +826,7 @@ func RunOnMainETHNetwork() {
 func RunOnTestNet() {
 
 	walletKey := getWallet()
-	privateKey = walletKey.PrivateKey
+	MainWalletPrivateKey = walletKey.PrivateKey
 	MainWalletAddress = walletKey.Address
 
 	oysterPearlContract = "b7baab5cad2d2ebfe75a500c288a4c02b74bc12c"
