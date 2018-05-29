@@ -313,7 +313,7 @@ func (suite *JobsSuite) Test_SendPRLsToWaitingTreasureAddresses() {
 			return true
 		},
 		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
-		WaitForTransfer: func(addr common.Address) (result *big.Int, err error) {
+		WaitForTransfer: func(addr common.Address, transferType string) (result *big.Int, err error) {
 			hasCalledWaitForTransfer = true
 			return big.NewInt(200000000000000000), nil
 		},
@@ -376,7 +376,7 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 			return types.Transactions{}, nil
 		},
 		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
-		WaitForTransfer: func(addr common.Address) (result *big.Int, err error) {
+		WaitForTransfer: func(addr common.Address, transferType string) (result *big.Int, err error) {
 			hasCalledWaitForTransfer = true
 			// make one of the wait for transfer calls unsuccessful
 			if addr == services.StringToAddress(failWaitForTransferAddress) {
@@ -443,7 +443,7 @@ func (suite *JobsSuite) Test_InvokeBury() {
 			return true
 		},
 		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
-		WaitForTransfer: func(addr common.Address) (result *big.Int, err error) {
+		WaitForTransfer: func(addr common.Address, transferType string) (result *big.Int, err error) {
 			hasCalledWaitForTransfer = true
 			// make one of the wait for transfer calls unsuccessful
 			if addr == services.StringToAddress(failWaitForTransferAddress) {

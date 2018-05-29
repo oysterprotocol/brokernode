@@ -508,7 +508,7 @@ func buryPRL(treasureToBury models.Treasure) {
 
 func waitForPRLs(treasureToBury models.Treasure) {
 	treasureAddress := services.StringToAddress(treasureToBury.ETHAddr)
-	_, err := EthWrapper.WaitForTransfer(treasureAddress)
+	_, err := EthWrapper.WaitForTransfer(treasureAddress, "prl")
 
 	prlStatus := models.PRLConfirmed
 	if err != nil {
@@ -532,7 +532,7 @@ func waitForGas(treasureToBury models.Treasure) {
 
 	treasureAddress := services.StringToAddress(treasureToBury.ETHAddr)
 	//TODO need to wait for transfer of ETH, not PRL
-	_, err := EthWrapper.WaitForTransfer(treasureAddress)
+	_, err := EthWrapper.WaitForTransfer(treasureAddress, "eth")
 
 	prlStatus := models.GasConfirmed
 	if err != nil {
@@ -556,7 +556,12 @@ func waitForBury(treasureToBury models.Treasure) {
 	treasureAddress := services.StringToAddress(treasureToBury.ETHAddr)
 	// TODO find some blocking call for which we can wait and get
 	// the bury() status
-	_, err := EthWrapper.WaitForTransfer(treasureAddress)
+
+	// TODO transferType for bury should do something, or change
+	// this to "prl" or "eth" or whatever it needs to be
+
+	// Or add new method to eth_gateway for these situations
+	_, err := EthWrapper.WaitForTransfer(treasureAddress, "bury")
 
 	prlStatus := models.BuryConfirmed
 	if err != nil {

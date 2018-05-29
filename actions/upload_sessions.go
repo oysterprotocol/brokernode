@@ -448,7 +448,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := EthWrapper.WaitForTransfer(transferAddr)
+	balance, err := EthWrapper.WaitForTransfer(transferAddr,"prl")
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
