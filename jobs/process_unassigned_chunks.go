@@ -2,14 +2,16 @@ package jobs
 
 import (
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math"
-	"time"
 )
 
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
@@ -109,7 +111,9 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		StageTreasures(treasureChunksNeedAttaching, session)
 
-		SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+		if os.Getenv("DISABLE_POW") == "" {
+			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+		}
 	}
 }
 
