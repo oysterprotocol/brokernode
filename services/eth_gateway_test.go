@@ -9,11 +9,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/services"
 	"log"
 	"math/big"
@@ -24,7 +24,7 @@ import (
 // Ethereum Constants
 //
 var oneEther = big.NewInt(1000000000000000000)
-var onePrl   = big.NewInt(1)
+var onePrl = big.NewInt(1)
 
 // TX_HASH = 0xd87157b84528173156a1ff06fd452300c6efaee6ea4f3d53730f190dad630327
 //curl -H "Content-Type: application/json" -X POST --data \
@@ -42,12 +42,13 @@ var ethAddress02 = common.HexToAddress("0x6abf0cdedd33e2bd6b574e0d81cdcaca817148
 //
 // PRL Addresses
 //
-var prlBankAddress    = common.HexToAddress("0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f")
-var prlAddress01      = common.HexToAddress("0x73da066d94fc41f11c2672ed9ecd39127da30976")
-var prlAddress02      = common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
+var prlBankAddress = common.HexToAddress("0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f")
+var prlAddress01 = common.HexToAddress("0x73da066d94fc41f11c2672ed9ecd39127da30976")
+var prlAddress02 = common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
 
 // Oysterby PRL Contract
-var oysterContract  = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+var oysterContract = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+
 // PRL Distribution Contract
 var prlDistribution = common.HexToAddress("0x08e6c245e21799c43970cd3193c59c1f6f2469ca")
 
@@ -284,15 +285,15 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
 	pearlDistribute, err := services.NewPearlDistributeOysterby(prlDistribution, backend)
-	
+
 	// authentication
 	walletKey := services.EthWrapper.GetWallet()
 	walletAddress := walletKey.Address
-	
+
 	t.Logf("using wallet key store from: %v\n", walletAddress.Hex())
-	
+
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	
+
 	// Create an authorized transactor and spend 1 PRL
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
 	if err != nil {
@@ -304,21 +305,21 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	}
 	//
 	// transact
-	opts := bind.TransactOpts {
+	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
 	}
-	
+
 	// stake
 	tx, err := pearlDistribute.Distribute(&opts)
-	
+
 	if err != nil {
 		t.Fatalf("unable to access call distribute : %v", err)
 	}
 	t.Logf("oyster pearl distribute called :%v", tx)
 	printTx(*tx)
-	
+
 }
 
 // test sending PRLs from OysterPearl Contract
@@ -338,7 +339,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	}
 
 	t.Logf("oysterPearl : %v", oysterPearl)
-	
+
 	walletKey := services.EthWrapper.GetWallet()
 	walletAddress := walletKey.Address
 
@@ -351,9 +352,9 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	}
 
 	t.Logf("authorized transactor : %v", auth.From.Hex())
-	
+
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	
+
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
@@ -363,11 +364,11 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("transfer failed : %v", err)
 	}
-	
+
 	t.Logf("new transaction posted: %v", tx.Hash().Hex())
-	
+
 	printTx(*tx)
-	
+
 }
 
 //
@@ -380,11 +381,11 @@ func Test_buryPRL(t *testing.T) {
 	// PRL based addresses
 	from := prlAddress01
 	to := prlAddress02
-	
+
 	// Gas Price
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	
+
 	var msg = services.OysterCallMsg{
 		From:     from,
 		To:       to,
@@ -409,10 +410,10 @@ func Test_buryPRL(t *testing.T) {
 
 // send prl
 func Test_sendPRL(t *testing.T) {
-	
+
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
-	
+
 	var msg = services.OysterCallMsg{
 		From:     prlBankAddress,
 		To:       prlAddress01,
@@ -420,7 +421,7 @@ func Test_sendPRL(t *testing.T) {
 		Gas:      block.GasLimit(),
 		GasPrice: *gasPrice,
 		//TotalWei: *big.NewInt(100).Mul(big.NewInt(100), big.NewInt(18)),
-		Data:     nil,
+		Data: nil,
 	}
 	// Send PRL
 	var sent = services.EthWrapper.SendPRL(msg)
@@ -478,11 +479,10 @@ func Test_claimUnusedPRL(t *testing.T) {
 
 }
 
-
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
-	
+
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
@@ -490,15 +490,14 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to access contract instance at :%v", err)
 	}
-	
+
 	// oysterby balances
-	bankBalance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlBankAddress)
-	prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlAddress01)
-	prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false,}, prlAddress02)
-	
+	bankBalance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlBankAddress)
+	prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress01)
+	prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress02)
+
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
 	t.Logf("oyster pearl 01 address balance :%v", prl01Balance)
 	t.Logf("oyster pearl 02 address balance :%v", prl02Balance)
-	
-}
 
+}

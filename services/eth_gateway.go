@@ -11,7 +11,7 @@ import (
 	"math/big"
 	"os"
 	"sync"
-	
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -23,10 +23,10 @@ import (
 	"github.com/getsentry/raven-go"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
-	
-	"time"
+
 	"errors"
 	"io/ioutil"
+	"time"
 )
 
 type Eth struct {
@@ -81,7 +81,7 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
-type GetWallet func() (*keystore.Key)
+type GetWallet func() *keystore.Key
 
 type BuryPrl func(msg OysterCallMsg) bool
 type SendPRL func(msg OysterCallMsg) bool
@@ -108,7 +108,7 @@ func init() {
 		log.Printf(".env error: %v", err)
 		raven.CaptureError(err, nil)
 	}
-	
+
 	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
 	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
 	oysterPearlContract := os.Getenv("OYSTER_PEARL")
@@ -129,18 +129,17 @@ func init() {
 		GenerateEthAddr:               generateEthAddr,
 		GenerateKeys:                  generateKeys,
 		GenerateEthAddrFromPrivateKey: generateEthAddrFromPrivateKey,
-		
-		BuryPrl:                       buryPrl,
-		SendETH:                       sendETH,
-		SendPRL:                       sendPRL,
-		GetGasPrice:                   getGasPrice,
-		WaitForTransfer:               waitForTransfer,
-		CheckETHBalance:      				 checkETHBalance,
-		CheckPRLBalance:      				 checkPRLBalance,
-		GetWallet:                     getWallet,
-		GetCurrentBlock:               getCurrentBlock,
-		GetConfirmationCount:          getConfirmationCount,
 
+		BuryPrl:              buryPrl,
+		SendETH:              sendETH,
+		SendPRL:              sendPRL,
+		GetGasPrice:          getGasPrice,
+		WaitForTransfer:      waitForTransfer,
+		CheckETHBalance:      checkETHBalance,
+		CheckPRLBalance:      checkPRLBalance,
+		GetWallet:            getWallet,
+		GetCurrentBlock:      getCurrentBlock,
+		GetConfirmationCount: getConfirmationCount,
 	}
 }
 
@@ -376,13 +375,13 @@ func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 // If it is completed return number of PRL.
 
 func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
-	
+
 	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
 		// Has balance already, don't need to wait for it.
 		return balance, nil
 	}
-	
+
 	client, err := sharedClient()
 	if err != nil {
 		return big.NewInt(0), err
@@ -438,7 +437,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 			} else if transferType == "prl" {
 				return checkPRLBalance(brokerAddr), nil
 			}
-			
+
 		}
 	}
 }
@@ -551,14 +550,14 @@ func buryPrl(msg OysterCallMsg) bool {
 		// sending eth has failed
 		return false
 	}
-	
+
 	// shared client
 
 	client, _ := sharedClient()
 	// contractAddress := common.HexToAddress(oysterPearlContract)
 	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
 	walletKey := getWallet()
-	
+
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
 	if auth == nil {
@@ -574,15 +573,14 @@ func buryPrl(msg OysterCallMsg) bool {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
 
-	
-	tx, err := oysterPearl.Bury(&bind.TransactOpts {
+	tx, err := oysterPearl.Bury(&bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
 	})
-	
+
 	printTx(tx)
-	
+
 	return tx != nil
 }
 
@@ -641,12 +639,12 @@ func claimUnusedPRLs(completedUploads []models.CompletedUpload) error {
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
 func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey string) bool {
-	
+
 	// shared client
 	client, _ := sharedClient()
 	contractAddress := common.HexToAddress(oysterPearlContract)
 	walletKey := getWallet()
-	
+
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
 	if auth == nil {
@@ -661,15 +659,15 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
 	prlBalance := checkPRLBalance(treasureAddress)
-	tx, err := oysterPearl.Claim(&bind.TransactOpts {
+	tx, err := oysterPearl.Claim(&bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Value:prlBalance,
+		Value:    prlBalance,
 	}, receiverAddress, treasureAddress)
-	
+
 	printTx(tx)
-	
+
 	return tx != nil
 }
 
@@ -690,7 +688,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	client, _ := sharedClient()
 	contractAddress := common.HexToAddress(oysterPearlContract)
 	walletKey := getWallet()
-	
+
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
 	if auth == nil {
@@ -714,22 +712,22 @@ func sendPRL(msg OysterCallMsg) bool {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
 	name, err := oysterPearl.Name(nil)
-	fmt.Printf("OysterPearl :%v",name)
-	
+	fmt.Printf("OysterPearl :%v", name)
+
 	// transfer
-	tx, err := oysterPearl.Transfer(&bind.TransactOpts {
+	tx, err := oysterPearl.Transfer(&bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Value:&msg.Amount,
+		Value:    &msg.Amount,
 	}, msg.To, &msg.Amount)
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return false
 	}
-	
+
 	printTx(tx)
-	
+
 	return tx != nil
 }
 
@@ -751,7 +749,7 @@ func getWallet() *keystore.Key {
 	walletAddress := walletKey.Address
 
 	fmt.Printf("using wallet key store from: %v", walletAddress.Hex())
-	
+
 	return walletKey
 }
 
