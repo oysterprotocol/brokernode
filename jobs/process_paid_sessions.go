@@ -369,7 +369,7 @@ func sendPRL(treasureToBury models.Treasure) {
 
 	sendSuccess := EthWrapper.SendPRL(callMsg)
 	if !sendSuccess {
-		errorString := "Failure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " +
+		errorString := "\nFailure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " +
 			treasureToBury.ETHAddr
 		err := errors.New(errorString)
 		oyster_utils.LogIfError(err)
@@ -418,7 +418,7 @@ func sendGas(treasureToBury models.Treasure) {
 	_, err = EthWrapper.SendETH(services.StringToAddress(treasureToBury.ETHAddr), gas)
 
 	if err != nil {
-		errorString := "Failure sending " + fmt.Sprint(gas.Int64()) + " Gas to " + treasureToBury.ETHAddr
+		errorString := "\nFailure sending " + fmt.Sprint(gas.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
 		oyster_utils.LogIfError(err)
 		treasureToBury.PRLStatus = models.GasError
@@ -465,7 +465,7 @@ func buryPRL(treasureToBury models.Treasure) {
 
 	success := EthWrapper.BuryPrl(callMsg)
 	if !success {
-		errorString := "Failure to bury  " + treasureToBury.ETHAddr
+		errorString := "\nFailure to bury  " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
 		oyster_utils.LogIfError(err)
 		treasureToBury.PRLStatus = models.BuryError

@@ -111,7 +111,7 @@ func verifyDataMapsHandler(args worker.Args) error {
 }
 
 func updateTimedOutDataMapsHandler(args worker.Args) error {
-	UpdateTimeOutDataMaps(time.Now().Add(-1 * time.Minute))
+	UpdateTimeOutDataMaps(time.Now().Add(-2 * time.Minute))
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler, args)
 	return nil

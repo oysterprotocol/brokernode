@@ -311,6 +311,105 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 	}
 }
 
+func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
+
+	numChunks := 29
+
+	uploadSession := models.UploadSession{
+		GenesisHash:   "abcdeff1",
+		NumChunks:     numChunks,
+		FileSizeBytes: 3000,
+		Type:          models.SessionTypeBeta,
+	}
+
+	uploadSession.StartUploadSession()
+	dataMaps := []models.DataMap{}
+	err := suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	suite.Nil(err)
+	suite.Equal(numChunks+1, len(dataMaps))
+
+	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(dataMaps, uploadSession)
+
+	var lenOfChunksToSkipVerifying int
+	lenOfChunksToSkipVerifying = int((float64(numChunks + 1)) * (float64(jobs.PercentOfChunksToSkipVerification) /
+		float64(100)))
+
+	var lenOfRestOfChunks int
+	lenOfRestOfChunks = numChunks + 1 - lenOfChunksToSkipVerifying
+
+	suite.Equal(lenOfChunksToSkipVerifying,
+		len(skipVerifyChunks))
+	suite.Equal(numChunks+1-len(skipVerifyChunks), len(restOfChunks))
+
+	var skipVerifyMinIdx int
+	var skipVerifyMaxIdx int
+	var restMinIdx int
+	var restMaxIdx int
+
+	skipVerifyMinIdx = numChunks - lenOfChunksToSkipVerifying
+	skipVerifyMaxIdx = numChunks
+
+	restMinIdx = 0
+	restMaxIdx = lenOfRestOfChunks - 1
+
+	for _, chunk := range skipVerifyChunks {
+		suite.Equal(true, chunk.ChunkIdx >= skipVerifyMinIdx &&
+			chunk.ChunkIdx <= skipVerifyMaxIdx)
+	}
+	for _, chunk := range restOfChunks {
+		suite.Equal(true, chunk.ChunkIdx >= restMinIdx &&
+			chunk.ChunkIdx <= restMaxIdx)
+	}
+}
+
+func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
+
+	numChunks := 29
+
+	uploadSession := models.UploadSession{
+		GenesisHash:   "abcdeff1",
+		NumChunks:     numChunks,
+		FileSizeBytes: 3000,
+		Type:          models.SessionTypeAlpha,
+	}
+
+	uploadSession.StartUploadSession()
+	dataMaps := []models.DataMap{}
+	err := suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	suite.Nil(err)
+	suite.Equal(numChunks+1, len(dataMaps))
+
+	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(dataMaps, uploadSession)
+
+	var lenOfChunksToSkipVerifying int
+	lenOfChunksToSkipVerifying = int((float64(numChunks + 1)) * (float64(jobs.PercentOfChunksToSkipVerification) /
+		float64(100)))
+
+	suite.Equal(lenOfChunksToSkipVerifying,
+		len(skipVerifyChunks))
+	suite.Equal(numChunks+1-len(skipVerifyChunks), len(restOfChunks))
+
+	var skipVerifyMinIdx int
+	var skipVerifyMaxIdx int
+	var restMinIdx int
+	var restMaxIdx int
+
+	skipVerifyMinIdx = 0
+	skipVerifyMaxIdx = lenOfChunksToSkipVerifying - 1
+
+	restMinIdx = lenOfChunksToSkipVerifying
+	restMaxIdx = numChunks
+
+	for _, chunk := range skipVerifyChunks {
+		suite.Equal(true, chunk.ChunkIdx >= skipVerifyMinIdx &&
+			chunk.ChunkIdx <= skipVerifyMaxIdx)
+	}
+	for _, chunk := range restOfChunks {
+		suite.Equal(true, chunk.ChunkIdx >= restMinIdx &&
+			chunk.ChunkIdx <= restMaxIdx)
+	}
+}
+
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks
 	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks

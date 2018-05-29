@@ -358,6 +358,11 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 
 func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
 
+	if channel.Channel == nil {
+		delay := time.Duration(PoWFrequency.Frequency) * time.Second
+		return time.Now().Add(delay)
+	}
+
 	var totalTime time.Duration = 0
 	chunksCount := 0
 

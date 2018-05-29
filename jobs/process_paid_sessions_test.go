@@ -330,9 +330,13 @@ func (suite *JobsSuite) Test_SendPRLsToWaitingTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(1, len(waiting))
 
-	confirmed, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.PRLConfirmed})
+	// There is a race condition between the db operations in waitForPRL (which is
+	// in a goroutine and the db operations immediately before it.  So this test
+	// is flaky.  Usually this result will be "PRLConfirmed" but sometimes is still
+	// pending
+	confirmedOrPending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.PRLConfirmed, models.PRLPending})
 	suite.Nil(err)
-	suite.Equal(1, len(confirmed))
+	suite.Equal(1, len(confirmedOrPending))
 
 	errored, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.PRLError})
 	suite.Nil(err)
@@ -397,7 +401,11 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(0, len(waitingForGas))
 
-	confirmed, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasConfirmed})
+	// There is a race condition between the db operations in waitForGas (which is
+	// in a goroutine and the db operations immediately before it.  So this test
+	// is flaky.  Usually this result will be "GasConfirmed" but sometimes is still
+	// pending
+	confirmed, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasConfirmed, models.GasPending})
 	suite.Nil(err)
 	suite.Equal(1, len(confirmed))
 
@@ -464,7 +472,11 @@ func (suite *JobsSuite) Test_InvokeBury() {
 	suite.Nil(err)
 	suite.Equal(0, len(waitingForBury))
 
-	confirmed, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed})
+	// There is a race condition between the db operations in waitForBury (which is
+	// in a goroutine and the db operations immediately before it.  So this test
+	// is flaky.  Usually this result will be "BuryConfirmed" but sometimes is still
+	// pending
+	confirmed, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed, models.BuryPending})
 	suite.Nil(err)
 	suite.Equal(1, len(confirmed))
 

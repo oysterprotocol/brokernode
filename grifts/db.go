@@ -69,4 +69,13 @@ var _ = grift.Namespace("db", func() {
 
 		return nil
 	})
+
+	grift.Desc("delete_uploads", "Removes any sessions or data_maps in the db")
+	grift.Add("delete_uploads", func(c *grift.Context) error {
+
+		models.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
+		models.DB.RawQuery("DELETE from data_maps").All(&[]models.UploadSession{})
+
+		return nil
+	})
 })

@@ -79,8 +79,8 @@ func Test_generateAddress(t *testing.T) {
 		t.Fatalf("error creating ethereum network address")
 	}
 	// ensure address is correct format
-	if common.IsHexAddress(addr.Str()) {
-		t.Fatalf("could not create a valid ethereum network address:%v", addr.Str())
+	if common.IsHexAddress(addr.Hex()) {
+		t.Fatalf("could not create a valid ethereum network address:%v", addr.Hex())
 	}
 	// ensure private key was returned
 	if privateKey == "" {
