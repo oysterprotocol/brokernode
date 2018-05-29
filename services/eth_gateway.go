@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/ethereum/go-ethereum"
@@ -127,6 +128,8 @@ func init() {
 
 	EthWrapper = Eth{
 		SendGas:                         sendGas,
+		SendPRL:                         sendPRL,
+		SendETH:                         sendETH,
 		ClaimPRL:                        claimPRLs,
 		ClaimUnusedPRLs:                 claimUnusedPRLs,
 		GeneratePublicKeyFromPrivateKey: generatePublicKeyFromPrivateKey,
@@ -199,9 +202,7 @@ func generateKeys(numKeys int) ([]string, error) {
 
 // Generate an Ethereum address from a private key
 func generateEthAddrFromPrivateKey(privateKey string) (addr common.Address) {
-	if privateKey[0:2] != "0x" && privateKey[0:2] != "0X" {
-		privateKey = "0x" + privateKey
-	}
+	privateKey = normalizePrivateKeyString(privateKey)
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKey)
 	ethAccount := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
@@ -215,6 +216,14 @@ func generatePublicKeyFromPrivateKey(c elliptic.Curve, k *big.Int) *ecdsa.Privat
 	privateKey.D = k
 	privateKey.PublicKey.X, privateKey.PublicKey.Y = c.ScalarBaseMult(k.Bytes())
 	return privateKey
+}
+
+func normalizePrivateKeyString(privateKey string) string {
+	if !strings.HasPrefix(privateKey, "0x") && !strings.HasPrefix(privateKey, "0X") {
+		return "0x" + privateKey
+	} else {
+		return privateKey
+	}
 }
 
 // returns represents the 20 byte address of an ethereum account.
@@ -478,9 +487,8 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	walletAddress := MainWalletAddress
 	privateKeyString := MainWalletKey
 
-	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
-		privateKeyString = "0x" + privateKeyString
-	}
+	privateKeyString = normalizePrivateKeyString(privateKeyString)
+
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
 	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	// TODO:  pull out the lines above this if keystore stuff gets fixed
@@ -578,9 +586,8 @@ func buryPrl(msg OysterCallMsg) bool {
 	//walletAddress := MainWalletAddress
 	privateKeyString := MainWalletKey
 
-	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
-		privateKeyString = "0x" + privateKeyString
-	}
+	privateKeyString = normalizePrivateKeyString(privateKeyString)
+
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
 	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	// TODO:  pull out the lines above this if keystore stuff gets fixed
@@ -679,9 +686,8 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	//walletAddress := MainWalletAddress
 	privateKeyString := MainWalletKey
 
-	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
-		privateKeyString = "0x" + privateKeyString
-	}
+	privateKeyString = normalizePrivateKeyString(privateKeyString)
+
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
 	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	// TODO:  pull out the lines above this if keystore stuff gets fixed
@@ -725,7 +731,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 */
 func sendPRL(msg OysterCallMsg) bool {
 
-	fmt.Println(msg)
+	fmt.Printf("%v\n", msg)
 	fmt.Println("msg.To")
 	fmt.Println(msg.To)
 	fmt.Println("msg.Gas")
@@ -743,8 +749,6 @@ func sendPRL(msg OysterCallMsg) bool {
 	fmt.Println(msg.PrivateKey.D)
 	fmt.Println(msg.PrivateKey.X)
 	fmt.Println(msg.PrivateKey.Y)
-	fmt.Println("msg.TotalWei")
-	fmt.Println(msg.TotalWei)
 
 	// shared client
 	client, _ := sharedClient()
@@ -758,9 +762,8 @@ func sendPRL(msg OysterCallMsg) bool {
 	//walletAddress := MainWalletAddress
 	privateKeyString := MainWalletKey
 
-	if privateKeyString[0:2] != "0x" && privateKeyString[0:2] != "0X" {
-		privateKeyString = "0x" + privateKeyString
-	}
+	privateKeyString = normalizePrivateKeyString(privateKeyString)
+
 	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
 	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
 	// TODO:  pull out the lines above this if keystore stuff gets fixed
