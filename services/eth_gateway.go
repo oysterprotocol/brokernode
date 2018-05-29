@@ -81,7 +81,7 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
-type GetWallet func() *keystore.Key
+type GetWallet func() (*keystore.Key, error)
 
 type BuryPrl func(msg OysterCallMsg) bool
 type SendPRL func(msg OysterCallMsg) bool
@@ -468,7 +468,10 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	defer cancel()
 
 	// wallet key access
-	walletKey := getWallet()
+	walletKey, err := getWallet()
+	if err != nil {
+		return types.Transactions{}, err
+	}
 	walletAddress := walletKey.Address
 	// generate nonce
 	nonce, _ := client.NonceAt(ctx, walletAddress, nil)
@@ -556,7 +559,10 @@ func buryPrl(msg OysterCallMsg) bool {
 	client, _ := sharedClient()
 	// contractAddress := common.HexToAddress(oysterPearlContract)
 	contractAddress := common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
-	walletKey := getWallet()
+	walletKey, err := getWallet()
+	if err != nil {
+		return false
+	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
@@ -643,7 +649,10 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	// shared client
 	client, _ := sharedClient()
 	contractAddress := common.HexToAddress(oysterPearlContract)
-	walletKey := getWallet()
+	walletKey, err := getWallet()
+	if err != nil {
+		return false
+	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
@@ -687,7 +696,11 @@ func sendPRL(msg OysterCallMsg) bool {
 	// shared client
 	client, _ := sharedClient()
 	contractAddress := common.HexToAddress(oysterPearlContract)
-	walletKey := getWallet()
+
+	walletKey, err := getWallet()
+	if err != nil {
+		return false
+	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(walletKey.PrivateKey)
@@ -710,6 +723,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	oysterPearl, err := NewOysterPearl(contractAddress, client)
 	if err != nil {
 		fmt.Print("Unable to instantiate OysterPearl")
+		return false
 	}
 	name, err := oysterPearl.Name(nil)
 	fmt.Printf("OysterPearl :%v", name)
@@ -732,25 +746,29 @@ func sendPRL(msg OysterCallMsg) bool {
 }
 
 // utility to access the wallet keystore
-func getWallet() *keystore.Key {
+func getWallet() (*keystore.Key, error) {
 
 	// load local test wallet key, may need to pull ahead vs on-demand
 	walletKeyJSON, err := ioutil.ReadFile("testdata/key.prv")
 
 	if err != nil {
 		fmt.Printf("error loading the walletKey : %v", err)
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 	// decrypt wallet
 	walletKey, err := keystore.DecryptKey(walletKeyJSON, "oysterby4000")
 	if err != nil {
 		fmt.Printf("walletKey err : %v", err)
+		raven.CaptureError(err, nil)
+		return nil, err
 	}
 
 	walletAddress := walletKey.Address
 
 	fmt.Printf("using wallet key store from: %v", walletAddress.Hex())
 
-	return walletKey
+	return walletKey, nil
 }
 
 // utility context helper to include the deadline initialization

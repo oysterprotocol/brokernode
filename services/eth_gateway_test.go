@@ -287,7 +287,7 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	pearlDistribute, err := services.NewPearlDistributeOysterby(prlDistribution, backend)
 
 	// authentication
-	walletKey := services.EthWrapper.GetWallet()
+	walletKey, _ := services.EthWrapper.GetWallet()
 	walletAddress := walletKey.Address
 
 	t.Logf("using wallet key store from: %v\n", walletAddress.Hex())
@@ -340,7 +340,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 
 	t.Logf("oysterPearl : %v", oysterPearl)
 
-	walletKey := services.EthWrapper.GetWallet()
+	walletKey, _ := services.EthWrapper.GetWallet()
 	walletAddress := walletKey.Address
 
 	t.Logf("using wallet key store from: %v", walletAddress)
