@@ -3,8 +3,6 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
@@ -43,9 +41,25 @@ const (
 
 	// error states
 	PRLError  = -1
-	GasError  = -2
-	BuryError = -3
+	GasError  = -3
+	BuryError = -5
 )
+
+var PRLStatusMap = make(map[PRLStatus]string)
+
+func init() {
+	PRLStatusMap[PRLWaiting] = "PRLWaiting"
+	PRLStatusMap[PRLPending] = "PRLPending"
+	PRLStatusMap[PRLConfirmed] = "PRLConfirmed"
+	PRLStatusMap[GasPending] = "GasPending"
+	PRLStatusMap[GasConfirmed] = "GasConfirmed"
+	PRLStatusMap[BuryPending] = "BuryPending"
+	PRLStatusMap[BuryConfirmed] = "BuryConfirmed"
+
+	PRLStatusMap[PRLError] = "PRLError"
+	PRLStatusMap[GasError] = "GasError"
+	PRLStatusMap[BuryError] = "BuryError"
+}
 
 // String is not required by pop and may be deleted
 func (t Treasure) String() string {
@@ -89,8 +103,7 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 func (t *Treasure) SetPRLAmount(bigInt *big.Int) (string, error) {
 	prlAmountAsBytes, err := bigInt.MarshalJSON()
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return "", err
 	}
 	t.PRLAmount = string(prlAmountAsBytes)
@@ -108,15 +121,39 @@ func (t *Treasure) GetPRLAmount() *big.Int {
 	return &bigInt
 }
 
-func GetTreasuresToBuryByPRLStatus(prlStatus PRLStatus) ([]Treasure, error) {
-	treasureToBury := []Treasure{}
-	err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-		return treasureToBury, err
+func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) {
+	treasureRowsToReturn := make([]Treasure, 0)
+	for _, prlStatus := range prlStatuses {
+		treasureToBury := []Treasure{}
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
+		if err != nil {
+			oyster_utils.LogIfError(err)
+			return treasureToBury, err
+		}
+		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
 	}
-	return treasureToBury, nil
+	return treasureRowsToReturn, nil
+}
+
+func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresholdTime time.Time) ([]Treasure, error) {
+	timeSinceThreshold := time.Since(thresholdTime)
+
+	treasureRowsToReturn := make([]Treasure, 0)
+
+	for _, prlStatus := range prlStatuses {
+		treasureToBury := []Treasure{}
+
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
+			prlStatus,
+			int(timeSinceThreshold.Hours())).All(&treasureToBury)
+
+		if err != nil {
+			oyster_utils.LogIfError(err)
+			return treasureToBury, err
+		}
+		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
+	}
+	return treasureRowsToReturn, nil
 }
 
 func GetAllTreasuresToBury() ([]Treasure, error) {
