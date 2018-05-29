@@ -268,7 +268,7 @@ func verifyPaymentConfirmation(as *ActionSuite, sessionId string) {
 	as.True(session.PaymentStatus == models.PaymentStatusConfirmed)
 }
 
-func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
+func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
 	v.hasCalled = true
 	v.input_brokerAddr = brokerAddr
 	return v.output_int, v.output_error

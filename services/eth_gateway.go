@@ -719,7 +719,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Value:    &msg.Amount,
+		Value:    nil,
 	}, msg.To, &msg.Amount)
 	if err != nil {
 		raven.CaptureError(err, nil)
