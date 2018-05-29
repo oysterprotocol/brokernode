@@ -30,7 +30,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(numChunks+1, len(allDataMaps)) // 1  data map so 1 chunk has been added
+	suite.Equal(numChunks, len(allDataMaps))
 
 	// make first 6 data maps unverified
 	for i := 0; i < 6; i++ {
