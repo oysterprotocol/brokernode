@@ -673,25 +673,6 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 */
 func sendPRL(msg OysterCallMsg) bool {
 
-	fmt.Printf("%v\n", msg)
-	fmt.Println("msg.To")
-	fmt.Println(msg.To)
-	fmt.Println("msg.Gas")
-	fmt.Println(msg.Gas)
-	fmt.Println("msg.Data")
-	fmt.Println(msg.Data)
-	fmt.Println("msg.Amount")
-	fmt.Println(msg.Amount)
-	fmt.Println("msg.From")
-	fmt.Println(msg.From)
-	fmt.Println("msg.GasPrice")
-	fmt.Println(msg.GasPrice)
-	fmt.Println("msg.PrivateKey")
-	fmt.Println(msg.PrivateKey)
-	fmt.Println(msg.PrivateKey.D)
-	fmt.Println(msg.PrivateKey.X)
-	fmt.Println(msg.PrivateKey.Y)
-
 	// shared client
 	client, _ := sharedClient()
 

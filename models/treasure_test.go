@@ -24,8 +24,6 @@ func (ms *ModelSuite) Test_GetTreasuresToBuryByPRLStatus() {
 	ms.Nil(err)
 
 	ms.Equal(true, len(allTreasures) > len(waitingForPRL))
-
-	//ms.DB.RawQuery("DELETE * from treasures").All(&[]models.Treasure{})
 }
 
 func (ms *ModelSuite) Test_GetTreasuresToBuryByPRLStatusAndUpdateTime() {

@@ -449,6 +449,8 @@ func Test_sendPRL(t *testing.T) {
 
 	services.RunOnTestNet()
 
+	t.Skip(nil)
+
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
 
