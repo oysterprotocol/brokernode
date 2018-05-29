@@ -6,6 +6,13 @@ import (
 	"crypto/elliptic"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"math/big"
+	"os"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -14,17 +21,12 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getsentry/raven-go"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
-	"io/ioutil"
-	"log"
-	"math/big"
-	"os"
-	"sync"
-	"time"
 )
 
 type Eth struct {
@@ -505,7 +507,8 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, gasPrice, nil)
 
 	// oysterby chainId 559966
-	chainId := big.NewInt(1)
+	// chainId := big.NewInt(559966)
+	chainId := params.MainnetChainConfig.ChainId
 
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, err := types.SignTx(tx, signer, privateKey)
@@ -803,7 +806,8 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// oysterby chainId 559966 - env
-	chainId := big.NewInt(1)
+	// chainId := big.NewInt(559966)
+	chainId := params.MainnetChainConfig.ChainId
 
 	/*TODO: get this keystore stuff working or remove it*/
 	//walletKey := getWallet()
