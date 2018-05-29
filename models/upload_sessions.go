@@ -335,6 +335,7 @@ func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
 	denominator := prlTotal.Denom()
 
 	prlTotalFloat := new(big.Float).Quo(new(big.Float).SetInt(numerator), new(big.Float).SetInt(denominator))
+	prlTotalToBuryFloat := new(big.Float).Quo(prlTotalFloat, new(big.Float).SetInt(big.NewInt(int64(2))))
 
 	totalChunks := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(u.NumChunks)
 	totalSectors := float64(math.Ceil(float64(totalChunks) / float64(oyster_utils.FileSectorInChunkSize)))
@@ -346,7 +347,7 @@ func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
 		return big.NewFloat(0), err
 	}
 
-	prlPerSector := new(big.Float).Quo(prlTotalFloat, big.NewFloat(totalSectors))
+	prlPerSector := new(big.Float).Quo(prlTotalToBuryFloat, big.NewFloat(totalSectors))
 
 	return prlPerSector, nil
 }
