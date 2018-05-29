@@ -371,8 +371,9 @@ func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 	return big.NewInt(0).SetUint64(uint64(txBlockNumber)), nil
 }
 
-// WaitForTransfer is blocking call that will observe on brokerAddr on transfer on ETH.
+// WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH.
 // If it is completed return number of PRL.
+// TODO:  Does this need to return both PRL and ETH?
 func waitForTransfer(brokerAddr common.Address) (*big.Int, error) {
 	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
@@ -504,7 +505,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, gasPrice, nil)
 
 	// oysterby chainId 559966
-	chainId := big.NewInt(559966)
+	chainId := big.NewInt(1)
 
 	signer := types.NewEIP155Signer(chainId)
 	signedTx, err := types.SignTx(tx, signer, privateKey)
@@ -785,7 +786,6 @@ func sendPRL(msg OysterCallMsg) bool {
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Value:    &msg.Amount,
 	}, msg.To, &msg.Amount)
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -803,7 +803,7 @@ func callOysterPearl(ctx context.Context, data []byte) (*types.Transaction, erro
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
 	// oysterby chainId 559966 - env
-	chainId := big.NewInt(559966)
+	chainId := big.NewInt(1)
 
 	/*TODO: get this keystore stuff working or remove it*/
 	//walletKey := getWallet()

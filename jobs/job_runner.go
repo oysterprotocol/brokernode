@@ -118,7 +118,8 @@ func updateTimedOutDataMapsHandler(args worker.Args) error {
 }
 
 func processPaidSessionsHandler(args worker.Args) error {
-	ProcessPaidSessions()
+	thresholdTime := time.Now().Add(-2 * time.Hour) // consider a transaction timed out after 2 hours
+	ProcessPaidSessions(thresholdTime)
 
 	oysterWorkerPerformIn(processPaidSessionsHandler, args)
 	return nil
