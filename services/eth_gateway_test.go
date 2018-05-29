@@ -80,6 +80,7 @@ func Test_generateAddress(t *testing.T) {
 		t.Fatalf("error creating ethereum network address")
 	}
 	// ensure address is correct format
+
 	if common.IsHexAddress(addr.String()) {
 		t.Fatalf("could not create a valid ethereum network address:%v", addr.String())
 	}

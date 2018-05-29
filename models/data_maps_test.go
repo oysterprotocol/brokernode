@@ -68,7 +68,7 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	dMaps := []models.DataMap{}
 	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
-	ms.Equal(numChunks+1, len(dMaps))
+	ms.Equal(numChunks, len(dMaps))
 
 	for i, dMap := range dMaps {
 		ms.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)

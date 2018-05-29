@@ -174,10 +174,6 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 
 	fileChunksCount := numChunks
 
-	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
-		fileChunksCount = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks)
-	}
-
 	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
 	columnNames := operation.GetColumns()
 	var values []string

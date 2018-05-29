@@ -14,6 +14,8 @@ import (
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
+const PercentOfChunksToSkipVerification = 45
+
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
 	sessions, err := models.GetSessionsByAge()
@@ -90,7 +92,10 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		}
 
 		chunks, treasureChunksNeedAttaching := HandleTreasureChunks(chunksIn[i:end], session, iotaWrapper)
-		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(chunks)
+
+		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
+
+		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
 		oyster_utils.LogIfError(err)
 
 		if len(filteredChunks.MatchesTangle) > 0 {
@@ -105,7 +110,8 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 			}
 		}
 
-		nonTreasureChunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
+		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
 
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
 
@@ -115,6 +121,65 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
 	}
+}
+
+func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.UploadSession) ([]models.DataMap, []models.DataMap) {
+
+	if len(chunks) == 0 {
+		return []models.DataMap{}, []models.DataMap{}
+	}
+
+	numChunks := session.NumChunks
+
+	var lenOfChunksToSkipVerifying int
+	lenOfChunksToSkipVerifying = int(float64(numChunks) * float64(PercentOfChunksToSkipVerification) / float64(100))
+
+	var lenOfChunksToVerify int
+	lenOfChunksToVerify = numChunks - lenOfChunksToSkipVerifying
+
+	var skipVerifyMinIdx int
+	var skipVerifyMaxIdx int
+	var verifyMinIdx int
+	var verifyMaxIdx int
+
+	if session.Type == models.SessionTypeAlpha {
+		skipVerifyMinIdx = 0
+		skipVerifyMaxIdx = lenOfChunksToSkipVerifying - 1
+		verifyMinIdx = lenOfChunksToSkipVerifying
+		verifyMaxIdx = numChunks - 1
+	} else {
+		skipVerifyMinIdx = numChunks - lenOfChunksToSkipVerifying
+		skipVerifyMaxIdx = numChunks - 1
+		verifyMinIdx = 0
+		verifyMaxIdx = lenOfChunksToVerify - 1
+	}
+
+	if skipVerifyMinIdx == skipVerifyMaxIdx {
+		// very small file, don't bother with filtering
+		return []models.DataMap{}, chunks
+	}
+
+	// first check that any are in the first third before we bother with this
+	firstIndex := chunks[0].ChunkIdx
+	lastIndex := chunks[len(chunks)-1].ChunkIdx
+
+	if firstIndex >= verifyMinIdx && firstIndex <= verifyMaxIdx &&
+		lastIndex >= verifyMinIdx && lastIndex <= verifyMaxIdx {
+		return []models.DataMap{}, chunks
+	}
+
+	skipVerifyOfChunks := []models.DataMap{}
+	restOfChunks := []models.DataMap{}
+
+	for i := 0; i < len(chunks); i++ {
+		if chunks[i].ChunkIdx >= skipVerifyMinIdx && chunks[i].ChunkIdx <= skipVerifyMaxIdx {
+			skipVerifyOfChunks = append(skipVerifyOfChunks, chunks[i])
+		} else {
+			restOfChunks = append(restOfChunks, chunks[i])
+		}
+	}
+
+	return skipVerifyOfChunks, restOfChunks
 }
 
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {

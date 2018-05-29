@@ -177,6 +177,11 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 
 	u.EncryptSessionEthKey()
 
+	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		u.NumChunks = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(u.NumChunks)
+		DB.ValidateAndUpdate(u)
+	}
+
 	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	return
 }

@@ -34,7 +34,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 
 	ms.Equal(genHash, uSession.GenesisHash)
 	ms.Equal(fileSizeBytes, uSession.FileSizeBytes)
-	ms.Equal(2, uSession.NumChunks)
+	ms.Equal(numChunks+1, uSession.NumChunks)
 	ms.Equal(models.SessionTypeAlpha, uSession.Type)
 	ms.Equal(decimal.NewFromFloatWithExponent(0.03125, -5), uSession.TotalCost)
 	ms.Equal(2, uSession.StorageLengthInYears)
