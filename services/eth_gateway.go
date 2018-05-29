@@ -96,35 +96,18 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 var (
 	EthUrl              string
 	oysterPearlContract string
-	chainId             int64
+	chainId             *big.Int
 	MainWalletAddress   common.Address
 	MainWalletKey       string
+	privateKey          *ecdsa.PrivateKey
 	client              *ethclient.Client
 	mtx                 sync.Mutex
 	EthWrapper          Eth
 )
 
 func init() {
-	// Load ENV variables
-	err := godotenv.Load()
-	if err != nil {
-		godotenv.Load("../.env")
-		log.Printf(".env error: %v", err)
-		raven.CaptureError(err, nil)
-	}
 
-	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
-	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
-	oysterPearlContract = os.Getenv("OYSTER_PEARL")
-	EthUrl = os.Getenv("ETH_NODE_URL")
-
-	fmt.Println("Using main wallet address: ")
-	fmt.Println(MainWalletAddress)
-	fmt.Println("Using main wallet key: ")
-	fmt.Println(MainWalletKey)
-	fmt.Println("Using eth node url: ")
-	fmt.Println(EthUrl)
-	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
+	RunOnMainETHNetwork()
 
 	EthWrapper = Eth{
 		SendGas:                         sendGas,
@@ -478,23 +461,8 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	ctx, cancel := createContext()
 	defer cancel()
 
-	/*TODO: get this keystore stuff working or remove it*/
-	// wallet key access
-	//walletKey := getWallet()
-	//walletAddress := walletKey.Address
-
-	// TODO:  pull the lines below this out if keystore stuff gets fixed
-	walletAddress := MainWalletAddress
-	privateKeyString := MainWalletKey
-
-	privateKeyString = normalizePrivateKeyString(privateKeyString)
-
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
-	// TODO:  pull out the lines above this if keystore stuff gets fixed
-
 	// generate nonce
-	nonce, _ := client.NonceAt(ctx, walletAddress, nil)
+	nonce, _ := client.NonceAt(ctx, MainWalletAddress, nil)
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
@@ -502,7 +470,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	gasLimit := currentBlock.GasLimit()
 
 	// estimation
-	estimate, failedEstimate := getEstimatedGasPrice(toAddr, walletAddress, gasLimit, *gasPrice, *amount)
+	estimate, failedEstimate := getEstimatedGasPrice(toAddr, MainWalletAddress, gasLimit, *gasPrice, *amount)
 	if failedEstimate != nil {
 		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
 		return types.Transactions{}, failedEstimate
@@ -510,7 +478,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
-	balance := checkETHBalance(walletAddress)
+	balance := checkETHBalance(MainWalletAddress)
 	fmt.Printf("balance : %v\n", balance)
 
 	// balance too low return error
@@ -578,19 +546,6 @@ func buryPrl(msg OysterCallMsg) bool {
 	// shared client
 	client, _ := sharedClient()
 	contractAddress := common.HexToAddress(oysterPearlContract)
-
-	/*TODO: get this keystore stuff working or remove it*/
-	//walletKey := getWallet()
-
-	// TODO:  pull the lines below this out if keystore stuff gets fixed
-	//walletAddress := MainWalletAddress
-	privateKeyString := MainWalletKey
-
-	privateKeyString = normalizePrivateKeyString(privateKeyString)
-
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
-	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(privateKey)
@@ -679,19 +634,6 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	contractAddress := common.HexToAddress(oysterPearlContract)
 
-	/*TODO: get this keystore stuff working or remove it*/
-	//walletKey := getWallet()
-
-	// TODO:  pull the lines below this out if keystore stuff gets fixed
-	//walletAddress := MainWalletAddress
-	privateKeyString := MainWalletKey
-
-	privateKeyString = normalizePrivateKeyString(privateKeyString)
-
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
-	// TODO:  pull out the lines above this if keystore stuff gets fixed
-
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(privateKey)
 	if auth == nil {
@@ -754,19 +696,6 @@ func sendPRL(msg OysterCallMsg) bool {
 	client, _ := sharedClient()
 
 	contractAddress := common.HexToAddress(oysterPearlContract)
-
-	/*TODO: get this keystore stuff working or remove it*/
-	//walletKey := getWallet()
-
-	// TODO:  pull the lines below this out if keystore stuff gets fixed
-	//walletAddress := MainWalletAddress
-	privateKeyString := MainWalletKey
-
-	privateKeyString = normalizePrivateKeyString(privateKeyString)
-
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	privateKey := generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
-	// TODO:  pull out the lines above this if keystore stuff gets fixed
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(privateKey)
@@ -861,4 +790,48 @@ func printTx(tx *types.Transaction) {
 	fmt.Printf("tx hash   : %v\n", tx.Hash().String())
 	fmt.Printf("tx amount : %v\n", tx.Value())
 	fmt.Printf("tx cost   : %v\n", tx.Cost())
+}
+
+func RunOnMainETHNetwork() {
+
+	// Load ENV variables
+	err := godotenv.Load()
+	if err != nil {
+		godotenv.Load("../.env")
+		log.Printf(".env error: %v", err)
+		raven.CaptureError(err, nil)
+	}
+
+	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
+	oysterPearlContract = os.Getenv("OYSTER_PEARL")
+	EthUrl = os.Getenv("ETH_NODE_URL")
+	chainId = params.MainnetChainConfig.ChainId
+
+	//TODO:  Add a getMainWallet() method and replace the lines below this with calls
+	// to getMainWallet()
+	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
+	privateKeyString := normalizePrivateKeyString(MainWalletKey)
+	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
+	privateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
+
+	fmt.Println("Using main wallet address: ")
+	fmt.Println(MainWalletAddress)
+	fmt.Println("Using main wallet key: ")
+	fmt.Println(MainWalletKey)
+	fmt.Println("Using eth node url: ")
+	fmt.Println(EthUrl)
+	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
+}
+
+func RunOnTestNet() {
+
+	walletKey := getWallet()
+	privateKey = walletKey.PrivateKey
+	MainWalletAddress = walletKey.Address
+
+	oysterPearlContract = "b7baab5cad2d2ebfe75a500c288a4c02b74bc12c"
+	EthUrl = os.Getenv("ws://54.86.134.172:8547")
+	chainId = params.MainnetChainConfig.ChainId
+
+	chainId = big.NewInt(559966)
 }

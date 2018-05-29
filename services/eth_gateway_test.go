@@ -71,6 +71,8 @@ func printTx(tx types.Transaction) {
 
 func Test_generateAddress(t *testing.T) {
 
+	services.RunOnTestNet()
+
 	// generate eth address using gateway
 	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -90,6 +92,8 @@ func Test_generateAddress(t *testing.T) {
 // generate address from private key test
 func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 
+	services.RunOnTestNet()
+
 	// generate eth address using gateway
 	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -108,6 +112,8 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
 
+	services.RunOnTestNet()
+
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -123,6 +129,9 @@ func Test_getGasPrice(t *testing.T) {
 
 // check balance on test network test
 func Test_checkETHBalance(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	// test balance for an ether account
 	// Convert string address to byte[] address form
 	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
@@ -135,6 +144,9 @@ func Test_checkETHBalance(t *testing.T) {
 
 // get current block number
 func Test_getCurrentBlockNumber(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
@@ -147,6 +159,9 @@ func Test_getCurrentBlockNumber(t *testing.T) {
 
 // get current block gas limit
 func Test_getCurrentBlockGasLimit(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
@@ -159,6 +174,9 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// transfer 1/5 of ether
 	transferValue := oneEther.Div(oneEther, big.NewInt(5))
@@ -181,6 +199,9 @@ func Test_sendEth(t *testing.T) {
 
 // ensure confirmation is over 12
 func Test_confirmTransaction(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// tx hash
 	txHash := common.HexToHash("0x718ee11d52445d72dd8f10b2349a9300a8988e46d29b49c83f8848b988f10522")
@@ -197,6 +218,9 @@ func Test_confirmTransaction(t *testing.T) {
 
 // send ether to an address and wait for transaction confirmation returning the new balance
 func Test_sendEthAndWaitForTransfer(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// transfer 1/3 of an ether
 	transferValue := oneEther
@@ -230,6 +254,9 @@ func Test_sendEthAndWaitForTransfer(t *testing.T) {
 
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
@@ -262,6 +289,9 @@ func Test_deployOysterPearl(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
@@ -278,6 +308,8 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_stakePRLFromOysterPearl(t *testing.T) {
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// contract
 	// test ethClient
@@ -325,6 +357,8 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 // issue > transfer failed : replacement transaction underpriced
 // solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
+
+	services.RunOnTestNet()
 
 	t.Skip(nil)
 
@@ -376,6 +410,9 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 
 // bury prl
 func Test_buryPRL(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// PRL based addresses
 	from := prlAddress01
@@ -410,6 +447,8 @@ func Test_buryPRL(t *testing.T) {
 // send prl
 func Test_sendPRL(t *testing.T) {
 
+	services.RunOnTestNet()
+
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
 
@@ -435,6 +474,9 @@ func Test_sendPRL(t *testing.T) {
 
 // claim prl
 func Test_claimPRL(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// Receiver
 	receiverAddress := prlAddress02
@@ -455,6 +497,9 @@ func Test_claimPRL(t *testing.T) {
 
 // claim unused prl from completed upload
 func Test_claimUnusedPRL(t *testing.T) {
+
+	services.RunOnTestNet()
+
 	t.Skip(nil)
 	// Need to fake the completed uploads by populating with data
 	var rowWithGasTransferSuccess = models.CompletedUpload{
@@ -481,6 +526,8 @@ func Test_claimUnusedPRL(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
+
+	services.RunOnTestNet()
 
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
