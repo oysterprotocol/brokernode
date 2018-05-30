@@ -277,7 +277,8 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) error {
 
 	defer oyster_utils.TimeTrack(time.Now(), "iota_wrappers: doPow_using_"+powName, analytics.NewProperties().
-		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes)))
+		//Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes)))
+		Set("num_chunks", len(trytes)))
 
 	var prev giota.Trytes
 	var err error
@@ -312,7 +313,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	}
 
 	broadcastProperties := analytics.NewProperties().
-		Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes))
+		Set("num_chunks", len(trytes))
 
 	go func(trytes []giota.Transaction, broadcastProperties analytics.Properties) {
 
