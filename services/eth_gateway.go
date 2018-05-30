@@ -28,8 +28,8 @@ import (
 
 	"errors"
 	"io/ioutil"
-	"time"
 	"strconv"
+	"time"
 )
 
 type Eth struct {
@@ -125,7 +125,7 @@ func init() {
 		CheckPRLBalance:                 checkPRLBalance,
 		GetCurrentBlock:                 getCurrentBlock,
 		GetConfirmationCount:            getConfirmationCount,
-		GetTestWallet:                       getTestWallet,
+		GetTestWallet:                   getTestWallet,
 	}
 }
 
@@ -422,7 +422,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 			// ensure confirmation type from "sendGas" or "sendPRL"
 			// recordTransaction(log.Address, "")
-			
+
 			if transferType == "eth" {
 				return checkETHBalance(brokerAddr), nil
 			} else if transferType == "prl" {
@@ -491,7 +491,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transactions types.Transac
 
 	// signer
 	signer := types.NewEIP155Signer(chainId)
-	
+
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
 	if err != nil {
@@ -512,9 +512,9 @@ func sendETH(toAddr common.Address, amount *big.Int) (transactions types.Transac
 
 	for tx := range txs {
 		transaction := txs[tx]
-		
+
 		printTx(transaction)
-		
+
 		// tx *types.Transaction, isPending bool, err error
 		isPending := isPending(transaction.Hash())
 		if isPending {
@@ -758,8 +758,6 @@ func recordTransaction(address common.Address, status string) {
 		models.SetPRLStatusByAddress(address.Hex(), models.PRLClaimSuccess)
 	}
 }
-
-
 
 var MAIN = "mainnet"
 var TEST = "testnet"
