@@ -52,19 +52,13 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernode := models.Brokernode{}
 	t := models.Transaction{}
 
-	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
+	dataMapNotFoundErr := models.DB.Where("status = ?", models.Unassigned).First(&dataMap)
 
 	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
-	brokernodeNotFoundErr := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+	brokernodeNotFoundErr := models.DB.Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
+	// DB results error if First() does not return any error.
 	if dataMapNotFoundErr != nil || brokernodeNotFoundErr != nil {
-		if dataMapNotFoundErr != nil {
-			raven.CaptureError(dataMapNotFoundErr, nil)
-		}
-		if brokernodeNotFoundErr != nil {
-			raven.CaptureError(brokernodeNotFoundErr, nil)
-		}
-
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
