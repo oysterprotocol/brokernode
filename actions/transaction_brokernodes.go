@@ -58,13 +58,6 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernodeNotFoundErr := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
 	if dataMapNotFoundErr != nil || brokernodeNotFoundErr != nil {
-		if dataMapNotFoundErr != nil {
-			raven.CaptureError(dataMapNotFoundErr, nil)
-		}
-		if brokernodeNotFoundErr != nil {
-			raven.CaptureError(brokernodeNotFoundErr, nil)
-		}
-
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
