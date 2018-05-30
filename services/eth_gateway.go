@@ -355,26 +355,27 @@ func isPending(txHash common.Hash) bool {
 // Get number of confirmations for a given transaction hash
 func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 	client, _ := sharedClient()
-	// web3.eth.blockNumber-web3.eth.getTransaction("0xa92c69ebc71f46ef73a7bcf4b7a17aaa1b8daa7f6036e3c3374b62589ac1b8d3").blockNumber
-	//block, _ := getCurrentBlock()
-	//blockNumber := block.Number()
+	
+	// web3.eth.blockNumber - web3.eth.getTransaction("0x...").blockNumber
+	block, _ := getCurrentBlock()
+	blockNumber := block.Number()
+	
+	fmt.Printf("current block number : %v\n", blockNumber)
 	
 	// get transaction
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
-		fmt.Printf("Could not get transaction by hash")
+		fmt.Println("Could not get transaction by hash")
 		return big.NewInt(-1), err
 	}
 	if isPending {
 		fmt.Println("transaction is pending")
 	}
 	fmt.Printf("tx block number : %v\n", tx.Nonce())
-	data := tx.Data()
-	tx.UnmarshalJSON(data)
-	if err != nil {
-		fmt.Printf("could not unmarshal transaction data")
-	}
-	return big.NewInt(0).SetUint64(uint64(0)), nil
+	
+	confirmationCount := blockNumber.Uint64() - tx.Nonce()
+	
+	return big.NewInt(0).SetUint64(confirmationCount), nil
 }
 
 // Utility to access the nonce for a given account
@@ -536,7 +537,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (transactions types.Transac
 	for tx := range txs {
 		transaction := txs[tx]
 		
-		printTx(transaction)
+		//printTx(transaction)
 		
 		// tx *types.Transaction, isPending bool, err error
 		isPending := isPending(transaction.Hash())
@@ -587,7 +588,7 @@ func buryPrl(msg OysterCallMsg) bool {
 		GasLimit: block.GasLimit(),
 	})
 
-	printTx(tx)
+	//printTx(tx)
 
 	return tx != nil
 }
@@ -673,8 +674,8 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		GasLimit: block.GasLimit(),
 	}, receiverAddress, treasureAddress)
 
-	printTx(tx)
-
+	//printTx(tx)
+	
 	return tx != nil
 }
 
@@ -733,7 +734,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		return false
 	}
 
-	printTx(tx)
+	//printTx(tx)
 
 	return tx != nil
 }
@@ -748,14 +749,10 @@ func getTestWallet() *keystore.Key {
 		fmt.Printf("error loading the walletKey : %v", err)
 	}
 	// decrypt wallet
-	walletKey, err := keystore.DecryptKey(walletKeyJSON, "oysterby4000")
+	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
 	if err != nil {
 		fmt.Printf("walletKey err : %v", err)
 	}
-	//privateKeyString := hex.EncodeToString(crypto.FromECDSA(walletKey.PrivateKey))
-	//fmt.Printf("wallet key address     : %v\n", walletKey.Address.Hex())
-	//fmt.Printf("wallet key PrivateKey  : %v\n", privateKeyString)
-
 	return walletKey
 }
 
@@ -807,8 +804,6 @@ func configureGateway(network string) {
 		chainId.SetString(os.Getenv("CHAIN_ID"), 10)
 		break
 	}
-	// test local wallet
-	// testWallet := getTestWallet()
 	// ethereum network node
 	EthUrl = os.Getenv("ETH_NODE_URL")
 	// smart contract
