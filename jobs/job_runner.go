@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BundleSize = 100
+	BundleSize = 300
 	Duration   = "duration"
 )
 
