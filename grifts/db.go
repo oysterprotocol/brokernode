@@ -3,6 +3,7 @@ package grifts
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -10,6 +11,17 @@ import (
 	"math/big"
 	"os"
 )
+
+func getAddress() (common.Address, string, error) {
+	griftPrivateKey := os.Getenv("GRIFT_ETH_PRIVATE_KEY")
+	if griftPrivateKey == "" {
+		errorString := "you haven't specified an eth private key to use for this grift"
+		fmt.Println(errorString)
+		return services.StringToAddress(""), griftPrivateKey, errors.New(errorString)
+	}
+	address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
+	return address, griftPrivateKey, nil
+}
 
 var _ = grift.Namespace("db", func() {
 
@@ -22,13 +34,12 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("send_prl_seed", "Adds a 'treasure' that needs PRL")
 	grift.Add("send_prl_seed", func(c *grift.Context) error {
 
-		griftPrivateKey := os.Getenv("GRIFT_ETH_PRIVATE_KEY")
-		if griftPrivateKey == "" {
-			errorString := "you haven't specified an eth private key to use for this grift"
-			fmt.Println(errorString)
-			return errors.New(errorString)
+		address, griftPrivateKey, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
 		}
-		address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
+
 		prlAmount := big.NewFloat(float64(.0001))
 		prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
 
@@ -53,18 +64,124 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("send_prl_remove", "Removes the 'treasure' that needs PRL")
 	grift.Add("send_prl_remove", func(c *grift.Context) error {
 
-		griftPrivateKey := os.Getenv("GRIFT_ETH_PRIVATE_KEY")
-		if griftPrivateKey == "" {
-			errorString := "you haven't specified an eth private key to use for this grift"
-			fmt.Println(errorString)
-			return errors.New(errorString)
+		address, _, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
 		}
-		address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
 
-		err := models.DB.RawQuery("DELETE from treasures WHERE eth_addr = ?", address.Hex()).All(&[]models.Treasure{})
+		err = models.DB.RawQuery("DELETE from treasures WHERE eth_addr = ?", address.Hex()).All(&[]models.Treasure{})
 
 		if err == nil {
 			fmt.Println("Treasure row deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_to_prl_waiting", "Stages treasure for PRL")
+	grift.Add("set_to_prl_waiting", func(c *grift.Context) error {
+
+		address, _, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		treasureToBury := models.Treasure{}
+
+		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+
+		if err == nil {
+			fmt.Println("Found transaction!")
+		}
+
+		treasureToBury.PRLStatus = models.PRLWaiting
+
+		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
+		if err == nil && len(vErr.Errors) == 0 {
+			fmt.Println("Updated!")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_to_prl_confirmed", "Stages treasure for gas")
+	grift.Add("set_to_prl_confirmed", func(c *grift.Context) error {
+
+		address, _, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		treasureToBury := models.Treasure{}
+
+		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+
+		if err == nil {
+			fmt.Println("Found transaction!")
+		}
+
+		treasureToBury.PRLStatus = models.PRLConfirmed
+
+		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
+		if err == nil && len(vErr.Errors) == 0 {
+			fmt.Println("Updated!")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_to_gas_confirmed", "Stages treasure for bury()")
+	grift.Add("set_to_gas_confirmed", func(c *grift.Context) error {
+
+		address, _, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		treasureToBury := models.Treasure{}
+
+		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+
+		if err == nil {
+			fmt.Println("Found transaction!")
+		}
+
+		treasureToBury.PRLStatus = models.PRLConfirmed
+
+		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
+		if err == nil && len(vErr.Errors) == 0 {
+			fmt.Println("Updated!")
+		}
+
+		return nil
+	})
+
+	grift.Desc("print_treasure", "Prints the treasure you are testing with")
+	grift.Add("print_treasure", func(c *grift.Context) error {
+
+		address, _, err := getAddress()
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		treasureToBury := models.Treasure{}
+
+		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+
+		if err == nil {
+			fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
+			fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
+			fmt.Println("Iota Address: " + treasureToBury.Address)
+			fmt.Println("Iota Message: " + treasureToBury.Message)
+			fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
+			fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+		} else {
+			fmt.Println(err)
 		}
 
 		return nil

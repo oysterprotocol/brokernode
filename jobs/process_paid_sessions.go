@@ -3,7 +3,6 @@ package jobs
 import (
 	"errors"
 	"fmt"
-	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -225,42 +224,81 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 }
 
 func StageTransactionsWithErrorsForRetry() {
-	errorTransactions, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
+	errorPRLTransactions, errPRL := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.PRLError,
+	})
+	if errPRL != nil {
+		fmt.Println("Cannot get error'd treasures (for prl transactions) in process_paid_sessions: " + errPRL.Error())
+		// already captured error in upstream function
+	}
+	errorGasTransactions, errGas := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
+	})
+	if errGas != nil {
+		fmt.Println("Cannot get error'd treasures (for gas transactions) in process_paid_sessions: " + errGas.Error())
+		// already captured error in upstream function
+	}
+	errorBuryTransactions, errBury := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.BuryError,
 	})
-	if err != nil {
-		fmt.Println("Cannot get error'd treasures in process_paid_sessions: " + err.Error())
+	if errBury != nil {
+		fmt.Println("Cannot get error'd treasures (for bury transactions) in process_paid_sessions: " + errBury.Error())
 		// already captured error in upstream function
+	}
+
+	if len(errorPRLTransactions) == 0 && len(errorGasTransactions) == 0 && len(errorBuryTransactions) == 0 {
+		return
+	}
+	if errBury != nil && errGas != nil && errPRL != nil {
 		return
 	}
 
-	if len(errorTransactions) == 0 {
-		return
-	}
-
-	for _, errorTransaction := range errorTransactions {
-		oldStatus := errorTransaction.PRLStatus
-		errorTransaction.PRLStatus = models.PRLStatus(int(errorTransaction.PRLStatus) * -1)
+	for _, errorTransaction := range errorPRLTransactions {
+		errorTransaction.PRLStatus = models.PRLWaiting
 		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err)
 			continue
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err)
 			continue
 		}
-		oyster_utils.LogToSegment("process_paid_sessions: StageTransactionsWithErrorsForRetry", analytics.NewProperties().
-			Set("old_status", models.PRLStatusMap[oldStatus]).
-			Set("new_status", models.PRLStatusMap[errorTransaction.PRLStatus]).
-			Set("eth_address", errorTransaction.ETHAddr))
 	}
+	for _, errorTransaction := range errorGasTransactions {
+		errorTransaction.PRLStatus = models.PRLConfirmed
+		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
+		if err != nil {
+			oyster_utils.LogIfError(err)
+			continue
+		}
+		if len(vErr.Errors) > 0 {
+			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
+			err = errors.New(errString)
+			oyster_utils.LogIfError(err)
+			continue
+		}
+	}
+	for _, errorTransaction := range errorBuryTransactions {
+		errorTransaction.PRLStatus = models.GasConfirmed
+		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
+		if err != nil {
+			oyster_utils.LogIfError(err)
+			continue
+		}
+		if len(vErr.Errors) > 0 {
+			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
+			err = errors.New(errString)
+			oyster_utils.LogIfError(err)
+			continue
+		}
+	}
+	oyster_utils.LogToSegment("process_paid_sessions: StageTransactionsWithErrorsForRetry", analytics.NewProperties().
+		Set("prl_num_error'd_transactions", fmt.Sprint(len(errorPRLTransactions))).
+		Set("gas_num_error'd_transactions", fmt.Sprint(len(errorGasTransactions))).
+		Set("bury_num_error'd_transactions", fmt.Sprint(len(errorBuryTransactions))))
 }
 
 func SendPRLsToWaitingTreasureAddresses() {
@@ -354,7 +392,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
 		err := errors.New(errorString)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return
 	}
 
@@ -393,7 +431,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		oyster_utils.LogToSegment("process_paid_sessions: sendPRL", analytics.NewProperties().
 			Set("new_status", models.PRLStatusMap[treasureToBury.PRLStatus]).
 			Set("eth_address", treasureToBury.ETHAddr))
-		go waitForPRLs(treasureToBury)
+		// go waitForPRLs(treasureToBury)
 	}
 }
 
@@ -441,7 +479,7 @@ func sendGas(treasureToBury models.Treasure) {
 		oyster_utils.LogToSegment("process_paid_sessions: sendGas", analytics.NewProperties().
 			Set("new_status", models.PRLStatusMap[treasureToBury.PRLStatus]).
 			Set("eth_address", treasureToBury.ETHAddr))
-		go waitForGas(treasureToBury)
+		// go waitForGas(treasureToBury)
 	}
 }
 
@@ -451,7 +489,8 @@ func buryPRL(treasureToBury models.Treasure) {
 	balanceOfETH := EthWrapper.CheckETHBalance(services.StringToAddress(treasureToBury.ETHAddr))
 
 	if balanceOfPRL.Int64() <= 0 || balanceOfETH.Int64() <= 0 {
-		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet.  balance of PRL: " +
+		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet (" +
+			treasureToBury.ETHAddr + ").  balance of PRL: " +
 			fmt.Sprint(balanceOfPRL.Int64()) + "; balance of ETH: " + fmt.Sprint(balanceOfETH.Int64())
 		err := errors.New(errorString)
 		oyster_utils.LogIfError(err)

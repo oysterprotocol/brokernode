@@ -696,7 +696,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
 	name, err := oysterPearl.Name(nil)
-	fmt.Printf("OysterPearl :%v", name)
+	fmt.Printf("OysterPearl :%v\n", name)
 
 	// transfer
 	tx, err := oysterPearl.Transfer(&bind.TransactOpts{
@@ -706,7 +706,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		Value:    nil,
 	}, msg.To, &msg.Amount)
 	if err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return false
 	}
 
