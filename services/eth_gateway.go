@@ -29,7 +29,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"time"
-	"strconv"
 )
 
 type Eth struct {
@@ -804,21 +803,20 @@ func configureGateway(network string) {
 		break
 	case TEST:
 		// oysterby test net chain id
-		chainIdValue, _ := strconv.ParseInt(os.Getenv("CHAIN_ID"), 10, 8)
-		chainId = big.NewInt(chainIdValue)
+		chainId = big.NewInt(0)
+		chainId.SetString(os.Getenv("CHAIN_ID"), 10)
 		break
 	}
 	// test local wallet
-	testWallet := getTestWallet()
+	// testWallet := getTestWallet()
 	// ethereum network node
 	EthUrl = os.Getenv("ETH_NODE_URL")
 	// smart contract
 	OysterPearlContract = os.Getenv("OYSTER_PEARL")
 	// wallet address configuration
-	MainWalletAddress = testWallet.Address //common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
+	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
 	// wallet private key configuration
-	//MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
-	MainWalletPrivateKey = testWallet.PrivateKey
+	MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
 	
 	// Print Configuration
 	printConfig()

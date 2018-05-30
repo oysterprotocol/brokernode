@@ -185,8 +185,8 @@ func Test_getNonceForAccount(t *testing.T) {
 func Test_sendEth(t *testing.T) {
 	
 	// transfer 1/5 of ether
-	//transferValue := oneEther//.Div(oneEther, big.NewInt(3))
-	transferValueInWei := new(big.Int).Mul(oneEther, big.NewInt(params.Wei))
+	transferValue := big.NewInt(250)
+	transferValueInWei := new(big.Int).Mul(transferValue, big.NewInt(params.Wei))
 	// Send ether to test account
 	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
 	if err != nil {
@@ -209,9 +209,11 @@ func Test_confirmTransactionCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to get transaction confirmation with hash : %v", lastTransactionHash.Hex())
 	}
-	//if txCount.Uint64() > 12 {
-	//	t.Logf("confirmation have reached the golden number")
-	//}
+	if txCount.Uint64() > 12 {
+		t.Logf("confirmation have reached the golden number")
+	} else {
+		t.Logf("confirmation in progress")
+	}
 	t.Logf("txCount : %v", txCount.Uint64())
 }
 
