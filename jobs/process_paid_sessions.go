@@ -26,8 +26,11 @@ func ProcessPaidSessions(thresholdTime time.Time) {
 		SendGasToTreasureAddresses()
 		InvokeBury()
 
-		PurgeFinishedTreasure()
-		// TODO: unit tests
+		// TODO:  Don't want to enable this for now
+		// since we don't want to lose access to the
+		// treasure addresses
+
+		// PurgeFinishedTreasure()
 	}
 }
 
