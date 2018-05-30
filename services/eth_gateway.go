@@ -791,7 +791,7 @@ func configureGateway(network string) {
 	// wallet private key configuration
 	MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
 	if err != nil {
-		fmt.Printf("unable to load key : %v", err)
+		fmt.Printf("unable to load key : %v\n", err)
 		raven.CaptureError(err, nil)
 	}
 	// Print Configuration
