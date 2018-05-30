@@ -184,8 +184,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		BetaSessionID: betaSessionID,
 		Invoice:       invoice,
 	}
-	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
+	//go waitForTransferAndNotifyBeta(
+	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -393,8 +393,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
+	//go waitForTransferAndNotifyBeta(
+	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
@@ -448,7 +448,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := EthWrapper.WaitForTransfer(transferAddr,"prl")
+	balance, err := EthWrapper.WaitForTransfer(transferAddr, "prl")
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
@@ -461,7 +461,9 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 		return
 	}
 
-	session.PaymentStatus = paymentStatus
+	if session.PaymentStatus != models.PaymentStatusConfirmed {
+		session.PaymentStatus = paymentStatus
+	}
 	if err := models.DB.Save(&session); err != nil {
 		raven.CaptureError(err, nil)
 		return

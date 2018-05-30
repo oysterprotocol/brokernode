@@ -303,6 +303,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	u.TreasureStatus = TreasureInDataMapPending
 	DB.ValidateAndSave(u)
 }
 
