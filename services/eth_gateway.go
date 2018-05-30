@@ -28,6 +28,7 @@ import (
 
 	"errors"
 	"io/ioutil"
+	"strconv"
 	"time"
 )
 
@@ -48,7 +49,7 @@ type Eth struct {
 	CheckPRLBalance
 	GetCurrentBlock
 	GetConfirmationCount
-	GetWallet
+	GetTestWallet
 	OysterCallMsg
 }
 
@@ -85,7 +86,7 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
-type GetWallet func() *keystore.Key
+type GetTestWallet func() *keystore.Key
 
 type BuryPrl func(msg OysterCallMsg) bool
 type SendPRL func(msg OysterCallMsg) bool
@@ -95,10 +96,9 @@ type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) err
 // Singleton client
 var (
 	EthUrl               string
-	oysterPearlContract  string
+	OysterPearlContract  string
 	chainId              *big.Int
 	MainWalletAddress    common.Address
-	MainWalletKey        string
 	MainWalletPrivateKey *ecdsa.PrivateKey
 	client               *ethclient.Client
 	mtx                  sync.Mutex
@@ -125,7 +125,7 @@ func init() {
 		CheckPRLBalance:                 checkPRLBalance,
 		GetCurrentBlock:                 getCurrentBlock,
 		GetConfirmationCount:            getConfirmationCount,
-		GetWallet:                       getWallet,
+		GetTestWallet:                   getTestWallet,
 	}
 }
 
@@ -286,7 +286,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	}
 
 	// instance of the oyster pearl contract
-	OysterPearlAddress := common.HexToAddress(oysterPearlContract)
+	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
 		fmt.Printf("unable to access contract instance at :%v", err)
@@ -414,7 +414,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 		case <-time.After(1 * time.Minute):
 			log.Print("Timeout to wait for brokerAddr\n")
 			// Wait for 1 hr to receive payment before timeout
-			return big.NewInt(0), errors.New("Timeout")
+			return big.NewInt(0), errors.New("subscription timed out")
 		case log := <-logs:
 			fmt.Printf("Log Data:%v", string(log.Data))
 			fmt.Println("Confirmed Address:", log.Address.Hex())
@@ -450,7 +450,7 @@ func sendGas(completedUploads []models.CompletedUpload) error {
 
 // Transfer funds from one Ethereum account to another.
 // We need to pass in the credentials, to allow the transaction to execute.
-func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transactions, err error) {
+func sendETH(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error) {
 
 	client, err := sharedClient()
 	if err != nil {
@@ -489,11 +489,10 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 	// create new transaction
 	tx := types.NewTransaction(nonce, toAddr, amount, gasLimit, gasPrice, nil)
 
-	// oysterby chainId 559966
-	// chainId := big.NewInt(559966)
-	chainId := params.MainnetChainConfig.ChainId
-
+	// signer
 	signer := types.NewEIP155Signer(chainId)
+
+	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
 	if err != nil {
 		raven.CaptureError(err, nil)
@@ -513,11 +512,8 @@ func sendETH(toAddr common.Address, amount *big.Int) (transaction types.Transact
 
 	for tx := range txs {
 		transaction := txs[tx]
-		fmt.Printf("tx to     : %v\n", transaction.To().Hash().String())
-		// subscribe to transaction hash
-		fmt.Printf("tx hash   : %v\n", transaction.Hash().String())
-		fmt.Printf("tx amount : %v\n", transaction.Value())
-		fmt.Printf("tx cost   : %v\n", transaction.Cost())
+
+		printTx(transaction)
 
 		// tx *types.Transaction, isPending bool, err error
 		isPending := isPending(transaction.Hash())
@@ -545,7 +541,7 @@ func buryPrl(msg OysterCallMsg) bool {
 
 	// shared client
 	client, _ := sharedClient()
-	contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress(OysterPearlContract)
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
@@ -632,7 +628,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	// shared client
 	client, _ := sharedClient()
 
-	contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress(OysterPearlContract)
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
@@ -675,7 +671,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	// shared client
 	client, _ := sharedClient()
 
-	contractAddress := common.HexToAddress(oysterPearlContract)
+	contractAddress := common.HexToAddress(OysterPearlContract)
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
@@ -700,7 +696,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
 	name, err := oysterPearl.Name(nil)
-	fmt.Printf("OysterPearl :%v", name)
+	fmt.Printf("OysterPearl :%v\n", name)
 
 	// transfer
 	tx, err := oysterPearl.Transfer(&bind.TransactOpts{
@@ -710,7 +706,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		Value:    nil,
 	}, msg.To, &msg.Amount)
 	if err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err)
 		return false
 	}
 
@@ -719,8 +715,8 @@ func sendPRL(msg OysterCallMsg) bool {
 	return tx != nil
 }
 
-// utility to access the wallet keystore
-func getWallet() *keystore.Key {
+// utility to access the test wallet keystore
+func getTestWallet() *keystore.Key {
 
 	// load local test wallet key, may need to pull ahead vs on-demand
 	walletKeyJSON, err := ioutil.ReadFile("testdata/key.prv")
@@ -729,14 +725,13 @@ func getWallet() *keystore.Key {
 		fmt.Printf("error loading the walletKey : %v", err)
 	}
 	// decrypt wallet
-	walletKey, err := keystore.DecryptKey(walletKeyJSON, "oysterby4000")
+	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
 	if err != nil {
 		fmt.Printf("walletKey err : %v", err)
 	}
-
-	walletAddress := walletKey.Address
-
-	fmt.Printf("using wallet key store from: %v", walletAddress.Hex())
+	//privateKeyString := hex.EncodeToString(crypto.FromECDSA(walletKey.PrivateKey))
+	//fmt.Printf("wallet key address     : %v\n", walletKey.Address.Hex())
+	//fmt.Printf("wallet key PrivateKey  : %v\n", privateKeyString)
 
 	return walletKey
 }
@@ -764,6 +759,53 @@ func recordTransaction(address common.Address, status string) {
 	}
 }
 
+var MAIN = "mainnet"
+var TEST = "testnet"
+
+func configureGateway(network string) {
+	// Load ENV variables
+	err := godotenv.Load()
+	if err != nil {
+		godotenv.Load("../.env")
+		log.Printf(".env error: %v", err)
+		raven.CaptureError(err, nil)
+	}
+	// Resolve network type
+	switch network {
+	case MAIN:
+		// ethereum main net chain id
+		chainId = params.MainnetChainConfig.ChainId
+		break
+	case TEST:
+		// oysterby test net chain id
+		chainIdValue, _ := strconv.ParseInt(os.Getenv("CHAIN_ID"), 10, 8)
+		chainId = big.NewInt(chainIdValue)
+		break
+	}
+	// ethereum network node
+	EthUrl = os.Getenv("ETH_NODE_URL")
+	// smart contract
+	OysterPearlContract = os.Getenv("OYSTER_PEARL")
+	// wallet address configuration
+	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
+	// wallet private key configuration
+	MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
+	if err != nil {
+		fmt.Printf("unable to load key : %v", err)
+		raven.CaptureError(err, nil)
+	}
+	// Print Configuration
+	printConfig()
+}
+
+func RunOnMainETHNetwork() {
+	configureGateway(MAIN)
+}
+
+func RunOnTestNet() {
+	configureGateway(TEST)
+}
+
 // utility to print
 func printTx(tx *types.Transaction) {
 	fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
@@ -772,47 +814,17 @@ func printTx(tx *types.Transaction) {
 	fmt.Printf("tx cost   : %v\n", tx.Cost())
 }
 
-func RunOnMainETHNetwork() {
-
-	// Load ENV variables
-	err := godotenv.Load()
-	if err != nil {
-		godotenv.Load("../.env")
-		log.Printf(".env error: %v", err)
-		raven.CaptureError(err, nil)
-	}
-
-	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
-	oysterPearlContract = os.Getenv("OYSTER_PEARL")
-	EthUrl = os.Getenv("ETH_NODE_URL")
-	chainId = params.MainnetChainConfig.ChainId
-
-	//TODO:  Add a getMainWallet() method and replace the lines below this with calls
-	// to getMainWallet()
-	MainWalletKey = os.Getenv("MAIN_WALLET_KEY")
-
+// utility to print gateway configuration
+func printConfig() {
 	fmt.Println("Using main wallet address: ")
-	fmt.Println(MainWalletAddress)
-	fmt.Println("Using main wallet key: ")
-	fmt.Println(MainWalletKey)
+	fmt.Println(MainWalletAddress.Hex())
+	fmt.Println("Using main wallet private key: ")
+	privateKeyString := hex.EncodeToString(crypto.FromECDSA(MainWalletPrivateKey))
+	fmt.Println(privateKeyString)
+	fmt.Println("Using main wallet credentials: ")
+	fmt.Println(os.Getenv("MAIN_WALLET_PW"))
 	fmt.Println("Using eth node url: ")
 	fmt.Println(EthUrl)
-	fmt.Printf("Oyster Pearl Contract: %v\n", oysterPearlContract)
-
-	privateKeyString := normalizePrivateKeyString(MainWalletKey)
-	privateKeyBigInt := hexutil.MustDecodeBig(privateKeyString)
-	MainWalletPrivateKey = generatePublicKeyFromPrivateKey(crypto.S256(), privateKeyBigInt)
-}
-
-func RunOnTestNet() {
-
-	walletKey := getWallet()
-	MainWalletPrivateKey = walletKey.PrivateKey
-	MainWalletAddress = walletKey.Address
-
-	oysterPearlContract = "b7baab5cad2d2ebfe75a500c288a4c02b74bc12c"
-	EthUrl = os.Getenv("ws://54.86.134.172:8547")
-	chainId = params.MainnetChainConfig.ChainId
-
-	chainId = big.NewInt(559966)
+	fmt.Println("Using oyster pearl contract: ")
+	fmt.Println(OysterPearlContract)
 }

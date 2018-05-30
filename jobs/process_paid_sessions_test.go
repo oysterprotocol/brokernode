@@ -490,19 +490,19 @@ func (suite *JobsSuite) Test_InvokeBury() {
 	suite.Equal(true, hasCalledWaitForTransfer)
 }
 
-func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
-	generateTreasuresToBury(suite, 3, models.BuryConfirmed)
-
-	allTreasures, err := models.GetAllTreasuresToBury()
-	suite.Nil(err)
-	suite.Equal(3, len(allTreasures))
-
-	jobs.PurgeFinishedTreasure()
-
-	allTreasures, err = models.GetAllTreasuresToBury()
-	suite.Nil(err)
-	suite.Equal(0, len(allTreasures))
-}
+//func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
+//	generateTreasuresToBury(suite, 3, models.BuryConfirmed)
+//
+//	allTreasures, err := models.GetAllTreasuresToBury()
+//	suite.Nil(err)
+//	suite.Equal(3, len(allTreasures))
+//
+//	jobs.PurgeFinishedTreasure()
+//
+//	allTreasures, err = models.GetAllTreasuresToBury()
+//	suite.Nil(err)
+//	suite.Equal(0, len(allTreasures))
+//}
 
 func generateTreasuresToBury(suite *JobsSuite, numToCreateOfEachStatus int, status models.PRLStatus) {
 	prlAmount := big.NewInt(100000000000000000)
