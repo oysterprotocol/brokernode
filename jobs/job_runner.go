@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"os"
 	"reflect"
 	"runtime"
 	"time"
@@ -35,7 +36,9 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler))
 	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler))
 	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
+	if os.Getenv("OYSTER_PAYS") == "" {
+		oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
+	}
 	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler))
 }
 
@@ -67,7 +70,7 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{
-			Duration: 10 * time.Second,
+			Duration: 20 * time.Second,
 		})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
