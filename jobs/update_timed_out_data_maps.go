@@ -20,13 +20,13 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 
 		for _, timedOutDataMap := range timedOutDataMaps {
 
-			oyster_utils.LogToSegment("update_timed_out_data_maps: chunk_timed_out", analytics.NewProperties().
-				Set("address", timedOutDataMap.Address).
-				Set("genesis_hash", timedOutDataMap.GenesisHash).
-				Set("chunk_idx", timedOutDataMap.ChunkIdx))
-
 			timedOutDataMap.Status = models.Unassigned
 			models.DB.ValidateAndSave(&timedOutDataMap)
 		}
+		oyster_utils.LogToSegment("update_timed_out_data_maps: chunks_timed_out", analytics.NewProperties().
+			//Set("address", timedOutDataMap.Address).
+			//Set("genesis_hash", timedOutDataMap.GenesisHash).
+			//Set("chunk_idx", timedOutDataMap.ChunkIdx))
+			Set("num_chunks", len(timedOutDataMaps)))
 	}
 }

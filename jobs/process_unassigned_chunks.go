@@ -305,14 +305,14 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 
 		if len(chunks[i:end]) > 0 {
 
-			addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
+			//addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: sending_chunks_to_channel", analytics.NewProperties().
 				Set("genesis_hash", chunks[i:end][0].GenesisHash).
 				Set("num_chunks", len(chunks[i:end])).
-				Set("channel_id", channels[j].ChannelID).
-				Set("addresses", addresses).
-				Set("chunk_indexes", indexes))
+				Set("channel_id", channels[j].ChannelID))
+			//Set("addresses", addresses).
+			//Set("chunk_indexes", indexes))
 
 			iotaWrapper.SendChunksToChannel(chunks[i:end], &channels[j])
 		}
