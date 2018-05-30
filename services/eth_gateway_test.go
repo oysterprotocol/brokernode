@@ -35,6 +35,7 @@ var oysterbyNetwork = "ws://54.86.134.172:8547"
 //
 // Ethereum Addresses
 //
+var ethCoinbase  = common.HexToAddress("0x919410005b53d6497517b9ad58c23c6a30207747")
 var ethAddress01 = common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
 var ethAddress02 = common.HexToAddress("0x6abf0cdedd33e2bd6b574e0d81cdcaca817148c8")
 
@@ -166,17 +167,30 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 	}
 }
 
+func Test_getNonceForAccount(t *testing.T) {
+	
+	// Get the nonce for the given account
+	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
+	if err != nil {
+		t.Fatalf("unable to access the account nonce : %v", err)
+	}
+	if nonce > 0 {
+		t.Logf("valid account nonce : %v", nonce)
+	} else {
+		t.Fatalf("invalid account nonce : %v", nonce)
+	}
+}
+
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-
-	//t.Skip(nil)
+	
 	// transfer 1/5 of ether
-	transferValue := oneEther // .Div(oneEther, big.NewInt(5))
-
+	//transferValue := oneEther//.Div(oneEther, big.NewInt(3))
+	transferValueInWei := new(big.Int).Mul(oneEther, big.NewInt(params.Wei))
 	// Send ether to test account
-	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
+	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
 	if err != nil {
-		t.Logf("failed to send ether to %v ether to %v", transferValue, ethAddress02.Hex())
+		t.Logf("failed to send ether to %v ether to %v", transferValueInWei, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v", err)
 	}
 	for tx := range txs {
@@ -188,7 +202,7 @@ func Test_sendEth(t *testing.T) {
 }
 
 // ensure confirmation is over 12
-func Test_confirmTransaction(t *testing.T) {
+func Test_confirmTransactionCount(t *testing.T) {
 	
 	// tx count
 	txCount, err := services.EthWrapper.GetConfirmationCount(lastTransactionHash)

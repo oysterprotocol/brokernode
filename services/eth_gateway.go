@@ -49,6 +49,7 @@ type Eth struct {
 	CheckPRLBalance
 	GetCurrentBlock
 	GetConfirmationCount
+	GetNonce
 	GetTestWallet
 	OysterCallMsg
 }
@@ -86,6 +87,7 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationCount func(txHash common.Hash) (*big.Int, error)
+type GetNonce func(ctx context.Context, address common.Address) (uint64, error)
 type GetTestWallet func() *keystore.Key
 
 type BuryPrl func(msg OysterCallMsg) bool
@@ -125,7 +127,8 @@ func init() {
 		CheckPRLBalance:                 checkPRLBalance,
 		GetCurrentBlock:                 getCurrentBlock,
 		GetConfirmationCount:            getConfirmationCount,
-		GetTestWallet:                       getTestWallet,
+		GetNonce:                        getNonce,
+		GetTestWallet:                   getTestWallet,
 	}
 }
 
@@ -336,6 +339,7 @@ func subscribeNewHead(tx common.Hash) (ethereum.Subscription, error) {
 
 // determine if a transaction is pending
 func isPending(txHash common.Hash) bool {
+	client, _ := sharedClient()
 	// get transaction
 	_, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
@@ -353,14 +357,34 @@ func isPending(txHash common.Hash) bool {
 func getConfirmationCount(txHash common.Hash) (*big.Int, error) {
 	client, _ := sharedClient()
 	// web3.eth.blockNumber-web3.eth.getTransaction("0xa92c69ebc71f46ef73a7bcf4b7a17aaa1b8daa7f6036e3c3374b62589ac1b8d3").blockNumber
+	//block, _ := getCurrentBlock()
+	//blockNumber := block.Number()
+	
 	// get transaction
-	txBlockNumber, err := client.TransactionCount(context.Background(), txHash)
+	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		fmt.Printf("Could not get transaction by hash")
 		return big.NewInt(-1), err
 	}
-	fmt.Printf("tx block number : %v\n", txBlockNumber)
-	return big.NewInt(0).SetUint64(uint64(txBlockNumber)), nil
+	if isPending {
+		fmt.Println("transaction is pending")
+	}
+	fmt.Printf("tx block number : %v\n", tx.Nonce())
+	data := tx.Data()
+	tx.UnmarshalJSON(data)
+	if err != nil {
+		fmt.Printf("could not unmarshal transaction data")
+	}
+	return big.NewInt(0).SetUint64(uint64(0)), nil
+}
+
+// Utility to access the nonce for a given account
+func getNonce(ctx context.Context, address common.Address) (uint64, error) {
+	client, err := sharedClient()
+	if err != nil {
+		return 0, err
+	}
+	return client.NonceAt(ctx, address, nil)
 }
 
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH.
@@ -725,7 +749,7 @@ func getTestWallet() *keystore.Key {
 		fmt.Printf("error loading the walletKey : %v", err)
 	}
 	// decrypt wallet
-	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
+	walletKey, err := keystore.DecryptKey(walletKeyJSON, "oysterby4000")
 	if err != nil {
 		fmt.Printf("walletKey err : %v", err)
 	}
@@ -784,18 +808,18 @@ func configureGateway(network string) {
 		chainId = big.NewInt(chainIdValue)
 		break
 	}
+	// test local wallet
+	testWallet := getTestWallet()
 	// ethereum network node
 	EthUrl = os.Getenv("ETH_NODE_URL")
 	// smart contract
 	OysterPearlContract = os.Getenv("OYSTER_PEARL")
 	// wallet address configuration
-	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
+	MainWalletAddress = testWallet.Address //common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
 	// wallet private key configuration
-	MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
-	if err != nil {
-		fmt.Printf("unable to load key : %v", err)
-		raven.CaptureError(err, nil)
-	}
+	//MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
+	MainWalletPrivateKey = testWallet.PrivateKey
+	
 	// Print Configuration
 	printConfig()
 }
