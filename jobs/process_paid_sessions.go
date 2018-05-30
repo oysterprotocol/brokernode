@@ -17,7 +17,7 @@ func ProcessPaidSessions(thresholdTime time.Time) {
 	MarkBuriedMapsAsUnassigned()
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode &&
-		os.Getenv("OYSTER_PAYS") != "" {
+		os.Getenv("OYSTER_PAYS") == "" {
 
 		CheckPRLTransactions()
 		CheckGasTransactions()
