@@ -29,7 +29,7 @@ var _ = grift.Namespace("db", func() {
 			return errors.New(errorString)
 		}
 		address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
-		prlAmount := big.NewFloat(float64(.0011))
+		prlAmount := big.NewFloat(float64(.0001))
 		prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
 
 		treasure := models.Treasure{
