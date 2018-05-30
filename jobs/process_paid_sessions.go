@@ -7,6 +7,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"os"
 	"time"
 )
 
@@ -15,7 +16,8 @@ func ProcessPaidSessions(thresholdTime time.Time) {
 	BuryTreasureInDataMaps()
 	MarkBuriedMapsAsUnassigned()
 
-	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode &&
+		os.Getenv("OYSTER_PAYS") != "" {
 
 		CheckPRLTransactions()
 		CheckGasTransactions()
