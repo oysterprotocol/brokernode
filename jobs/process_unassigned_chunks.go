@@ -17,9 +17,7 @@ import (
 const PercentOfChunksToSkipVerification = 45
 
 func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
-
-	sessions, err := models.GetSessionsByAge()
-	oyster_utils.LogIfError(err)
+	sessions, _ := models.GetSessionsByAge()
 
 	if len(sessions) > 0 {
 		GetSessionUnassignedChunks(sessions, iotaWrapper)
@@ -28,14 +26,13 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
 func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper services.IotaService) {
 	for _, session := range sessions {
-		channels, err := models.GetReadyChannels()
-		oyster_utils.LogIfError(err)
+		channels, _ := models.GetReadyChannels()
 
 		if len(channels) <= 0 {
 			break
 		}
 
-		chunks, err := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
+		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 
 		if len(chunks) > 0 {
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
