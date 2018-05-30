@@ -431,7 +431,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		oyster_utils.LogToSegment("process_paid_sessions: sendPRL", analytics.NewProperties().
 			Set("new_status", models.PRLStatusMap[treasureToBury.PRLStatus]).
 			Set("eth_address", treasureToBury.ETHAddr))
-		// go waitForPRLs(treasureToBury)
+		go waitForPRLs(treasureToBury)
 	}
 }
 
@@ -479,7 +479,7 @@ func sendGas(treasureToBury models.Treasure) {
 		oyster_utils.LogToSegment("process_paid_sessions: sendGas", analytics.NewProperties().
 			Set("new_status", models.PRLStatusMap[treasureToBury.PRLStatus]).
 			Set("eth_address", treasureToBury.ETHAddr))
-		// go waitForGas(treasureToBury)
+		go waitForGas(treasureToBury)
 	}
 }
 
