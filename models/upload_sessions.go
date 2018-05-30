@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
+	"os"
 	"time"
+
+	"github.com/oysterprotocol/brokernode/utils"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
@@ -127,7 +129,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.ProdMode:
 		// Defaults to paymentStatusPending
 		if u.PaymentStatus == 0 {
-			u.PaymentStatus = PaymentStatusInvoiced
+			if os.Getenv("OYSTER_PAYS") == "" {
+				u.PaymentStatus = PaymentStatusInvoiced
+			} else {
+				u.PaymentStatus = PaymentStatusConfirmed
+			}
 		}
 
 		// Defaults to treasureGeneratingKeys
