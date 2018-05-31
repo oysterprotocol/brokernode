@@ -259,7 +259,7 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
 	_, err = DB.ValidateAndSave(u)
 	oyster_utils.LogIfError(err)
-	return nil
+	return err
 }
 
 // Sets the TreasureIdxMap with Sector, Idx, and Key
