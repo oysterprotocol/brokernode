@@ -115,7 +115,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
 	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
-	as.True(1 == len(resParsed.BetaTreasureIndexes))
+	as.Equal(1, len(resParsed.BetaTreasureIndexes))
 	as.NotEqual(0, resParsed.Invoice.Cost)
 	as.NotEqual("", resParsed.Invoice.EthAddress)
 
@@ -269,7 +269,7 @@ func verifyPaymentConfirmation(as *ActionSuite, sessionId string) {
 	session := models.UploadSession{}
 	err := as.DB.Find(&session, sessionId)
 	as.Nil(err)
-	as.True(session.PaymentStatus == models.PaymentStatusConfirmed)
+	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
 
 func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {

@@ -105,11 +105,14 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 		StorageLengthInYears: storageLengthInYears,
 	}
 
-	u.SetTreasureMap(treasureIndexArray)
 	vErr, err := u.StartUploadSession()
-	treasureIdxMap, err := u.GetTreasureMap()
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
+
+	ms.Nil(u.SetTreasureMap(treasureIndexArray))
+
+	treasureIdxMap, err := u.GetTreasureMap()
+	ms.Nil(err)
 
 	session := models.UploadSession{}
 	err = ms.DB.Where("genesis_hash = ?", u.GenesisHash).First(&session)
