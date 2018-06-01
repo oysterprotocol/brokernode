@@ -71,7 +71,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			err = errors.New(errString)
 			oyster_utils.LogIfError(err, map[string]interface{}{
 				"numOfTreasureChunks": len(treasureChunks),
-				"entry.Id":            entry.Id,
+				"entry.Id":            entry.Idx,
 				"genesisHash":         unburiedSession.GenesisHash,
 			})
 			return err
