@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,25 @@ const (
 	// These are the multipliers for PRL denominations.
 	PrlInWeiUnit = 1e18
 )
+
+var logErrorTags map[string]string
+
+func init() {
+	isOysterPay := "enabled"
+	if os.Getenv("OYSTER_PAYS") == "" {
+		isOysterPay = "disabled"
+	}
+	logErrorTags = map[string]string{
+		"mode":       os.Getenv("MODE"),
+		"host_ip":    os.Getenv("HOST_IP"),
+		"osyter_pay": isOysterPay,
+	}
+}
+
+/*SetLogInfoForDatabaseUrl updates db_url for log info.*/
+func SetLogInfoForDatabaseUrl(dbUrl string) {
+	logErrorTags["db_url"] = dbUrl
+}
 
 // ParseReqBody take a request and parses the body to the target interface.
 func ParseReqBody(req *http.Request, dest interface{}) (err error) {
@@ -233,6 +253,6 @@ func ConverFromWeiUnit(wei *big.Int) *big.Float {
 func LogIfError(err error) {
 	if err != nil {
 		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		raven.CaptureError(err, logErrorTags)
 	}
 }

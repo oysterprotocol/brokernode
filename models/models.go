@@ -5,6 +5,7 @@ import (
 
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/pop"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 // DB is a connection to your database to be used
@@ -18,5 +19,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	oyster_utils.SetLogInfoForDatabaseUrl(DB.URL())
 	pop.Debug = env == "development"
 }
