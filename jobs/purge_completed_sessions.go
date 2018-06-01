@@ -92,11 +92,9 @@ func PurgeCompletedSessions() {
 }
 
 func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
-
+	index := 0
 	for _, dataMap := range dataMaps {
-
 		completedDataMap := models.CompletedDataMap{
-
 			Status:      dataMap.Status,
 			Message:     dataMap.Message,
 			NodeID:      dataMap.NodeID,
@@ -110,6 +108,10 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		}
 
 		_, err := tx.ValidateAndSave(&completedDataMap)
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(err, map[string]interface{}{
+			"numOfDataMaps":  len(dataMaps),
+			"proceededIndex": index,
+		})
+		index++
 	}
 }

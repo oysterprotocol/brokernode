@@ -69,7 +69,11 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			errString := "did not find a chunk that matched genesis_hash and chunk_idx in process_paid_sessions, or " +
 				"found duplicate chunks"
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfError(err, map[string]interface{}{
+				"numOfTreasureChunks": len(treasureChunks),
+				"entry.Id":            entry.Id,
+				"genesisHash":         unburiedSession.GenesisHash,
+			})
 			return err
 		}
 

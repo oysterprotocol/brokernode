@@ -48,8 +48,9 @@ func init() {
 	}
 	logErrorTags = map[string]string{
 		"mode":       os.Getenv("MODE"),
-		"host_ip":    os.Getenv("HOST_IP"),
-		"osyter_pay": isOysterPay,
+		"hostIp":     os.Getenv("HOST_IP"),
+		"ethNodeUrl": os.Getenv("ETH_NODE_URL"),
+		"osyterPay":  isOysterPay,
 	}
 }
 
@@ -65,8 +66,7 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
@@ -81,8 +81,7 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)

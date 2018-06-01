@@ -93,7 +93,11 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(err, map[string]interface{}{
+			"forLoopIndex":   i,
+			"totalLoopCount": len(chunksIn),
+			"numOfChunk":     len(restOfChunks),
+		})
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
