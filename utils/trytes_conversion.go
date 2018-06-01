@@ -12,6 +12,8 @@ var (
 	TrytesAlphabet = []rune("9ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
+const StopperTryte = "A"
+
 func AsciiToTrytes(asciiString string) (string, error) {
 	var b strings.Builder
 
@@ -83,6 +85,21 @@ func TrytesToBytes(t giota.Trytes) []byte {
 		output = append(output, c)
 	}
 	return output
+}
+
+func ChunkMessageToTrytesWithStopper(binString string) giota.Trytes {
+	trytes := RunesToTrytes([]rune(binString))
+	return giota.Trytes(trytes + StopperTryte)
+}
+
+func RunesToTrytes(r []rune) giota.Trytes {
+	var output string
+	for _, c := range r {
+		v1 := c % 27
+		v2 := (c - v1) / 27
+		output += string(TrytesAlphabet[v1]) + string(TrytesAlphabet[v2])
+	}
+	return giota.Trytes(output)
 }
 
 func BytesToTrytes(b []byte) giota.Trytes {

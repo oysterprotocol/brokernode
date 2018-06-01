@@ -280,7 +280,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 
 			if chunk.Hash == dm.GenesisHash {
-				dm.Message = chunk.Data
+				// TODO check if these are valid trytes and do different things based on the result
+
+				dm.Message = string(oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data))
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
