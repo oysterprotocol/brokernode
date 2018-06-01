@@ -706,7 +706,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		Value:    nil,
 	}, msg.To, &msg.Amount)
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return false
 	}
 

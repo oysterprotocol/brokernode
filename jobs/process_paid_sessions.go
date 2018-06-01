@@ -69,7 +69,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			errString := "did not find a chunk that matched genesis_hash and chunk_idx in process_paid_sessions, or " +
 				"found duplicate chunks"
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return err
 		}
 
@@ -140,13 +140,13 @@ func CheckPRLTransactions() {
 			pending.PRLStatus = models.PRLConfirmed
 			vErr, err := models.DB.ValidateAndUpdate(&pending)
 			if err != nil {
-				oyster_utils.LogIfError(err)
+				oyster_utils.LogIfError(err, nil)
 				return
 			}
 			if len(vErr.Errors) > 0 {
 				errString := "validation errors in process_paid_sessions in CheckPRLTransactions: " + fmt.Sprint(vErr.Errors)
 				err = errors.New(errString)
-				oyster_utils.LogIfError(err)
+				oyster_utils.LogIfError(err, nil)
 				return
 			}
 			oyster_utils.LogToSegment("process_paid_sessions: CheckPRLTransactions", analytics.NewProperties().
@@ -174,13 +174,13 @@ func CheckGasTransactions() {
 			pending.PRLStatus = models.GasConfirmed
 			vErr, err := models.DB.ValidateAndUpdate(&pending)
 			if err != nil {
-				oyster_utils.LogIfError(err)
+				oyster_utils.LogIfError(err, nil)
 				return
 			}
 			if len(vErr.Errors) > 0 {
 				errString := "validation errors in process_paid_sessions in CheckGasTransactions: " + fmt.Sprint(vErr.Errors)
 				err = errors.New(errString)
-				oyster_utils.LogIfError(err)
+				oyster_utils.LogIfError(err, nil)
 				return
 			}
 			oyster_utils.LogToSegment("process_paid_sessions: CheckGasTransactions", analytics.NewProperties().
@@ -212,13 +212,13 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 		timedOutTransaction.PRLStatus = models.PRLStatus(int((timedOutTransaction.PRLStatus)-1) * -1)
 		vErr, err := models.DB.ValidateAndUpdate(&timedOutTransaction)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in SetTimedOutTransactionsToError: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		oyster_utils.LogToSegment("process_paid_sessions: SetTimedOutTransactionsToError", analytics.NewProperties().
@@ -262,13 +262,13 @@ func StageTransactionsWithErrorsForRetry() {
 		errorTransaction.PRLStatus = models.PRLWaiting
 		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 	}
@@ -276,13 +276,13 @@ func StageTransactionsWithErrorsForRetry() {
 		errorTransaction.PRLStatus = models.PRLConfirmed
 		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 	}
@@ -290,13 +290,13 @@ func StageTransactionsWithErrorsForRetry() {
 		errorTransaction.PRLStatus = models.GasConfirmed
 		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 	}
@@ -374,7 +374,7 @@ func PurgeFinishedTreasure() {
 		ethAddr := completeTreasure.ETHAddr
 		err := models.DB.Destroy(&completeTreasure)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		oyster_utils.LogToSegment("process_paid_sessions: PurgeFinishedTreasure", analytics.NewProperties().
@@ -397,7 +397,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -415,7 +415,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		errorString := "\nFailure sending " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64()) + " PRL to " +
 			treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		treasureToBury.PRLStatus = models.PRLError
 		//vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		// TODO add method for logging vErrs
@@ -424,13 +424,13 @@ func sendPRL(treasureToBury models.Treasure) {
 		treasureToBury.PRLStatus = models.PRLPending
 		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in sendPRL: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		oyster_utils.LogToSegment("process_paid_sessions: sendPRL", analytics.NewProperties().
@@ -454,7 +454,7 @@ func sendGas(treasureToBury models.Treasure) {
 		errorString := "Cannot send Gas to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(gas.Int64())
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -463,7 +463,7 @@ func sendGas(treasureToBury models.Treasure) {
 	if err != nil {
 		errorString := "\nFailure sending " + fmt.Sprint(gas.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		treasureToBury.PRLStatus = models.GasError
 		//vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		// TODO add method for logging vErrs
@@ -472,13 +472,13 @@ func sendGas(treasureToBury models.Treasure) {
 		treasureToBury.PRLStatus = models.GasPending
 		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in sendGas: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		oyster_utils.LogToSegment("process_paid_sessions: sendGas", analytics.NewProperties().
@@ -498,7 +498,7 @@ func buryPRL(treasureToBury models.Treasure) {
 			treasureToBury.ETHAddr + ").  balance of PRL: " +
 			fmt.Sprint(balanceOfPRL.Int64()) + "; balance of ETH: " + fmt.Sprint(balanceOfETH.Int64())
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -511,7 +511,7 @@ func buryPRL(treasureToBury models.Treasure) {
 	if !success {
 		errorString := "\nFailure to bury  " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		treasureToBury.PRLStatus = models.BuryError
 		//vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		// TODO add method for logging vErrs
@@ -520,13 +520,13 @@ func buryPRL(treasureToBury models.Treasure) {
 		treasureToBury.PRLStatus = models.BuryPending
 		vErr, err := models.DB.ValidateAndUpdate(&treasureToBury)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		if len(vErr.Errors) > 0 {
 			errString := "validation errors in process_paid_sessions in buryPRL: " + fmt.Sprint(vErr.Errors)
 			err = errors.New(errString)
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 		oyster_utils.LogToSegment("process_paid_sessions: buryPRL", analytics.NewProperties().
@@ -555,7 +555,7 @@ func waitForPRLs(treasureToBury models.Treasure) {
 	treasureToBury.PRLStatus = prlStatus
 
 	_, err = models.DB.ValidateAndUpdate(&treasureToBury)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 }
 
 func waitForGas(treasureToBury models.Treasure) {
@@ -579,7 +579,7 @@ func waitForGas(treasureToBury models.Treasure) {
 	treasureToBury.PRLStatus = prlStatus
 
 	_, err = models.DB.ValidateAndUpdate(&treasureToBury)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 }
 
 func waitForBury(treasureToBury models.Treasure) {
@@ -608,5 +608,5 @@ func waitForBury(treasureToBury models.Treasure) {
 	treasureToBury.PRLStatus = prlStatus
 
 	_, err = models.DB.ValidateAndUpdate(&treasureToBury)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 }

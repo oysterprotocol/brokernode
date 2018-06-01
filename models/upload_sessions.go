@@ -253,12 +253,12 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	treasureString, err := json.Marshal(treasureIndexMap)
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return err
 	}
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
 	_, err = DB.ValidateAndSave(u)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 	return err
 }
 

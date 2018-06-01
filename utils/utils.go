@@ -249,10 +249,15 @@ func ConverFromWeiUnit(wei *big.Int) *big.Float {
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
 }
 
-/* Log any error if it is not nil. */
-func LogIfError(err error) {
+/*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
+func LogIfError(err error, extraInfo map[string]interface{}) {
 	if err != nil {
 		fmt.Println(err)
-		raven.CaptureError(err, logErrorTags)
+
+		if extraInfo != nil {
+			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
+		} else {
+			raven.CaptureError(err, logErrorTags)
+		}
 	}
 }

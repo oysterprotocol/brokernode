@@ -15,7 +15,7 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 	err := models.DB.Where("updated_at <= ?", thresholdTime).All(&webnodes)
 
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -26,6 +26,6 @@ func FlushOldWebNodes(thresholdTime time.Time) {
 
 		webnode := webnodes[i]
 		err := models.DB.Destroy(&webnode)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 	}
 }

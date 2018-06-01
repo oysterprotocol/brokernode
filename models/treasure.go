@@ -103,7 +103,7 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 func (t *Treasure) SetPRLAmount(bigInt *big.Int) (string, error) {
 	prlAmountAsBytes, err := bigInt.MarshalJSON()
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 	t.PRLAmount = string(prlAmountAsBytes)
@@ -127,7 +127,7 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 		treasureToBury := []Treasure{}
 		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
 		}
 		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
@@ -148,7 +148,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 			int(timeSinceThreshold.Hours())).All(&treasureToBury)
 
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
 		}
 		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)

@@ -93,7 +93,7 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
@@ -327,7 +327,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
