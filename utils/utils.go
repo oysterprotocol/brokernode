@@ -53,6 +53,11 @@ func init() {
 	}
 }
 
+/*SetLogInfoForDatabaseUrl updates db_url for log info.*/
+func SetLogInfoForDatabaseUrl(dbUrl string) {
+	logErrorTags["db_url"] = dbUrl
+}
+
 // ParseReqBody take a request and parses the body to the target interface.
 func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 	body := req.Body
