@@ -16,7 +16,7 @@ func PurgeCompletedSessions() {
 	var allGenesisHashesStruct = []models.DataMap{}
 
 	err := models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps").All(&allGenesisHashesStruct)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	allGenesisHashes := make([]string, 0, len(allGenesisHashesStruct))
 
@@ -27,7 +27,7 @@ func PurgeCompletedSessions() {
 	err = models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps WHERE status != ? AND status != ?",
 		models.Complete,
 		models.Confirmed).All(&genesisHashesNotComplete)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	notComplete := map[string]bool{}
 
@@ -46,7 +46,7 @@ func PurgeCompletedSessions() {
 
 				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
 				if err != nil {
-					oyster_utils.LogIfError(err)
+					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
@@ -54,7 +54,7 @@ func PurgeCompletedSessions() {
 
 				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session)
 				if err != nil {
-					oyster_utils.LogIfError(err)
+					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
@@ -65,19 +65,19 @@ func PurgeCompletedSessions() {
 						FileSizeBytes: session[0].FileSizeBytes,
 					})
 					if err != nil {
-						oyster_utils.LogIfError(err)
+						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 					err = models.NewCompletedUpload(session[0])
 					if err != nil {
-						oyster_utils.LogIfError(err)
+						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}
 
 				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
 				if err != nil {
-					oyster_utils.LogIfError(err)
+					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
@@ -110,6 +110,6 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		}
 
 		_, err := tx.ValidateAndSave(&completedDataMap)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 	}
 }

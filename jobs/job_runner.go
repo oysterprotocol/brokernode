@@ -30,16 +30,16 @@ func init() {
 }
 
 func registerHandlers(oysterWorker *worker.Simple) {
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(flushOldWebnodesHandler), flushOldWebnodesHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler))
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(flushOldWebnodesHandler), flushOldWebnodesHandler), nil)
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler), nil)
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler), nil)
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler), nil)
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler), nil)
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler), nil)
 	if os.Getenv("OYSTER_PAYS") == "" {
-		oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler))
+		oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler), nil)
 	}
-	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler))
+	oyster_utils.LogIfError(oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler), nil)
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -149,7 +149,7 @@ func oysterWorkerPerformIn(handler worker.Handler, args worker.Args) {
 		Handler: getHandlerName(handler),
 		Args:    args,
 	}
-	oyster_utils.LogIfError(OysterWorker.PerformIn(job, args[Duration].(time.Duration)))
+	oyster_utils.LogIfError(OysterWorker.PerformIn(job, args[Duration].(time.Duration)), nil)
 }
 
 // Return the name of the handler in full path.

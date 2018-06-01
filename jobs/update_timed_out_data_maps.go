@@ -12,7 +12,7 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time) {
 	timedOutDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(timedOutDataMaps) > 0 {
 
