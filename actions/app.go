@@ -14,6 +14,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/rs/cors"
 	"github.com/unrolled/secure"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // ENV is used to help switch settings based on where the
@@ -24,6 +25,18 @@ var app *buffalo.App
 // Visible for Unit Test
 var IotaWrapper = services.IotaWrapper
 var EthWrapper = services.EthWrapper
+var PrometheusWrapper = services.PrometheusWrapper
+
+var HistogramTreasuresVerifyAndClaim = PrometheusWrapper.PrepareHistogram("treasures_verify_and_claim_seconds", "HistogramTreasuresVerifyAndClaimSeconds", "code")
+var HistogramUploadSessionResourceCreate = PrometheusWrapper.PrepareHistogram("upload_session_resource_create_seconds", "HistogramUploadSessionResourceCreateSeconds", "code")
+var HistogramUploadSessionResourceUpdate = PrometheusWrapper.PrepareHistogram("upload_session_resource_update_seconds", "HistogramUploadSessionResourceUpdateSeconds", "code")
+var HistogramUploadSessionResourceCreateBeta = PrometheusWrapper.PrepareHistogram("upload_session_resource_create_beta_seconds", "HistogramUploadSessionResourceCreateBetaSeconds", "code")
+var HistogramUploadSessionResourceGetPaymentStatus = PrometheusWrapper.PrepareHistogram("upload_session_resource_get_payment_status_seconds", "HistogramUploadSessionResourceGetPaymentStatusSeconds", "code")
+var HistogramWebnodeResourceCreate = PrometheusWrapper.PrepareHistogram("webnode_resource_create_seconds", "HistogramWebnodeResourceCreateSeconds", "code")
+var HistogramTransactionBrokernodeResourceCreate = PrometheusWrapper.PrepareHistogram("transaction_brokernode_resource_create_seconds", "HistogramTransactionBrokernodeResourceCreateSeconds", "code")
+var HistogramTransactionBrokernodeResourceUpdate = PrometheusWrapper.PrepareHistogram("transaction_brokernode_resource_update_seconds", "HistogramTransactionBrokernodeResourceUpdateSeconds", "code")
+var HistogramTransactionGenesisHashResourceCreate = PrometheusWrapper.PrepareHistogram("transaction_genesis_hash_resource_create_seconds", "HistogramTransactionGenesisHashResourceCreateSeconds", "code")
+var HistogramTransactionGenesisHashResourceUpdate = PrometheusWrapper.PrepareHistogram("transaction_genesis_hash_resource_seconds", "HistogramTransactionGenesisHashResourceUpdateSeconds", "code")
 
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
@@ -67,6 +80,8 @@ func App() *buffalo.App {
 		app.Use(middleware.PopTransaction(models.DB))
 
 		app.GET("/", HomeHandler)
+
+		app.GET("/metrics", buffalo.WrapHandler(prometheus.Handler()))
 
 		apiV2 := app.Group("/api/v2")
 

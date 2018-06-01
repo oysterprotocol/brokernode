@@ -4,6 +4,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
+	"time"
 )
 
 type WebnodeResource struct {
@@ -22,6 +23,12 @@ type webnodeCreateRes struct {
 
 // Creates a webnode.
 func (usr *WebnodeResource) Create(c buffalo.Context) error {
+	start := time.Now()
+
+	defer func() {
+		PrometheusWrapper.HistogramSeconds(HistogramWebnodeResourceCreate, start)
+	}()
+
 	req := webnodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 

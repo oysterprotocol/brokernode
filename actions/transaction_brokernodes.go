@@ -12,6 +12,7 @@ import (
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
+	"time"
 )
 
 type TransactionBrokernodeResource struct {
@@ -44,7 +45,14 @@ type transactionBrokernodeUpdateRes struct {
 }
 
 // Creates a transaction.
+
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
+	start := time.Now()
+
+	defer func() {
+		PrometheusWrapper.HistogramSeconds(HistogramTransactionBrokernodeResourceCreate, start)
+	}()
+
 	req := transactionBrokernodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -93,6 +101,12 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
+	start := time.Now()
+
+	defer func() {
+		PrometheusWrapper.HistogramSeconds(HistogramTransactionBrokernodeResourceUpdate, start)
+	}()
+
 	req := transactionBrokernodeUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 

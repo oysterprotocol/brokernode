@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
@@ -46,6 +47,12 @@ type transactionGenesisHashUpdateRes struct {
 
 // Creates a transaction.
 func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
+	start := time.Now()
+
+	defer func() {
+		PrometheusWrapper.HistogramSeconds(HistogramTransactionGenesisHashResourceCreate, start)
+	}()
+
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -96,6 +103,12 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
+	start := time.Now()
+
+	defer func() {
+		PrometheusWrapper.HistogramSeconds(HistogramTransactionGenesisHashResourceUpdate, start)
+	}()
+
 	req := transactionGenesisHashUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
