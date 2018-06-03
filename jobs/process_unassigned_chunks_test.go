@@ -14,7 +14,7 @@ var (
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = false
 	findTransactionsMockCalled_process_unassigned_chunks                 = false
 	AllChunksCalled                                                      []models.DataMap
-	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
@@ -174,7 +174,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 			ChunkIdx:    i,
 			GenesisHash: "abcdeff1",
 			Hash:        "SOMEHASH",
-			Address:     "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+			Address:     "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 		})
 	}
 
