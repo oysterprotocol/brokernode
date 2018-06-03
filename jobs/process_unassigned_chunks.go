@@ -2,16 +2,14 @@ package jobs
 
 import (
 	"fmt"
-	"math"
-	"os"
-	"time"
-
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math"
+	"os"
+	"time"
 )
 
 const PercentOfChunksToSkipVerification = 45
@@ -354,13 +352,18 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	for i := 0; i < len(chunks); i++ {
 		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
 			address := make([]giota.Address, 0, 1)
-			address = append(address, giota.Address(chunks[i].Address))
+			chunkAddress, err := giota.ToAddress(chunks[i].Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
+			}
+			address = append(address, chunkAddress)
 			transactionsMap, err := iotaWrapper.FindTransactions(address)
 			if err != nil {
-				fmt.Println(err)
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
 			}
-			if _, ok := transactionsMap[giota.Address(chunks[i].Address)]; !ok || transactionsMap == nil {
+			if _, ok := transactionsMap[chunkAddress]; !ok || transactionsMap == nil {
 				oyster_utils.LogToSegment("process_unassigned_chunks: "+
 					"treasure_chunk_not_attached", analytics.NewProperties().
 					Set("genesis_hash", chunks[i].GenesisHash).

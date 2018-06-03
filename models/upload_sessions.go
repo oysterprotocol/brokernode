@@ -51,6 +51,7 @@ type UploadSession struct {
 	TreasureStatus int             `json:"treasureStatus" db:"treasure_status"`
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
+	Version        uint32       `json:"version" db:"version"`
 }
 
 // Enum for upload session type.

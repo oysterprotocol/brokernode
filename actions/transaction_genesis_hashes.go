@@ -103,7 +103,11 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	t := &models.Transaction{}
 	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
 
-	trytes := giota.Trytes(req.Trytes)
+	trytes, err := giota.ToTrytes(req.Trytes)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
 	iotaTransaction, iotaError := giota.NewTransaction(trytes)
 
 	if transactionError != nil || iotaError != nil {
@@ -113,8 +117,18 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	address, addError := giota.ToAddress(t.DataMap.Address)
 	validAddress := addError == nil && address == iotaTransaction.Address
 	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
-	validBranch := giota.Trytes(t.DataMap.BranchTx) == iotaTransaction.BranchTransaction
-	validTrunk := giota.Trytes(t.DataMap.TrunkTx) == iotaTransaction.TrunkTransaction
+	branchTxTrytes, err := giota.ToTrytes(t.DataMap.BranchTx)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	validBranch := branchTxTrytes == iotaTransaction.BranchTransaction
+	trunkTxTrytes, err := giota.ToTrytes(t.DataMap.TrunkTx)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	validTrunk := trunkTxTrytes == iotaTransaction.TrunkTransaction
 
 	if !(validAddress && validMessage && validBranch && validTrunk) {
 		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))

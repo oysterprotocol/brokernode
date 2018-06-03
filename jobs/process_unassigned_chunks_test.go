@@ -174,6 +174,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 			ChunkIdx:    i,
 			GenesisHash: "abcdeff1",
 			Hash:        "SOMEHASH",
+			Address:     "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		})
 	}
 
@@ -447,7 +448,8 @@ func findTransactions_process_unassigned_chunks(addresses []giota.Address) (map[
 
 	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
 
-	if addresses[0] == giota.Address(fakeFindTransactionsAddress) {
+	address, _ := giota.ToAddress(fakeFindTransactionsAddress)
+	if addresses[0] == address {
 		// only add to the map if the address is the address we decided to check for
 		addrToTransactionMap[addresses[0]] = []giota.Transaction{}
 	}
