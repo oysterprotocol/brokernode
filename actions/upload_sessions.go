@@ -34,6 +34,7 @@ type uploadSessionCreateReq struct {
 	StorageLengthInYears int            `json:"storageLengthInYears"`
 	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
 	Invoice              models.Invoice `json:"invoice"`
+	Version              uint32         `json:"version"`
 }
 
 type uploadSessionCreateRes struct {
@@ -87,6 +88,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		StorageLengthInYears: req.StorageLengthInYears,
 		ETHAddrAlpha:         nulls.NewString(alphaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
+		Version:              req.Version,
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_alpha_session", analytics.NewProperties().
@@ -280,7 +282,11 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 
 			if chunk.Hash == dm.GenesisHash {
-				dm.Message = chunk.Data
+				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
+				if err != nil {
+					panic(err.Error())
+				}
+				dm.Message = string(message)
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
@@ -344,6 +350,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		ETHAddrAlpha:         req.Invoice.EthAddress,
 		ETHAddrBeta:          nulls.NewString(betaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
+		Version:              req.Version,
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_beta_session", analytics.NewProperties().

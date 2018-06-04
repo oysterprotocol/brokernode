@@ -85,7 +85,9 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 		payload, err := models.CreateTreasurePayload(tc.ethPrivateSeed, tc.sha256Hash, maxSideChainLength)
 		ms.Nil(err)
 
-		payloadInBytes := oyster_utils.TrytesToBytes(giota.Trytes(payload[0:models.TreasurePayloadLength]))
+		trytes, err := giota.ToTrytes(payload[0:models.TreasurePayloadLength])
+		ms.Nil(err)
+		payloadInBytes := oyster_utils.TrytesToBytes(trytes)
 
 		currentHash := tc.sha256Hash
 

@@ -7,6 +7,7 @@ create_table("completed_uploads", func(t) {
 
 	t.Column("prl_status", "integer", {})
 	t.Column("gas_status", "integer", {})
+	t.Column("version", "INT UNSIGNED", {"null": true, "default": 1})
 })
 
 add_index("completed_uploads", "genesis_hash", {"unique": true})

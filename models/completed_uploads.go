@@ -22,6 +22,7 @@ type CompletedUpload struct {
 	ETHPrivateKey string            `json:"ethPrivateKey" db:"eth_private_key"`
 	PRLStatus     PRLClaimStatus    `json:"prlStatus" db:"prl_status"`
 	GasStatus     GasTransferStatus `json:"gasStatus" db:"gas_status"`
+	Version       uint32            `json:"version" db:"version"`
 }
 
 type PRLClaimStatus int

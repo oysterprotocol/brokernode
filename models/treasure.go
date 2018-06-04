@@ -95,6 +95,12 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 		t.PRLStatus = PRLWaiting
 	}
 
+	if len(t.Message) > 81 {
+		// don't really need full message, just something known to
+		// the broker that we can hash and then use for encryption
+		t.Message = t.Message[0:81]
+	}
+
 	t.EncryptTreasureEthKey()
 
 	return nil
