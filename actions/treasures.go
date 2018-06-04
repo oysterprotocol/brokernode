@@ -5,7 +5,6 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"time"
 )
 
 type TreasuresResource struct {
@@ -26,12 +25,8 @@ type treasureRes struct {
 
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
-
-	startTime := time.Now()
-
-	defer func() {
-		PrometheusWrapper.HistogramSeconds(HistogramTreasuresVerifyAndClaim, startTime)
-	}()
+	start := PrometheusWrapper.Time()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
 
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)

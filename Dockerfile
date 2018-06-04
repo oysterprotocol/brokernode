@@ -44,9 +44,6 @@ WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
 RUN go get -u github.com/gobuffalo/buffalo/buffalo
 
-# # Prometheus client:
-RUN go get -d -v github.com/prometheus/client_golang/prometheus
-
 COPY . .
 
 RUN go get -t -d -v ./...
