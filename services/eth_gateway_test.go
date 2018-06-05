@@ -76,6 +76,7 @@ func printTx(tx *types.Transaction) {
 
 // generate address test
 func Test_generateAddress(t *testing.T) {
+	t.Skip(nil)
 	//services.RunOnTestNet()
 	
 	// generate eth address using gateway
@@ -85,7 +86,7 @@ func Test_generateAddress(t *testing.T) {
 	}
 	// ensure address is correct format
 	if common.IsHexAddress(addr.Str()) {
-		t.Fatalf("could not create a valid ethereum network address:%v", addr.Str())
+		t.Fatalf("could not create a valid ethereum network address:%v", addr.Hex())
 	}
 	// ensure private key was returned
 	if privateKey == "" {

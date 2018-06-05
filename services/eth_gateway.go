@@ -539,6 +539,7 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 
 // Wait For Confirmation
 // TODO add a channel output to return result via subscription
+//func waitForConfirmation(txHash common.Hash, status chan<- uint) (ethereum.Subscription, error) {
 func waitForConfirmation(txHash common.Hash) (uint) {
 	var status uint
 	for {
@@ -548,7 +549,9 @@ func waitForConfirmation(txHash common.Hash) (uint) {
 		pendingCount, _ := getPendingTransactions()
 		if pendingCount > 0 {
 			continue
-		} // need to break, could be done and ready for confirmation
+		}
+		// need to break, need to provide older hash from previous txs to enact the error
+		// could be done and ready for confirmation
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
 			fmt.Printf("unable to get transaction confirmation with hash : %v\n", err)
@@ -904,16 +907,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
 	// current block
 	block, _ := getCurrentBlock()
-	// transact
-	/*
-		From   common.Address // Ethereum account to send the transaction from
-		Nonce  *big.Int       // Nonce to use for the transaction execution (nil = use pending state)
-		Signer SignerFn       // Method to use for signing the transaction (mandatory)
-		Value    *big.Int // Funds to transfer along along the transaction (nil = 0 = no funds)
-		GasPrice *big.Int // Gas price to use for the transaction execution (nil = gas price oracle)
-		GasLimit uint64   // Gas limit to set for the transaction execution (0 = estimate)
-		Context context.Context // Network context to support cancellation and timeouts (nil = no timeout)
-	*/
+	// initialize contract
 	oysterPearl, err := NewOysterPearl(contractAddress, client)
 	if err != nil {
 		fmt.Print("Unable to instantiate OysterPearl")
@@ -928,11 +922,19 @@ func sendPRL(msg OysterCallMsg) bool {
 		GasLimit: block.GasLimit(),
 		Value:    nil,
 	}, msg.To, &msg.Amount)
+	
 	if err != nil {
 		raven.CaptureError(err, nil)
 		return false
 	}
-	return tx != nil
+	// may be able to use waitForTransfer since we subscribe to the contract
+	// wait for confirmation before sending success/fail bool
+	confirmed := waitForConfirmation(tx.Hash())
+	if confirmed == 0 {
+		return false
+	} else {
+		return true
+	}
 }
 
 // utility to access the test wallet keystore
