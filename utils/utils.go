@@ -2,6 +2,8 @@ package oyster_utils
 
 import (
 	"bytes"
+    "crypto/md5"
+    "encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -217,8 +219,11 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 	}
 
 	for i := 0; i < len(a); i++ {
-		// TODO(pzhao5): figure a better way to hash it.
-		idx := (a[i] + b[i]) / 2
+        buf := make([]byte, 8)
+        binary.BigEndian.PutUint64(buf, uint64(a[i] + b[i]))
+        hash := md5.Sum(buf)
+        val := binary.BigEndian.Uint64(hash[:])
+        idx := int(math.Mod(float64(val), 1000000)) + 1000000 * i
 		if idx == 0 {
 			idx = 1
 		}
