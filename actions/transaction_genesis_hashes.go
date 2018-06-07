@@ -64,9 +64,17 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
+	tips, err := IotaWrapper.GetTransactionsToApprove()
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+	}
+
 	t := models.Transaction{}
 	models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
+		dataMap.BranchTx = string(tips.BranchTransaction)
+		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		tx.ValidateAndSave(&dataMap)
 
 		storedGenesisHash.Status = models.StoredGenesisHashAssigned
@@ -116,22 +124,33 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 
 	address, addError := giota.ToAddress(t.DataMap.Address)
 	validAddress := addError == nil && address == iotaTransaction.Address
+	if !validAddress {
+		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
+	}
+
 	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
+	if !validMessage {
+		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
+	}
+
 	branchTxTrytes, err := giota.ToTrytes(t.DataMap.BranchTx)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
 	}
 	validBranch := branchTxTrytes == iotaTransaction.BranchTransaction
+	if !validBranch {
+		return c.Render(400, r.JSON(map[string]string{"error": "Branch is invalid"}))
+	}
+
 	trunkTxTrytes, err := giota.ToTrytes(t.DataMap.TrunkTx)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
 	}
 	validTrunk := trunkTxTrytes == iotaTransaction.TrunkTransaction
-
-	if !(validAddress && validMessage && validBranch && validTrunk) {
-		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
+	if !validTrunk {
+		return c.Render(400, r.JSON(map[string]string{"error": "Trunk is invalid"}))
 	}
 
 	host_ip := os.Getenv("HOST_IP")
