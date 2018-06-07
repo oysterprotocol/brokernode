@@ -41,6 +41,7 @@ type IotaService struct {
 	ChunksMatch
 	VerifyTreasure
 	FindTransactions
+	GetTransactionsToApprove
 }
 
 type ProcessingFrequency struct {
@@ -54,6 +55,7 @@ type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks Filter
 type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
 type VerifyTreasure func([]string) (verify bool, err error)
 type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transaction, error)
+type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -119,6 +121,7 @@ func init() {
 		ChunksMatch:                    chunksMatch,
 		VerifyTreasure:                 verifyTreasure,
 		FindTransactions:               findTransactions,
+		GetTransactionsToApprove:       getTransactionsToApprove,
 	}
 
 	PowProcs = runtime.NumCPU()
@@ -187,7 +190,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, minDepth, "")
+		transactionsToApprove, err := getTransactionsToApprove()
 		if err != nil {
 			fmt.Println(err)
 			raven.CaptureError(err, nil)
@@ -212,6 +215,10 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		fmt.Println("PowWorker: Leaving")
 		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
 	}
+}
+
+func getTransactionsToApprove() (*giota.GetTransactionsToApproveResponse, error) {
+	return api.GetTransactionsToApprove(minDepth, minDepth, "")
 }
 
 func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
