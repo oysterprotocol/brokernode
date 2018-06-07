@@ -51,7 +51,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernode := models.Brokernode{}
 	t := models.Transaction{}
 
-	dataMapNotFoundErr := models.DB.Where("status = ?", models.Unassigned).First(&dataMap)
+	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
+	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at asc",
+		models.Unassigned).First(&dataMap)
 
 	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
 	brokernodeNotFoundErr := models.DB.Where("address NOT IN (?)", existingAddresses).First(&brokernode)

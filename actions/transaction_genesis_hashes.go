@@ -58,7 +58,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	}
 
 	dataMap := models.DataMap{}
-	dataMapNotFound := models.DB.Limit(1).Where("status = ? AND genesis_hash = ?", models.Unassigned, storedGenesisHash.GenesisHash).First(&dataMap)
+	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
+	dataMapNotFound := models.DB.Limit(1).Where("status = ? ORDER BY updated_at asc",
+		models.Unassigned).First(&dataMap)
 
 	if dataMapNotFound != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
