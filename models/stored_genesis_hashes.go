@@ -58,3 +58,13 @@ func (s *StoredGenesisHash) ValidateCreate(tx *pop.Connection) (*validate.Errors
 func (s *StoredGenesisHash) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
+
+func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
+
+	// Defaults to StoredGenesisHashUnassigned
+	if s.Status == 0 {
+		s.Status = StoredGenesisHashUnassigned
+	}
+
+	return nil
+}
