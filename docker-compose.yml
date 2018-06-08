@@ -13,6 +13,8 @@ services:
     - "db_test"
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
+    - "./data/badger/prod:/var/lib/badger/prod"
+    - "./data/badger/test:/var/lib/badger/test"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
     command: >
       bash -c "
