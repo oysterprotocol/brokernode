@@ -5,20 +5,19 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/getsentry/raven-go"
-	"golang.org/x/crypto/sha3"
+	"fmt"
 	"math/rand"
-
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/oysterprotocol/brokernode/utils"
-
-	"fmt"
+	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"strings"
+	"github.com/oysterprotocol/brokernode/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -49,6 +48,7 @@ type DataMap struct {
 	NodeID         string    `json:"nodeID" db:"node_id"`
 	NodeType       string    `json:"nodeType" db:"node_type"`
 	Message        string    `json:"message" db:"message"`
+	MsgID          string    `json:"msgId" db:"msg_id"`
 	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx       string    `json:"branchTx" db:"branch_tx"`
 	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
@@ -114,6 +114,16 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
+/**
+ * Callbacks
+ */
+
+func (d *DataMap) BeforeCreate(tx *pop.Connection) error {
+	d.MsgID = d.generateMsgId()
+
+	return nil
+}
+
 func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
 
 	session := UploadSession{}
@@ -148,6 +158,11 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, encryptedKey, hashedChunkCreationTime)
 	return hex.EncodeToString(decryptedKey), nil
+}
+
+func (d *DataMap) generateMsgId() string {
+	idxStr := strconv.Itoa(d.ChunkIdx)
+	return d.GenesisHash + "---" + idxStr
 }
 
 // Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.
