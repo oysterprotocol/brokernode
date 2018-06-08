@@ -51,13 +51,19 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 			if err != nil {
 				return err
 			}
-			valBytes, err := item.Value()
-			if err != nil {
-				return err
+
+			val := ""
+			if item != nil {
+				valBytes, err := item.Value()
+				if err != nil {
+					return err
+				}
+
+				val = string(valBytes)
 			}
 
 			// Mutate KV map
-			(*kvs)[k] = string(valBytes)
+			(*kvs)[k] = val
 		}
 
 		return nil
