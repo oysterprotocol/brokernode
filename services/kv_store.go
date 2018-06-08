@@ -14,6 +14,7 @@ const badgerDirTest = "/var/lib/badger/test"
 var badgerDB *badger.DB
 
 type KVPairs map[string]string
+type KVKeys []string
 
 func InitKVStore() (db *badger.DB, err error) {
 	if badgerDB != nil {
@@ -37,23 +38,27 @@ func InitKVStore() (db *badger.DB, err error) {
 	return db, err
 }
 
-// func BatchGet(ks []string) (kvs []KVPair, err error) {
+func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
+	err = badgerDB.View(func(txn *badger.Txn) error {
+		for _, k := range *ks {
+			item, err := txn.Get([]byte(k))
+			if err != nil {
+				return err
+			}
+			valBytes, err := item.Value()
+			if err != nil {
+				return err
+			}
 
-// 	err = db.View(func(txn *badger.Txn) error {
-// 		item, err := txn.Get([]byte("key"))
-// 		if err != nil {
-// 			return err
-// 		}
+			// Mutate KV map
+			(*kvs)[k] = string(valBytes)
+		}
 
-// 		valBytes, err := item.Value()
-// 		if err != nil {
-// 			return err
-// 		}
-// 		val = string(valBytes)
+		return nil
+	})
 
-// 		return nil
-// 	})
-// }
+	return
+}
 
 func BatchSet(kvs *KVPairs) (err error) {
 	return badgerDB.Update(func(txn *badger.Txn) error {
