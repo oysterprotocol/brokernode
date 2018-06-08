@@ -14,6 +14,10 @@ const badgerDirTest = "/var/lib/badger/test"
 var badgerDB *badger.DB
 
 func InitKVStore() (db *badger.DB, err error) {
+	if badgerDB != nil {
+		return badgerDB, nil
+	}
+
 	// Setup opts
 	opts := badger.DefaultOptions
 
