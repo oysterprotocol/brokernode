@@ -12,7 +12,7 @@ func Test_KVStore(t *testing.T) {
 		t.Errorf("Could not create Badger DB: %v", err)
 	}
 
-	err = BatchSet([]KVPair{KVPair{Key: "key", Val: "oyster"}})
+	err = BatchSet(&KVPairs{"key": "oyster"})
 	if err != nil {
 		t.Errorf("Could not set key: %v", err)
 	}

@@ -13,10 +13,7 @@ const badgerDirTest = "/var/lib/badger/test"
 // Singleton DB
 var badgerDB *badger.DB
 
-type KVPair struct {
-	Key string
-	Val string
-}
+type KVPairs map[string]string
 
 func InitKVStore() (db *badger.DB, err error) {
 	if badgerDB != nil {
@@ -40,10 +37,28 @@ func InitKVStore() (db *badger.DB, err error) {
 	return db, err
 }
 
-func BatchSet(kvs []KVPair) (err error) {
+// func BatchGet(ks []string) (kvs []KVPair, err error) {
+
+// 	err = db.View(func(txn *badger.Txn) error {
+// 		item, err := txn.Get([]byte("key"))
+// 		if err != nil {
+// 			return err
+// 		}
+
+// 		valBytes, err := item.Value()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		val = string(valBytes)
+
+// 		return nil
+// 	})
+// }
+
+func BatchSet(kvs *KVPairs) (err error) {
 	return badgerDB.Update(func(txn *badger.Txn) error {
-		for _, kv := range kvs {
-			err := txn.Set([]byte(kv.Key), []byte(kv.Val))
+		for k, v := range *kvs {
+			err := txn.Set([]byte(k), []byte(v))
 			if err != nil {
 				return err
 			}
