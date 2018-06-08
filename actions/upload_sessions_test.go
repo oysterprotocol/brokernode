@@ -79,7 +79,9 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	// it again.
 	as.False(mockSendPrl.hasCalled)
 
-	verifyPaymentConfirmation(as, resParsed.ID)
+	// TODO: fix waitForTransfer and uncomment it out in
+	// actions/upload_sessions.go then uncomment out these tests.
+	// verifyPaymentConfirmation(as, resParsed.ID)
 }
 
 func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
@@ -127,7 +129,9 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 	as.False(mockSendPrl.hasCalled)
 
-	verifyPaymentConfirmation(as, resParsed.ID)
+	// TODO: fix waitForTransfer and uncomment it out in
+	// actions/upload_sessions.go then uncomment out these tests.
+	// verifyPaymentConfirmation(as, resParsed.ID)
 }
 
 func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
