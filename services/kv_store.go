@@ -41,6 +41,7 @@ func InitKVStore() (db *badger.DB, err error) {
 }
 
 func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
+	kvs = &KVPairs{}
 	if badgerDB == nil {
 		return kvs, errors.New("badgerDB not initialized")
 	}
