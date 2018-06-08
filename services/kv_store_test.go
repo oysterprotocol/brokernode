@@ -1,23 +1,18 @@
-package services_test
+package services
 
 import (
 	"testing"
 
 	"github.com/dgraph-io/badger"
-	"github.com/oysterprotocol/brokernode/services"
 )
 
-func Test_InitKVStore(t *testing.T) {
-	db, err := services.InitKVStore()
+func Test_KVStore(t *testing.T) {
+	db, err := InitKVStore()
 	if err != nil {
 		t.Errorf("Could not create Badger DB: %v", err)
 	}
 
-	err = db.Update(func(txn *badger.Txn) error {
-		err := txn.Set([]byte("key"), []byte("oyster"))
-		return err
-	})
-
+	err = BatchSet([]KVPair{KVPair{Key: "key", Val: "oyster"}})
 	if err != nil {
 		t.Errorf("Could not set key: %v", err)
 	}
