@@ -5,10 +5,11 @@ import (
 )
 
 func Test_KVStore(t *testing.T) {
-	_, err := InitKVStore()
+	db, err := InitKVStore()
 	if err != nil {
 		t.Errorf("Could not create Badger DB: %v", err)
 	}
+	defer db.Close()
 
 	err = BatchSet(&KVPairs{"key": "oyster"})
 	if err != nil {

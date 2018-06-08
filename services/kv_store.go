@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -16,6 +17,7 @@ var badgerDB *badger.DB
 type KVPairs map[string]string
 type KVKeys []string
 
+// returns db so that caller can close connection when done.
 func InitKVStore() (db *badger.DB, err error) {
 	if badgerDB != nil {
 		return badgerDB, nil
@@ -39,6 +41,10 @@ func InitKVStore() (db *badger.DB, err error) {
 }
 
 func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
+	if badgerDB == nil {
+		return kvs, errors.New("badgerDB not initialized")
+	}
+
 	err = badgerDB.View(func(txn *badger.Txn) error {
 		for _, k := range *ks {
 			item, err := txn.Get([]byte(k))
@@ -61,6 +67,10 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 }
 
 func BatchSet(kvs *KVPairs) (err error) {
+	if badgerDB == nil {
+		return errors.New("badgerDB not initialized")
+	}
+
 	return badgerDB.Update(func(txn *badger.Txn) error {
 		for k, v := range *kvs {
 			err := txn.Set([]byte(k), []byte(v))
