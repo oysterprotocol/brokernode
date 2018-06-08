@@ -14,6 +14,7 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/rs/cors"
 	"github.com/unrolled/secure"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // ENV is used to help switch settings based on where the
@@ -24,6 +25,7 @@ var app *buffalo.App
 // Visible for Unit Test
 var IotaWrapper = services.IotaWrapper
 var EthWrapper = services.EthWrapper
+var PrometheusWrapper = services.PrometheusWrapper
 
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
@@ -67,6 +69,8 @@ func App() *buffalo.App {
 		app.Use(middleware.PopTransaction(models.DB))
 
 		app.GET("/", HomeHandler)
+
+		app.GET("/metrics", buffalo.WrapHandler(prometheus.Handler()))
 
 		apiV2 := app.Group("/api/v2")
 
