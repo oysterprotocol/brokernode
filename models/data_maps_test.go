@@ -464,33 +464,3 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 
 	//fmt.Println(len(hashAndTypeMap))
 }
-
-/*
-Using this to compare with the webnode.  Will remove in future PR.
-func (ms *ModelSuite) Test_Webnode_Qa() {
-	genHash := "0dcb5642d72fb0b3ee9f01164f47ac7e8850d8bbe8a69e8de52afc32908f39d7"
-	numChunks := 7
-
-	vErr, err := models.BuildDataMaps(genHash, numChunks)
-	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
-
-	dMaps := []models.DataMap{}
-	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
-
-	ms.Equal(numChunks, len(dMaps))
-
-	fmt.Println("genesis hash:")
-	fmt.Println(genHash)
-	fmt.Println()
-
-	for _, dMap := range dMaps {
-		fmt.Println("hash")
-		fmt.Println(dMap.Hash)
-		fmt.Println("obfuscated hash")
-		fmt.Println(dMap.ObfuscatedHash)
-		fmt.Println("address")
-		fmt.Println(dMap.Address)
-		fmt.Println()
-	}
-}*/

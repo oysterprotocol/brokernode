@@ -15,7 +15,10 @@ const (
 	StoredGenesisHashAssigned
 )
 
-const WebnodeCountLimit = 2
+const (
+	WebnodeCountLimit  = 2
+	NoGenHashesMessage = "no genesis hashes to sell, or none that this webnode needs"
+)
 
 type StoredGenesisHash struct {
 	ID            uuid.UUID `json:"id" db:"id"`
@@ -81,7 +84,7 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 		existingGenHashMap[genHash] = true
 	}
 
-	err := DB.Where("webnode_count < ? AND status = ?",
+	err := DB.Where("webnode_count < ? AND status = ? ORDER BY created_at asc",
 		WebnodeCountLimit, StoredGenesisHashUnassigned).All(&storedGenesisHashes)
 
 	if err != nil {
@@ -95,5 +98,5 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 		}
 	}
 
-	return StoredGenesisHash{}, errors.New("no genesis hashes to sell")
+	return StoredGenesisHash{}, errors.New(NoGenHashesMessage)
 }
