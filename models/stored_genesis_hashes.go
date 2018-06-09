@@ -74,7 +74,6 @@ func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
 	return nil
 }
 
-//TODO: unit test this method
 func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash, error) {
 	//existingGenesisHashes are genesis hashes that the webnode already has
 	storedGenesisHashes := []StoredGenesisHash{}
