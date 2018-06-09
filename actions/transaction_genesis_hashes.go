@@ -2,6 +2,7 @@ package actions
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"math"
 	"os"
 	"strings"
@@ -49,9 +50,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	existingGenesisHashes := oyster_utils.StringsJoin(req.CurrentList, ", ")
-	storedGenesisHash := models.StoredGenesisHash{}
-	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash NOT IN (?) AND webnode_count < ? AND status = ?", existingGenesisHashes, models.WebnodeCountLimit, models.StoredGenesisHashUnassigned).First(&storedGenesisHash)
+	storedGenesisHash, genesisHashNotFound := models.GetGenesisHashForWebnode(req.CurrentList)
 
 	if genesisHashNotFound != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
@@ -79,8 +78,19 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		tx.ValidateAndSave(&dataMap)
 
-		storedGenesisHash.Status = models.StoredGenesisHashAssigned
-		tx.ValidateAndSave(&storedGenesisHash)
+		storedGenesisHash.WebnodeCount++
+		if storedGenesisHash.WebnodeCount >= models.WebnodeCountLimit {
+			storedGenesisHash.Status = models.StoredGenesisHashAssigned
+		}
+		vErr, err := tx.ValidateAndSave(&storedGenesisHash)
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		if len(vErr.Error()) > 0 {
+			err = errors.New("validation errors in transaction_genesis_hashes: " + fmt.Sprint(vErr.Errors))
+			oyster_utils.LogIfError(err, nil)
+		}
 
 		t = models.Transaction{
 			Type:      models.TransactionTypeGenesisHash,
@@ -112,6 +122,9 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	// Get transaction
 	t := &models.Transaction{}
 	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
+	if transactionError != nil {
+		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
+	}
 
 	trytes, err := giota.ToTrytes(req.Trytes)
 	if err != nil {
@@ -120,11 +133,12 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	}
 	iotaTransaction, iotaError := giota.NewTransaction(trytes)
 
-	if transactionError != nil || iotaError != nil {
-		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
+	if iotaError != nil {
+		return c.Render(400, r.JSON(map[string]string{"error": "Could not generate transaction object from trytes"}))
 	}
 
 	address, addError := giota.ToAddress(t.DataMap.Address)
+
 	validAddress := addError == nil && address == iotaTransaction.Address
 	if !validAddress {
 		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
@@ -167,7 +181,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	}
 
 	storedGenesisHash := models.StoredGenesisHash{}
-	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash = ?", t.DataMap.GenesisHash).First(&storedGenesisHash)
+	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash = ?", t.Purchase).First(&storedGenesisHash)
 
 	if genesisHashNotFound != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "Stored genesis hash was not found"}))

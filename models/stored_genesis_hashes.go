@@ -2,9 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 )
 
@@ -13,7 +15,10 @@ const (
 	StoredGenesisHashAssigned
 )
 
-const WebnodeCountLimit = 2
+const (
+	WebnodeCountLimit  = 2
+	NoGenHashesMessage = "no genesis hashes to sell, or none that this webnode needs"
+)
 
 type StoredGenesisHash struct {
 	ID            uuid.UUID `json:"id" db:"id"`
@@ -67,4 +72,30 @@ func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
 	}
 
 	return nil
+}
+
+func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash, error) {
+	//existingGenesisHashes are genesis hashes that the webnode already has
+	storedGenesisHashes := []StoredGenesisHash{}
+
+	existingGenHashMap := make(map[string]bool)
+	for _, genHash := range existingGenesisHashes {
+		existingGenHashMap[genHash] = true
+	}
+
+	err := DB.Where("webnode_count < ? AND status = ? ORDER BY created_at asc",
+		WebnodeCountLimit, StoredGenesisHashUnassigned).All(&storedGenesisHashes)
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return StoredGenesisHash{}, err
+	}
+
+	for _, storedGenHash := range storedGenesisHashes {
+		if _, ok := existingGenHashMap[storedGenHash.GenesisHash]; !ok {
+			return storedGenHash, nil
+		}
+	}
+
+	return StoredGenesisHash{}, errors.New(NoGenHashesMessage)
 }
