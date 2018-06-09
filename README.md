@@ -6,7 +6,7 @@ The broker node uses Docker to spin up a go app, mysql, and private iota instanc
 
 ```bash
 # To setup this first time, you need to have .env file. By default, use .env.test for unit test.
-# Feel free to modify the .env file. Note: we don't check in .env file
+# Feel free to modify the .env file. Note: we don't check in .env file.
 cp .env.test .env
 
 # Starts the brokernode on port 3000
