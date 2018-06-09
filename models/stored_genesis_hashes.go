@@ -2,9 +2,11 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 )
 
@@ -67,4 +69,31 @@ func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
 	}
 
 	return nil
+}
+
+//TODO: unit test this method
+func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash, error) {
+	//existingGenesisHashes are genesis hashes that the webnode already has
+	storedGenesisHashes := []StoredGenesisHash{}
+
+	existingGenHashMap := make(map[string]bool)
+	for _, genHash := range existingGenesisHashes {
+		existingGenHashMap[genHash] = true
+	}
+
+	err := DB.Where("webnode_count < ? AND status = ?",
+		WebnodeCountLimit, StoredGenesisHashUnassigned).All(&storedGenesisHashes)
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return StoredGenesisHash{}, err
+	}
+
+	for _, storedGenHash := range storedGenesisHashes {
+		if _, ok := existingGenHashMap[storedGenHash.GenesisHash]; !ok {
+			return storedGenHash, nil
+		}
+	}
+
+	return StoredGenesisHash{}, errors.New("no genesis hashes to sell")
 }
