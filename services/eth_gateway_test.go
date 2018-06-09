@@ -3,10 +3,6 @@ package services_test
 import (
 	"context"
 	"fmt"
-	"log"
-	"math/big"
-	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
@@ -18,6 +14,12 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+
+	"log"
+	"math/big"
+	"testing"
+	"time"
+	"reflect"
 )
 
 //
@@ -25,6 +27,7 @@ import (
 //
 var oneEther = big.NewInt(1)
 var onePrl = big.NewInt(1)
+var oneWei = big.NewInt(1000000000000000000)
 
 // TX_HASH = 0xd87157b84528173156a1ff06fd452300c6efaee6ea4f3d53730f190dad630327
 //curl -H "Content-Type: application/json" -X POST --data \
@@ -36,6 +39,7 @@ var oysterbyNetwork = "ws://54.86.134.172:8547"
 //
 // Ethereum Addresses
 //
+var ethCoinbase  = common.HexToAddress("0x919410005b53d6497517b9ad58c23c6a30207747")
 var ethAddress01 = common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
 var ethAddress02 = common.HexToAddress("0x6abf0cdedd33e2bd6b574e0d81cdcaca817148c8")
 
@@ -53,7 +57,8 @@ var oysterContract = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74b
 var prlDistribution = common.HexToAddress("0x08e6c245e21799c43970cd3193c59c1f6f2469ca")
 
 // Transaction Placeholders
-var lastTransactionHash = common.Hash{}
+var knownTransaction = false
+var lastTransaction = types.Transaction{}
 
 //
 // Utility
@@ -71,13 +76,11 @@ func printTx(tx *types.Transaction) {
 // Ethereum Tests
 //
 
-// initialize the test net environment
-func Test_initializeTestEnv(t *testing.T) {
-	services.RunOnTestNet()
-}
-
 // generate address test
 func Test_generateAddress(t *testing.T) {
+	t.Skip(nil)
+	//services.RunOnTestNet()
+	
 	// generate eth address using gateway
 	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -97,7 +100,7 @@ func Test_generateAddress(t *testing.T) {
 
 // generate address from private key test
 func Test_generateEthAddrFromPrivateKey(t *testing.T) {
-
+	//services.RunOnTestNet()
 	// generate eth address using gateway
 	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -115,10 +118,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
+	//services.RunOnTestNet()
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -132,28 +132,25 @@ func Test_getGasPrice(t *testing.T) {
 	t.Logf("current network gas price :%v", gasPrice.String())
 }
 
+
 // TODO:  Always use addresses with balances here, or
 // change the test to where it doesn't depend on a balance being there
-
-//// check balance on test network test
-//func Test_checkETHBalance(t *testing.T) {
-//
-//	// test balance for an ether account
-//	// Convert string address to byte[] address form
-//	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
-//	if bal.Uint64() > 0 {
-//		t.Logf("balance verified: %v\n", bal)
-//	} else {
-//		t.Fatalf("balance less than zero: %v\n", bal)
-//	}
-//}
+// check balance on test network test
+func Test_checkETHBalance(t *testing.T) {
+	//services.RunOnTestNet()
+	// test balance for an ether account
+	// Convert string address to byte[] address form
+	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
+	if bal.Uint64() > 0 {
+		t.Logf("balance verified: %v\n", bal)
+	} else {
+		t.Fatalf("balance less than zero: %v\n", bal)
+	}
+}
 
 // get current block number
 func Test_getCurrentBlockNumber(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
+	//services.RunOnTestNet()
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
@@ -166,10 +163,7 @@ func Test_getCurrentBlockNumber(t *testing.T) {
 
 // get current block gas limit
 func Test_getCurrentBlockGasLimit(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
+	//services.RunOnTestNet()
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
@@ -180,71 +174,76 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 	}
 }
 
-// TODO:  Fix this method then re-enable
-//// send gas(ether) to an address for a transaction
-//func Test_sendEth(t *testing.T) {
-//
-//	//t.Skip(nil)
-//	// transfer 1/5 of ether
-//	transferValue := oneEther // .Div(oneEther, big.NewInt(5))
-//
-//	// Send ether to test account
-//	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
-//	if err != nil {
-//		t.Logf("failed to send ether to %v ether to %v", transferValue, ethAddress02.Hex())
-//		t.Fatalf("transaction error: %v", err)
-//	}
-//	for tx := range txs {
-//		transaction := txs[tx]
-//		// Store For Next Test
-//		lastTransactionHash = transaction.Hash()
-//		printTx(transaction)
-//	}
-//}
-
-// ensure confirmation is over 12
-func Test_confirmTransaction(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
-	// tx count
-	txCount, err := services.EthWrapper.GetConfirmationCount(lastTransactionHash)
+func Test_getNonceForAccount(t *testing.T) {
+	//services.RunOnTestNet()
+	// Get the nonce for the given account
+	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
 	if err != nil {
-		t.Fatalf("unable to get transaction confirmation with hash : %v", lastTransactionHash.Hex())
+		t.Fatalf("unable to access the account nonce : %v", err)
 	}
-	//if txCount.Uint64() > 12 {
-	//	t.Logf("confirmation have reached the golden number")
-	//}
-	t.Logf("txCount : %v", txCount.Uint64())
+	if nonce > 0 {
+		t.Logf("valid account nonce : %v", nonce)
+	} else {
+		t.Fatalf("invalid account nonce : %v", nonce)
+	}
+}
+
+// send gas(ether) to an address for a transaction
+func Test_sendEth(t *testing.T) {
+	services.RunOnTestNet()
+	// transfer 1/5 of ether
+	transferValue := big.NewInt(2)
+	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
+	// Send ether to test account
+	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
+	if err != nil {
+		t.Logf("failed to send ether to %v ether to %v\n", transferValueInWei, ethAddress02.Hex())
+		t.Fatalf("transaction error: %v\n", err)
+	}
+	for tx := range txs {
+		transaction := txs[tx]
+		// Store For Next Test
+		lastTransaction = *transaction
+		printTx(transaction)
+	}
+}
+
+// ensure the transaction is stored in the transactions table
+// it is accessed with the lastTransactionHash from the previous test
+func Test_ensureTransactionStoredInPool(t *testing.T) {
+	// get item by txHash and ensure its in the table
+	txWithBlockNumber := services.EthWrapper.GetTransaction(lastTransaction.Hash())
+	if txWithBlockNumber.Transaction != nil {
+		// compare transaction hash
+		match := reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), lastTransaction.Hash())
+		if match {
+			t.Log("transaction is stored on the transactions table")
+		} else {
+			t.Fatal("transaction should be stored in the transaction table, post sendEth")
+		}
+	}
+}
+
+// ensure confirmation is made with last transaction hash from sendEth
+func Test_confirmTransactionStatus(t *testing.T) {
+	
+	services.RunOnTestNet()
+	
+	txStatus := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash())
+	if txStatus == 0 {
+		t.Logf("transaction failure")
+	} else if txStatus == 1 {
+		t.Logf("confirmation completed")
+		
+		bal := services.EthWrapper.CheckETHBalance(ethAddress02)
+		t.Logf("balance updated : %v", bal)
+	}
 }
 
 // send ether to an address and wait for transaction confirmation returning the new balance
 func Test_sendEthAndWaitForTransfer(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
 	t.Skip(nil)
-	// transfer 1/3 of an ether
-	transferValue := oneEther
-
-	// Send ether to test account
-	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
-	if err != nil {
-		t.Logf("failed to send ether to %v ether to %v", transferValue, ethAddress02.Hex())
-		t.Fatalf("transaction error: %v", err)
-	}
-	for tx := range txs {
-		transaction := txs[tx]
-		// trace out success tx
-		t.Logf("tx to     : %v", transaction.To().Hash().String())
-		// subscribe to transaction hash
-		t.Logf("tx hash   : %v", transaction.Hash().String())
-		t.Logf("tx amount : %v", transaction.Value())
-		t.Logf("tx cost   : %v", transaction.Cost())
-	}
-
+	// ether transaction has already occurred in Test_sendEth to ethAddress02
 	newBal, waitErr := services.EthWrapper.WaitForTransfer(ethAddress02, "eth")
 	if waitErr != nil {
 		t.Fatalf("wait for transfer error : %v", newBal)
@@ -291,10 +290,7 @@ func Test_deployOysterPearl(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
+	t.Skip(nil)
 	//services.RunOnTestNet()
 
 	// test ethClient
@@ -351,7 +347,7 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 		t.Fatalf("unable to access call distribute : %v", err)
 	}
 	t.Logf("oyster pearl distribute called :%v", tx)
-	printTx(tx)
+	// printTx(tx)
 
 }
 
@@ -371,7 +367,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	}
 
 	t.Logf("oysterPearl : %v", oysterPearl)
-
+	
 	walletAddress := services.MainWalletAddress
 
 	t.Logf("using wallet key store from: %v", walletAddress)
@@ -514,10 +510,7 @@ func Test_claimUnusedPRL(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
-
-	// TODO stop skipping this
-	t.Skip()
-
+	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
@@ -528,11 +521,9 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 
 	// oysterby balances
 	bankBalance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlBankAddress)
-	prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress01)
-	prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress02)
+	//prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress01)
+	//prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress02)
 
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
-	t.Logf("oyster pearl 01 address balance :%v", prl01Balance)
-	t.Logf("oyster pearl 02 address balance :%v", prl02Balance)
 
 }

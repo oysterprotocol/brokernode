@@ -195,4 +195,21 @@ var _ = grift.Namespace("db", func() {
 
 		return nil
 	})
+
+	grift.Desc("reset_stored_genesis_hashes", "Reset all rows in stored_genesis_hashes to status "+
+		"unassigned and webnode count of 0")
+	grift.Add("reset_stored_genesis_hashes", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("UPDATE stored_genesis_hashes SET webnode_count = ? AND status = ?",
+			0, models.StoredGenesisHashUnassigned).All(&[]models.StoredGenesisHash{})
+
+		if err == nil {
+			fmt.Println("Reset all stored_genesis_hashes")
+		} else {
+			fmt.Println(err)
+			return err
+		}
+
+		return nil
+	})
 })
