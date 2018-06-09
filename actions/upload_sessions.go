@@ -12,10 +12,12 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 	"math/big"
+	"os"
 
 	"github.com/pkg/errors"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -71,11 +73,33 @@ const (
 	SQL_BATCH_SIZE = 10
 )
 
+var (
+	NumChunksLimit = 0
+)
+
+func init() {
+	numChunksLimit := os.Getenv("NUM_CHUNKS_LIMIT")
+	if numChunksLimit == "unlimited" {
+		NumChunksLimit = -1 //unlimited
+	} else {
+		var err error
+		NumChunksLimit, err = strconv.Atoi(numChunksLimit)
+		oyster_utils.LogIfError(err, nil)
+	}
+}
+
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
+
+	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
+		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
 
 	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
