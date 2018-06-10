@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"runtime"
 	"time"
+	"strconv"
 
 	"github.com/gobuffalo/buffalo/worker"
 	"github.com/oysterprotocol/brokernode/services"
@@ -24,8 +25,11 @@ var (
 )
 
 func init() {
-	registerHandlers(OysterWorker)
+	if enabled, err := strconv.ParseBool(os.Getenv("JOB_RUNNER")); err == nil && !enabled {
+		return
+	}
 
+	registerHandlers(OysterWorker)
 	doWork(OysterWorker)
 }
 
