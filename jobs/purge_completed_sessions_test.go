@@ -97,7 +97,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.DB.ValidateAndSave(&someDone[0])
 
 	//call method under test
-	jobs.PurgeCompletedSessions()
+	jobs.PurgeCompletedSessions(jobs.PrometheusWrapper)
 
 	allDataMaps = []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)

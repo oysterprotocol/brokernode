@@ -47,6 +47,9 @@ type transactionGenesisHashUpdateRes struct {
 
 // Creates a transaction.
 func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -116,6 +119,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+
 	req := transactionGenesisHashUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 

@@ -93,7 +93,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	suite.Nil(err)
 
 	// call method under test
-	jobs.ProcessUnassignedChunks(IotaMock)
+	jobs.ProcessUnassignedChunks(IotaMock, jobs.PrometheusWrapper)
 
 	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)

@@ -90,6 +90,8 @@ func init() {
 
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
 
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
@@ -218,6 +220,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResource) Update(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
 
 	req := UploadSessionUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
@@ -356,6 +360,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 // CreateBeta creates an upload session on the beta broker.
 func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -431,6 +438,9 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 }
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+
 	session := models.UploadSession{}
 	err := models.DB.Find(&session, c.Param("id"))
 

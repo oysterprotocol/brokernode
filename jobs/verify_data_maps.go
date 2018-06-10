@@ -6,7 +6,11 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func VerifyDataMaps(IotaWrapper services.IotaService) {
+func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramVerifyDataMaps, start)
+
 	unverifiedDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps)

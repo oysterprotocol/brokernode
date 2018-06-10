@@ -14,7 +14,11 @@ import (
 
 const PercentOfChunksToSkipVerification = 45
 
-func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
+func ProcessUnassignedChunks(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessUnassignedChunks, start)
+
 	sessions, _ := models.GetSessionsByAge()
 
 	if len(sessions) > 0 {

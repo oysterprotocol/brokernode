@@ -39,7 +39,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	}
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
 
 	// verify the mock methods were called
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)
