@@ -1,9 +1,11 @@
-package oyster_utils
+package oyster_utils_test
 
 import (
-	"github.com/gobuffalo/pop/nulls"
 	"math/big"
 	"testing"
+
+	"github.com/gobuffalo/pop/nulls"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 func Test_IsRavenEnabled(t *testing.T) {
@@ -13,283 +15,283 @@ func Test_IsRavenEnabled(t *testing.T) {
 }
 
 func Test_ConvertToByte_1Trytes(t *testing.T) {
-	v := ConvertToByte(1)
+	v := oyster_utils.ConvertToByte(1)
 
-	assertTrue(v == 1, t, "")
+	oyster_utils.AssertTrue(v == 1, t, "")
 }
 
 func Test_ConvertToByte_2Trytes(t *testing.T) {
-	v := ConvertToByte(2)
+	v := oyster_utils.ConvertToByte(2)
 
-	assertTrue(v == 1, t, "")
+	oyster_utils.AssertTrue(v == 1, t, "")
 }
 
 func Test_ConvertToTrytes_1Byte(t *testing.T) {
-	v := ConvertToTrytes(1)
+	v := oyster_utils.ConvertToTrytes(1)
 
-	assertTrue(v == 2, t, "")
+	oyster_utils.AssertTrue(v == 2, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingFileSize_SmallFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(10)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(10)
 
-	assertTrue(v == 2, t, "")
+	oyster_utils.AssertTrue(v == 2, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingFileSize_MediaFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(FileChunkSizeInByte)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(oyster_utils.FileChunkSizeInByte)
 
-	assertTrue(v == 2, t, "")
+	oyster_utils.AssertTrue(v == 2, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingFileSize_BigFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(FileChunkSizeInByte * FileSectorInChunkSize * 2)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(oyster_utils.FileChunkSizeInByte * oyster_utils.FileSectorInChunkSize * 2)
 
-	assertTrue(v == 2*FileSectorInChunkSize+3, t, "")
+	oyster_utils.AssertTrue(v == 2*oyster_utils.FileSectorInChunkSize+3, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks_SmallFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(10)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(10)
 
-	assertTrue(v == 11, t, "")
+	oyster_utils.AssertTrue(v == 11, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks_LargeFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks((FileSectorInChunkSize * 10) + 1)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks((oyster_utils.FileSectorInChunkSize * 10) + 1)
 
-	assertTrue(v == (FileSectorInChunkSize*10)+1+11, t, "")
+	oyster_utils.AssertTrue(v == (oyster_utils.FileSectorInChunkSize*10)+1+11, t, "")
 }
 
 func Test_GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks_HugeFileSize(t *testing.T) {
-	v := GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks((FileSectorInChunkSize * 60) + 500)
+	v := oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks((oyster_utils.FileSectorInChunkSize * 60) + 500)
 
-	assertTrue(v == (FileSectorInChunkSize*60)+500+61, t, "")
+	oyster_utils.AssertTrue(v == (oyster_utils.FileSectorInChunkSize*60)+500+61, t, "")
 }
 
 func Test_TransformIndexWithBuriedIndexes_NoBuriedIndexes(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(10, []int{})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(10, []int{})
 
-	assertTrue(index == 10, t, "No change on the index")
+	oyster_utils.AssertTrue(index == 10, t, "No change on the index")
 }
 
 func Test_TransformIndexWithBuriedIndexes_NoChangeOnIndex(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(10, []int{20, 1})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(10, []int{20, 1})
 
-	assertTrue(index == 10, t, "No change on the index")
+	oyster_utils.AssertTrue(index == 10, t, "No change on the index")
 }
 
 func Test_TransformIndexWithBuriedIndexes_EqualIndex(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(20, []int{20, 1})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(20, []int{20, 1})
 
-	assertTrue(index == 21, t, "Increase index by 1")
+	oyster_utils.AssertTrue(index == 21, t, "Increase index by 1")
 }
 
 func Test_TransformIndexWithBuriedIndexes_WithinFirstSector(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-2, []int{20, 0})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-2, []int{20, 0})
 
-	assertTrue(index == FileSectorInChunkSize-1, t, "Increase index by 1")
+	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize-1, t, "Increase index by 1")
 }
 
 func Test_TransformIndexWithBuriedIndexes_ToAnotherSector(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{20, 0})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-1, []int{20, 0})
 
-	assertTrue(index == FileSectorInChunkSize+1, t, "Increasee index by 2")
+	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize+1, t, "Increasee index by 2")
 }
 
 func Test_TransformIndexWithBuriedIndexes_TreasureAsLastIndex(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize-1, []int{FileSectorInChunkSize - 1, 0})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-1, []int{oyster_utils.FileSectorInChunkSize - 1, 0})
 
-	assertTrue(index == FileSectorInChunkSize+1, t, "Increase index by 2")
+	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize+1, t, "Increase index by 2")
 }
 
 func Test_TransformIndexWithBuriedIndexes_LastSector(t *testing.T) {
-	index := TransformIndexWithBuriedIndexes(FileSectorInChunkSize*2-3, []int{0, 0})
+	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize*2-3, []int{0, 0})
 
-	assertTrue(index == FileSectorInChunkSize*2-1, t, "Increase index by 2")
+	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize*2-1, t, "Increase index by 2")
 }
 
 func Test_GenerateInsertedIndexesForPearl_BadFileSize(t *testing.T) {
-	indexes := GenerateInsertedIndexesForPearl(-1)
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(-1)
 
-	assertTrue(len(indexes) == 0, t, "Len must equal to 0")
+	oyster_utils.AssertTrue(len(indexes) == 0, t, "Len must equal to 0")
 }
 
 func Test_GenerateInsertedIndexesForPearl_SmallFileSize(t *testing.T) {
-	indexes := GenerateInsertedIndexesForPearl(100)
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(100)
 
-	assertTrue(len(indexes) == 1, t, "Len must equal to 1")
-	assertTrue(indexes[0] == 0 || indexes[0] == 1, t, "Value must be either 0 or 1")
+	oyster_utils.AssertTrue(len(indexes) == 1, t, "Len must equal to 1")
+	oyster_utils.AssertTrue(indexes[0] == 0 || indexes[0] == 1, t, "Value must be either 0 or 1")
 }
 
 func Test_GenerateInsertedIndexesForPearl_LargeFileSize(t *testing.T) {
 	// Test on 2.6GB
-	indexes := GenerateInsertedIndexesForPearl(int(2.6 * FileSectorInChunkSize * FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.6 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
-	assertTrue(len(indexes) == 3, t, "")
-	assertTrue(indexes[0] >= 0 && indexes[0] < FileSectorInChunkSize, t, "")
-	assertTrue(indexes[1] >= 0 && indexes[1] < FileSectorInChunkSize, t, "")
-	assertTrue(indexes[2] >= 0 && indexes[2] < int(0.6*FileSectorInChunkSize)+3, t, "")
+	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
+	oyster_utils.AssertTrue(indexes[0] >= 0 && indexes[0] < oyster_utils.FileSectorInChunkSize, t, "")
+	oyster_utils.AssertTrue(indexes[1] >= 0 && indexes[1] < oyster_utils.FileSectorInChunkSize, t, "")
+	oyster_utils.AssertTrue(indexes[2] >= 0 && indexes[2] < int(0.6*oyster_utils.FileSectorInChunkSize)+3, t, "")
 }
 
 func Test_GenerateInsertedIndexesForPearl_MediumFileSize(t *testing.T) {
 	// Test on 2MB
-	indexes := GenerateInsertedIndexesForPearl(int(2000 * FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2000 * oyster_utils.FileChunkSizeInByte))
 
-	assertTrue(len(indexes) == 1, t, "")
-	assertTrue(indexes[0] >= 0 && indexes[0] < 2001, t, "Must within range of [0, 2001)")
+	oyster_utils.AssertTrue(len(indexes) == 1, t, "")
+	oyster_utils.AssertTrue(indexes[0] >= 0 && indexes[0] < 2001, t, "Must within range of [0, 2001)")
 }
 
 func Test_GenerateInsertIndexesForPearl_ExtendedToNextSector(t *testing.T) {
 	// Test on 2.999998GB, by adding Pearls, it will extend to 3.000001GB
-	indexes := GenerateInsertedIndexesForPearl(int(2.999998 * FileSectorInChunkSize * FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.999998 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
-	assertTrue(len(indexes) == 4, t, "")
-	assertTrue(indexes[3] == 0 || indexes[3] == 1, t, "Must either 0 or 1")
+	oyster_utils.AssertTrue(len(indexes) == 4, t, "")
+	oyster_utils.AssertTrue(indexes[3] == 0 || indexes[3] == 1, t, "Must either 0 or 1")
 }
 
 func Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNextSector(t *testing.T) {
 	// Test on 2.999997GB, by adding Pearls, it will extend to 3GB
-	indexes := GenerateInsertedIndexesForPearl(int(2.999997 * FileSectorInChunkSize * FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.999997 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
-	assertTrue(len(indexes) == 3, t, "")
-	assertTrue(indexes[2] >= 0 && indexes[2] < FileSectorInChunkSize, t, "Must within range of [0, FileSectorInChunkSize)")
+	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
+	oyster_utils.AssertTrue(indexes[2] >= 0 && indexes[2] < oyster_utils.FileSectorInChunkSize, t, "Must within range of [0, FileSectorInChunkSize)")
 }
 
 func Test_MergedIndexes_EmptyIndexes(t *testing.T) {
-	_, err := MergeIndexes([]int{}, nil)
+	_, err := oyster_utils.MergeIndexes([]int{}, nil)
 
-	assertTrue(err != nil, t, "")
+	oyster_utils.AssertError(err, t, "")
 }
 
 func Test_MergedIndexes_OneNonEmptyIndexes(t *testing.T) {
-	_, err := MergeIndexes(nil, []int{1, 2})
+	_, err := oyster_utils.MergeIndexes(nil, []int{1, 2})
 
-	assertTrue(err != nil, t, "Must result an error")
+	oyster_utils.AssertError(err, t, "Must result an error")
 }
 
 func Test_MergeIndexes_SameSize(t *testing.T) {
-	indexes, _ := MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
+	indexes, _ := oyster_utils.MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
 
-	assertTrue(len(indexes) == 3, t, "Must result an error")
+	oyster_utils.AssertTrue(len(indexes) == 3, t, "Must result an error")
 }
 
 func Test_GetTreasureIdxMap_ValidInput(t *testing.T) {
-	idxMap := GetTreasureIdxMap([]int{1}, []int{2})
+	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{2})
 
-	assertTrue(idxMap.Valid, t, "")
+	oyster_utils.AssertTrue(idxMap.Valid, t, "")
 }
 
 func Test_GetTreasureIdxMap_InvalidInput(t *testing.T) {
-	idxMap := GetTreasureIdxMap([]int{1}, []int{1, 2})
+	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{1, 2})
 
-	assertTrue(idxMap.String == "", t, "")
-	assertTrue(!idxMap.Valid, t, "")
+	oyster_utils.AssertStringEqual(idxMap.String, "", t)
+	oyster_utils.AssertTrue(!idxMap.Valid, t, "")
 }
 
 func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
-	indexes := GetTreasureIdxIndexes(nulls.String{"", false})
+	indexes := oyster_utils.GetTreasureIdxIndexes(nulls.String{"", false})
 
-	assertTrue(len(indexes) == 0, t, "")
+	oyster_utils.AssertTrue(len(indexes) == 0, t, "")
 }
 
 func Test_GetTreasureIdxIndexes_ValidInput(t *testing.T) {
-	indexes := GetTreasureIdxIndexes(nulls.String{"1_1_1", true})
+	indexes := oyster_utils.GetTreasureIdxIndexes(nulls.String{"1_1_1", true})
 
-	assertTrue(len(indexes) == 3, t, "")
-	assertTrue(indexes[0] == 1, t, "")
-	assertTrue(indexes[1] == 1, t, "")
-	assertTrue(indexes[2] == 1, t, "")
+	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
+	oyster_utils.AssertTrue(indexes[0] == 1, t, "")
+	oyster_utils.AssertTrue(indexes[1] == 1, t, "")
+	oyster_utils.AssertTrue(indexes[2] == 1, t, "")
 }
 
 func Test_IntsJoin_NoInts(t *testing.T) {
-	v := IntsJoin(nil, " ")
+	v := oyster_utils.IntsJoin(nil, " ")
 
-	assertTrue(v == "", t, "")
+	oyster_utils.AssertStringEqual(v, "", t)
 }
 
 func Test_IntsJoin_ValidInts(t *testing.T) {
-	v := IntsJoin([]int{1, 2, 3}, "_")
+	v := oyster_utils.IntsJoin([]int{1, 2, 3}, "_")
 
-	assertTrue(v == "1_2_3", t, "")
+	oyster_utils.AssertStringEqual(v, "1_2_3", t)
 }
 
 func Test_IntsJoin_SingleInt(t *testing.T) {
-	v := IntsJoin([]int{1}, "_")
+	v := oyster_utils.IntsJoin([]int{1}, "_")
 
-	assertTrue(v == "1", t, "")
+	oyster_utils.AssertStringEqual(v, "1", t)
 }
 
 func Test_IntsJoin_InvalidDelim(t *testing.T) {
-	v := IntsJoin([]int{1, 2, 3}, "")
+	v := oyster_utils.IntsJoin([]int{1, 2, 3}, "")
 
-	assertTrue(v == "123", t, "")
+	oyster_utils.AssertStringEqual(v, "123", t)
 }
 
 func Test_IntsSplit_InvalidString(t *testing.T) {
-	v := IntsSplit("abc", " ")
+	v := oyster_utils.IntsSplit("abc", " ")
 
-	assertTrue(v == nil, t, "Result as nil")
+	oyster_utils.AssertTrue(v == nil, t, "Result as nil")
 }
 
 func Test_IntsSplit_ValidInput(t *testing.T) {
-	v := IntsSplit("1_2_3", "_")
+	v := oyster_utils.IntsSplit("1_2_3", "_")
 
 	compareIntsArray(t, v, []int{1, 2, 3})
 }
 
 func Test_IntsSplit_SingleInt(t *testing.T) {
-	v := IntsSplit("1", "_")
+	v := oyster_utils.IntsSplit("1", "_")
 
 	compareIntsArray(t, v, []int{1})
 }
 
 func Test_IntsSplit_MixIntString(t *testing.T) {
-	v := IntsSplit("1_a_2", "_")
+	v := oyster_utils.IntsSplit("1_a_2", "_")
 
 	compareIntsArray(t, v, []int{1, 2})
 }
 
 func Test_IntsSplit_EmptyString(t *testing.T) {
-	v := IntsSplit("", "_")
+	v := oyster_utils.IntsSplit("", "_")
 
 	compareIntsArray(t, v, []int{})
 }
 
 func Test_ConvertToWeiUnit(t *testing.T) {
-	v := ConvertToWeiUnit(big.NewFloat(0.2))
+	v := oyster_utils.ConvertToWeiUnit(big.NewFloat(0.2))
 
-	assertTrue(v.Cmp(big.NewInt(200000000000000000)) == 0, t, "")
+	oyster_utils.AssertTrue(v.Cmp(big.NewInt(200000000000000000)) == 0, t, "")
 }
 
 func Test_ConvertToWeiUnit_SmallValue(t *testing.T) {
-	v := ConvertToWeiUnit(big.NewFloat(0.000000000000000002))
+	v := oyster_utils.ConvertToWeiUnit(big.NewFloat(0.000000000000000002))
 
-	assertTrue(v.Cmp(big.NewInt(2)) == 0, t, "")
+	oyster_utils.AssertTrue(v.Cmp(big.NewInt(2)) == 0, t, "")
 }
 
 func Test_ConvertToWeiUnit_ConsiderAsZero(t *testing.T) {
-	v := ConvertToWeiUnit(big.NewFloat(0.0000000000000000002))
+	v := oyster_utils.ConvertToWeiUnit(big.NewFloat(0.0000000000000000002))
 
-	assertTrue(v.Cmp(big.NewInt(0)) == 0, t, "")
+	oyster_utils.AssertTrue(v.Cmp(big.NewInt(0)) == 0, t, "")
 }
 
 func Test_ConvertToPrlUnit(t *testing.T) {
-	v := ConverFromWeiUnit(big.NewInt(200000000000000000))
+	v := oyster_utils.ConverFromWeiUnit(big.NewInt(200000000000000000))
 
-	assertTrue(v.String() == big.NewFloat(.2).String(), t, "")
+	oyster_utils.AssertTrue(v.String() == big.NewFloat(.2).String(), t, "")
 }
 
 func Test_ConvertToPrlUnit_SmallValue(t *testing.T) {
-	v := ConverFromWeiUnit(big.NewInt(2))
+	v := oyster_utils.ConverFromWeiUnit(big.NewInt(2))
 
-	assertTrue(v.String() == big.NewFloat(.000000000000000002).String(), t, "")
+	oyster_utils.AssertTrue(v.String() == big.NewFloat(.000000000000000002).String(), t, "")
 }
 
 // Private helper methods
 func compareIntsArray(t *testing.T, a []int, b []int) {
-	assertTrue(len(a) == len(b), t, "a and b must have the same len")
 
+	oyster_utils.AssertTrue(len(a) == len(b), t, "a and b must have the same len")
 	for i := 0; i < len(a); i++ {
-		assertTrue(a[i] == b[i], t, "a and b value are different")
+		oyster_utils.AssertTrue(a[i] == b[i], t, "a and b value are different")
 	}
 }

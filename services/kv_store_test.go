@@ -2,28 +2,21 @@ package services
 
 import (
 	"testing"
+
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 func Test_KVStore(t *testing.T) {
 	db, err := InitKVStore()
-	if err != nil {
-		t.Errorf("Could not create Badger DB: %v", err)
-	}
+	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
 	defer db.Close()
 
 	err = BatchSet(&KVPairs{"key": "oyster"})
-	if err != nil {
-		t.Errorf("Could not set key: %v", err)
-	}
+	oyster_utils.AssertNoError(err, t, "Could not set key")
 
 	kvs, err := BatchGet(&KVKeys{"key"})
-	if err != nil {
-		t.Errorf("Could not get key: %v", err)
-	}
+	oyster_utils.AssertNoError(err, t, "Could not get key")
 
 	val := (*kvs)["key"]
-	if val != "oyster" {
-		t.Errorf("Key value incorrect: %v != %v", val, "oyster")
-	}
-
+	oyster_utils.AssertStringEqual(val, "oyster", t)
 }
