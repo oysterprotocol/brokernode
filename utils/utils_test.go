@@ -190,9 +190,9 @@ func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
 
 func Test_GetTreasureIdxIndexes_ValidInput(t *testing.T) {
 	indexes := oyster_utils.GetTreasureIdxIndexes(nulls.String{"1_1_1", true})
+
 	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
 	oyster_utils.AssertTrue(indexes[0] == 1, t, "")
-
 	oyster_utils.AssertTrue(indexes[1] == 1, t, "")
 	oyster_utils.AssertTrue(indexes[2] == 1, t, "")
 }
