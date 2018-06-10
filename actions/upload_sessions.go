@@ -57,7 +57,7 @@ type uploadSessionCreateBetaRes struct {
 type chunkReq struct {
 	Idx  int    `json:"idx"`
 	Data string `json:"data"`
-	Hash string `json:"hash"`
+	Hash string `json:"hash"` // This is GenesisHash.
 }
 
 type UploadSessionUpdateReq struct {
@@ -250,7 +250,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	// Update dMaps to have chunks async
 	go func() {
-
 		defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: async_datamap_updates", analytics.NewProperties().
 			Set("id", uploadSession.ID).
 			Set("genesis_hash", uploadSession.GenesisHash).
@@ -260,6 +259,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 		var sqlWhereClosures []string
 		chunksMap := make(map[string]chunkReq)
+		kvStoreMap := make(map[string]chunkReq)
 		minChunkIdx := float64(0)
 		maxChunkIdx := float64(0)
 		for _, chunk := range req.Chunks {
@@ -273,10 +273,14 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			key := sqlWhereForGenesisHashAndChunkIdx(uploadSession.GenesisHash, chunkIdx)
 			sqlWhereClosures = append(sqlWhereClosures, key)
 			chunksMap[key] = chunk
+			if chunk.Hash == uploadSession.GenesisHash {
+				kvStoreMap[services.GenKvStoreKey(uploadSession.GenesisHash, chunkIdx)] = chunk
+			}
 			minChunkIdx = math.Min(minChunkIdx, float64(chunkIdx))
 			maxChunkIdx = math.Max(maxChunkIdx, float64(chunkIdx))
 		}
 
+		// Query data_maps to get models.DataMap based on require chunk.
 		var dms []models.DataMap
 		//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
 		err := models.DB.RawQuery(
@@ -288,6 +292,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			raven.CaptureError(err, nil)
 		}
 
+		// Convert []DataMaps to map[key]DatMap
 		dmsMap := make(map[string]models.DataMap)
 		for _, dm := range dms {
 			key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
@@ -297,6 +302,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 		}
 
+		// Create Update operation for data_maps table.
 		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 		var updatedDms []string
 		for key, chunk := range chunksMap {
@@ -323,6 +329,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 		numOfBatchRequest := int(math.Ceil(float64(len(updatedDms)) / float64(SQL_BATCH_SIZE)))
 
+		// Batch Update data_maps table.
 		remainder := len(updatedDms)
 		for i := 0; i < numOfBatchRequest; i++ {
 			lower := i * SQL_BATCH_SIZE
@@ -349,6 +356,21 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				break
 			}
 		}
+
+		// Save Message field into KVStore
+		if !services.IsKvStoreEnabled() {
+			return
+		}
+
+		// Make sure all chunks are valid in the data_maps table before inserting
+		batchSetKvMap := services.KVPairs{}
+		for _, dm := range dms {
+			key := services.GenKvStoreKey(dm.GenesisHash, dm.ChunkIdx)
+			if _, hasKey := kvStoreMap[key]; hasKey {
+				batchSetKvMap[key] = kvStoreMap[key].Data
+			}
+		}
+		services.BatchSet(&batchSetKvMap)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))

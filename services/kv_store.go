@@ -16,10 +16,15 @@ const badgerDirTest = "/var/lib/badger/test"
 // Singleton DB
 var badgerDB *badger.DB
 
+var isKvStoreEnable bool
+
 type KVPairs map[string]string
 type KVKeys []string
 
 func init() {
+	// Currently disable it.
+	isKvStoreEnable = false
+
 	InitKVStore()
 }
 
@@ -41,10 +46,14 @@ func InitKVStore() (db *badger.DB, err error) {
 	}
 
 	db, err = badger.Open(opts)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 	badgerDB = db
 
 	return db, err
+}
+
+func IsKvStoreEnabled() bool {
+	return isKvStoreEnable
 }
 
 /*BatchGet returns KVPairs for a set of keys. Return partial result if error concurs.*/
@@ -77,7 +86,7 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 		return nil
 	})
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 
 	return
 }
@@ -96,11 +105,11 @@ func BatchSet(kvs *KVPairs) error {
 		}
 		return nil
 	})
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
 }
 
 /*GenKey returns the key for inserting to KV-Store for data_maps.*/
-func GenKey(gensisHash string, chunkIdx int) string {
+func GenKvStoreKey(gensisHash string, chunkIdx int) string {
 	return fmt.Sprintf("%s_%d", gensisHash, chunkIdx)
 }
