@@ -6,6 +6,12 @@ import (
 	"testing"
 )
 
+func Test_IsRavenEnabled(t *testing.T) {
+	v := IsRavenEnabled()
+
+	assertTrue(v == false, t, "")
+}
+
 func Test_ConvertToByte_1Trytes(t *testing.T) {
 	v := ConvertToByte(1)
 

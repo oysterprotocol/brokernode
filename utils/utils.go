@@ -39,9 +39,21 @@ const (
 	PrlInWeiUnit = 1e18
 )
 
+// Enable/Disalbe raven reporting.
+var isRavenEnabled bool = true
 var logErrorTags map[string]string
 
 func init() {
+	// Check whether current is in unit test mode.
+	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
+	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
+	for _, v := range os.Args {
+		if strings.HasPrefix(v, "-test.") {
+			isRavenEnabled = false
+			break
+		}
+	}
+
 	isOysterPay := "enabled"
 	if os.Getenv("OYSTER_PAYS") == "" {
 		isOysterPay = "disabled"
@@ -53,6 +65,11 @@ func init() {
 		"osyterPay":   isOysterPay,
 		"displayName": os.Getenv("DISPLAY_NAME"),
 	}
+}
+
+/*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
+func IsRavenEnabled() bool {
+	return isRavenEnabled
 }
 
 /*SetLogInfoForDatabaseUrl updates db_url for log info.*/
@@ -251,9 +268,13 @@ func ConverFromWeiUnit(wei *big.Int) *big.Float {
 
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
 func LogIfError(err error, extraInfo map[string]interface{}) {
-	if err != nil {
-		fmt.Println(err)
+	if err == nil {
+		return
+	}
 
+	fmt.Println(err)
+
+	if IsRavenEnabled() {
 		if extraInfo != nil {
 			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
 		} else {
