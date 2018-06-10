@@ -45,8 +45,10 @@ var logErrorTags map[string]string
 
 func init() {
 	// Check whether current is in unit test mode.
+	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
+	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
 	for _, v := range os.Args {
-		if v == "-test.v=true" {
+		if strings.HasPrefix(v, "-test.") {
 			isRavenEnabled = false
 			break
 		}
@@ -62,6 +64,11 @@ func init() {
 		"ethNodeUrl": os.Getenv("ETH_NODE_URL"),
 		"osyterPay":  isOysterPay,
 	}
+}
+
+/*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
+func IsRavenEnabled() bool {
+	return isRavenEnabled
 }
 
 /*SetLogInfoForDatabaseUrl updates db_url for log info.*/
@@ -266,7 +273,7 @@ func LogIfError(err error, extraInfo map[string]interface{}) {
 
 	fmt.Println(err)
 
-	if isRavenEnabled {
+	if IsRavenEnabled() {
 		if extraInfo != nil {
 			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
 		} else {
