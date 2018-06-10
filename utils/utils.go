@@ -47,10 +47,11 @@ func init() {
 		isOysterPay = "disabled"
 	}
 	logErrorTags = map[string]string{
-		"mode":       os.Getenv("MODE"),
-		"hostIp":     os.Getenv("HOST_IP"),
-		"ethNodeUrl": os.Getenv("ETH_NODE_URL"),
-		"osyterPay":  isOysterPay,
+		"mode":        os.Getenv("MODE"),
+		"hostIp":      os.Getenv("HOST_IP"),
+		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
+		"osyterPay":   isOysterPay,
+		"displayName": os.Getenv("DISPLAY_NAME"),
 	}
 }
 
