@@ -230,7 +230,7 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
-		raven.CaptureError(err, nil)
+		LogIfError(err, map[string]interface{}{"aInputSize": len(a), "bInputSize": len(b)})
 		return nil, err
 	}
 
