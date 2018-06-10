@@ -39,9 +39,19 @@ const (
 	PrlInWeiUnit = 1e18
 )
 
+// Enable/Disalbe raven reporting.
+var isRavenEnabled bool = true
 var logErrorTags map[string]string
 
 func init() {
+	// Check whether current is in unit test mode.
+	for _, v := range os.Args {
+		if v == "-test.v=true" {
+			isRavenEnabled = false
+			break
+		}
+	}
+
 	isOysterPay := "enabled"
 	if os.Getenv("OYSTER_PAYS") == "" {
 		isOysterPay = "disabled"
@@ -250,9 +260,13 @@ func ConverFromWeiUnit(wei *big.Int) *big.Float {
 
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
 func LogIfError(err error, extraInfo map[string]interface{}) {
-	if err != nil {
-		fmt.Println(err)
+	if err == nil {
+		return
+	}
 
+	fmt.Println(err)
+
+	if isRavenEnabled {
 		if extraInfo != nil {
 			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
 		} else {
