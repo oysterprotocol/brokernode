@@ -2,9 +2,11 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/dgraph-io/badger"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
@@ -17,7 +19,11 @@ var badgerDB *badger.DB
 type KVPairs map[string]string
 type KVKeys []string
 
-// returns db so that caller can close connection when done.
+func init() {
+	InitKVStore()
+}
+
+/* InitKVStore returns db so that caller can close connection when done.*/
 func InitKVStore() (db *badger.DB, err error) {
 	if badgerDB != nil {
 		return badgerDB, nil
@@ -35,11 +41,13 @@ func InitKVStore() (db *badger.DB, err error) {
 	}
 
 	db, err = badger.Open(opts)
+	oyster_utils.LogIfError(err)
 	badgerDB = db
 
 	return db, err
 }
 
+/*BatchGet returns KVPairs for a set of keys. Return partial result if error concurs.*/
 func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
 	if badgerDB == nil {
@@ -69,24 +77,30 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 		return nil
 	})
+	oyster_utils.LogIfError(err)
 
 	return
 }
 
-func BatchSet(kvs *KVPairs) (err error) {
+/*BatchSet updates a set of KVPairs. Return error even partial result is updated.*/
+func BatchSet(kvs *KVPairs) error {
 	if badgerDB == nil {
 		return errors.New("badgerDB not initialized")
 	}
 
-	return badgerDB.Update(func(txn *badger.Txn) error {
+	err := badgerDB.Update(func(txn *badger.Txn) error {
 		for k, v := range *kvs {
-			err := txn.Set([]byte(k), []byte(v))
-			if err != nil {
+			if err := txn.Set([]byte(k), []byte(v)); err != nil {
 				return err
 			}
-
 		}
-
 		return nil
 	})
+	oyster_utils.LogIfError(err)
+	return err
+}
+
+/*GenKey returns the key for inserting to KV-Store for data_maps.*/
+func GenKey(gensisHash string, chunkIdx int) string {
+	return fmt.Sprintf("%s_%d", gensisHash, chunkIdx)
 }
