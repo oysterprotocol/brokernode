@@ -25,7 +25,9 @@ func init() {
 	// Currently disable it.
 	isKvStoreEnable = false
 
-	InitKVStore()
+	if isKvStoreEnable {
+		InitKVStore()
+	}
 }
 
 /* InitKVStore returns db so that caller can close connection when done.*/
@@ -52,6 +54,7 @@ func InitKVStore() (db *badger.DB, err error) {
 	return db, err
 }
 
+/*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
 func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
 }
