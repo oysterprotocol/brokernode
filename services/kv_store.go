@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -110,9 +109,4 @@ func BatchSet(kvs *KVPairs) error {
 	})
 	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
-}
-
-/*GenKvStoreKey returns the key for inserting to KV-Store for data_maps.*/
-func GenKvStoreKey(gensisHash string, chunkIdx int) string {
-	return fmt.Sprintf("%s_%d", gensisHash, chunkIdx)
 }

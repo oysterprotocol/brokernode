@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
@@ -11,15 +14,14 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math/big"
-	"os"
 
-	"github.com/pkg/errors"
 	"math"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type UploadSessionResource struct {
@@ -263,7 +265,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 		var sqlWhereClosures []string
 		chunksMap := make(map[string]chunkReq)
-		kvStoreMap := make(map[string]chunkReq)
 		minChunkIdx := float64(0)
 		maxChunkIdx := float64(0)
 		for _, chunk := range req.Chunks {
@@ -277,9 +278,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			key := sqlWhereForGenesisHashAndChunkIdx(uploadSession.GenesisHash, chunkIdx)
 			sqlWhereClosures = append(sqlWhereClosures, key)
 			chunksMap[key] = chunk
-			if chunk.Hash == uploadSession.GenesisHash {
-				kvStoreMap[services.GenKvStoreKey(uploadSession.GenesisHash, chunkIdx)] = chunk
-			}
 			minChunkIdx = math.Min(minChunkIdx, float64(chunkIdx))
 			maxChunkIdx = math.Max(maxChunkIdx, float64(chunkIdx))
 		}
@@ -308,6 +306,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 		// Create Update operation for data_maps table.
 		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
 		var updatedDms []string
 		for key, chunk := range chunksMap {
 			dm, hasKey := dmsMap[key]
@@ -320,7 +319,11 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				if err != nil {
 					panic(err.Error())
 				}
-				dm.Message = string(message)
+
+				msg := string(message)
+				dm.Message = msg // TODO: Deprecate this.
+				batchSetKvMap[dm.MsgID] = msg
+
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
@@ -362,19 +365,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		}
 
 		// Save Message field into KVStore
-		if !services.IsKvStoreEnabled() {
-			return
+		if services.IsKvStoreEnabled() {
+			services.BatchSet(&batchSetKvMap)
 		}
-
-		// Make sure all chunks are valid in the data_maps table before inserting
-		batchSetKvMap := services.KVPairs{}
-		for _, dm := range dms {
-			key := services.GenKvStoreKey(dm.GenesisHash, dm.ChunkIdx)
-			if _, hasKey := kvStoreMap[key]; hasKey {
-				batchSetKvMap[key] = kvStoreMap[key].Data
-			}
-		}
-		services.BatchSet(&batchSetKvMap)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
