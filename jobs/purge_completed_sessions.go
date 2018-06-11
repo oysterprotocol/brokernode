@@ -36,13 +36,17 @@ func PurgeCompletedSessions() {
 		notComplete[genesisHash.GenesisHash] = true
 	}
 
-	var moveToComplete = []models.DataMap{}
-
 	for _, genesisHash := range allGenesisHashes {
 		if _, hasKey := notComplete[genesisHash]; !hasKey {
+			var moveToComplete = []models.DataMap{}
+
+			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 
 			models.DB.Transaction(func(tx *pop.Connection) error {
-				tx.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
 				MoveToComplete(tx, moveToComplete) // Passed in the connection
 
 				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
@@ -87,6 +91,7 @@ func PurgeCompletedSessions() {
 
 				return nil
 			})
+			DeleteKvStore(moveToComplete)
 		}
 	}
 }

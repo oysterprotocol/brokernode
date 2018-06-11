@@ -8,7 +8,7 @@ import (
 )
 
 func Test_KVStore_Init(t *testing.T) {
-	_, err := services.InitKvStore()
+	err := services.InitKvStore()
 
 	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
 	defer services.CloseKvStore()

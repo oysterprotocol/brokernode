@@ -22,7 +22,7 @@ type KVPairs map[string]string
 type KVKeys []string
 
 func init() {
-	dbNoInitError = errors.New("badgerDB not initialized")
+	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
 	// Currently disable it.
 	isKvStoreEnable = false
@@ -33,9 +33,9 @@ func init() {
 }
 
 /*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
-func InitKvStore() (db *badger.DB, err error) {
+func InitKvStore() (err error) {
 	if badgerDB != nil {
-		return badgerDB, nil
+		return nil
 	}
 
 	// Setup opts
@@ -49,11 +49,9 @@ func InitKvStore() (db *badger.DB, err error) {
 		opts.ValueDir = badgerDir
 	}
 
-	db, err = badger.Open(opts)
+	badgerDB, err = badger.Open(opts)
 	oyster_utils.LogIfError(err, nil)
-	badgerDB = db
-
-	return db, err
+	return err
 }
 
 /*CloseKvStore closes the db.*/
