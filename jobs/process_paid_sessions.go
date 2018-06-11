@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-func ProcessPaidSessions(thresholdTime time.Time) {
+func ProcessPaidSessions(thresholdTime time.Time, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessPaidSessions, start)
 
 	BuryTreasureInDataMaps()
 	MarkBuriedMapsAsUnassigned()

@@ -26,6 +26,7 @@ func (suite *JobsSuite) SetupTest() {
 	// Some tests may override this value.
 	jobs.IotaWrapper = services.IotaWrapper
 	jobs.EthWrapper = services.EthWrapper
+	jobs.PrometheusWrapper = services.PrometheusWrapper
 
 	/*
 		This creates a "generic" mock of our iota wrapper. we can assign

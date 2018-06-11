@@ -11,7 +11,11 @@ import (
 const UnpaidExpirationInHour = 24
 
 /*RemoveUnpaidUploadSession cleans up unpload_sessions and data_maps talbe for expired/unpaid session. */
-func RemoveUnpaidUploadSession() {
+func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramRemoveUnpaidUploadSession, start)
+
 	sessions := []models.UploadSession{}
 	err := models.DB.RawQuery(
 		"SELECT * from upload_sessions WHERE payment_status != ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",

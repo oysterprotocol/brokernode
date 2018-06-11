@@ -23,7 +23,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
 	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
 
-	jobs.RemoveUnpaidUploadSession()
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
 }
@@ -33,7 +33,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
 
 	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
 
-	jobs.RemoveUnpaidUploadSession()
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, AllPaid, true)
 }
@@ -47,7 +47,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 	HasBalance := "aaaaaa"
 	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
 
-	jobs.RemoveUnpaidUploadSession()
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, HasBalance, true)
 }
@@ -64,7 +64,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
 
-	jobs.RemoveUnpaidUploadSession()
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, OnlyRemoveUploadSession_NoExpired, false)
 }

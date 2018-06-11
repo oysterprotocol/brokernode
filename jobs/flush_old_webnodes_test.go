@@ -26,7 +26,7 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
-	jobs.FlushOldWebNodes(thresholdTime)
+	jobs.FlushOldWebNodes(thresholdTime, jobs.PrometheusWrapper)
 
 	webnodes = []models.Webnode{}
 
@@ -53,7 +53,7 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
-	jobs.FlushOldWebNodes(thresholdTime)
+	jobs.FlushOldWebNodes(thresholdTime, jobs.PrometheusWrapper)
 
 	webnodes = []models.Webnode{}
 
