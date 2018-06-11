@@ -26,10 +26,6 @@ func init() {
 
 	// Currently disable it.
 	isKvStoreEnable = false
-
-	if isKvStoreEnable {
-		InitKvStore()
-	}
 }
 
 /*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
