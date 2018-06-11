@@ -3,6 +3,7 @@ package jobs
 import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
@@ -38,7 +39,7 @@ func PurgeCompletedSessions() {
 	var moveToComplete = []models.DataMap{}
 
 	for _, genesisHash := range allGenesisHashes {
-		if !notComplete[genesisHash] {
+		if _, hasKey := notComplete[genesisHash]; !hasKey {
 
 			models.DB.Transaction(func(tx *pop.Connection) error {
 				tx.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
@@ -70,7 +71,6 @@ func PurgeCompletedSessions() {
 					}
 					err = models.NewCompletedUpload(session[0])
 					if err != nil {
-						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}
@@ -114,4 +114,17 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		})
 		index++
 	}
+}
+
+/*DeleteKvStore removes dataMaps from KV-Store.*/
+func DeleteKvStore(dataMaps []models.DataMap) {
+	if !services.IsKvStoreEnabled() {
+		return
+	}
+
+	var keys services.KVKeys
+	for _, dm := range dataMaps {
+		keys = append(keys, services.GenKvStoreKey(dm.GenesisHash, dm.ChunkIdx))
+	}
+	services.BatchDelete(&keys)
 }

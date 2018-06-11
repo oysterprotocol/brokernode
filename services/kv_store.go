@@ -15,13 +15,15 @@ const badgerDirTest = "/var/lib/badger/test"
 
 // Singleton DB
 var badgerDB *badger.DB
-
+var dbNoInitError error
 var isKvStoreEnable bool
 
 type KVPairs map[string]string
 type KVKeys []string
 
 func init() {
+	dbNoInitError = errors.New("badgerDB not initialized")
+
 	// Currently disable it.
 	isKvStoreEnable = false
 
@@ -63,12 +65,15 @@ func IsKvStoreEnabled() bool {
 func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
 	if badgerDB == nil {
-		return kvs, errors.New("badgerDB not initialized")
+		return kvs, dbNoInitError
 	}
 
 	err = badgerDB.View(func(txn *badger.Txn) error {
 		for _, k := range *ks {
 			item, err := txn.Get([]byte(k))
+			if err == badger.ErrKeyNotFound {
+				continue
+			}
 			if err != nil {
 				return err
 			}
@@ -94,10 +99,10 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 	return
 }
 
-/*BatchSet updates a set of KVPairs. Return error even partial result is updated.*/
+/*BatchSet updates a set of KVPairs. Return error if any fails.*/
 func BatchSet(kvs *KVPairs) error {
 	if badgerDB == nil {
-		return errors.New("badgerDB not initialized")
+		return dbNoInitError
 	}
 
 	err := badgerDB.Update(func(txn *badger.Txn) error {
@@ -109,6 +114,24 @@ func BatchSet(kvs *KVPairs) error {
 		return nil
 	})
 	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
+	return err
+}
+
+/*BatchDelete deletes a set of KVKeys, Return error if any fails.*/
+func BatchDelete(ks *KVKeys) error {
+	if badgerDB == nil {
+		return dbNoInitError
+	}
+
+	err := badgerDB.Update(func(txn *badger.Txn) error {
+		for _, key := range *ks {
+			if err := txn.Delete([]byte(key)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 	return err
 }
 
