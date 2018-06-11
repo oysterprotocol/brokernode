@@ -1,6 +1,7 @@
 package services_test
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/oysterprotocol/brokernode/services"
@@ -12,6 +13,25 @@ func Test_KVStore_Init(t *testing.T) {
 
 	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
 	defer services.CloseKvStore()
+}
+
+func Test_KVStore_MassBatchSet(t *testing.T) {
+	guessedMaxBatchSize := 200000
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	pairs := services.KVPairs{}
+	// See whether it would break in Update method. And some part of it will be inserted
+	for i := 0; i < guessedMaxBatchSize; i++ {
+		pairs[strconv.Itoa(i)] = strconv.Itoa(i)
+	}
+
+	err := services.BatchSet(&pairs)
+	oyster_utils.AssertError(err, t, "")
+
+	kvs, _ := services.BatchGet(&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1), "0"})
+	oyster_utils.AssertTrue(len(*kvs) == 1, t, "Expect only 1 item")
+	oyster_utils.AssertStringEqual((*kvs)["0"], "0", t)
 }
 
 func Test_KVStoreBatchGet(t *testing.T) {
