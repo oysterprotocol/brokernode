@@ -3,13 +3,14 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
+	"time"
+
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
-	"math/big"
-	"time"
 )
 
 type PRLStatus int
@@ -25,6 +26,7 @@ type Treasure struct {
 	PRLAmount string    `json:"prlAmount" db:"prl_amount"`
 	PRLStatus PRLStatus `json:"prlStatus" db:"prl_status"`
 	Message   string    `json:"message" db:"message"`
+	MsgID     string    `json:"msgId" db:"msg_id"`
 	Address   string    `json:"address" db:"address"`
 }
 
