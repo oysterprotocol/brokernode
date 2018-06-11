@@ -9,9 +9,9 @@ import (
 )
 
 func Test_IsRavenEnabled(t *testing.T) {
-	v := IsRavenEnabled()
+	v := oyster_utils.IsRavenEnabled()
 
-	assertTrue(v == false, t, "")
+	oyster_utils.AssertTrue(v == false, t, "")
 }
 
 func Test_ConvertToByte_1Trytes(t *testing.T) {
