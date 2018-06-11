@@ -28,12 +28,12 @@ func init() {
 	isKvStoreEnable = false
 
 	if isKvStoreEnable {
-		InitKVStore()
+		InitKvStore()
 	}
 }
 
-/* InitKVStore returns db so that caller can close connection when done.*/
-func InitKVStore() (db *badger.DB, err error) {
+/*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
+func InitKvStore() (db *badger.DB, err error) {
 	if badgerDB != nil {
 		return badgerDB, nil
 	}
@@ -56,12 +56,19 @@ func InitKVStore() (db *badger.DB, err error) {
 	return db, err
 }
 
+/*CloseKvStore closes the db.*/
+func CloseKvStore() {
+	err := badgerDB.Close()
+	oyster_utils.LogIfError(err, nil)
+	badgerDB = nil
+}
+
 /*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
 func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
 }
 
-/*BatchGet returns KVPairs for a set of keys. Return partial result if error concurs.*/
+/*BatchGet returns KVPairs for a set of keys. It won't treat Key missing as error.*/
 func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
 	if badgerDB == nil {

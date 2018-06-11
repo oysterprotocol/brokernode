@@ -7,42 +7,51 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func Test_KVStore(t *testing.T) {
-	db, err := services.InitKVStore()
-	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
-	defer db.Close()
+func Test_KVStore_Init(t *testing.T) {
+	_, err := services.InitKvStore()
 
-	err = services.BatchSet(&services.KVPairs{"key": "oyster"})
-	oyster_utils.AssertNoError(err, t, "Could not set key")
+	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
+	defer services.CloseKvStore()
+}
+
+func Test_KVStoreBatchGet(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	services.BatchSet(&services.KVPairs{"key": "oyster"})
 
 	kvs, err := services.BatchGet(&services.KVKeys{"key"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
-	val := (*kvs)["key"]
-	oyster_utils.AssertStringEqual(val, "oyster", t)
+	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
+	oyster_utils.AssertStringEqual((*kvs)["key"], "oyster", t)
 }
 
-func Test_KVStoreBatchGet_WithMissKeyValue(t *testing.T) {
-	db, _ := services.InitKVStore()
-	defer db.Close()
+func Test_KVStoreBatchGet_WithMissingKey(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
 
-	err = services.BatchSet(&services.KVPairs{"key": "oyster"})
+	services.BatchSet(&services.KVPairs{"key": "oyster"})
 
 	kvs, err := services.BatchGet(&services.KVKeys{"key", "unknownKey"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
-	oyster_utils.AssertTrue(len(kvs) == 1, t, "")
-	oyster_utils.AssertStringEqual((*kvs["key"]), "oyster", t)
+	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
+	oyster_utils.AssertStringEqual((*kvs)["key"], "oyster", t)
 }
 
 func Test_KVStoreBatchDelete(t *testing.T) {
-	db, _ := services.InitKVStore()
-	defer db.Close()
+	services.InitKvStore()
+	defer services.CloseKvStore()
 
-	services.BatchSet(&KVPairs{"key1": "oyster1", "key2", "oyster2"})
+	services.BatchSet(&services.KVPairs{"key1": "oyster1", "key2": "oyster2"})
 
 	err := services.BatchDelete(&services.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could not delete key")
+
+	kvs, err := services.BatchGet(&services.KVKeys{"key1"})
+	oyster_utils.AssertNoError(err, t, "Could complete get key")
+	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
 
 func Test_KVStoreGenKey(t *testing.T) {
