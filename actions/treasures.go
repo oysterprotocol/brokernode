@@ -26,7 +26,7 @@ type treasureRes struct {
 // Verifies the treasure and claims such treasure.
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
-	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTreasuresResourceVerifyAndClaim, start)
 
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)

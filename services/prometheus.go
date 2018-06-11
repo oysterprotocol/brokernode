@@ -20,7 +20,7 @@ type PrometheusService struct {
 	HistogramSeconds
 	HistogramData
 	TimeNow
-	HistogramTreasuresVerifyAndClaim *prometheus.HistogramVec
+	HistogramTreasuresResourceVerifyAndClaim *prometheus.HistogramVec
 	HistogramUploadSessionResourceCreate *prometheus.HistogramVec
 	HistogramUploadSessionResourceUpdate *prometheus.HistogramVec
 	HistogramUploadSessionResourceCreateBeta *prometheus.HistogramVec
@@ -41,7 +41,7 @@ type PrometheusService struct {
 }
 
 func init() {
-	histogramTreasuresVerifyAndClaim := prepareHistogram("treasures_verify_and_claim_seconds", "HistogramTreasuresVerifyAndClaimSeconds", "code")
+	histogramTreasuresResourceVerifyAndClaim := prepareHistogram("treasures_verify_and_claim_seconds", "HistogramTreasuresVerifyAndClaimSeconds", "code")
 	histogramUploadSessionResourceCreate := prepareHistogram("upload_session_resource_create_seconds", "HistogramUploadSessionResourceCreateSeconds", "code")
 	histogramUploadSessionResourceUpdate := prepareHistogram("upload_session_resource_update_seconds", "HistogramUploadSessionResourceUpdateSeconds", "code")
 	histogramUploadSessionResourceCreateBeta := prepareHistogram("upload_session_resource_create_beta_seconds", "HistogramUploadSessionResourceCreateBetaSeconds", "code")
@@ -65,7 +65,7 @@ func init() {
 		HistogramSeconds: histogramSeconds,
 		HistogramData: histogramData,
 		TimeNow: timeNow,
-		HistogramTreasuresVerifyAndClaim: histogramTreasuresVerifyAndClaim,
+		HistogramTreasuresResourceVerifyAndClaim: histogramTreasuresResourceVerifyAndClaim,
 		HistogramUploadSessionResourceCreate: histogramUploadSessionResourceCreate,
 		HistogramUploadSessionResourceUpdate: histogramUploadSessionResourceUpdate,
 		HistogramUploadSessionResourceCreateBeta: histogramUploadSessionResourceCreateBeta,

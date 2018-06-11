@@ -105,7 +105,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
-	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceUpdate, start)
 
 	req := transactionBrokernodeUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
