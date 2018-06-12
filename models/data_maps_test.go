@@ -3,12 +3,13 @@ package models_test
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
+
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
-	"strings"
 )
 
 type hashAddressConversion struct {
@@ -74,6 +75,7 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 		ms.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)
 		ms.Equal(expectedHashChainHashes[i], dMap.Hash)
 		ms.Equal(expectedAddresses[i], dMap.Address)
+		ms.NotNil(dMap.MsgID)
 	}
 }
 

@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -112,7 +111,20 @@ func BatchSet(kvs *KVPairs) error {
 	return err
 }
 
-/*GenKvStoreKey returns the key for inserting to KV-Store for data_maps.*/
-func GenKvStoreKey(gensisHash string, chunkIdx int) string {
-	return fmt.Sprintf("%s_%d", gensisHash, chunkIdx)
+func BatchDelete(ks *KVKeys) (err error) {
+	if badgerDB == nil {
+		return errors.New("badgerDB not initialized")
+	}
+
+	err = badgerDB.Update(func(txn *badger.Txn) error {
+		for _, k := range *ks {
+			if err = txn.Delete([]byte(k)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+
+	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
+	return err
 }

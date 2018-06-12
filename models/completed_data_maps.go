@@ -17,6 +17,7 @@ type CompletedDataMap struct {
 	NodeID         string    `json:"nodeID" db:"node_id"`
 	NodeType       string    `json:"nodeType" db:"node_type"`
 	Message        string    `json:"message" db:"message"`
+	MsgID          string    `json:"msgId" db:"msg_id"`
 	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx       string    `json:"branchTx" db:"branch_tx"`
 	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
