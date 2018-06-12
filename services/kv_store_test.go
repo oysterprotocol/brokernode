@@ -8,6 +8,9 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
+// a very big number that will lead to ErrTxnTooBig for write.
+const guessedMaxBatchSize = 200000
+
 func Test_KVStore_Init(t *testing.T) {
 	err := services.InitKvStore()
 
@@ -16,45 +19,14 @@ func Test_KVStore_Init(t *testing.T) {
 }
 
 func Test_KVStore_MassBatchSet(t *testing.T) {
-	guessedMaxBatchSize := 200000
 	services.InitKvStore()
 	defer services.CloseKvStore()
 
-	pairs := services.KVPairs{}
-	// See whether it would break in Update method. And some part of it will be inserted
-	for i := 0; i < guessedMaxBatchSize; i++ {
-		pairs[strconv.Itoa(i)] = strconv.Itoa(i)
-	}
-
-	err := services.BatchSet(&pairs)
-	oyster_utils.AssertError(err, t, "")
+	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
 
 	kvs, _ := services.BatchGet(&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
-	oyster_utils.AssertTrue(len(*kvs) == 0, t, "Expect only 0 item")
-}
-
-func Test_KVStore_MassBatchDelete(t *testing.T) {
-	guessedMaxBatchSize := 200000
-	services.InitKvStore()
-	defer services.CloseKvStore()
-
-	pairs1 := services.KVPairs{}
-	for i := 0; i < guessedMaxBatchSize/2; i++ {
-		pairs1[strconv.Itoa(i)] = strconv.Itoa(i)
-	}
-	oyster_utils.AssertNoError(services.BatchSet(&pairs1), t, "")
-
-	pairs2 := services.KVPairs{}
-	for i := guessedMaxBatchSize / 2; i < guessedMaxBatchSize; i++ {
-		pairs2[strconv.Itoa(i)] = strconv.Itoa(i)
-	}
-	oyster_utils.AssertNoError(services.BatchSet(&pairs2), t, "")
-
-	keys := services.KVKeys{}
-	for i := 0; i < guessedMaxBatchSize; i++ {
-		keys = append(keys, strconv.Itoa(i))
-	}
-	oyster_utils.AssertError(services.BatchDelete(&keys), t, "")
+	oyster_utils.AssertTrue(len(*kvs) == 1, t, "Expect only an item")
 }
 
 func Test_KVStoreBatchGet(t *testing.T) {
@@ -83,6 +55,17 @@ func Test_KVStoreBatchGet_WithMissingKey(t *testing.T) {
 	oyster_utils.AssertStringEqual((*kvs)["key"], "oyster", t)
 }
 
+func Test_KVStore_MassBatchGet(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
+
+	kvs, _ := services.BatchGet(getKeys(guessedMaxBatchSize))
+	oyster_utils.AssertTrue(len(*kvs) == guessedMaxBatchSize, t, "")
+}
+
 func Test_KVStoreBatchDelete(t *testing.T) {
 	services.InitKvStore()
 	defer services.CloseKvStore()
@@ -95,4 +78,31 @@ func Test_KVStoreBatchDelete(t *testing.T) {
 	kvs, err := services.BatchGet(&services.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could complete get key")
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
+}
+
+func Test_KVStore_MassBatchDelete(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
+
+	err = services.BatchDelete(getKeys(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
+}
+
+func getKvPairs(count int) *services.KVPairs {
+	pairs := services.KVPairs{}
+	for i := 0; i < count; i++ {
+		pairs[strconv.Itoa(i)] = strconv.Itoa(i)
+	}
+	return &pairs
+}
+
+func getKeys(count int) *services.KVKeys {
+	keys := services.KVKeys{}
+	for i := 0; i < guessedMaxBatchSize; i++ {
+		keys = append(keys, strconv.Itoa(i))
+	}
+	return &keys
 }
