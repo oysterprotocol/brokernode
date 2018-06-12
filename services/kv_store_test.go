@@ -62,7 +62,7 @@ func Test_KVStore_MassBatchGet(t *testing.T) {
 	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
 	oyster_utils.AssertNoError(err, t, "")
 
-	kvs, _ = services.BatchGet(getKeys(guessedMaxBatchSize))
+	kvs, _ := services.BatchGet(getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertTrue(len(*kvs) == guessedMaxBatchSize, t, "")
 }
 
