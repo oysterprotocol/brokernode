@@ -105,14 +105,34 @@ func BatchSet(kvs *KVPairs) error {
 		return dbNoInitError
 	}
 
-	err := badgerDB.Update(func(txn *badger.Txn) error {
-		for k, v := range *kvs {
-			if err := txn.Set([]byte(k), []byte(v)); err != nil {
-				return err
+	var err error
+	txn := badgerDB.NewTransaction(true)
+	for k, v := range *kvs {
+		e := txn.Set([]byte(k), []byte(v))
+		if e == nil {
+			continue
+		}
+
+		if e == badger.ErrTxnTooBig {
+			e = nil
+			if commitErr := txn.Commit(nil); commitErr != nil {
+				e = commitErr
+			} else {
+				txn = badgerDB.NewTransaction(true)
+				e = txn.Set([]byte(k), []byte(v))
 			}
 		}
-		return nil
-	})
+
+		if e != nil {
+			err = e
+			break
+		}
+	}
+
+	defer txn.Discard()
+	if err == nil {
+		err = txn.Commit(nil)
+	}
 	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
 }
@@ -123,14 +143,35 @@ func BatchDelete(ks *KVKeys) error {
 		return dbNoInitError
 	}
 
-	err := badgerDB.Update(func(txn *badger.Txn) error {
-		for _, key := range *ks {
-			if err := txn.Delete([]byte(key)); err != nil {
-				return err
+	var err error
+	txn := badgerDB.NewTransaction(true)
+	for _, key := range *ks {
+		e := txn.Delete([]byte(key))
+		if e == nil {
+			continue
+		}
+
+		if e == badger.ErrTxnTooBig {
+			e = nil
+			if commitErr := txn.Commit(nil); commitErr != nil {
+				e = commitErr
+			} else {
+				txn = badgerDB.NewTransaction(true)
+				e = txn.Delete([]byte(key))
 			}
 		}
-		return nil
-	})
+
+		if e != nil {
+			err = e
+			break
+		}
+	}
+
+	defer txn.Discard()
+	if err == nil {
+		err = txn.Commit(nil)
+	}
+
 	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 	return err
 }
