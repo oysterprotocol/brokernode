@@ -161,8 +161,7 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 }
 
 func (d *DataMap) generateMsgId() string {
-	idxStr := strconv.Itoa(d.ChunkIdx)
-	return d.GenesisHash + "__" + idxStr
+	return fmt.Sprintf("%v__%d", d.GenesisHash, d.ChunkIdx)
 }
 
 // Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.
