@@ -4,8 +4,8 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"time"
 	"strconv"
+	"time"
 
 	"github.com/gobuffalo/buffalo/worker"
 	"github.com/oysterprotocol/brokernode/services"
@@ -20,13 +20,15 @@ const (
 var OysterWorker = worker.NewSimple()
 
 var (
-	IotaWrapper = services.IotaWrapper
-	EthWrapper  = services.EthWrapper
-	PrometheusWrapper  = services.PrometheusWrapper
+	IotaWrapper       = services.IotaWrapper
+	EthWrapper        = services.EthWrapper
+	PrometheusWrapper = services.PrometheusWrapper
 )
 
 func init() {
-	if enabled, err := strconv.ParseBool(os.Getenv("JOB_RUNNER")); err == nil && !enabled {
+	enabled, err := strconv.ParseBool(os.Getenv("JOB_RUNNER"))
+	isEnvDisabled = err == nil && !enabled
+	if isEnvDisabled || oyster_utils.IsUnitTest() {
 		return
 	}
 
@@ -119,7 +121,7 @@ func verifyDataMapsHandler(args worker.Args) error {
 }
 
 func updateTimedOutDataMapsHandler(args worker.Args) error {
-	UpdateTimeOutDataMaps(time.Now().Add(-2 * time.Minute), PrometheusWrapper)
+	UpdateTimeOutDataMaps(time.Now().Add(-2*time.Minute), PrometheusWrapper)
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler, args)
 	return nil
