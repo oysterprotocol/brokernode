@@ -71,22 +71,13 @@ type paymentStatusCreateRes struct {
 	PaymentStatus string `json:"paymentStatus"`
 }
 
-const (
-	SQL_BATCH_SIZE = 10
-)
+const SQL_BATCH_SIZE = 10
 
-var (
-	NumChunksLimit = 0
-)
+var NumChunksLimit = -1 //unlimited
 
 func init() {
-	numChunksLimit := os.Getenv("NUM_CHUNKS_LIMIT")
-	if numChunksLimit == "unlimited" {
-		NumChunksLimit = -1 //unlimited
-	} else {
-		var err error
-		NumChunksLimit, err = strconv.Atoi(numChunksLimit)
-		oyster_utils.LogIfError(err, nil)
+	if v, err := strconv.Atoi(os.Getenv("NUM_CHUNKS_LIMIT")); err == nil {
+		NumChunksLimit = v
 	}
 }
 
