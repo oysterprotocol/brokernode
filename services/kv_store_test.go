@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"testing"
 
-	"fmt"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
