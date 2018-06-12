@@ -10,7 +10,10 @@ The broker node uses Docker to spin up a go app, mysql, and private iota instanc
 cp .env.test .env
 
 # Starts the brokernode on port 3000
-DEBUG=1 docker-compose up --build -d # This takes a few minutes when you first run it.
+# This takes a few minutes when you first run it.
+DEBUG=1 docker-compose up --build -d # Prod, assumes aurora DB.
+# To run it locally, we need to also spin up a DB locally.
+DEBUG=1 docker-compose -f docker-compose.dev.yml up --build
 
 # You only need to pass in --build the first time, or when you make a change to the container
 # This uses cached images, so it's much faster to start.
@@ -35,6 +38,7 @@ brokernode# buffalo test
 ```
 
 ---
+
 #Prometheus Go client library
 
 Monitoring and alerting toolkit

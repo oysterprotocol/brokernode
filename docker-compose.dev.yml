@@ -10,6 +10,7 @@ services:
     - ".env"
     depends_on:
     - "db_test"
+    - "db"
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
     - "./data/badger/prod:/var/lib/badger/prod"
@@ -17,6 +18,12 @@ services:
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
     command: >
       bash -c "
+        echo waiting for db...;
+        while ! nc -z db 3306;
+        do
+          sleep 0.5;
+        done;
+
         echo waiting for db_test...;
         while ! nc -z db_test 3306;
         do
@@ -26,16 +33,30 @@ services:
         echo ${DEBUG}
         if [ -z ${DEBUG} ]; then
           echo \"Starting Buffalo PROD mode\";
-          # buffalo db migrate;
+          buffalo db migrate;
           buffalo build -o ./bin/brokernode && chmod +x ./bin/brokernode;
           ./bin/brokernode;
 
         else
           echo \"Starting Buffalo DEV mode\";
-          # buffalo db migrate;
+          buffalo db migrate;
           buffalo dev;
         fi
       "
+
+  db:
+    image: "mariadb:10.3"
+    restart: "always"
+    environment:
+    - MYSQL_DATABASE=brokernode
+    - MYSQL_ROOT_USER=root
+    - MYSQL_ROOT_PASSWORD=secret
+    # - MYSQL_DATABASE=${DB_NAME_DEV:-dev}
+    # - MYSQL_ROOT_USER=${DB_USER_DEV:-root}
+    # - MYSQL_ROOT_PASSWORD=${DB_USER_DEV:-secret}
+    volumes:
+    - "./data/mariadb/dev:/var/lib/mariadb"
+    - "./mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
 
   # TODO: Figure out a better way to handle multiple envs
   db_test:
