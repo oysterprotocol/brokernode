@@ -29,9 +29,8 @@ func Test_KVStore_MassBatchSet(t *testing.T) {
 	err := services.BatchSet(&pairs)
 	oyster_utils.AssertError(err, t, "")
 
-	kvs, _ := services.BatchGet(&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1), "0"})
-	oyster_utils.AssertTrue(len(*kvs) == 1, t, "Expect only 1 item")
-	oyster_utils.AssertStringEqual((*kvs)["0"], "0", t)
+	kvs, _ := services.BatchGet(&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
+	oyster_utils.AssertTrue(len(*kvs) == 0, t, "Expect only 0 item")
 }
 
 func Test_KVStoreBatchGet(t *testing.T) {
