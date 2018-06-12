@@ -96,7 +96,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	}
 
 	// call method under test
-	jobs.ProcessPaidSessions(time.Now())
+	jobs.ProcessPaidSessions(time.Now(), jobs.PrometheusWrapper)
 
 	paidButUnburied = []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)

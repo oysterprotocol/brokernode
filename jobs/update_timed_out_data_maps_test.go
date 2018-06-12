@@ -28,7 +28,7 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 	}
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.UpdateTimeOutDataMaps(time.Now().Add(60 * time.Second))
+	jobs.UpdateTimeOutDataMaps(time.Now().Add(60 * time.Second), jobs.PrometheusWrapper)
 
 	allDataMaps = []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)

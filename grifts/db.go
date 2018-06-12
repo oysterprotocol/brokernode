@@ -195,4 +195,29 @@ var _ = grift.Namespace("db", func() {
 
 		return nil
 	})
+
+	grift.Desc("reset_genesis_hashes", "Resets all stored genesis hashes to webnode count 0 and status unassigned")
+	grift.Add("reset_genesis_hashes", func(c *grift.Context) error {
+
+		storedGenHashCount := models.StoredGenesisHash{}
+
+		count, err := models.DB.RawQuery("SELECT COUNT(*) from stored_genesis_hashes").Count(&storedGenHashCount)
+
+		if count == 0 {
+			fmt.Println("No stored genesis hashes available!")
+			return nil
+		}
+
+		err = models.DB.RawQuery("UPDATE stored_genesis_hashes SET webnode_count = ? AND status = ?",
+			0, models.StoredGenesisHashUnassigned).All(&[]models.StoredGenesisHash{})
+
+		if err == nil {
+			fmt.Println("Successfully reset all stored genesis hashes!")
+		} else {
+			fmt.Println(err)
+			return err
+		}
+
+		return nil
+	})
 })

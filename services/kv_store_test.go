@@ -97,9 +97,3 @@ func Test_KVStoreBatchDelete(t *testing.T) {
 	oyster_utils.AssertNoError(err, t, "Could complete get key")
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
-
-func Test_KVStoreGenKey(t *testing.T) {
-	v := services.GenKvStoreKey("abc", 1)
-
-	oyster_utils.AssertStringEqual(v, "abc_1", t)
-}

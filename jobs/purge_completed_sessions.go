@@ -5,13 +5,17 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/services"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 func init() {
 }
 
-func PurgeCompletedSessions() {
+func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramPurgeCompletedSessions, start)
 
 	var genesisHashesNotComplete = []models.DataMap{}
 	var allGenesisHashesStruct = []models.DataMap{}

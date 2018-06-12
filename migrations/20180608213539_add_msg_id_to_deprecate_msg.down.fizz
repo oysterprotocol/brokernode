@@ -1,0 +1,3 @@
+drop_column("data_maps", "msg_id")
+drop_column("completed_data_maps", "msg_id")
+drop_column("treasures", "msg_id")
