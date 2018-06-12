@@ -5,12 +5,8 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"github.com/oysterprotocol/brokernode/services"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
-
-func init() {
-}
 
 func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
@@ -133,7 +129,7 @@ func DeleteKvStore(dataMaps []models.DataMap) {
 
 	var keys services.KVKeys
 	for _, dm := range dataMaps {
-		keys = append(keys, services.GenKvStoreKey(dm.GenesisHash, dm.ChunkIdx))
+		keys = append(keys, dm.MsgID)
 	}
 	services.BatchDelete(&keys)
 }
