@@ -17,11 +17,11 @@ func main() {
 	app := actions.App()
 
 	// Setup KV Store
-	db, err := services.InitKVStore()
+	err := services.InitKvStore()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+	defer services.CloseKvStore()
 
 	if err := app.Serve(); err != nil {
 		log.Fatal(err)

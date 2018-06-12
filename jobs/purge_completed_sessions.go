@@ -3,13 +3,10 @@ package jobs
 import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
-
-func init() {
-}
 
 func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
@@ -39,13 +36,17 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 		notComplete[genesisHash.GenesisHash] = true
 	}
 
-	var moveToComplete = []models.DataMap{}
-
 	for _, genesisHash := range allGenesisHashes {
-		if !notComplete[genesisHash] {
+		if _, hasKey := notComplete[genesisHash]; !hasKey {
+			var moveToComplete = []models.DataMap{}
+
+			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 
 			models.DB.Transaction(func(tx *pop.Connection) error {
-				tx.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
 				MoveToComplete(tx, moveToComplete) // Passed in the connection
 
 				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
@@ -74,7 +75,6 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 					}
 					err = models.NewCompletedUpload(session[0])
 					if err != nil {
-						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}
@@ -91,6 +91,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 				return nil
 			})
+			DeleteKvStore(moveToComplete)
 		}
 	}
 }
@@ -118,4 +119,17 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		})
 		index++
 	}
+}
+
+/*DeleteKvStore removes dataMaps from KV-Store.*/
+func DeleteKvStore(dataMaps []models.DataMap) {
+	if !services.IsKvStoreEnabled() {
+		return
+	}
+
+	var keys services.KVKeys
+	for _, dm := range dataMaps {
+		keys = append(keys, dm.MsgID)
+	}
+	services.BatchDelete(&keys)
 }

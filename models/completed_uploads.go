@@ -11,6 +11,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type CompletedUpload struct {
@@ -122,6 +123,7 @@ func NewCompletedUpload(session UploadSession) error {
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
 	}
+	oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
 
 	return err
 }
