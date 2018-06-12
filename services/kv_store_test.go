@@ -8,7 +8,8 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-const guessedMaxBatchSize = 200000 // a very big number that will lead to ErrTxnTooBig.
+// a very big number that will lead to ErrTxnTooBig for write.
+const guessedMaxBatchSize = 200000
 
 func Test_KVStore_Init(t *testing.T) {
 	err := services.InitKvStore()
@@ -58,6 +59,11 @@ func Test_KVStore_MassBatchGet(t *testing.T) {
 	services.InitKvStore()
 	defer services.CloseKvStore()
 
+	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
+
+	kvs, _ = services.BatchGet(getKeys(guessedMaxBatchSize))
+	oyster_utils.AssertTrue(len(*kvs) == guessedMaxBatchSize, t, "")
 }
 
 func Test_KVStoreBatchDelete(t *testing.T) {
@@ -78,9 +84,11 @@ func Test_KVStore_MassBatchDelete(t *testing.T) {
 	services.InitKvStore()
 	defer services.CloseKvStore()
 
-	oyster_utils.AssertNoError(services.BatchSet(getKvPairs(guessedMaxBatchSize)), t, "")
+	err := services.BatchSet(getKvPairs(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
 
-	oyster_utils.AssertNoError(services.BatchDelete(getKeys(guessedMaxBatchSize)), t, "")
+	err = services.BatchDelete(getKeys(guessedMaxBatchSize))
+	oyster_utils.AssertNoError(err, t, "")
 }
 
 func getKvPairs(count int) *services.KVPairs {
