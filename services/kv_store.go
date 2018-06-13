@@ -56,6 +56,11 @@ func CloseKvStore() {
 	badgerDB = nil
 }
 
+/*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/
+func GetBadgerDb() *badger.DB {
+	return badgerDB
+}
+
 /*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
 func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
