@@ -41,7 +41,6 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler)
 	oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
 	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
-	oysterWorker.Register(getHandlerName()))
 	if os.Getenv("OYSTER_PAYS") == "" {
 		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	}
@@ -98,61 +97,70 @@ func doWork(oysterWorker *worker.Simple) {
 		})
 }
 
-func flushOldWebnodesHandler(args worker.Args) {
+func flushOldWebnodesHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-20 * time.Minute) // webnodes older than 20 minutes get deleted
 	FlushOldWebNodes(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(flushOldWebnodesHandler, args)
+	return nil
 }
 
-func processUnassignedChunksHandler(args worker.Args) {
+func processUnassignedChunksHandler(args worker.Args) error {
 	ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler, args)
+	return nil
 }
 
-func purgeCompletedSessionsHandler(args worker.Args) {
+func purgeCompletedSessionsHandler(args worker.Args) error {
 	PurgeCompletedSessions(PrometheusWrapper)
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler, args)
+	return nil
 }
 
-func verifyDataMapsHandler(args worker.Args) {
+func verifyDataMapsHandler(args worker.Args) error {
 	VerifyDataMaps(IotaWrapper, PrometheusWrapper)
 
 	oysterWorkerPerformIn(verifyDataMapsHandler, args)
+	return nil
 }
 
-func updateTimedOutDataMapsHandler(args worker.Args) {
+func updateTimedOutDataMapsHandler(args worker.Args) error {
 	UpdateTimeOutDataMaps(time.Now().Add(-2*time.Minute), PrometheusWrapper)
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler, args)
+	return nil
 }
 
-func processPaidSessionsHandler(args worker.Args) {
+func processPaidSessionsHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-2 * time.Hour) // consider a transaction timed out after 2 hours
 	ProcessPaidSessions(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(processPaidSessionsHandler, args)
+	return nil
 }
 
-func claimUnusedPRLsHandler(args worker.Args) {
+func claimUnusedPRLsHandler(args worker.Args) error {
 	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
 	ClaimUnusedPRLs(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler, args)
+	return nil
 }
 
-func removeUnpaidUploadSessionHandler(args worker.Args) {
+func removeUnpaidUploadSessionHandler(args worker.Args) error {
 	RemoveUnpaidUploadSession(PrometheusWrapper)
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
+	return nil
 }
 
-func badgerDbGcHandler(args worker.Args) {
+func badgerDbGcHandler(args worker.Args) error {
 	BadgerDbGc()
 
 	oysterWorkerPerformIn(badgerDbGcHandler, args)
+	return nil
 }
 
 func oysterWorkerPerformIn(handler worker.Handler, args worker.Args) {

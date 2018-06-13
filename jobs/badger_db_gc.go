@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"github.com/dgraph-io/badger"
 	"github.com/oysterprotocol/brokernode/services"
 )
 
