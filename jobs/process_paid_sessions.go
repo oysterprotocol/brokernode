@@ -341,13 +341,6 @@ func PurgeFinishedTreasure() {
 
 func sendPRL(treasureToBury models.Treasure) {
 
-	gas, err := EthWrapper.GetGasPrice()
-	if err != nil {
-		fmt.Println("Cannot send PRL to treasure address: " + err.Error())
-		// already captured error in upstream function
-		return
-	}
-
 	// TODO:  Need balance of PRL, need to have at least enough ETH for gas for transaction
 	balance := EthWrapper.CheckPRLBalance(services.MainWalletAddress)
 	if balance.Int64() <= 0 || balance.Int64() < treasureToBury.GetPRLAmount().Int64() {
@@ -358,13 +351,12 @@ func sendPRL(treasureToBury models.Treasure) {
 		return
 	}
 
-	// TODO:  What else do I need here?
+	// Initialize OysterCallMsg to transfer PRL from
+	// MainWalletAddress to the treasureToBury.ETHAddr
 	callMsg := services.OysterCallMsg{
 		From:       services.MainWalletAddress,
 		To:         services.StringToAddress(treasureToBury.ETHAddr),
 		Amount:     *treasureToBury.GetPRLAmount(),
-		Gas:        gas.Uint64(),
-		PrivateKey: *services.MainWalletPrivateKey,
 	}
 
 	sendSuccess := EthWrapper.SendPRL(callMsg)

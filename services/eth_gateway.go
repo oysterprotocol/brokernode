@@ -20,15 +20,15 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/getsentry/raven-go"
-	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 
-	"errors"
-	"io/ioutil"
 	"time"
+	"io/ioutil"
+	"github.com/joho/godotenv"
+	"github.com/ethereum/go-ethereum/params"
+	"errors"
 )
 
 type Eth struct {
@@ -456,8 +456,6 @@ func getTransaction(txHash common.Hash) (TransactionWithBlockNumber) {
 func storeTransaction(tx *types.Transaction) {
 	// store in transactions table
 	transactions[tx.Hash()] = TransactionWithBlockNumber{Transaction:tx,BlockNumber:nil}
-	// initialize subscription
-	//initializeSubscription()
 }
 
 // update transaction with block number from transactions table
@@ -476,7 +474,13 @@ func flushTransaction(txHash common.Hash) {
 	// EMPTY!!
 }
 
-// Get number of confirmations for a given transaction hash
+/**
+ * Get number of confirmation status for a given transaction hash
+ *
+ * @return
+ * (0) Failed is the status code of a transaction if execution failed.
+ * (1) Successful is the status code of a transaction if execution succeeded.
+*/
 func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	client, _ := sharedClient()
 	
@@ -496,11 +500,10 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	if isPending {
 		fmt.Println("transaction is pending...")
 	} else {
-		
 		fmt.Println("transaction is no longer pending. confirmed!")
-		
 		// flush to db
 		flushTransaction(txHash)
+		return big.NewInt(1), nil
 	}
 	
 	// get transaction receipt
@@ -509,32 +512,8 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 		fmt.Errorf("unable to get transaction receipt : %v\n", err)
 		return big.NewInt(0), err
 	}
-	hasLogs := len(receipt.Logs)
-	fmt.Printf("tx receipt logs len : %v\n", hasLogs)
-	if hasLogs > 0 {
-		for log := range receipt.Logs {
-			receiptLog := receipt.Logs[log]
-			fmt.Printf("tx receipt : %v", receiptLog.Address)
-			fmt.Printf("tx receipt : %v", receiptLog.BlockNumber)
-		}
-	}
-	// (0) ReceiptStatusFailed is the status code of a transaction if execution failed.
-	// (1) ReceiptStatusSuccessful is the status code of a transaction if execution succeeded.
-	return big.NewInt(int64(1)), nil
-	
-	// select the transaction by hash
-	//txWithBlockNumber := getTransaction(tx.Hash())
-	
-	// web3.eth.blockNumber - web3.eth.getTransaction("0x...").blockNumber
-	//var confirmationCount uint64
-	// tx discovered in block
-	//if txWithBlockNumber.BlockNumber != nil {
-	//	confirmationCount = blockNumber.Uint64() - txWithBlockNumber.BlockNumber.Uint64()
-	//} else {
-	//	confirmationCount = 0
-	//}
-	//
-	//return big.NewInt(0), nil
+	fmt.Printf("receipt status: %v\n", receipt.Status)
+	return big.NewInt(int64(receipt.Status)), nil
 }
 
 // Wait For Confirmation
@@ -785,11 +764,15 @@ func buryPrl(msg OysterCallMsg) bool {
 	if err != nil {
 		fmt.Print("Unable to instantiate OysterPearl")
 	}
-
+	gasPrice, _ := getGasPrice()
 	tx, err := oysterPearl.Bury(&bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
+		Nonce:    auth.Nonce,
+		Value:    &msg.Amount,
+		GasPrice: gasPrice,
+		Context: context.Background(),
 	})
 
 	return tx != nil
@@ -881,7 +864,8 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	return tx != nil
 }
 
-/*
+/**
+	sendPrl
 	When a user uploads a file, we create an upload session on the broker.
 
 	For each "upload session", we generate a new wallet (we do this so we can associate a session to PRLs sent).
@@ -893,48 +877,89 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	however there will be a "main" ETH wallet, which is used to pay gas fees
 */
 func sendPRL(msg OysterCallMsg) bool {
-
-	// shared client
-	client, _ := sharedClient()
-
-	contractAddress := common.HexToAddress(OysterPearlContract)
-
-	// Create an authorized transactor
-	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
-	if auth == nil {
-		fmt.Printf("unable to create a new transactor")
-	}
-	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
-	// current block
-	block, _ := getCurrentBlock()
-	// initialize contract
-	oysterPearl, err := NewOysterPearl(contractAddress, client)
-	if err != nil {
-		fmt.Print("Unable to instantiate OysterPearl")
-	}
-	name, err := oysterPearl.Name(nil)
-	fmt.Printf("OysterPearl :%v", name)
-
-	// transfer
-	tx, err := oysterPearl.Transfer(&bind.TransactOpts{
-		From:     auth.From,
-		Signer:   auth.Signer,
-		GasLimit: block.GasLimit(),
-		Value:    nil,
-	}, msg.To, &msg.Amount)
 	
+	client, _ := sharedClient()
+	// initialize the context
+	ctx, cancel := createContext()
+	defer cancel()
+	
+	// generate nonce
+	nonce, _ := client.NonceAt(ctx, msg.From, nil)
+	
+	// default gasLimit on oysterby 4294967295
+	gasPrice, _ := getGasPrice()
+	currentBlock, _ := getCurrentBlock()
+	gasLimit := currentBlock.GasLimit()
+	
+	// estimation
+	estimate, failedEstimate := getEstimatedGasPrice(msg.To, msg.From, gasLimit, *gasPrice, msg.Amount)
+	if failedEstimate != nil {
+		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
+		return false
+	}
+	estimatedGas := new(big.Int).SetUint64(estimate)
+	fmt.Printf("estimatedGas : %v\n", estimatedGas)
+	
+	balance := checkPRLBalance(msg.From)
+	fmt.Printf("balance : %v\n", balance)
+	
+	// amount is greater than balance, return error
+	if msg.Amount.Uint64() > balance.Uint64() {
+		fmt.Printf("balance too low to proceed")
+		return false
+	}
+	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
+	// create new transaction
+	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, gasLimit, gasPrice, nil)
+	
+	// signer
+	signer := types.NewEIP155Signer(chainId)
+	
+	// sign transaction
+	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
 	if err != nil {
 		raven.CaptureError(err, nil)
+		//return types.Transactions{}, err
 		return false
 	}
-	// may be able to use waitForTransfer since we subscribe to the contract
-	// wait for confirmation before sending success/fail bool
-	confirmed := waitForConfirmation(tx.Hash())
-	if confirmed == 0 {
+	
+	// send transaction
+	err = client.SendTransaction(ctx, signedTx)
+	if err != nil {
+		// given we have a "known transaction" error we need to respond
+		fmt.Printf("error sending transaction : %v", err)
+		raven.CaptureError(err, nil)
+		//return types.Transactions{}, err
 		return false
-	} else {
-		return true
 	}
+	
+	// pull signed transaction(s)
+	signedTxs := types.Transactions{signedTx}
+	var confirmTx types.Transaction
+	for tx := range signedTxs {
+		transaction := signedTxs[tx]
+		
+		// store in broker transaction pool
+		storeTransaction(transaction)
+		printTx(transaction)
+		
+		confirmTx = *transaction
+	}
+	
+	var status = false
+	
+	// confirm status of transaction
+	txStatus := waitForConfirmation(confirmTx.Hash())
+	
+	if txStatus == 0 {
+		fmt.Printf("transaction failure")
+		status = false
+	} else if txStatus == 1 {
+		fmt.Printf("confirmation completed")
+		status = true
+	}
+	
+	return status
 }
 
 // utility to access the test wallet keystore

@@ -18,6 +18,9 @@ import (
 	"testing"
 	"time"
 	"reflect"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"io/ioutil"
+	"os"
 )
 
 //
@@ -38,15 +41,25 @@ var oysterbyNetwork = "ws://54.86.134.172:8547"
 // Ethereum Addresses
 //
 var ethCoinbase  = common.HexToAddress("0x919410005b53d6497517b9ad58c23c6a30207747")
-var ethAddress01 = common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
-var ethAddress02 = common.HexToAddress("0x6abf0cdedd33e2bd6b574e0d81cdcaca817148c8")
-
 //
 // PRL Addresses
 //
 var prlBankAddress = common.HexToAddress("0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f")
-var prlAddress01 = common.HexToAddress("0x73da066d94fc41f11c2672ed9ecd39127da30976")
-var prlAddress02 = common.HexToAddress("0x74ad69b41e71e311304564611434ddd59ee5d1f8")
+
+var ethAccounts = map[string]interface{}{
+	"ethAddress01": "0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091",
+	"ethAddress02": "0x6abf0cdedd33e2bd6b574e0d81cdcaca817148c8",
+}
+
+var prlAccounts = map[string]interface{}{
+	"prlAddress01": "0x73da066d94fc41f11c2672ed9ecd39127da30976",
+	"prlAddress02": "0x73da066d94fc41f11c2672ed9ecd39127da30976",
+}
+
+var ethAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["ethAddress01"]))
+var ethAddress02 = common.HexToAddress(fmt.Sprint(ethAccounts["ethAddress02"]))
+var prlAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress01"]))
+var prlAddress02 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress02"]))
 
 // Oysterby PRL Contract
 var oysterContract = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
@@ -61,7 +74,12 @@ var lastTransaction = types.Transaction{}
 //
 // Utility
 //
-
+// ether to wei
+func toWei(value int64) (uint64) {
+	transferValue := big.NewInt(value)
+	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
+	return transferValueInWei.Uint64()
+}
 // print transaction
 func printTx(tx *types.Transaction) {
 	fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
@@ -184,14 +202,15 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	services.RunOnTestNet()
+	t.Skip(nil)
+	//services.RunOnTestNet()
 	// transfer 1/5 of ether
-	transferValue := big.NewInt(2)
-	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
+	transferValue := big.NewInt(10)
+	//transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
+	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
 	if err != nil {
-		t.Logf("failed to send ether to %v ether to %v\n", transferValueInWei, ethAddress02.Hex())
+		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
 	}
 	for tx := range txs {
@@ -199,18 +218,26 @@ func Test_sendEth(t *testing.T) {
 		// Store For Next Test
 		lastTransaction = *transaction
 		printTx(transaction)
+		
+		// wait for confirmation
+		confirmed := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash())
+		if confirmed == 1 {
+			t.Logf("confirmed ether was sent to : %v", ethAddress02.Hex())
+		} else if confirmed == 0 {
+			t.Logf("failed to confirm sending ether")
+		}
 	}
 }
 
 // ensure the transaction is stored in the transactions table
 // it is accessed with the lastTransactionHash from the previous test
 func Test_ensureTransactionStoredInPool(t *testing.T) {
+	t.Skip(nil)
 	// get item by txHash and ensure its in the table
 	txWithBlockNumber := services.EthWrapper.GetTransaction(lastTransaction.Hash())
 	if txWithBlockNumber.Transaction != nil {
 		// compare transaction hash
-		match := reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), lastTransaction.Hash())
-		if match {
+		if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), lastTransaction.Hash()) {
 			t.Log("transaction is stored on the transactions table")
 		} else {
 			t.Fatal("transaction should be stored in the transaction table, post sendEth")
@@ -221,8 +248,8 @@ func Test_ensureTransactionStoredInPool(t *testing.T) {
 
 // ensure confirmation is made with last transaction hash from sendEth
 func Test_confirmTransactionStatus(t *testing.T) {
-	
-	services.RunOnTestNet()
+	t.Skip(nil)
+	//services.RunOnTestNet()
 	
 	txStatus := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash())
 	if txStatus == 0 {
@@ -233,17 +260,6 @@ func Test_confirmTransactionStatus(t *testing.T) {
 		bal := services.EthWrapper.CheckETHBalance(ethAddress02)
 		t.Logf("balance updated : %v", bal)
 	}
-}
-
-// send ether to an address and wait for transaction confirmation returning the new balance
-func Test_sendEthAndWaitForTransfer(t *testing.T) {
-	t.Skip(nil)
-	// ether transaction has already occurred in Test_sendEth to ethAddress02
-	newBal, waitErr := services.EthWrapper.WaitForTransfer(ethAddress02, "eth")
-	if waitErr != nil {
-		t.Fatalf("wait for transfer error : %v", newBal)
-	}
-	t.Logf("new balance post confirmation : %v", newBal)
 }
 
 //
@@ -282,6 +298,88 @@ func Test_deployOysterPearl(t *testing.T) {
 	sim.Commit()
 }
 
+// simulated blockchain to test bury,
+// claim with a contract with buried address
+func Test_simOysterPearlBury(t *testing.T) {
+	t.Skip(nil)
+	
+	// generate a new random account and a funded simulator
+	key, _ := crypto.GenerateKey()
+	auth := bind.NewKeyedTransactor(key)
+	fundedSupply := toWei(900)
+	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth.From: {Balance: big.NewInt(0).SetUint64(fundedSupply)}})
+	
+	sim.Commit()
+	
+	// initialize the context
+	deadline := time.Now().Add(3000 * time.Millisecond)
+	ctx, cancel := context.WithDeadline(context.Background(), deadline)
+	defer cancel()
+	//
+	// deploy a token contract on the simulated blockchain
+	//
+	_, _, token, err := services.DeployOysterPearl(&bind.TransactOpts{
+		Nonce:    big.NewInt(0),
+		From:     auth.From,
+		GasLimit: params.GenesisGasLimit,
+		GasPrice: big.NewInt(0).SetUint64(params.TxGasContractCreation),
+		Context:  ctx,
+		Signer:   auth.Signer,
+	}, sim)
+	if err != nil {
+		log.Fatalf("failed to deploy oyster token contract: %v", err)
+	}
+	t.Logf("token :%v", token)
+	
+	// commit all pending transactions in the simulator
+	sim.Commit()
+	
+	// claim
+	gasPrice, _ := sim.SuggestGasPrice(ctx)
+	claimKey, _ := crypto.GenerateKey()
+	claimAuth := bind.NewKeyedTransactor(claimKey)
+	payoutAddress := claimAuth.From
+	fee := auth.From
+	tx, err := token.Claim(&bind.TransactOpts{
+		Nonce: big.NewInt(0),
+		From: claimAuth.From,
+		GasLimit: params.GenesisGasLimit,
+		GasPrice: gasPrice,
+		Context:  ctx,
+		Signer: claimAuth.Signer,
+	}, payoutAddress, fee)
+	t.Logf("claim transaction submitted : %v", tx.Hash())
+	
+	// send
+	sendErr := sim.SendTransaction(ctx, tx)
+	if sendErr != nil {
+		t.Logf("failed to send transaction for claim : %v", sendErr)
+	}
+	
+	sim.Commit()
+	
+	// create ethereum address and key
+	buryKey, _ := crypto.GenerateKey()
+	buryAuth := bind.NewKeyedTransactor(buryKey)
+	
+	// bury
+	buryTx, err := token.Bury(&bind.TransactOpts{
+		Nonce: big.NewInt(0),
+		From: buryAuth.From,
+		GasLimit: params.GenesisGasLimit,
+		GasPrice: gasPrice,
+		Context:  ctx,
+		Signer:buryAuth.Signer,
+	})
+	
+	// send
+	buryErr := sim.SendTransaction(ctx, buryTx)
+	if buryErr != nil {
+		t.Logf("failed to send transaction for bury : %v", buryErr)
+	}
+	
+}
+
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
@@ -299,6 +397,7 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 		t.Fatalf("unable to access contract name : %v", err)
 	}
 	t.Logf("oyster pearl contract name :%v", name)
+	
 }
 
 // testing token balanceOf from OysterPearl Contract account
@@ -351,44 +450,57 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 // solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
 	t.Skip(nil)
-
+	
+	prlValue := big.NewInt(0).SetUint64(toWei(5))
+	sent := services.EthWrapper.SendPRL(services.OysterCallMsg{
+		Amount: *prlValue,
+	})
+	
+	if sent {
+		fmt.Printf("sent the transaction to the ")
+	}
+	
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
-	//passPhrase := "oysterby4000"
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
 
 	if err != nil {
 		t.Fatalf("unable to access contract instance at : %v", err)
 	}
-
-	t.Logf("oysterPearl : %v", oysterPearl)
 	
-	walletAddress := services.MainWalletAddress
+	// access prl wallet
+	prlWallet := getWallet()
+	walletAddress := prlWallet.Address
 
 	t.Logf("using wallet key store from: %v", walletAddress)
 
 	// Create an authorized transactor and spend 1 PRL
-	auth := bind.NewKeyedTransactor(services.MainWalletPrivateKey)
+	auth := bind.NewKeyedTransactor(prlWallet.PrivateKey)
 	if err != nil {
 		t.Fatalf("unable to create a new transactor : %v", err)
 	}
 
 	t.Logf("authorized transactor : %v", auth.From.Hex())
-
+	
 	block, _ := services.EthWrapper.GetCurrentBlock()
-
+	gasPrice, err := backend.SuggestGasPrice(context.Background())
+	
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
+		GasPrice: gasPrice,
+		Value: prlValue,
+		Nonce: auth.Nonce,
 	}
-	tx, err := oysterPearl.Transfer(&opts, prlAddress02, big.NewInt(1))
+	
+	tx, err := oysterPearl.Transfer(&opts,prlAddress02, prlValue)
 	if err != nil {
 		t.Fatalf("transfer failed : %v", err)
 	}
 
-	t.Logf("new transaction posted: %v", tx.Hash().Hex())
-
+	t.Logf("transfer pending: 0x%x\n", tx.Hash())
+	
 	printTx(tx)
 
 }
@@ -401,26 +513,27 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 func Test_buryPRL(t *testing.T) {
 	t.Skip(nil)
 	// PRL based addresses
-	from := prlAddress01
-	to := prlAddress02
+	
+	prlWallet := getPRLWallet()
+	prlValue := big.NewInt(5)
 
 	// Gas Price
 	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
 
-	var msg = services.OysterCallMsg{
-		From:     from,
-		To:       to,
-		Amount:   *onePrl,
+	buryMsg := services.OysterCallMsg {
+		From:     prlWallet.Address,
+		To:       prlAddress02,
+		Amount:   *prlValue,
 		Gas:      block.GasLimit(),
 		GasPrice: *gasPrice,
-		// this unit needs conversion
-		TotalWei: *onePrl.Mul(onePrl, big.NewInt(18)),
-		Data:     nil, // setup data
+		TotalWei: *big.NewInt(0).SetUint64(toWei(prlValue.Int64())),
+		PrivateKey: *prlWallet.PrivateKey,
+		Data:     nil,
 	}
 
 	// Bury PRL
-	var buried = services.EthWrapper.BuryPrl(msg)
+	var buried = services.EthWrapper.BuryPrl(buryMsg)
 	if buried {
 		// successful bury attempt
 		t.Log("Buried the PRLs successfully")
@@ -430,30 +543,32 @@ func Test_buryPRL(t *testing.T) {
 	}
 }
 
-// send prl
+// send prl from main wallet address to another address
 func Test_sendPRL(t *testing.T) {
-	t.Skip(nil)
-
-	gasPrice, _ := services.EthWrapper.GetGasPrice()
-	block, _ := services.EthWrapper.GetCurrentBlock()
-
-	var msg = services.OysterCallMsg{
-		From:     prlBankAddress,
-		To:       prlAddress01,
-		Amount:   *big.NewInt(100),
-		Gas:      block.GasLimit(),
-		GasPrice: *gasPrice,
-		//TotalWei: *big.NewInt(100).Mul(big.NewInt(100), big.NewInt(18)),
-		Data: nil,
+	//t.Skip(nil)
+	
+	// same as the prl bank address
+	prlWallet := getPRLWallet()
+	prlValue := big.NewInt(5)
+	
+	// compose message
+	var sendMsg = services.OysterCallMsg{
+		From:     prlWallet.Address,
+		To:       prlAddress02,
+		Amount:   *prlValue,
+		TotalWei: *big.NewInt(0).SetUint64(toWei(prlValue.Int64())),
+		PrivateKey: *prlWallet.PrivateKey,
 	}
-	// Send PRL
-	var sent = services.EthWrapper.SendPRL(msg)
-	if sent {
+	
+	// Send PRL is a blocking call which will send the new transaction to the network
+	// then wait for the confirmation to return true or false
+	var confirmed = services.EthWrapper.SendPRL(sendMsg)
+	if confirmed {
 		// successful prl send
-		t.Logf("Sent PRL to :%v", msg.To.Hex())
+		t.Logf("Sent PRL to :%v", sendMsg.To.Hex())
 	} else {
 		// failed prl send
-		t.Fatalf("Failed to send PRL to:%v", msg.To.Hex())
+		t.Fatalf("Failed to send PRL to:%v", sendMsg.To.Hex())
 	}
 }
 
@@ -502,23 +617,54 @@ func Test_claimUnusedPRL(t *testing.T) {
 
 }
 
-// testing token balanceOf from OysterPearl Contract account
-// basic test which validates the balanceOf a PRL address
+// testing balance of the prl account for a given address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
-	t.Skip(nil)
-	// test ethClient
-	var backend, _ = ethclient.Dial(oysterbyNetwork)
-	// instance of the oyster pearl contract
-	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
-	if err != nil {
-		t.Fatalf("unable to access contract instance at :%v", err)
-	}
-
-	// oysterby balances
-	bankBalance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlBankAddress)
-	//prl01Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress01)
-	//prl02Balance, _ := oysterPearl.BalanceOf(&bind.CallOpts{Pending: false}, prlAddress02)
-
+	//t.Skip(nil)
+	
+	// pearl balances
+	bankBalance := services.EthWrapper.CheckPRLBalance(prlBankAddress)
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
+	
+	prl00Balance := services.EthWrapper.CheckPRLBalance(common.HexToAddress("0x0000000000000000000000000000000000000000"))
+	t.Logf("oyster pearl 00   address balance :%v", prl00Balance)
+	
+	prl01Balance := services.EthWrapper.CheckPRLBalance(prlAddress01)
+	prl02Balance := services.EthWrapper.CheckPRLBalance(prlAddress02)
 
+	t.Logf("oyster pearl 01   address balance :%v", prl01Balance)
+	t.Logf("oyster pearl 02   address balance :%v", prl02Balance)
+}
+
+// utility to access the return the PRL wallet keystore
+func getPRLWallet() *keystore.Key {
+	
+	// load local test wallet key, may need to pull ahead vs on-demand
+	walletKeyJSON, err := ioutil.ReadFile("testdata/prl.prv")
+	
+	if err != nil {
+		fmt.Printf("error loading the walletKey : %v", err)
+	}
+	// decrypt wallet
+	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
+	if err != nil {
+		fmt.Printf("walletKey err : %v", err)
+	}
+	return walletKey
+}
+
+// utility to access the return the PRL wallet keystore
+func getWallet() *keystore.Key {
+	
+	// load local test wallet key, may need to pull ahead vs on-demand
+	walletKeyJSON, err := ioutil.ReadFile("testdata/key.prv")
+	
+	if err != nil {
+		fmt.Printf("error loading the walletKey : %v", err)
+	}
+	// decrypt wallet
+	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
+	if err != nil {
+		fmt.Printf("walletKey err : %v", err)
+	}
+	return walletKey
 }
