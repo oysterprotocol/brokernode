@@ -6,7 +6,7 @@ services:
     ports:
     - "9090:9090"
     volumes:
-     - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+     - "./prometheus.yml:/var/lib/prometheus/prometheus.yml"
   app:
     build: "."
     restart: "always"
