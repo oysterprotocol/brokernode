@@ -28,7 +28,7 @@ var (
 func init() {
 	enabled, err := strconv.ParseBool(os.Getenv("JOB_RUNNER"))
 	isEnvDisabled := err == nil && !enabled
-	if isEnvDisabled || oyster_utils.IsUnitTest() {
+	if isEnvDisabled || oyster_utils.IsInUnitTest() {
 		return
 	}
 
