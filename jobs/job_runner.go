@@ -4,7 +4,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/gobuffalo/buffalo/worker"
