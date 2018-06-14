@@ -193,6 +193,9 @@ var _ = grift.Namespace("db", func() {
 		models.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
 		models.DB.RawQuery("DELETE from data_maps").All(&[]models.DataMap{})
 
+		// Clean up KvStore
+		services.RemoveAllKvStoreData()
+		services.InitKvStore()
 		return nil
 	})
 

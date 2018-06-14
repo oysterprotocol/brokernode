@@ -56,6 +56,19 @@ func CloseKvStore() {
 	badgerDB = nil
 }
 
+/*RemoveAllKvStoreData removes all the data. Caller should call InitKvStore() again to create a new one.*/
+func RemoveAllKvStoreData() {
+	CloseKvStore()
+
+	var err error
+	if os.Getenv("GO_ENV") == "test" {
+		err = os.RemoveAll(badgerDirTest)
+	} else {
+		err = os.RemoveAll(badgerDir)
+	}
+	oyster_utils.LogIfError(err, nil)
+}
+
 /*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/
 func GetBadgerDb() *badger.DB {
 	return badgerDB

@@ -31,15 +31,23 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			continue
 		}
 
+		var keys services.KVKeys
 		err := models.DB.Transaction(func(tx *pop.Connection) error {
-			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&[]models.DataMap{}); err != nil {
+			dataMaps := []models.DataMap{}
+			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&dataMaps); err != nil {
 				return err
 			}
 			if err := tx.RawQuery("DELETE from upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{}); err != nil {
 				return err
 			}
+			for _, dm := range dataMaps {
+				keys = append(keys, dm.MsgID)
+			}
 			return nil
 		})
 		oyster_utils.LogIfError(err, nil)
+		if err == nil {
+			services.BatchDelete(&keys)
+		}
 	}
 }
