@@ -50,12 +50,17 @@ func init() {
 	if os.Getenv("OYSTER_PAYS") == "" {
 		isOysterPay = "disabled"
 	}
+	displayName := "Unknown"
+	if v := os.Getenv("DISPLAY_NAME"); v != "" {
+		displayName = v
+	}
+
 	logErrorTags = map[string]string{
 		"mode":        os.Getenv("MODE"),
 		"hostIp":      os.Getenv("HOST_IP"),
 		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
 		"osyterPay":   isOysterPay,
-		"displayName": os.Getenv("DISPLAY_NAME"),
+		"displayName": displayName,
 	}
 }
 
