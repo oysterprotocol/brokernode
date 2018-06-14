@@ -8,6 +8,12 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
+func Test_IsUnitTestEnabled(t *testing.T) {
+	v := oyster_utils.IsInUnitTest()
+
+	oyster_utils.AssertTrue(v, t, "")
+}
+
 func Test_IsRavenEnabled(t *testing.T) {
 	v := oyster_utils.IsRavenEnabled()
 

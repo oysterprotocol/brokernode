@@ -4,7 +4,6 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"time"
 
 	"github.com/gobuffalo/buffalo/worker"
@@ -26,7 +25,7 @@ var (
 )
 
 func init() {
-	if enabled, err := strconv.ParseBool(os.Getenv("JOB_RUNNER")); err == nil && !enabled {
+	if oyster_utils.IsInUnitTest() {
 		return
 	}
 

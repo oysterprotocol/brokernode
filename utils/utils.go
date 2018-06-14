@@ -44,15 +44,7 @@ var isRavenEnabled bool = true
 var logErrorTags map[string]string
 
 func init() {
-	// Check whether current is in unit test mode.
-	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
-	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
-	for _, v := range os.Args {
-		if strings.HasPrefix(v, "-test.") {
-			isRavenEnabled = false
-			break
-		}
-	}
+	isRavenEnabled = !IsInUnitTest()
 
 	isOysterPay := "enabled"
 	if os.Getenv("OYSTER_PAYS") == "" {
@@ -70,6 +62,19 @@ func init() {
 		"osyterPay":   isOysterPay,
 		"displayName": displayName,
 	}
+}
+
+/*IsInUnitTest returns true if it is running in test mode.*/
+func IsInUnitTest() bool {
+	// Check whether current is in unit test mode.
+	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
+	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
+	for _, v := range os.Args {
+		if strings.HasPrefix(v, "-test.") {
+			return true
+		}
+	}
+	return false
 }
 
 /*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
