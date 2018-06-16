@@ -12,6 +12,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -109,7 +110,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		ID: t.ID,
 		Pow: GenesisHashPow{
 			Address:  dataMap.Address,
-			Message:  dataMap.Message,
+			Message:  services.GetMessageFromDataMap(dataMap),
 			BranchTx: dataMap.BranchTx,
 			TrunkTx:  dataMap.TrunkTx,
 		},
@@ -150,7 +151,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
-	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
+	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
 	if !validMessage {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
