@@ -31,7 +31,6 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			continue
 		}
 
-		var keys services.KVKeys
 		dataMaps := []models.DataMap{}
 		err := models.DB.Transaction(func(tx *pop.Connection) error {
 			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&dataMaps); err != nil {

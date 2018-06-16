@@ -196,7 +196,7 @@ func BatchDelete(ks *KVKeys) error {
 }
 
 /*DeleteMsgDatas deletes the data referred by dataMaps. */
-func DeleteMsgDatas(dataMaps []DataMap) {
+func DeleteMsgDatas(dataMaps []models.DataMap) {
 	if !IsKvStoreEnabled() {
 		return
 	}
