@@ -24,7 +24,7 @@ func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
 	// Currently disable it.
-	isKvStoreEnable = false
+	isKvStoreEnable = true
 }
 
 /*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
