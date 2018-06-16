@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -192,4 +193,17 @@ func BatchDelete(ks *KVKeys) error {
 
 	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 	return err
+}
+
+/*DeleteMsgDatas deletes the data referred by dataMaps. */
+func DeleteMsgDatas(dataMaps []DataMap) {
+	if !IsKvStoreEnabled() {
+		return
+	}
+
+	var keys KVKeys
+	for _, dm := range dataMaps {
+		keys = append(keys, dm.MsgID)
+	}
+	BatchDelete(&keys)
 }
