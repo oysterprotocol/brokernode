@@ -196,6 +196,14 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("delete_genesis_hashes", "Delete all stored genesis hashes")
+	grift.Add("delete_genesis_hashes", func(c *grift.Context) error {
+
+		models.DB.RawQuery("DELETE from stored_genesis_hashes").All(&[]models.StoredGenesisHash{})
+
+		return nil
+	})
+
 	grift.Desc("reset_genesis_hashes", "Resets all stored genesis hashes to webnode count 0 and status unassigned")
 	grift.Add("reset_genesis_hashes", func(c *grift.Context) error {
 
@@ -218,6 +226,47 @@ var _ = grift.Namespace("db", func() {
 			return err
 		}
 
+		return nil
+	})
+
+	grift.Desc("add_brokernodes", "add some brokernode addresses to the db")
+	grift.Add("add_brokernodes", func(c *grift.Context) error {
+
+		qaBrokerIPs := []string{
+			"52.14.218.135", "18.217.133.146",
+		}
+
+		hostIP := os.Getenv("HOST_IP")
+
+		for _, qaBrokerIP := range qaBrokerIPs {
+			if qaBrokerIP != hostIP {
+				vErr, err := models.DB.ValidateAndCreate(&models.Brokernode{
+					Address: "http://" + qaBrokerIP + ":3000",
+				})
+				if err != nil || len(vErr.Errors) != 0 {
+					fmt.Println(err)
+					fmt.Println(vErr)
+					return err
+				}
+			}
+		}
+
+		fmt.Println("Successfully added brokernodes to database!")
+
+		return nil
+	})
+
+	grift.Desc("delete_brokernodes", "delete all brokernode addresses from the db")
+	grift.Add("delete_brokernodes", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from brokernodes").All(&[]models.Brokernode{})
+
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		fmt.Println("Successfully deleted brokernodes from database!")
 		return nil
 	})
 })
