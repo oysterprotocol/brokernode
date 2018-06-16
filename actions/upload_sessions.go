@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"os"
+
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
@@ -11,13 +14,14 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math/big"
 
-	"github.com/pkg/errors"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type UploadSessionResource struct {
@@ -34,6 +38,7 @@ type uploadSessionCreateReq struct {
 	StorageLengthInYears int            `json:"storageLengthInYears"`
 	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
 	Invoice              models.Invoice `json:"invoice"`
+	Version              uint32         `json:"version"`
 }
 
 type uploadSessionCreateRes struct {
@@ -54,7 +59,7 @@ type uploadSessionCreateBetaRes struct {
 type chunkReq struct {
 	Idx  int    `json:"idx"`
 	Data string `json:"data"`
-	Hash string `json:"hash"`
+	Hash string `json:"hash"` // This is GenesisHash.
 }
 
 type UploadSessionUpdateReq struct {
@@ -66,15 +71,30 @@ type paymentStatusCreateRes struct {
 	PaymentStatus string `json:"paymentStatus"`
 }
 
-const (
-	SQL_BATCH_SIZE = 10
-)
+const SQL_BATCH_SIZE = 10
+
+var NumChunksLimit = -1 //unlimited
+
+func init() {
+	if v, err := strconv.Atoi(os.Getenv("NUM_CHUNKS_LIMIT")); err == nil {
+		NumChunksLimit = v
+	}
+}
 
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreate, start)
 
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
+
+	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
+		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
 
 	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
 
@@ -87,6 +107,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		StorageLengthInYears: req.StorageLengthInYears,
 		ETHAddrAlpha:         nulls.NewString(alphaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
+		Version:              req.Version,
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_alpha_session", analytics.NewProperties().
@@ -184,14 +205,16 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		BetaSessionID: betaSessionID,
 		Invoice:       invoice,
 	}
-	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
+	//go waitForTransferAndNotifyBeta(
+	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
 
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResource) Update(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceUpdate, start)
 
 	req := UploadSessionUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
@@ -224,7 +247,6 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	// Update dMaps to have chunks async
 	go func() {
-
 		defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: async_datamap_updates", analytics.NewProperties().
 			Set("id", uploadSession.ID).
 			Set("genesis_hash", uploadSession.GenesisHash).
@@ -251,6 +273,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			maxChunkIdx = math.Max(maxChunkIdx, float64(chunkIdx))
 		}
 
+		// Query data_maps to get models.DataMap based on require chunk.
 		var dms []models.DataMap
 		//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
 		err := models.DB.RawQuery(
@@ -262,6 +285,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			raven.CaptureError(err, nil)
 		}
 
+		// Convert []DataMaps to map[key]DatMap
 		dmsMap := make(map[string]models.DataMap)
 		for _, dm := range dms {
 			key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
@@ -271,7 +295,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 		}
 
+		// Create Update operation for data_maps table.
 		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
 		var updatedDms []string
 		for key, chunk := range chunksMap {
 			dm, hasKey := dmsMap[key]
@@ -280,7 +306,15 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			}
 
 			if chunk.Hash == dm.GenesisHash {
-				dm.Message = chunk.Data
+				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
+				if err != nil {
+					panic(err.Error())
+				}
+
+				msg := string(message)
+				dm.Message = msg // TODO: Deprecate this.
+				batchSetKvMap[dm.MsgID] = msg
+
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
@@ -293,6 +327,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 		numOfBatchRequest := int(math.Ceil(float64(len(updatedDms)) / float64(SQL_BATCH_SIZE)))
 
+		// Batch Update data_maps table.
 		remainder := len(updatedDms)
 		for i := 0; i < numOfBatchRequest; i++ {
 			lower := i * SQL_BATCH_SIZE
@@ -319,6 +354,11 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				break
 			}
 		}
+
+		// Save Message field into KVStore
+		if services.IsKvStoreEnabled() {
+			services.BatchSet(&batchSetKvMap)
+		}
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
@@ -326,6 +366,9 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 // CreateBeta creates an upload session on the beta broker.
 func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreateBeta, start)
+
 	req := uploadSessionCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -344,6 +387,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		ETHAddrAlpha:         req.Invoice.EthAddress,
 		ETHAddrBeta:          nulls.NewString(betaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
+		Version:              req.Version,
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: create_beta_session", analytics.NewProperties().
@@ -393,13 +437,16 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Invoice:             u.GetInvoice(),
 		BetaTreasureIndexes: betaTreasureIndexes,
 	}
-	go waitForTransferAndNotifyBeta(
-		res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
+	//go waitForTransferAndNotifyBeta(
+	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
 	return c.Render(200, r.JSON(res))
 }
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceGetPaymentStatus, start)
+
 	session := models.UploadSession{}
 	err := models.DB.Find(&session, c.Param("id"))
 
@@ -448,7 +495,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 	}
 
 	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := EthWrapper.WaitForTransfer(transferAddr,"prl")
+	balance, err := EthWrapper.WaitForTransfer(transferAddr, "prl")
 
 	paymentStatus := models.PaymentStatusConfirmed
 	if err != nil {
@@ -461,7 +508,9 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 		return
 	}
 
-	session.PaymentStatus = paymentStatus
+	if session.PaymentStatus != models.PaymentStatusConfirmed {
+		session.PaymentStatus = paymentStatus
+	}
 	if err := models.DB.Save(&session); err != nil {
 		raven.CaptureError(err, nil)
 		return

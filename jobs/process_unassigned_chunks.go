@@ -2,22 +2,24 @@ package jobs
 
 import (
 	"fmt"
-	"math"
-	"os"
-	"time"
-
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math"
+	"os"
+	"time"
 )
 
-func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
+const PercentOfChunksToSkipVerification = 45
 
-	sessions, err := models.GetSessionsByAge()
-	oyster_utils.LogIfError(err)
+func ProcessUnassignedChunks(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessUnassignedChunks, start)
+
+	sessions, _ := models.GetSessionsByAge()
 
 	if len(sessions) > 0 {
 		GetSessionUnassignedChunks(sessions, iotaWrapper)
@@ -26,16 +28,16 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
 
 func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper services.IotaService) {
 	for _, session := range sessions {
-		channels, err := models.GetReadyChannels()
-		oyster_utils.LogIfError(err)
+		channels, _ := models.GetReadyChannels()
 
 		if len(channels) <= 0 {
 			break
 		}
 
-		chunks, err := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
+		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 
 		if len(chunks) > 0 {
+
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: processing_chunks_for_session", analytics.NewProperties().
@@ -90,8 +92,15 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		}
 
 		chunks, treasureChunksNeedAttaching := HandleTreasureChunks(chunksIn[i:end], session, iotaWrapper)
-		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(chunks)
-		oyster_utils.LogIfError(err)
+
+		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
+
+		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
+		oyster_utils.LogIfError(err, map[string]interface{}{
+			"forLoopIndex":   i,
+			"totalLoopCount": len(chunksIn),
+			"numOfChunk":     len(restOfChunks),
+		})
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
@@ -105,7 +114,8 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 			}
 		}
 
-		nonTreasureChunksToSend := append(filteredChunks.NotAttached, filteredChunks.DoesNotMatchTangle...)
+		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
 
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
 
@@ -115,6 +125,65 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
 	}
+}
+
+func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.UploadSession) ([]models.DataMap, []models.DataMap) {
+
+	if len(chunks) == 0 {
+		return []models.DataMap{}, []models.DataMap{}
+	}
+
+	numChunks := session.NumChunks
+
+	var lenOfChunksToSkipVerifying int
+	lenOfChunksToSkipVerifying = int(float64(numChunks) * float64(PercentOfChunksToSkipVerification) / float64(100))
+
+	var lenOfChunksToVerify int
+	lenOfChunksToVerify = numChunks - lenOfChunksToSkipVerifying
+
+	var skipVerifyMinIdx int
+	var skipVerifyMaxIdx int
+	var verifyMinIdx int
+	var verifyMaxIdx int
+
+	if session.Type == models.SessionTypeAlpha {
+		skipVerifyMinIdx = 0
+		skipVerifyMaxIdx = lenOfChunksToSkipVerifying - 1
+		verifyMinIdx = lenOfChunksToSkipVerifying
+		verifyMaxIdx = numChunks - 1
+	} else {
+		skipVerifyMinIdx = numChunks - lenOfChunksToSkipVerifying
+		skipVerifyMaxIdx = numChunks - 1
+		verifyMinIdx = 0
+		verifyMaxIdx = lenOfChunksToVerify - 1
+	}
+
+	if skipVerifyMinIdx == skipVerifyMaxIdx {
+		// very small file, don't bother with filtering
+		return []models.DataMap{}, chunks
+	}
+
+	// first check that any are in the first third before we bother with this
+	firstIndex := chunks[0].ChunkIdx
+	lastIndex := chunks[len(chunks)-1].ChunkIdx
+
+	if firstIndex >= verifyMinIdx && firstIndex <= verifyMaxIdx &&
+		lastIndex >= verifyMinIdx && lastIndex <= verifyMaxIdx {
+		return []models.DataMap{}, chunks
+	}
+
+	skipVerifyOfChunks := []models.DataMap{}
+	restOfChunks := []models.DataMap{}
+
+	for i := 0; i < len(chunks); i++ {
+		if chunks[i].ChunkIdx >= skipVerifyMinIdx && chunks[i].ChunkIdx <= skipVerifyMaxIdx {
+			skipVerifyOfChunks = append(skipVerifyOfChunks, chunks[i])
+		} else {
+			restOfChunks = append(restOfChunks, chunks[i])
+		}
+	}
+
+	return skipVerifyOfChunks, restOfChunks
 }
 
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
@@ -240,14 +309,14 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 
 		if len(chunks[i:end]) > 0 {
 
-			addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
+			//addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: sending_chunks_to_channel", analytics.NewProperties().
 				Set("genesis_hash", chunks[i:end][0].GenesisHash).
 				Set("num_chunks", len(chunks[i:end])).
-				Set("channel_id", channels[j].ChannelID).
-				Set("addresses", addresses).
-				Set("chunk_indexes", indexes))
+				Set("channel_id", channels[j].ChannelID))
+			//Set("addresses", addresses).
+			//Set("chunk_indexes", indexes))
 
 			iotaWrapper.SendChunksToChannel(chunks[i:end], &channels[j])
 		}
@@ -265,7 +334,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
@@ -288,13 +357,18 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	for i := 0; i < len(chunks); i++ {
 		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
 			address := make([]giota.Address, 0, 1)
-			address = append(address, giota.Address(chunks[i].Address))
+			chunkAddress, err := giota.ToAddress(chunks[i].Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
+			}
+			address = append(address, chunkAddress)
 			transactionsMap, err := iotaWrapper.FindTransactions(address)
 			if err != nil {
-				fmt.Println(err)
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
 			}
-			if _, ok := transactionsMap[giota.Address(chunks[i].Address)]; !ok || transactionsMap == nil {
+			if _, ok := transactionsMap[chunkAddress]; !ok || transactionsMap == nil {
 				oyster_utils.LogToSegment("process_unassigned_chunks: "+
 					"treasure_chunk_not_attached", analytics.NewProperties().
 					Set("genesis_hash", chunks[i].GenesisHash).

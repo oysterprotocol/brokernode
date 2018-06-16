@@ -3,13 +3,14 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
+	"time"
+
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
-	"math/big"
-	"time"
 )
 
 type PRLStatus int
@@ -25,6 +26,7 @@ type Treasure struct {
 	PRLAmount string    `json:"prlAmount" db:"prl_amount"`
 	PRLStatus PRLStatus `json:"prlStatus" db:"prl_status"`
 	Message   string    `json:"message" db:"message"`
+	MsgID     string    `json:"msgId" db:"msg_id"`
 	Address   string    `json:"address" db:"address"`
 }
 
@@ -95,6 +97,12 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 		t.PRLStatus = PRLWaiting
 	}
 
+	if len(t.Message) > 81 {
+		// don't really need full message, just something known to
+		// the broker that we can hash and then use for encryption
+		t.Message = t.Message[0:81]
+	}
+
 	t.EncryptTreasureEthKey()
 
 	return nil
@@ -103,7 +111,7 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 func (t *Treasure) SetPRLAmount(bigInt *big.Int) (string, error) {
 	prlAmountAsBytes, err := bigInt.MarshalJSON()
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 	t.PRLAmount = string(prlAmountAsBytes)
@@ -127,7 +135,7 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 		treasureToBury := []Treasure{}
 		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
 		}
 		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
@@ -148,7 +156,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 			int(timeSinceThreshold.Hours())).All(&treasureToBury)
 
 		if err != nil {
-			oyster_utils.LogIfError(err)
+			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
 		}
 		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)

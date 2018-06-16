@@ -24,11 +24,11 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 
-	"time"
-	"io/ioutil"
-	"github.com/joho/godotenv"
-	"github.com/ethereum/go-ethereum/params"
 	"errors"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/joho/godotenv"
+	"io/ioutil"
+	"time"
 )
 
 type Eth struct {
@@ -96,10 +96,10 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
-type WaitForConfirmation func(txHash common.Hash) (uint)
+type WaitForConfirmation func(txHash common.Hash) uint
 type GetNonce func(ctx context.Context, address common.Address) (uint64, error)
-type GetTransactionTable func() (map[common.Hash]TransactionWithBlockNumber)
-type GetTransaction func(txHash common.Hash) (TransactionWithBlockNumber)
+type GetTransactionTable func() map[common.Hash]TransactionWithBlockNumber
+type GetTransaction func(txHash common.Hash) TransactionWithBlockNumber
 type GetTestWallet func() *keystore.Key
 
 type BuryPrl func(msg OysterCallMsg) bool
@@ -170,7 +170,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 // table contains the sent transactions we are awaiting confirmation for
 // post confirmation, we need to store the nonces for these transactions in the treasures table in the DB
 // this post process will be responsible for clearing the table
-func getTransactionTable() (map[common.Hash]TransactionWithBlockNumber) {
+func getTransactionTable() map[common.Hash]TransactionWithBlockNumber {
 	return transactions
 }
 
@@ -182,14 +182,14 @@ var transactions = make(map[common.Hash]TransactionWithBlockNumber)
 func initializeSubscription() {
 	client, _ := sharedClient()
 	subscriptionChannel := make(chan types.Block)
-	
+
 	go func() {
 		for {
 			time.Sleep(3 * time.Second)
 			subscribeToNewBlocks(client, subscriptionChannel)
 		}
 	}()
-	
+
 	for block := range subscriptionChannel {
 		blockNumber := block.Number()
 		// find transactions
@@ -200,31 +200,31 @@ func initializeSubscription() {
 			if txWithBlockNumber, ok := transactions[transaction.Hash()]; ok {
 				fmt.Printf("transaction found : %v", txWithBlockNumber.BlockNumber)
 				fmt.Printf("transaction found : %v", txWithBlockNumber.Transaction)
-				updateTransaction(txHash, TransactionWithBlockNumber{Transaction:transaction,BlockNumber:blockNumber})
+				updateTransaction(txHash, TransactionWithBlockNumber{Transaction: transaction, BlockNumber: blockNumber})
 			}
 		}
 		// store the transaction with block number
 		fmt.Printf("lastest block: %v", block.Number())
 	}
-	
+
 }
 
 func subscribeToNewBlocks(client *ethclient.Client, subscriptionChannel chan types.Block) {
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	// Subscribe to new blocks.
 	//sub, err := client.EthSubscribe(ctx, subscriptionChannel, "newBlocks")
 	// topicsHash := common.BytesToHash([]byte("newBlocks"))
 	logCh := make(chan types.Log)
-	
-	sub, err := client.SubscribeFilterLogs(ctx, ethereum.FilterQuery{Topics:nil}, logCh)
+
+	sub, err := client.SubscribeFilterLogs(ctx, ethereum.FilterQuery{Topics: nil}, logCh)
 	if err != nil {
 		fmt.Println("subscribe error:", err)
 		return
 	}
-	
+
 	// Update the channel with the current block.
 	lastBlock, err := getCurrentBlock()
 	if err != nil {
@@ -232,7 +232,7 @@ func subscribeToNewBlocks(client *ethclient.Client, subscriptionChannel chan typ
 		return
 	}
 	subscriptionChannel <- *lastBlock
-	
+
 	// The subscription will deliver events to the channel. Wait for the
 	// subscription to end for any reason, then loop around to re-establish
 	// the connection.
@@ -443,7 +443,7 @@ func isPending(txHash common.Hash) bool {
 }
 
 // get transaction from transaction pool
-func getTransaction(txHash common.Hash) (TransactionWithBlockNumber) {
+func getTransaction(txHash common.Hash) TransactionWithBlockNumber {
 	//check the transaction hash to find tx
 	if tx, ok := transactions[txHash]; ok {
 		return tx
@@ -455,11 +455,11 @@ func getTransaction(txHash common.Hash) (TransactionWithBlockNumber) {
 // store initial transaction with nil block number
 func storeTransaction(tx *types.Transaction) {
 	// store in transactions table
-	transactions[tx.Hash()] = TransactionWithBlockNumber{Transaction:tx,BlockNumber:nil}
+	transactions[tx.Hash()] = TransactionWithBlockNumber{Transaction: tx, BlockNumber: nil}
 }
 
 // update transaction with block number from transactions table
-func updateTransaction(txHash common.Hash, txWithBlockNumber TransactionWithBlockNumber) (bool) {
+func updateTransaction(txHash common.Hash, txWithBlockNumber TransactionWithBlockNumber) bool {
 	//check the transaction hash to find tx
 	if tx, ok := transactions[txHash]; ok {
 		tx.BlockNumber = txWithBlockNumber.BlockNumber
@@ -480,15 +480,15 @@ func flushTransaction(txHash common.Hash) {
  * @return
  * (0) Failed is the status code of a transaction if execution failed.
  * (1) Successful is the status code of a transaction if execution succeeded.
-*/
+ */
 func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	client, _ := sharedClient()
-	
+
 	block, _ := getCurrentBlock()
 	blockNumber := block.Number()
-	
+
 	fmt.Printf("current block number : %v\n", blockNumber)
-	
+
 	//// get transaction
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
@@ -505,7 +505,7 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 		flushTransaction(txHash)
 		return big.NewInt(1), nil
 	}
-	
+
 	// get transaction receipt
 	receipt, err := getTransactionReceipt(txHash)
 	if err != nil {
@@ -519,7 +519,7 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 // Wait For Confirmation
 // TODO add a channel output to return result via subscription
 //func waitForConfirmation(txHash common.Hash, status chan<- uint) (ethereum.Subscription, error) {
-func waitForConfirmation(txHash common.Hash) (uint) {
+func waitForConfirmation(txHash common.Hash) uint {
 	var status uint
 	for {
 		// access confirmation status until we get the correct response
@@ -597,7 +597,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 	query := ethereum.FilterQuery{
 		FromBlock: nil, // beginning of the queried range, nil means genesis block
-		ToBlock:   nil,                   // end of the range, nil means latest block
+		ToBlock:   nil, // end of the range, nil means latest block
 		Addresses: nil, //[]common.Address{MainWalletAddress},
 		Topics:    nil, // matches any topic list
 	}
@@ -609,7 +609,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 	// setup logs channel
 	//var wg sync.WaitGroup
-	
+
 	logs := make(chan types.Log)
 	sub, subErr := client.SubscribeFilterLogs(ctx, query, logs)
 	if subErr != nil {
@@ -636,7 +636,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 			// ensure confirmation type from "sendGas" or "sendPRL"
 			// recordTransaction(log.Address, "")
-			
+
 			if transferType == "eth" {
 				return checkETHBalance(brokerAddr), nil
 			} else if transferType == "prl" {
@@ -648,8 +648,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 		}
 	}
-	
-	
+
 }
 
 // Send gas to the completed upload Ethereum account
@@ -706,7 +705,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (txs types.Transactions, er
 
 	// signer
 	signer := types.NewEIP155Signer(chainId)
-	
+
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
 	if err != nil {
@@ -772,7 +771,7 @@ func buryPrl(msg OysterCallMsg) bool {
 		Nonce:    auth.Nonce,
 		Value:    &msg.Amount,
 		GasPrice: gasPrice,
-		Context: context.Background(),
+		Context:  context.Background(),
 	})
 
 	return tx != nil
@@ -860,37 +859,37 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	}, receiverAddress, treasureAddress)
 
 	//printTx(tx)
-	
+
 	return tx != nil
 }
 
 /**
-	sendPrl
-	When a user uploads a file, we create an upload session on the broker.
+sendPrl
+When a user uploads a file, we create an upload session on the broker.
 
-	For each "upload session", we generate a new wallet (we do this so we can associate a session to PRLs sent).
-	The broker responds to the uploader with an invoice to send X PRLs to Y eth address
-	The broker then listens for a transfer event so it knows when payment has happened,
+For each "upload session", we generate a new wallet (we do this so we can associate a session to PRLs sent).
+The broker responds to the uploader with an invoice to send X PRLs to Y eth address
+The broker then listens for a transfer event so it knows when payment has happened,
 
-	Once the payment is received, the brokers will split up the PRLs and begin work to attach the file to the IOTA tangle
-	so to answer your question, there won't be a main PRL wallet, the address is different for each session
-	however there will be a "main" ETH wallet, which is used to pay gas fees
+Once the payment is received, the brokers will split up the PRLs and begin work to attach the file to the IOTA tangle
+so to answer your question, there won't be a main PRL wallet, the address is different for each session
+however there will be a "main" ETH wallet, which is used to pay gas fees
 */
 func sendPRL(msg OysterCallMsg) bool {
-	
+
 	client, _ := sharedClient()
 	// initialize the context
 	ctx, cancel := createContext()
 	defer cancel()
-	
+
 	// generate nonce
 	nonce, _ := client.NonceAt(ctx, msg.From, nil)
-	
+
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
 	currentBlock, _ := getCurrentBlock()
 	gasLimit := currentBlock.GasLimit()
-	
+
 	// estimation
 	estimate, failedEstimate := getEstimatedGasPrice(msg.To, msg.From, gasLimit, *gasPrice, msg.Amount)
 	if failedEstimate != nil {
@@ -899,10 +898,10 @@ func sendPRL(msg OysterCallMsg) bool {
 	}
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
-	
+
 	balance := checkPRLBalance(msg.From)
 	fmt.Printf("balance : %v\n", balance)
-	
+
 	// amount is greater than balance, return error
 	if msg.Amount.Uint64() > balance.Uint64() {
 		fmt.Printf("balance too low to proceed")
@@ -911,10 +910,10 @@ func sendPRL(msg OysterCallMsg) bool {
 	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
 	// create new transaction
 	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, gasLimit, gasPrice, nil)
-	
+
 	// signer
 	signer := types.NewEIP155Signer(chainId)
-	
+
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
 	if err != nil {
@@ -922,7 +921,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		//return types.Transactions{}, err
 		return false
 	}
-	
+
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
@@ -932,25 +931,25 @@ func sendPRL(msg OysterCallMsg) bool {
 		//return types.Transactions{}, err
 		return false
 	}
-	
+
 	// pull signed transaction(s)
 	signedTxs := types.Transactions{signedTx}
 	var confirmTx types.Transaction
 	for tx := range signedTxs {
 		transaction := signedTxs[tx]
-		
+
 		// store in broker transaction pool
 		storeTransaction(transaction)
 		printTx(transaction)
-		
+
 		confirmTx = *transaction
 	}
-	
+
 	var status = false
-	
+
 	// confirm status of transaction
 	txStatus := waitForConfirmation(confirmTx.Hash())
-	
+
 	if txStatus == 0 {
 		fmt.Printf("transaction failure")
 		status = false
@@ -958,7 +957,7 @@ func sendPRL(msg OysterCallMsg) bool {
 		fmt.Printf("confirmation completed")
 		status = true
 	}
-	
+
 	return status
 }
 
@@ -1002,8 +1001,6 @@ func recordTransaction(address common.Address, status string) {
 	}
 }
 
-
-
 var MAIN = "mainnet"
 var TEST = "testnet"
 var DEBUG = false
@@ -1011,9 +1008,9 @@ var DEBUG = false
 func configureGateway(network string) {
 	// Load ENV variables
 	//err := godotenv.Load()
-	err := godotenv.Load("../.env")
+	err := godotenv.Load()
 	if err != nil {
-		godotenv.Load("../.env")
+		godotenv.Load()
 		log.Printf(".env error: %v", err)
 		raven.CaptureError(err, nil)
 	}
@@ -1021,7 +1018,7 @@ func configureGateway(network string) {
 	switch network {
 	case MAIN:
 		// ethereum main net chain id
-		chainId = params.MainnetChainConfig.ChainId
+		chainId = params.MainnetChainConfig.ChainID
 		break
 	case TEST:
 		// oysterby test net chain id
@@ -1037,7 +1034,7 @@ func configureGateway(network string) {
 	MainWalletAddress = common.HexToAddress(os.Getenv("MAIN_WALLET_ADDRESS"))
 	// wallet private key configuration
 	MainWalletPrivateKey, err = crypto.HexToECDSA(os.Getenv("MAIN_WALLET_KEY"))
-	
+
 	if DEBUG {
 		// Print Configuration
 		printConfig()

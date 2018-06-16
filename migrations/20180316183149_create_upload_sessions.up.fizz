@@ -14,7 +14,6 @@ create_table("upload_sessions", func(t) {
 	t.Column("treasure_status", "integer", {})
 
 	t.Column("treasure_idx_map", "JSON", {"null": true})
-
 })
 
 add_index("upload_sessions", "genesis_hash", {"unique": true})

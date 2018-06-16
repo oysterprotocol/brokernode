@@ -6,11 +6,15 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func VerifyDataMaps(IotaWrapper services.IotaService) {
+func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramVerifyDataMaps, start)
+
 	unverifiedDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(unverifiedDataMaps) > 0 {
 		for i := 0; i < len(unverifiedDataMaps); i += BundleSize {
@@ -27,7 +31,7 @@ func VerifyDataMaps(IotaWrapper services.IotaService) {
 
 func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.DataMap) {
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(filteredChunks.MatchesTangle) > 0 {
 

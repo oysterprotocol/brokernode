@@ -34,7 +34,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 
 	ms.Equal(genHash, uSession.GenesisHash)
 	ms.Equal(fileSizeBytes, uSession.FileSizeBytes)
-	ms.Equal(2, uSession.NumChunks)
+	ms.Equal(numChunks+1, uSession.NumChunks)
 	ms.Equal(models.SessionTypeAlpha, uSession.Type)
 	ms.Equal(decimal.NewFromFloatWithExponent(0.03125, -5), uSession.TotalCost)
 	ms.Equal(2, uSession.StorageLengthInYears)
@@ -105,11 +105,14 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 		StorageLengthInYears: storageLengthInYears,
 	}
 
-	u.SetTreasureMap(treasureIndexArray)
 	vErr, err := u.StartUploadSession()
-	treasureIdxMap, err := u.GetTreasureMap()
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
+
+	ms.Nil(u.SetTreasureMap(treasureIndexArray))
+
+	treasureIdxMap, err := u.GetTreasureMap()
+	ms.Nil(err)
 
 	session := models.UploadSession{}
 	err = ms.DB.Where("genesis_hash = ?", u.GenesisHash).First(&session)

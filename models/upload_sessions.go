@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
+	"os"
 	"time"
+
+	"github.com/oysterprotocol/brokernode/utils"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
@@ -49,6 +51,7 @@ type UploadSession struct {
 	TreasureStatus int             `json:"treasureStatus" db:"treasure_status"`
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
+	Version        uint32       `json:"version" db:"version"`
 }
 
 // Enum for upload session type.
@@ -127,7 +130,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.ProdMode:
 		// Defaults to paymentStatusPending
 		if u.PaymentStatus == 0 {
-			u.PaymentStatus = PaymentStatusInvoiced
+			if os.Getenv("OYSTER_PAYS") == "" {
+				u.PaymentStatus = PaymentStatusInvoiced
+			} else {
+				u.PaymentStatus = PaymentStatusConfirmed
+			}
 		}
 
 		// Defaults to treasureGeneratingKeys
@@ -176,6 +183,11 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	}
 
 	u.EncryptSessionEthKey()
+
+	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		u.NumChunks = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(u.NumChunks)
+		DB.ValidateAndUpdate(u)
+	}
 
 	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	return
@@ -240,18 +252,15 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 }
 
 func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
-	var err error
-	u.TreasureIdxMap = nulls.String{}
-	DB.ValidateAndSave(u)
 	treasureString, err := json.Marshal(treasureIndexMap)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return err
 	}
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
-	DB.ValidateAndSave(u)
-	return nil
+	_, err = DB.ValidateAndSave(u)
+	oyster_utils.LogIfError(err, nil)
+	return err
 }
 
 // Sets the TreasureIdxMap with Sector, Idx, and Key
@@ -292,6 +301,8 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	u.TreasureStatus = TreasureInDataMapPending
+
 	DB.ValidateAndSave(u)
 }
 

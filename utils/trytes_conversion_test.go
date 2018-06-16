@@ -17,13 +17,18 @@ type hashAddressConversion struct {
 	address string
 }
 
-var stringConvCases = []tryteConversion{
-	{b: []byte("Z"), s: "Z", t: giota.Trytes("IC")},
-	{b: []byte("this is a test"), s: "this is a test", t: giota.Trytes("HDWCXCGDEAXCGDEAPCEAHDTCGDHD")},
-	{b: []byte("Golang is the best lang!"), s: "Golang is the best lang!",
-		t: giota.Trytes("QBCD9DPCBDVCEAXCGDEAHDWCTCEAQCTCGDHDEA9DPCBDVCFA")},
-	{b: []byte(""), s: "", t: ""},
-}
+var (
+	caseOneTrytes, _   = giota.ToTrytes("IC")
+	caseTwoTrytes, _   = giota.ToTrytes("HDWCXCGDEAXCGDEAPCEAHDTCGDHD")
+	caseThreeTrytes, _ = giota.ToTrytes("QBCD9DPCBDVCEAXCGDEAHDWCTCEAQCTCGDHDEA9DPCBDVCFA")
+	stringConvCases    = []tryteConversion{
+		{b: []byte("Z"), s: "Z", t: caseOneTrytes},
+		{b: []byte("this is a test"), s: "this is a test", t: caseTwoTrytes},
+		{b: []byte("Golang is the best lang!"), s: "Golang is the best lang!",
+			t: caseThreeTrytes},
+		{b: []byte(""), s: "", t: ""},
+	}
+)
 
 var hashAddressConvCases = []hashAddressConversion{
 	{hash: "5804c3157e3de4e4a8b1f2417d8c61454e368883ec05e32f234386690e7c9696",

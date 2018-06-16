@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
@@ -44,7 +43,11 @@ type transactionBrokernodeUpdateRes struct {
 }
 
 // Creates a transaction.
+
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
+
 	req := transactionBrokernodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -52,24 +55,28 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernode := models.Brokernode{}
 	t := models.Transaction{}
 
-	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ?", models.Unassigned).First(&dataMap)
+	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
+	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at asc",
+		models.Unassigned).First(&dataMap)
 
 	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
-	brokernodeNotFoundErr := models.DB.Limit(1).Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+	brokernodeNotFoundErr := models.DB.Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
+	// DB results error if First() does not return any error.
 	if dataMapNotFoundErr != nil || brokernodeNotFoundErr != nil {
-		if dataMapNotFoundErr != nil {
-			raven.CaptureError(dataMapNotFoundErr, nil)
-		}
-		if brokernodeNotFoundErr != nil {
-			raven.CaptureError(brokernodeNotFoundErr, nil)
-		}
-
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
 	}
 
-	err := models.DB.Transaction(func(tx *pop.Connection) error {
+	tips, err := IotaWrapper.GetTransactionsToApprove()
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+	}
+
+	err = models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
+		dataMap.BranchTx = string(tips.BranchTransaction)
+		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		tx.ValidateAndSave(&dataMap)
 
 		t = models.Transaction{
@@ -82,7 +89,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		return nil
 	})
 	if err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 
 	res := transactionBrokernodeCreateRes{
@@ -99,6 +106,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 }
 
 func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceUpdate, start)
+
 	req := transactionBrokernodeUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
@@ -106,7 +116,11 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	t := &models.Transaction{}
 	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
 
-	trytes := giota.Trytes(req.Trytes)
+	trytes, err := giota.ToTrytes(req.Trytes)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
 	iotaTransaction, iotaError := giota.NewTransaction(trytes)
 
 	if transactionError != nil || iotaError != nil {
@@ -115,12 +129,33 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	address, addError := giota.ToAddress(t.DataMap.Address)
 	validAddress := addError == nil && address == iotaTransaction.Address
-	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
-	validBranch := giota.Trytes(t.DataMap.BranchTx) == iotaTransaction.BranchTransaction
-	validTrunk := giota.Trytes(t.DataMap.TrunkTx) == iotaTransaction.TrunkTransaction
+	if !validAddress {
+		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
+	}
 
-	if !(validAddress && validMessage && validBranch && validTrunk) {
-		return c.Render(400, r.JSON(map[string]string{"error": "Transaction is invalid"}))
+	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
+	if !validMessage {
+		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
+	}
+
+	branchTxTrytes, err := giota.ToTrytes(t.DataMap.BranchTx)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	validBranch := branchTxTrytes == iotaTransaction.BranchTransaction
+	if !validBranch {
+		return c.Render(400, r.JSON(map[string]string{"error": "Branch is invalid"}))
+	}
+
+	trunkTxTrytes, err := giota.ToTrytes(t.DataMap.TrunkTx)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+	}
+	validTrunk := trunkTxTrytes == iotaTransaction.TrunkTransaction
+	if !validTrunk {
+		return c.Render(400, r.JSON(map[string]string{"error": "Trunk is invalid"}))
 	}
 
 	host_ip := os.Getenv("HOST_IP")

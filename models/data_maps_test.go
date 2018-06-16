@@ -3,12 +3,13 @@ package models_test
 import (
 	"encoding/hex"
 	"fmt"
+	"strings"
+
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
-	"strings"
 )
 
 type hashAddressConversion struct {
@@ -68,12 +69,13 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	dMaps := []models.DataMap{}
 	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
-	ms.Equal(numChunks+1, len(dMaps))
+	ms.Equal(numChunks, len(dMaps))
 
 	for i, dMap := range dMaps {
 		ms.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)
 		ms.Equal(expectedHashChainHashes[i], dMap.Hash)
 		ms.Equal(expectedAddresses[i], dMap.Address)
+		ms.NotNil(dMap.MsgID)
 	}
 }
 
@@ -85,7 +87,9 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 		payload, err := models.CreateTreasurePayload(tc.ethPrivateSeed, tc.sha256Hash, maxSideChainLength)
 		ms.Nil(err)
 
-		payloadInBytes := oyster_utils.TrytesToBytes(giota.Trytes(payload[0:models.TreasurePayloadLength]))
+		trytes, err := giota.ToTrytes(payload[0:models.TreasurePayloadLength])
+		ms.Nil(err)
+		payloadInBytes := oyster_utils.TrytesToBytes(trytes)
 
 		currentHash := tc.sha256Hash
 

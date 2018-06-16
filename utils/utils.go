@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -38,6 +39,54 @@ const (
 	PrlInWeiUnit = 1e18
 )
 
+// Enable/Disalbe raven reporting.
+var isRavenEnabled bool = true
+var logErrorTags map[string]string
+
+func init() {
+	isRavenEnabled = !IsInUnitTest()
+
+	isOysterPay := "enabled"
+	if os.Getenv("OYSTER_PAYS") == "" {
+		isOysterPay = "disabled"
+	}
+	displayName := "Unknown"
+	if v := os.Getenv("DISPLAY_NAME"); v != "" {
+		displayName = v
+	}
+
+	logErrorTags = map[string]string{
+		"mode":        os.Getenv("MODE"),
+		"hostIp":      os.Getenv("HOST_IP"),
+		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
+		"osyterPay":   isOysterPay,
+		"displayName": displayName,
+	}
+}
+
+/*IsInUnitTest returns true if it is running in test mode.*/
+func IsInUnitTest() bool {
+	// Check whether current is in unit test mode.
+	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
+	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
+	for _, v := range os.Args {
+		if strings.HasPrefix(v, "-test.") {
+			return true
+		}
+	}
+	return false
+}
+
+/*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
+func IsRavenEnabled() bool {
+	return isRavenEnabled
+}
+
+/*SetLogInfoForDatabaseUrl updates db_url for log info.*/
+func SetLogInfoForDatabaseUrl(dbUrl string) {
+	logErrorTags["db_url"] = dbUrl
+}
+
 // ParseReqBody take a request and parses the body to the target interface.
 func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 	body := req.Body
@@ -45,8 +94,7 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
@@ -61,8 +109,7 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
@@ -193,7 +240,7 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
-		raven.CaptureError(err, nil)
+		LogIfError(err, map[string]interface{}{"aInputSize": len(a), "bInputSize": len(b)})
 		return nil, err
 	}
 
@@ -229,10 +276,19 @@ func ConverFromWeiUnit(wei *big.Int) *big.Float {
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
 }
 
-/* Log any error if it is not nil. */
-func LogIfError(err error) {
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+/*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
+func LogIfError(err error, extraInfo map[string]interface{}) {
+	if err == nil {
+		return
+	}
+
+	fmt.Println(err)
+
+	if IsRavenEnabled() {
+		if extraInfo != nil {
+			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
+		} else {
+			raven.CaptureError(err, logErrorTags)
+		}
 	}
 }
