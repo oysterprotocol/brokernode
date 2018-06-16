@@ -80,7 +80,7 @@ func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
 }
 
-/*DataMapGet returns the message.*/
+/*DataMapGet returns the message reference by dataMap.*/
 func GetMessageFromDataMap(dataMap models.DataMap) string {
 	if !IsKvStoreEnabled() {
 		return dataMap.Message
