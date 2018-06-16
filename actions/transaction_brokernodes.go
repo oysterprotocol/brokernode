@@ -10,6 +10,7 @@ import (
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -78,7 +79,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
-	err = models.DB.Transaction(func(tx *pop.Connection) error {
+	models.DB.Transaction(func(tx *pop.Connection) error {
 		dataMap.Status = models.Unverified
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
@@ -93,15 +94,12 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		tx.ValidateAndSave(&t)
 		return nil
 	})
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-	}
 
 	res := transactionBrokernodeCreateRes{
 		ID: t.ID,
 		Pow: BrokernodeAddressPow{
 			Address:  dataMap.Address,
-			Message:  dataMap.Message,
+			Message:  services.GetMessageFromDataMap(dataMap),
 			BranchTx: dataMap.BranchTx,
 			TrunkTx:  dataMap.TrunkTx,
 		},
@@ -138,7 +136,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
-	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), t.DataMap.Message)
+	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
 	if !validMessage {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}

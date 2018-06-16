@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -77,6 +78,21 @@ func GetBadgerDb() *badger.DB {
 /*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
 func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
+}
+
+/*DataMapGet returns the message reference by dataMap.*/
+func GetMessageFromDataMap(dataMap models.DataMap) string {
+	if !IsKvStoreEnabled() {
+		return dataMap.Message
+	}
+
+	values, _ := BatchGet(&KVKeys{dataMap.MsgID})
+	if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
+		return v
+	}
+
+	// Can't find any Message data from BadgerDB.
+	return ""
 }
 
 /*BatchGet returns KVPairs for a set of keys. It won't treat Key missing as error.*/

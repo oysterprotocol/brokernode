@@ -101,7 +101,7 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 	for _, dataMap := range dataMaps {
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,
-			Message:     dataMap.Message,
+			Message:     services.GetMessageFromDataMap(dataMap),
 			NodeID:      dataMap.NodeID,
 			NodeType:    dataMap.NodeType,
 			TrunkTx:     dataMap.TrunkTx,
