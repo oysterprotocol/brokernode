@@ -138,7 +138,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 func Test_getGasPrice(t *testing.T) {
 	//services.RunOnTestNet()
 	// TODO stop skipping this
-	t.Skip()
+	//t.Skip()
 
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
@@ -157,7 +157,7 @@ func Test_getGasPrice(t *testing.T) {
 func Test_checkETHBalance(t *testing.T) {
 	//services.RunOnTestNet()
 	// TODO: works remove Skip()
-	t.Skip()
+	//t.Skip()
 	// test balance for an ether account
 	// Convert string address to byte[] address form
 	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
@@ -170,9 +170,7 @@ func Test_checkETHBalance(t *testing.T) {
 
 // get current block number
 func Test_getCurrentBlockNumber(t *testing.T) {
-	//services.RunOnTestNet()
 	// Get the current block from the network
-	//t.Skip(nil)
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
 		t.Fatalf("could not retrieve the current block: %v\n", err)
@@ -184,7 +182,7 @@ func Test_getCurrentBlockNumber(t *testing.T) {
 
 // get current block gas limit
 func Test_getCurrentBlockGasLimit(t *testing.T) {
-	t.Skip(nil)
+	//t.Skip(nil)
 	//services.RunOnTestNet()
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
@@ -199,7 +197,7 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 func Test_getNonceForAccount(t *testing.T) {
 	//services.RunOnTestNet()
 	// TODO:  works remove Skip()
-	t.Skip()
+	//t.Skip()
 	// Get the nonce for the given account
 	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
 	if err != nil {
@@ -465,7 +463,7 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 // solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
 	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
+	//t.Skip(nil)
 
 	prlValue := big.NewInt(0).SetUint64(toWei(50))
 	// TODO Implement in the sendPRLFromOyster
