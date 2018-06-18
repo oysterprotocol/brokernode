@@ -99,10 +99,6 @@ func printTx(tx *types.Transaction) {
 
 // generate address test
 func Test_generateAddress(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
-	//services.RunOnTestNet()
-
 	// generate eth address using gateway
 	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -176,6 +172,7 @@ func Test_checkETHBalance(t *testing.T) {
 func Test_getCurrentBlockNumber(t *testing.T) {
 	//services.RunOnTestNet()
 	// Get the current block from the network
+	t.Skip(nil)
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
 		t.Fatalf("could not retrieve the current block: %v\n", err)
@@ -187,6 +184,7 @@ func Test_getCurrentBlockNumber(t *testing.T) {
 
 // get current block gas limit
 func Test_getCurrentBlockGasLimit(t *testing.T) {
+	t.Skip(nil)
 	//services.RunOnTestNet()
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
@@ -247,8 +245,6 @@ func Test_sendEth(t *testing.T) {
 // ensure the transaction is stored in the transactions table
 // it is accessed with the lastTransactionHash from the previous test
 func Test_ensureTransactionStoredInPool(t *testing.T) {
-	// TODO:  works remove Skip(), needs flush testing
-	t.Skip(nil)
 	// get item by txHash and ensure its in the table
 	txWithBlockNumber := services.EthWrapper.GetTransaction(lastTransaction.Hash())
 	if txWithBlockNumber.Transaction != nil {
@@ -284,8 +280,6 @@ func Test_confirmTransactionStatus(t *testing.T) {
 
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
-	// TODO:  works remove Skip()
-	t.Skip(nil)
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
@@ -400,10 +394,6 @@ func Test_simOysterPearlBury(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
-	// TODO:  works remove Skip()
-	//t.Skip(nil)
-	//services.RunOnTestNet()
-
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
