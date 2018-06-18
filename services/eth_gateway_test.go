@@ -35,7 +35,8 @@ var oneWei = big.NewInt(1000000000000000000)
 //'{"jsonrpc":"2.0","method":"eth_getRawTransactionByHash","params":["<TX_HASH>"],"id":1}' http://54.86.134.172:8080
 
 // Private Network
-var oysterbyNetwork = "ws://54.86.134.172:8547"
+//var oysterbyNetwork = "ws://54.86.134.172:8547"
+var oysterbyNetwork = "http://54.86.134.172:8080"
 
 //
 // Ethereum Addresses
@@ -53,17 +54,19 @@ var ethAccounts = map[string]interface{}{
 }
 
 var prlAccounts = map[string]interface{}{
-	"prlAddress01": "0x73da066d94fc41f11c2672ed9ecd39127da30976",
-	"prlAddress02": "0x73da066d94fc41f11c2672ed9ecd39127da30976",
+	"prlAddress01": "0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f",
+	"prlAddress02": "0x73da066d94FC41f11C2672ed9ecD39127DA30976",
+	"prlAddress03": "0x74aD69B41e71E311304564611434dDD59Ee5d1F8",
 }
 
 var ethAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["ethAddress01"]))
 var ethAddress02 = common.HexToAddress(fmt.Sprint(ethAccounts["ethAddress02"]))
 var prlAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress01"]))
 var prlAddress02 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress02"]))
+var prlAddress03 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress03"]))
 
 // Oysterby PRL Contract
-var oysterContract = common.HexToAddress("0xb7baab5cad2d2ebfe75a500c288a4c02b74bc12c")
+var oysterContract = common.HexToAddress("0xB7baaB5caD2D2ebfE75A500c288A4c02B74bC12c")
 
 // PRL Distribution Contract
 var prlDistribution = common.HexToAddress("0x08e6c245e21799c43970cd3193c59c1f6f2469ca")
@@ -157,7 +160,7 @@ func Test_getGasPrice(t *testing.T) {
 // check balance on test network test
 func Test_checkETHBalance(t *testing.T) {
 	//services.RunOnTestNet()
-	// TODO:  get this working and remove Skip()
+	// TODO: works remove Skip()
 	t.Skip()
 	// test balance for an ether account
 	// Convert string address to byte[] address form
@@ -197,7 +200,7 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 
 func Test_getNonceForAccount(t *testing.T) {
 	//services.RunOnTestNet()
-	// TODO:  get this working and remove Skip()
+	// TODO:  works remove Skip()
 	t.Skip()
 	// Get the nonce for the given account
 	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
@@ -213,10 +216,10 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	// TODO:  get this working and remove Skip()
+	// TODO:  works remove Skip()
 	t.Skip(nil)
 	//services.RunOnTestNet()
-	// transfer 1/5 of ether
+	// transfer
 	transferValue := big.NewInt(10)
 	//transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
@@ -244,7 +247,7 @@ func Test_sendEth(t *testing.T) {
 // ensure the transaction is stored in the transactions table
 // it is accessed with the lastTransactionHash from the previous test
 func Test_ensureTransactionStoredInPool(t *testing.T) {
-	// TODO:  get this working and remove Skip()
+	// TODO:  works remove Skip(), needs flush testing
 	t.Skip(nil)
 	// get item by txHash and ensure its in the table
 	txWithBlockNumber := services.EthWrapper.GetTransaction(lastTransaction.Hash())
@@ -281,7 +284,7 @@ func Test_confirmTransactionStatus(t *testing.T) {
 
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
-	// TODO:  get this working and remove Skip()
+	// TODO:  works remove Skip()
 	t.Skip(nil)
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
@@ -397,8 +400,8 @@ func Test_simOysterPearlBury(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
+	// TODO:  works remove Skip()
+	//t.Skip(nil)
 	//services.RunOnTestNet()
 
 	// test ethClient
@@ -418,19 +421,20 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_stakePRLFromOysterPearl(t *testing.T) {
-	// TODO:  get this working and remove Skip()
+	//TODO:  works remove Skip()
 	t.Skip(nil)
 	// contract
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
 	pearlDistribute, err := services.NewPearlDistributeOysterby(prlDistribution, backend)
-
+	
 	// authentication
 	walletAddress := services.MainWalletAddress
 
 	t.Logf("using wallet key store from: %v\n", walletAddress.Hex())
 
+	gasPrice, _ := services.EthWrapper.GetGasPrice()
 	block, _ := services.EthWrapper.GetCurrentBlock()
 
 	// Create an authorized transactor and spend 1 PRL
@@ -442,23 +446,28 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to access contract instance at :%v", err)
 	}
-	//
+	
+	prlValue := big.NewInt(50)
+	
 	// transact
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
+		Context: context.Background(),
+		Nonce: auth.Nonce,
+		GasPrice: gasPrice,
+		Value: prlValue,
 	}
+	t.Logf(opts.From.Hex())
 
 	// stake
-	tx, err := pearlDistribute.Distribute(&opts)
+	tx, err := pearlDistribute.Stake(&opts, prlAddress02, prlValue)
 
 	if err != nil {
 		t.Fatalf("unable to access call distribute : %v", err)
 	}
-	t.Logf("oyster pearl distribute called :%v", tx)
-	// printTx(tx)
-
+	t.Logf("oyster pearl distribute stake call :%v", tx)
 }
 
 // test sending PRLs from OysterPearl Contract
@@ -468,57 +477,15 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 	// TODO:  get this working and remove Skip()
 	t.Skip(nil)
 
-	prlValue := big.NewInt(0).SetUint64(toWei(5))
+	prlValue := big.NewInt(0).SetUint64(toWei(50))
+	// TODO Implement in the sendPRLFromOyster
 	sent := services.EthWrapper.SendPRL(services.OysterCallMsg{
 		Amount: *prlValue,
 	})
 
 	if sent {
-		fmt.Printf("sent the transaction to the ")
+		fmt.Printf("sent the transaction successfully")
 	}
-
-	// test ethClient
-	var backend, _ = ethclient.Dial(oysterbyNetwork)
-	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
-
-	if err != nil {
-		t.Fatalf("unable to access contract instance at : %v", err)
-	}
-
-	// access prl wallet
-	prlWallet := getWallet()
-	walletAddress := prlWallet.Address
-
-	t.Logf("using wallet key store from: %v", walletAddress)
-
-	// Create an authorized transactor and spend 1 PRL
-	auth := bind.NewKeyedTransactor(prlWallet.PrivateKey)
-	if err != nil {
-		t.Fatalf("unable to create a new transactor : %v", err)
-	}
-
-	t.Logf("authorized transactor : %v", auth.From.Hex())
-
-	block, _ := services.EthWrapper.GetCurrentBlock()
-	gasPrice, err := backend.SuggestGasPrice(context.Background())
-
-	opts := bind.TransactOpts{
-		From:     auth.From,
-		Signer:   auth.Signer,
-		GasLimit: block.GasLimit(),
-		GasPrice: gasPrice,
-		Value:    prlValue,
-		Nonce:    auth.Nonce,
-	}
-
-	tx, err := oysterPearl.Transfer(&opts, prlAddress02, prlValue)
-	if err != nil {
-		t.Fatalf("transfer failed : %v", err)
-	}
-
-	t.Logf("transfer pending: 0x%x\n", tx.Hash())
-
-	printTx(tx)
 
 }
 
@@ -526,40 +493,6 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 // Oyster Pearl Tests
 // all tests below will exercise the contract methods in the simulator and the private oysterby network.
 
-// bury prl
-func Test_buryPRL(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
-	// PRL based addresses
-
-	prlWallet := getPRLWallet()
-	prlValue := big.NewInt(5)
-
-	// Gas Price
-	gasPrice, _ := services.EthWrapper.GetGasPrice()
-	block, _ := services.EthWrapper.GetCurrentBlock()
-
-	buryMsg := services.OysterCallMsg{
-		From:       prlWallet.Address,
-		To:         prlAddress02,
-		Amount:     *prlValue,
-		Gas:        block.GasLimit(),
-		GasPrice:   *gasPrice,
-		TotalWei:   *big.NewInt(0).SetUint64(toWei(prlValue.Int64())),
-		PrivateKey: *prlWallet.PrivateKey,
-		Data:       nil,
-	}
-
-	// Bury PRL
-	var buried = services.EthWrapper.BuryPrl(buryMsg)
-	if buried {
-		// successful bury attempt
-		t.Log("Buried the PRLs successfully")
-	} else {
-		// failed bury attempt
-		t.Fatal("Faild to bury PRLs. Try Again?")
-	}
-}
 
 // send prl from main wallet address to another address
 func Test_sendPRL(t *testing.T) {
@@ -600,10 +533,10 @@ func Test_claimPRL(t *testing.T) {
 
 	// Setup Found Treasure Properties
 	treasureAddress := common.HexToAddress("0x5aeda56215b167893e80b4fe645ba6d5bab767de")
-	treasurePrivateKey := "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5"
+	treasurePrivateKey, _ := crypto.HexToECDSA("0x8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5")
 
 	// Claim PRL
-	claimed := services.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
+	claimed := services.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, *treasurePrivateKey)
 	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
@@ -613,14 +546,16 @@ func Test_claimPRL(t *testing.T) {
 }
 
 // claim unused prl from completed upload
+// TODO Claim tests
 func Test_claimUnusedPRL(t *testing.T) {
+	
 	// TODO:  get this working and remove Skip()
 	t.Skip(nil)
-	// Need to fake the completed uploads by populating with data
+	// Setting up the ETH address from ethAddress
 	var rowWithGasTransferSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferSuccess",
-		ETHAddr:       "0x5aeda56215b167893e80b4fe645ba6d5bab767de",
-		ETHPrivateKey: "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5",
+		ETHAddr:       ethAddress02.Hex(),
+		ETHPrivateKey: "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5", // need to update key for test
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferSuccess,
 	}
@@ -638,23 +573,37 @@ func Test_claimUnusedPRL(t *testing.T) {
 
 }
 
+// bury prl test comes after we set a claim
+func Test_buryPRL(t *testing.T) {
+	// TODO:  get this working and remove Skip()
+	t.Skip(nil)
+	
+	prlValue := big.NewInt(0)
+	// only configure to and amount
+	buryMsg := services.OysterCallMsg{
+		To:         prlAddress02,
+		Amount:     *prlValue,
+	}
+	
+	// Bury PRL
+	buried := services.EthWrapper.BuryPrl(buryMsg)
+	if buried {
+		// successful bury attempt
+		t.Log("Buried the PRLs successfully")
+	} else {
+		// failed bury attempt
+		t.Fatal("Faild to bury PRLs. Try Again?")
+	}
+}
+
 // testing balance of the prl account for a given address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	//t.Skip(nil)
-
-	// pearl balances
+	
+	// working pulls the balance from Oyster PRL on test net
+	// prl balances
 	bankBalance := services.EthWrapper.CheckPRLBalance(prlBankAddress)
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
-
-	prl00Balance := services.EthWrapper.CheckPRLBalance(common.HexToAddress("0x0000000000000000000000000000000000000000"))
-	t.Logf("oyster pearl 00   address balance :%v", prl00Balance)
-
-	prl01Balance := services.EthWrapper.CheckPRLBalance(prlAddress01)
-	prl02Balance := services.EthWrapper.CheckPRLBalance(prlAddress02)
-
-	t.Logf("oyster pearl 01   address balance :%v", prl01Balance)
-	t.Logf("oyster pearl 02   address balance :%v", prl02Balance)
+	
 }
 
 // utility to access the return the PRL wallet keystore
