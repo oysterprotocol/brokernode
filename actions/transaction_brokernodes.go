@@ -63,8 +63,13 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	brokernodeNotFoundErr := models.DB.Where("address NOT IN (?)", existingAddresses).First(&brokernode)
 
 	// DB results error if First() does not return any error.
-	if dataMapNotFoundErr != nil || brokernodeNotFoundErr != nil {
+	if dataMapNotFoundErr != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
+	}
+
+	// DB results error if First() does not return any error.
+	if brokernodeNotFoundErr != nil {
+		return c.Render(403, r.JSON(map[string]string{"error": "No brokernode addresses to sell"}))
 	}
 
 	tips, err := IotaWrapper.GetTransactionsToApprove()
