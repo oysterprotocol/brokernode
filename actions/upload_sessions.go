@@ -305,15 +305,24 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				continue
 			}
 
+			if dm.MsgID == "" {
+				oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
+				break
+			}
+
 			if chunk.Hash == dm.GenesisHash {
 				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
 				if err != nil {
 					panic(err.Error())
 				}
-
 				msg := string(message)
-				dm.Message = msg // TODO: Deprecate this.
-				batchSetKvMap[dm.MsgID] = msg
+				if services.IsKvStoreEnabled() {
+					batchSetKvMap[dm.MsgID] = msg
+					dm.Message = "" // Remove previous Message data.
+				} else {
+					// TODO:pzhao, remove this and this should not be called.
+					dm.Message = msg
+				}
 
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
