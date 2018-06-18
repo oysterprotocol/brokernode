@@ -33,20 +33,8 @@ install:
   - docker-compose up --build -d
 
 before_script:
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
-  - curl icanhazip.com
+  - curl -s https://dnsjson.com/nat.travisci.net/A.json | jq '.results.records|sort'
+  - dig +short nat.travisci.net | sort
   - sleep 30
   # - "
   #     echo waiting for docker...;
