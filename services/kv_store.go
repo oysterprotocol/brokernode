@@ -91,8 +91,9 @@ func GetMessageFromDataMap(dataMap models.DataMap) string {
 		return v
 	}
 
-	// Can't find any Message data from BadgerDB.
-	return ""
+	// Can't find any Message data from BadgerDB, default back to Message field.
+	// This could happen before the migration.
+	return dataMap.Message
 }
 
 /*BatchGet returns KVPairs for a set of keys. It won't treat Key missing as error.*/
