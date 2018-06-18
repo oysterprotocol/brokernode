@@ -172,7 +172,7 @@ func Test_checkETHBalance(t *testing.T) {
 func Test_getCurrentBlockNumber(t *testing.T) {
 	//services.RunOnTestNet()
 	// Get the current block from the network
-	t.Skip(nil)
+	//t.Skip(nil)
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
 		t.Fatalf("could not retrieve the current block: %v\n", err)
