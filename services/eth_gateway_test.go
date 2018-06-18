@@ -428,7 +428,7 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
 	pearlDistribute, err := services.NewPearlDistributeOysterby(prlDistribution, backend)
-	
+
 	// authentication
 	walletAddress := services.MainWalletAddress
 
@@ -446,18 +446,18 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to access contract instance at :%v", err)
 	}
-	
+
 	prlValue := big.NewInt(50)
-	
+
 	// transact
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
 		GasLimit: block.GasLimit(),
-		Context: context.Background(),
-		Nonce: auth.Nonce,
+		Context:  context.Background(),
+		Nonce:    auth.Nonce,
 		GasPrice: gasPrice,
-		Value: prlValue,
+		Value:    prlValue,
 	}
 	t.Logf(opts.From.Hex())
 
@@ -492,7 +492,6 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 //
 // Oyster Pearl Tests
 // all tests below will exercise the contract methods in the simulator and the private oysterby network.
-
 
 // send prl from main wallet address to another address
 func Test_sendPRL(t *testing.T) {
@@ -536,7 +535,7 @@ func Test_claimPRL(t *testing.T) {
 	treasurePrivateKey, _ := crypto.HexToECDSA("0x8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5")
 
 	// Claim PRL
-	claimed := services.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, *treasurePrivateKey)
+	claimed := services.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
 	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
@@ -548,7 +547,7 @@ func Test_claimPRL(t *testing.T) {
 // claim unused prl from completed upload
 // TODO Claim tests
 func Test_claimUnusedPRL(t *testing.T) {
-	
+
 	// TODO:  get this working and remove Skip()
 	t.Skip(nil)
 	// Setting up the ETH address from ethAddress
@@ -577,14 +576,14 @@ func Test_claimUnusedPRL(t *testing.T) {
 func Test_buryPRL(t *testing.T) {
 	// TODO:  get this working and remove Skip()
 	t.Skip(nil)
-	
+
 	prlValue := big.NewInt(0)
 	// only configure to and amount
 	buryMsg := services.OysterCallMsg{
-		To:         prlAddress02,
-		Amount:     *prlValue,
+		To:     prlAddress02,
+		Amount: *prlValue,
 	}
-	
+
 	// Bury PRL
 	buried := services.EthWrapper.BuryPrl(buryMsg)
 	if buried {
@@ -598,12 +597,12 @@ func Test_buryPRL(t *testing.T) {
 
 // testing balance of the prl account for a given address
 func Test_balanceOfFromOysterPearl(t *testing.T) {
-	
+
 	// working pulls the balance from Oyster PRL on test net
 	// prl balances
 	bankBalance := services.EthWrapper.CheckPRLBalance(prlBankAddress)
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
-	
+
 }
 
 // utility to access the return the PRL wallet keystore
