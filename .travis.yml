@@ -33,6 +33,21 @@ install:
   - docker-compose up --build -d
 
 before_script:
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
+  - echo $(curl icanhazip.com)
   - sleep 30
   # - "
   #     echo waiting for docker...;
