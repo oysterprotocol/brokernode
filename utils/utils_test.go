@@ -282,15 +282,33 @@ func Test_ConvertToWeiUnit_ConsiderAsZero(t *testing.T) {
 }
 
 func Test_ConvertToPrlUnit(t *testing.T) {
-	v := oyster_utils.ConverFromWeiUnit(big.NewInt(200000000000000000))
+	v := oyster_utils.ConvertFromWeiUnit(big.NewInt(200000000000000000))
 
 	oyster_utils.AssertTrue(v.String() == big.NewFloat(.2).String(), t, "")
 }
 
 func Test_ConvertToPrlUnit_SmallValue(t *testing.T) {
-	v := oyster_utils.ConverFromWeiUnit(big.NewInt(2))
+	v := oyster_utils.ConvertFromWeiUnit(big.NewInt(2))
 
 	oyster_utils.AssertTrue(v.String() == big.NewFloat(.000000000000000002).String(), t, "")
+}
+
+func Test_ConvertGweiToWei(t *testing.T) {
+	gwei := big.NewInt(1)
+	expectedWei := big.NewInt(1000000000)
+
+	weiResult := oyster_utils.ConvertGweiToWei(gwei)
+
+	oyster_utils.AssertTrue(expectedWei.String() == weiResult.String(), t, "")
+}
+
+func Test_ConvertWeiToGwei(t *testing.T) {
+	wei := big.NewInt(1000000000)
+	expectedGwei := big.NewInt(1)
+
+	gweiResult := oyster_utils.ConvertWeiToGwei(wei)
+
+	oyster_utils.AssertTrue(expectedGwei.String() == gweiResult.String(), t, "")
 }
 
 // Private helper methods

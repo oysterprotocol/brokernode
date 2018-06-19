@@ -41,7 +41,9 @@ type Eth struct {
 	GeneratePublicKeyFromPrivateKey
 	BuryPrl
 	SendETH
+	CreateSendPRLMessage
 	SendPRL
+	SendPRLFromOyster
 	GetGasPrice
 	WaitForTransfer
 	CheckETHBalance
@@ -103,7 +105,9 @@ type GetTransaction func(txHash common.Hash) TransactionWithBlockNumber
 type GetTestWallet func() *keystore.Key
 
 type BuryPrl func(msg OysterCallMsg) bool
+type CreateSendPRLMessage func(from common.Address, to common.Address, prlAmount big.Int) (OysterCallMsg, error)
 type SendPRL func(msg OysterCallMsg) bool
+type SendPRLFromOyster func(msg OysterCallMsg) bool
 type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey *ecdsa.PrivateKey) bool
 type ClaimUnusedPRLs func(uploadsWithUnclaimedPRLs []models.CompletedUpload) error
 
@@ -119,13 +123,20 @@ var (
 	EthWrapper           Eth
 )
 
+const (
+	GasLimitPRLSend uint64 = 65000
+	// from actual transactions on etherscan, this tends to be 53898
+)
+
 func init() {
 
 	RunOnMainETHNetwork()
 
 	EthWrapper = Eth{
 		SendGas:                         sendGas,
+		CreateSendPRLMessage:            createSendPRLMessage,
 		SendPRL:                         sendPRL,
+		SendPRLFromOyster:               sendPRLFromOyster,
 		SendETH:                         sendETH,
 		BuryPrl:                         buryPrl,
 		ClaimPRL:                        claimPRLs,
@@ -873,6 +884,20 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	return status
 }
 
+func createSendPRLMessage(from common.Address, to common.Address, prlAmount big.Int) (OysterCallMsg, error) {
+
+	callMsg := OysterCallMsg{
+		From:       from,
+		To:         to,
+		Amount:     prlAmount,
+		Gas:        GasLimitPRLSend,
+		PrivateKey: *MainWalletPrivateKey,
+		TotalWei:   *big.NewInt(0).SetUint64(uint64(prlAmount.Int64())),
+	}
+
+	return callMsg, nil
+}
+
 /**
 sendPrl
 When a user uploads a file, we create an upload session on the broker.
@@ -893,7 +918,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	defer cancel()
 
 	// generate nonce
-	nonce, _ := client.NonceAt(ctx, msg.From, nil)
+	nonce, _ := client.PendingNonceAt(ctx, msg.From)
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
@@ -919,7 +944,8 @@ func sendPRL(msg OysterCallMsg) bool {
 	}
 	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
 	// create new transaction
-	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, gasLimit, gasPrice, nil)
+
+	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, msg.Gas, gasPrice, nil)
 
 	// signer
 	signer := types.NewEIP155Signer(chainId)
@@ -988,15 +1014,14 @@ func sendPRLFromOyster(msg OysterCallMsg) bool {
 
 	log.Printf("authorized transactor : %v", auth.From.Hex())
 
-	block, _ := getCurrentBlock()
+	//block, _ := getCurrentBlock()
 	gasPrice, err := getGasPrice()
 
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
-		GasLimit: block.GasLimit(),
+		GasLimit: auth.GasLimit,
 		GasPrice: gasPrice,
-		Value:    &msg.Amount,
 		Nonce:    auth.Nonce,
 	}
 
