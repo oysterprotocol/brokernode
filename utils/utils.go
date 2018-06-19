@@ -278,10 +278,12 @@ func ConvertFromWeiUnit(wei *big.Int) *big.Float {
 }
 
 func ConvertWeiToGwei(wei *big.Int) *big.Int {
+
 	return new(big.Int).Quo(wei, big.NewInt(params.Shannon))
 }
 
 func ConvertGweiToWei(gwei *big.Int) *big.Int {
+
 	return new(big.Int).Mul(gwei, big.NewInt(params.Shannon))
 }
 

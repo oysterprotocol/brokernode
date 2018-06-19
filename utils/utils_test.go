@@ -298,7 +298,6 @@ func Test_ConvertGweiToWei(t *testing.T) {
 	expectedWei := big.NewInt(1000000000)
 
 	weiResult := oyster_utils.ConvertGweiToWei(gwei)
-
 	oyster_utils.AssertTrue(expectedWei.String() == weiResult.String(), t, "")
 }
 
@@ -307,7 +306,6 @@ func Test_ConvertWeiToGwei(t *testing.T) {
 	expectedGwei := big.NewInt(1)
 
 	gweiResult := oyster_utils.ConvertWeiToGwei(wei)
-
 	oyster_utils.AssertTrue(expectedGwei.String() == gweiResult.String(), t, "")
 }
 

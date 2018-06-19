@@ -170,6 +170,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	// check-lock-check pattern to avoid excessive locking.
 	mtx.Lock()
 	defer mtx.Unlock()
+
 	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
