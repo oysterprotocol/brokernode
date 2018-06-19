@@ -18,9 +18,9 @@ import (
 	"log"
 	"math/big"
 	"os"
-	"reflect"
 	"testing"
 	"time"
+	"reflect"
 )
 
 //
@@ -35,8 +35,7 @@ var oneWei = big.NewInt(1000000000000000000)
 //'{"jsonrpc":"2.0","method":"eth_getRawTransactionByHash","params":["<TX_HASH>"],"id":1}' http://54.86.134.172:8080
 
 // Private Network
-//var oysterbyNetwork = "ws://54.86.134.172:8547"
-var oysterbyNetwork = "http://54.86.134.172:8080"
+var oysterbyNetwork = os.Getenv("ETH_NODE_URL")
 
 //
 // Ethereum Addresses
@@ -74,6 +73,7 @@ var prlDistribution = common.HexToAddress("0x08e6c245e21799c43970cd3193c59c1f6f2
 // Transaction Placeholders
 var knownTransaction = false
 var lastTransaction = types.Transaction{}
+var lastTransactionHash = common.HexToHash("0x91676473dad2d9e4c777ac1bbbc1a2d8548ab97d8332d9ca551de1df79c958b3")
 
 //
 // Utility
@@ -137,9 +137,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
 	//services.RunOnTestNet()
-	// TODO stop skipping this
 	//t.Skip()
-
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -156,7 +154,6 @@ func Test_getGasPrice(t *testing.T) {
 // check balance on test network test
 func Test_checkETHBalance(t *testing.T) {
 	//services.RunOnTestNet()
-	// TODO: works remove Skip()
 	//t.Skip()
 	// test balance for an ether account
 	// Convert string address to byte[] address form
@@ -212,8 +209,7 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	// TODO:  works remove Skip()
-	t.Skip(nil)
+	//t.Skip(nil)
 	//services.RunOnTestNet()
 	// transfer
 	transferValue := big.NewInt(10)
@@ -243,32 +239,49 @@ func Test_sendEth(t *testing.T) {
 // ensure the transaction is stored in the transactions table
 // it is accessed with the lastTransactionHash from the previous test
 func Test_ensureTransactionStoredInPool(t *testing.T) {
-	// get item by txHash and ensure its in the table
-	txWithBlockNumber := services.EthWrapper.GetTransaction(lastTransaction.Hash())
-	if txWithBlockNumber.Transaction != nil {
-		// compare transaction hash
-		if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), lastTransaction.Hash()) {
-			t.Log("transaction is stored on the transactions table")
-		} else {
-			t.Fatal("transaction should be stored in the transaction table, post sendEth")
+	txHash := lastTransaction.Hash()
+	if len(txHash) <= 0 {
+		// set an existing tx hash
+		txHash = lastTransactionHash
+	}
+	// check pending
+	isPending := services.EthWrapper.PendingConfirmation(txHash)
+	if isPending {
+		// get item by txHash and ensure its in the table
+		txWithBlockNumber := services.EthWrapper.GetTransaction(txHash)
+		if txWithBlockNumber.Transaction != nil {
+			// compare transaction hash
+			if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), txHash) {
+				t.Log("transaction is stored on the transactions table")
+			} else {
+				t.Fatal("transaction should be stored in the transaction table, post sendEth")
+			}
 		}
 	}
 }
 
 // ensure confirmation is made with last transaction hash from sendEth
 func Test_confirmTransactionStatus(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
+	// t.Skip(nil)
 	//services.RunOnTestNet()
-
-	txStatus := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash())
-	if txStatus == 0 {
-		t.Logf("transaction failure")
-	} else if txStatus == 1 {
-		t.Logf("confirmation completed")
-
-		bal := services.EthWrapper.CheckETHBalance(ethAddress02)
-		t.Logf("balance updated : %v", bal)
+	txHash := lastTransaction.Hash()
+	if len(txHash) <= 0 {
+		// set an existing tx hash
+		txHash = lastTransactionHash
+	}
+	// check pending
+	isPending := services.EthWrapper.PendingConfirmation(txHash)
+	if isPending {
+		// check confirmation
+		txStatus := services.EthWrapper.WaitForConfirmation(txHash)
+		if txStatus == 0 {
+			t.Logf("transaction failure")
+		} else if txStatus == 1 {
+			t.Logf("confirmation completed")
+			
+			bal := services.EthWrapper.CheckETHBalance(ethAddress02)
+			t.Logf("balance updated : %v", bal)
+		}
 	}
 }
 

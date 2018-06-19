@@ -51,6 +51,7 @@ type Eth struct {
 	GetCurrentBlock
 	GetConfirmationStatus
 	WaitForConfirmation
+	PendingConfirmation
 	GetTransactionTable
 	GetTransaction
 	GetNonce
@@ -99,6 +100,7 @@ type GetCurrentBlock func() (*types.Block, error)
 type SendETH func(toAddr common.Address, amount *big.Int) (transactions types.Transactions, err error)
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
 type WaitForConfirmation func(txHash common.Hash) uint
+type PendingConfirmation func(txHash common.Hash) bool
 type GetNonce func(ctx context.Context, address common.Address) (uint64, error)
 type GetTransactionTable func() map[common.Hash]TransactionWithBlockNumber
 type GetTransaction func(txHash common.Hash) TransactionWithBlockNumber
@@ -147,6 +149,7 @@ func init() {
 		GenerateEthAddrFromPrivateKey:   generateEthAddrFromPrivateKey,
 		GetGasPrice:                     getGasPrice,
 		WaitForTransfer:                 waitForTransfer,
+		PendingConfirmation:             isPending,
 		CheckETHBalance:                 checkETHBalance,
 		CheckPRLBalance:                 checkPRLBalance,
 		GetCurrentBlock:                 getCurrentBlock,
@@ -443,7 +446,7 @@ func isPending(txHash common.Hash) bool {
 	// get transaction
 	_, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
-		fmt.Printf("Could not get transaction by hash")
+		fmt.Printf("Could not get transaction by hash\n")
 		raven.CaptureError(err, nil)
 	}
 	if isPending {
