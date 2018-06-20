@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
@@ -27,7 +26,10 @@ const (
 	DataMapTableName = "data_maps"
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
-	MaxNumberOfValueForInsertOperation = 50
+	MaxNumberOfValueForInsertOperation = 10
+
+	// The max number of retry if there is an error on SQL.
+	MaxSqlRetryCount = 3
 )
 
 const (
@@ -129,8 +131,7 @@ func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 
@@ -147,8 +148,7 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 
@@ -214,13 +214,14 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 
 		insertionCount++
 		if insertionCount >= MaxNumberOfValueForInsertOperation {
-			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
+			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
 			insertionCount = 0
 			values = nil
 		}
 	}
-	err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
-
+	if len(values) > 0 {
+		err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
+	}
 	return
 }
 
@@ -249,8 +250,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 		Error).All(&genesisHashesUnassigned)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return nil, err
 	}
 
@@ -269,10 +269,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 func GetUnassignedChunks() (dataMaps []DataMap, err error) {
 	dataMaps = []DataMap{}
 	err = DB.Where("status = ? OR status = ?", Unassigned, Error).All(&dataMaps)
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -286,11 +283,7 @@ func GetAllUnassignedChunksBySession(session UploadSession) (dataMaps []DataMap,
 		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
 			session.GenesisHash, Unassigned, Error).All(&dataMaps)
 	}
-
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -305,10 +298,7 @@ func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []
 			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
 	}
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -318,10 +308,7 @@ func GetPendingChunksBySession(session UploadSession, limit int) (dataMaps []Dat
 	err = DB.Where("genesis_hash = ? AND status = ? LIMIT ?",
 		session.GenesisHash, Pending, limit).All(&dataMaps)
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -339,8 +326,7 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 		err := DB.Where("genesis_hash in (?)", genesisHashes...).All(&incompleteSessions)
 
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 		if len(incompleteSessions) <= 0 {
@@ -374,17 +360,20 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 	return nil, nil
 }
 
-func insertsIntoDataMapsTable(columnsName string, values string) error {
+func insertsIntoDataMapsTable(columnsName string, values string, valueSize int) error {
 	if len(values) == 0 {
 		return nil
 	}
 
 	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
-	err := DB.RawQuery(rawQuery).All(&[]DataMap{})
-	if err != nil {
-		raven.CaptureError(err, nil)
+	var err error
+	for i := 0; i < MaxSqlRetryCount; i++ {
+		err = DB.RawQuery(rawQuery).All(&[]DataMap{})
+		if err == nil {
+			break
+		}
 	}
-
+	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": MaxSqlRetryCount, "NumOfRecord": valueSize})
 	return err
 }
 
@@ -394,10 +383,8 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]Dat
 	dataMaps := []DataMap{}
 	err := DB.Where("genesis_hash = ?",
 		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
 
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -439,7 +426,7 @@ func GetDataMap(genHash string, numChunks int) (dataMaps []DataMap, vErr *valida
 		var err error
 		vErr, err = dataMap.Validate(nil)
 		if err != nil {
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		dataMaps = append(dataMaps, dataMap)
