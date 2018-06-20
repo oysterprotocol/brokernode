@@ -260,7 +260,6 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Printf("Could not generate eth key: %v\n", err)
-		raven.CaptureError(err, nil)
 		return addr, "", err
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
@@ -362,7 +361,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
 	if err != nil {
 		log.Fatal("Client could not get gas price estimate from network")
-		raven.CaptureError(err, nil)
+		return 0, nil
 	}
 	return estimatedGasPrice, nil
 }
@@ -378,7 +377,6 @@ func checkETHBalance(addr common.Address) *big.Int {
 	balance, err := client.BalanceAt(context.Background(), addr, nil)
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
-		raven.CaptureError(err, nil)
 		return big.NewInt(0)
 	}
 	return balance
@@ -402,7 +400,6 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
-		raven.CaptureError(err, nil)
 		return big.NewInt(0)
 	}
 	return balance
@@ -421,7 +418,6 @@ func getCurrentBlock() (*types.Block, error) {
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		fmt.Printf("Could not get last block: %v\n", err)
-		raven.CaptureError(err, nil)
 		return nil, err
 	}
 
@@ -448,7 +444,7 @@ func isPending(txHash common.Hash) bool {
 	_, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		fmt.Printf("Could not get transaction by hash\n")
-		raven.CaptureError(err, nil)
+		return false
 	}
 	if isPending {
 		fmt.Printf("transaction is pending\n")
@@ -510,7 +506,6 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		fmt.Println("Could not get transaction by hash")
-		raven.CaptureError(err, nil)
 		return big.NewInt(0), err
 	}
 	printTx(tx)
