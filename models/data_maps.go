@@ -27,7 +27,7 @@ const (
 	DataMapTableName = "data_maps"
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
-	MaxNumberOfValueForInsertOperation = 50
+	MaxNumberOfValueForInsertOperation = 10
 )
 
 const (
