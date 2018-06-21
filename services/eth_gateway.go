@@ -755,7 +755,7 @@ func buryPrl(msg OysterCallMsg) bool {
 	// dispense PRLs from the transaction address to each 'treasure' address
 	rawTransaction, err := sendETH(msg.To, &msg.Amount)
 
-	if err != nil || len(rawTransaction) == 0 {
+	if err != nil || rawTransaction.Len() == 0 {
 		// sending eth has failed
 		return false
 	}
@@ -785,6 +785,8 @@ func buryPrl(msg OysterCallMsg) bool {
 		GasPrice: auth.GasPrice,
 		Context:  auth.Context,
 	})
+	
+	printTx(tx)
 
 	return tx != nil
 }
@@ -830,31 +832,41 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	// shared client
 	client, _ := sharedClient()
-
 	treasureBalance := checkPRLBalance(treasureAddress)
+	fmt.Printf("treasure balance : %v\n", treasureBalance)
+	
 	if treasureBalance.Uint64() <= 0 {
-		fmt.Printf("treasure balance insufficient")
+		msg := "treasure balance insufficient"
+		fmt.Println(msg)
+		raven.CaptureError(errors.New(msg), nil)
 		return false
 	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(treasurePrivateKey)
 	if auth == nil {
-		fmt.Printf("unable to create a new transactor")
+		msg := "unable to create a new transactor"
+		fmt.Println(msg)
+		raven.CaptureError(errors.New(msg), nil)
 	}
+	
 	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	
 	// transact with oyster pearl instance
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 	if err != nil {
-		fmt.Print("Unable to instantiate OysterPearl")
+		msg := "Unable to instantiate OysterPearl"
+		fmt.Println(msg)
+		raven.CaptureError(err, nil)
+		return false
 	}
+	gasPrice, _ := getGasPrice()
 	// setup transaction options
 	claimOpts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
-		GasLimit: auth.GasLimit,
-		Context:  auth.Context,
-		GasPrice: auth.GasPrice,
+		GasLimit: GasLimitPRLSend,
+		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
 		Value:    treasureBalance,
 	}
@@ -942,7 +954,7 @@ func sendPRL(msg OysterCallMsg) bool {
 
 	// amount is greater than balance, return error
 	if msg.Amount.Uint64() > balance.Uint64() {
-		fmt.Printf("balance too low to proceed")
+		fmt.Println("balance too low to proceed")
 		return false
 	}
 	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
@@ -964,7 +976,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		// given we have a "known transaction" error we need to respond
-		fmt.Printf("error sending transaction : %v", err)
+		fmt.Printf("error sending transaction : %v\n", err)
 		raven.CaptureError(err, nil)
 		return false
 	}
@@ -988,10 +1000,10 @@ func sendPRL(msg OysterCallMsg) bool {
 	txStatus := waitForConfirmation(confirmTx.Hash())
 
 	if txStatus == 0 {
-		fmt.Printf("transaction failure")
+		fmt.Println("transaction failure")
 		status = false
 	} else if txStatus == 1 {
-		fmt.Printf("confirmation completed")
+		fmt.Println("confirmation completed")
 		status = true
 	}
 
