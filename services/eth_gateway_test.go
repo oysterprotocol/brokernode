@@ -209,13 +209,13 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	//t.Skip(nil)
-	//services.RunOnTestNet()
+	t.Skip(nil)
+	services.RunOnTestNet()
 	// transfer
-	transferValue := big.NewInt(10)
-	//transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
+	transferValue := big.NewInt(1)
+	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
+	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
@@ -291,6 +291,7 @@ func Test_confirmTransactionStatus(t *testing.T) {
 
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
+	t.Skip(nil)
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
@@ -366,7 +367,7 @@ func Test_simOysterPearlBury(t *testing.T) {
 		Nonce:    big.NewInt(0),
 		From:     claimAuth.From,
 		GasLimit: params.GenesisGasLimit,
-		GasPrice: gasPrice,
+		GasPrice: claimAuth.GasPrice,
 		Context:  ctx,
 		Signer:   claimAuth.Signer,
 	}, payoutAddress, fee)
@@ -422,8 +423,7 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 // testing token balanceOf from OysterPearl Contract account
 // basic test which validates the balanceOf a PRL address
 func Test_stakePRLFromOysterPearl(t *testing.T) {
-	//TODO:  works remove Skip()
-	t.Skip(nil)
+	t.Skip(nil) // QA Method should not be run on regular testing runs
 	// contract
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
@@ -475,12 +475,9 @@ func Test_stakePRLFromOysterPearl(t *testing.T) {
 // issue > transfer failed : replacement transaction underpriced
 // solution > increase gasPrice by 10% minimum will work.
 func Test_transferPRLFromOysterPearl(t *testing.T) {
-	// TODO:  get this working and remove Skip()
-	//t.Skip(nil)
-
-	prlValue := big.NewInt(0).SetUint64(toWei(50))
-	// TODO Implement in the sendPRLFromOyster
-	sent := services.EthWrapper.SendPRL(services.OysterCallMsg{
+	prlValue := big.NewInt(0).SetUint64(toWei(15))
+	// sendPRL
+	sent := services.EthWrapper.SendPRLFromOyster(services.OysterCallMsg{
 		Amount: *prlValue,
 	})
 
@@ -497,7 +494,7 @@ func Test_transferPRLFromOysterPearl(t *testing.T) {
 // send prl from main wallet address to another address
 func Test_sendPRL(t *testing.T) {
 	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
+	//t.Skip(nil)
 
 	// same as the prl bank address
 	prlWallet := getPRLWallet()
@@ -602,7 +599,9 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 	// working pulls the balance from Oyster PRL on test net
 	// prl balances
 	bankBalance := services.EthWrapper.CheckPRLBalance(prlBankAddress)
+	prl2Balance := services.EthWrapper.CheckPRLBalance(prlAddress02)
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
+	t.Logf("oyster pearl prl2 address balance :%v", prl2Balance)
 
 }
 

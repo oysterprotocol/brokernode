@@ -505,6 +505,7 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	//// get transaction
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
+		fmt.Printf("isPending : %v", err)
 		fmt.Println("Could not get transaction by hash")
 		return big.NewInt(0), err
 	}
@@ -546,10 +547,12 @@ func waitForConfirmation(txHash common.Hash) uint {
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
 			fmt.Printf("unable to get transaction confirmation with hash : %v\n", err)
+			raven.CaptureError(err, nil)
 			status = 0
 		} else {
 			if txStatus.Uint64() == 0 {
 				fmt.Println("transaction failure")
+				raven.CaptureError(err, nil)
 				status = 0
 			} else if txStatus.Uint64() == 1 {
 				fmt.Println("confirmation completed")
@@ -558,7 +561,7 @@ func waitForConfirmation(txHash common.Hash) uint {
 				return status
 			}
 		}
-		time.Sleep(3 * time.Second)
+		time.Sleep(4 * time.Second)
 	}
 	return status
 }
@@ -572,7 +575,7 @@ func getNonce(ctx context.Context, address common.Address) (uint64, error) {
 	return client.NonceAt(ctx, address, nil)
 }
 
-// Utility to get the transaction cound in the pending tx pool
+// Utility to get the transaction count in the pending tx pool
 func getPendingTransactions() (uint, error) {
 	client, _ := sharedClient()
 	return client.PendingTransactionCount(context.Background())
@@ -883,6 +886,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	return status
 }
 
+// factory to provide an initialized OysterCallMsg struct, ready to apply to send
 func createSendPRLMessage(from common.Address, to common.Address, prlAmount big.Int) (OysterCallMsg, error) {
 
 	callMsg := OysterCallMsg{
@@ -1019,9 +1023,11 @@ func sendPRLFromOyster(msg OysterCallMsg) bool {
 	opts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
-		GasLimit: auth.GasLimit,
+		GasLimit: GasLimitPRLSend,
 		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
+		Context:  auth.Context,
+		Value:    &msg.Amount,
 	}
 
 	tx, err := oysterPearl.Transfer(&opts, msg.To, &msg.Amount)
