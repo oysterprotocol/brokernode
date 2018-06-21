@@ -2,8 +2,6 @@ package services
 
 import (
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
-	"log"
 	"math"
 	"os"
 	"runtime"
@@ -11,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
@@ -96,13 +94,11 @@ func init() {
 	// Load ENV variables
 	err := godotenv.Load()
 	if err != nil {
-		log.Printf(".env file : %v", err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf(".env file : %v", err), nil)
 	}
 
 	host_ip := os.Getenv("HOST_IP")
 	if host_ip == "" {
-		raven.CaptureError(err, nil)
 		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
@@ -183,18 +179,12 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
 
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 
 		transactions := []giota.Transaction(bdl)
 
 		transactionsToApprove, err := getTransactionsToApprove()
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 
 		err = doPowAndBroadcast(
 			transactionsToApprove.BranchTransaction,
@@ -268,14 +258,12 @@ func findTransactions(addresses []giota.Address) (map[giota.Address][]giota.Tran
 		}
 		resp, err := api.FindTransactions(&req)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 		transactionResp, err := api.GetTrytes(resp.Hashes)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 
@@ -321,8 +309,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		mutex.Unlock()
 
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return err
 		}
 
@@ -341,8 +328,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			// Async log
 			oyster_utils.LogToSegment("iota_wrappers: broadcast_FAIL", broadcastProperties)
 
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 		} else {
 
 			err = api.StoreTransactions(trytes)

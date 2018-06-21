@@ -2,15 +2,13 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
 	"sync"
 	"time"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 /*
@@ -72,10 +70,7 @@ func GetReadyChannels() ([]ChunkChannel, error) {
 	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
 		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).All(&channels)
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return channels, err
 }
@@ -87,11 +82,7 @@ func GetOneReadyChannel() (ChunkChannel, error) {
 
 	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
 		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).First(&channel)
-
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return channel, err
 }
 
@@ -105,8 +96,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 		*err = DB.Transaction(func(DB *pop.Connection) error {
 			err := DB.RawQuery("DELETE from chunk_channels;").All(&[]ChunkChannel{})
 			if err != nil {
-				fmt.Println(err)
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
 				return err
 			}
 
@@ -120,8 +110,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 				_, err = DB.ValidateAndSave(&channel)
 				if err != nil {
-					fmt.Println(err)
-					raven.CaptureError(err, nil)
+					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 			}
@@ -132,19 +121,12 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 	wg.Wait()
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	channels := []ChunkChannel{}
 
 	err = DB.RawQuery("SELECT * from chunk_channels;").All(&channels)
-
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return channels, err
 }
