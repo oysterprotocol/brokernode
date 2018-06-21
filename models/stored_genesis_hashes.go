@@ -16,19 +16,25 @@ const (
 )
 
 const (
+	TreasurePending int = iota + 1
+	TreasureBuried
+)
+
+const (
 	WebnodeCountLimit  = 2
 	NoGenHashesMessage = "no genesis hashes to sell, or none that this webnode needs"
 )
 
 type StoredGenesisHash struct {
-	ID            uuid.UUID `json:"id" db:"id"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at" db:"updated_at"`
-	GenesisHash   string    `json:"genesisHash" db:"genesis_hash"`
-	FileSizeBytes int       `json:"fileSizeBytes" db:"file_size_bytes"`
-	NumChunks     int       `json:"numChunks" db:"num_chunks"`
-	WebnodeCount  int       `json:"webnodeCount" db:"webnode_count"`
-	Status        int       `json:"status" db:"status"`
+	ID             uuid.UUID `json:"id" db:"id"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
+	FileSizeBytes  int       `json:"fileSizeBytes" db:"file_size_bytes"`
+	NumChunks      int       `json:"numChunks" db:"num_chunks"`
+	WebnodeCount   int       `json:"webnodeCount" db:"webnode_count"`
+	Status         int       `json:"status" db:"status"`
+	TreasureStatus int       `json:"treasureStatus" db:"treasure_status"`
 }
 
 // String is not required by pop and may be deleted
@@ -71,6 +77,10 @@ func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
 		s.Status = StoredGenesisHashUnassigned
 	}
 
+	if s.TreasureStatus == 0 {
+		s.TreasureStatus = TreasurePending
+	}
+
 	return nil
 }
 
@@ -83,8 +93,8 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 		existingGenHashMap[genHash] = true
 	}
 
-	err := DB.Where("webnode_count < ? AND status = ? ORDER BY created_at asc",
-		WebnodeCountLimit, StoredGenesisHashUnassigned).All(&storedGenesisHashes)
+	err := DB.Where("webnode_count < ? AND status = ? AND treasure_status = ? ORDER BY created_at asc",
+		WebnodeCountLimit, StoredGenesisHashUnassigned, TreasureBuried).All(&storedGenesisHashes)
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -98,4 +108,10 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 	}
 
 	return StoredGenesisHash{}, errors.New(NoGenHashesMessage)
+}
+
+func SetToTreasureBuriedByGenesisHash(genesisHash string) error {
+	err := DB.RawQuery("UPDATE stored_genesis_hashes SET treasure_status = ? WHERE genesis_hash = ?",
+		TreasureBuried, genesisHash).All(&[]StoredGenesisHash{})
+	return err
 }
