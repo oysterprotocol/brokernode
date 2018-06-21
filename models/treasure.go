@@ -18,16 +18,17 @@ type PRLStatus int
 // IMPORTANT:  Do not remove Message and Address from
 // this struct; they are used for encryption
 type Treasure struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	ETHAddr   string    `json:"ethAddr" db:"eth_addr"`
-	ETHKey    string    `json:"ethKey" db:"eth_key"`
-	PRLAmount string    `json:"prlAmount" db:"prl_amount"`
-	PRLStatus PRLStatus `json:"prlStatus" db:"prl_status"`
-	Message   string    `json:"message" db:"message"`
-	MsgID     string    `json:"msgId" db:"msg_id"`
-	Address   string    `json:"address" db:"address"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ETHAddr     string    `json:"ethAddr" db:"eth_addr"`
+	ETHKey      string    `json:"ethKey" db:"eth_key"`
+	PRLAmount   string    `json:"prlAmount" db:"prl_amount"`
+	PRLStatus   PRLStatus `json:"prlStatus" db:"prl_status"`
+	Message     string    `json:"message" db:"message"`
+	MsgID       string    `json:"msgId" db:"msg_id"`
+	Address     string    `json:"address" db:"address"`
+	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
 }
 
 const (
