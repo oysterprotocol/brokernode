@@ -3,8 +3,6 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"github.com/getsentry/raven-go"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -130,18 +128,13 @@ func NewCompletedUpload(session UploadSession) error {
 
 func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ? AND prl_status = ?", gasStatus, prlStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
-
+	oyster_utils.LogIfError(err, nil)
 	return uploads, err
 }
 
 func GetRowsByGasStatus(gasStatus GasTransferStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ?", gasStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -155,9 +148,7 @@ func SetGasStatus(uploads []CompletedUpload, newGasStatus GasTransferStatus) {
 
 func GetRowsByPRLStatus(prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("prl_status = ?", prlStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -173,9 +164,7 @@ func GetTimedOutGasTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("gas_status = ? AND updated_at <= ?",
 		GasTransferProcessing,
 		thresholdTime).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -184,9 +173,7 @@ func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("prl_status = ? AND updated_at <= ?",
 		PRLClaimProcessing,
 		thresholdTime).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -195,8 +182,7 @@ func SetGasStatusByAddress(transactionAddress string, newGasStatus GasTransferSt
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 	if uploadRow.ID == uuid.Nil {
@@ -210,8 +196,7 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 	if uploadRow.ID == uuid.Nil {
@@ -224,8 +209,7 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 func DeleteCompletedClaims() error {
 	err := DB.RawQuery("DELETE from completed_uploads WHERE prl_status = ?", PRLClaimSuccess).All(&[]CompletedUpload{})
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return err
 	}
 
