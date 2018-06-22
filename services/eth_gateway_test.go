@@ -12,15 +12,14 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
+	"reflect"
 	"testing"
 	"time"
-	"reflect"
 )
 
 //
@@ -137,7 +136,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
 	//services.RunOnTestNet()
-	//t.Skip()
+	//t.Skip(nil)
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -151,17 +150,36 @@ func Test_getGasPrice(t *testing.T) {
 	t.Logf("current network gas price :%v", gasPrice.String())
 }
 
+// get gas price from network test
+func Test_calculateGasToSend(t *testing.T) {
+
+	gasPrice, err := services.EthWrapper.GetGasPrice()
+	gasLimitToUse := services.GasLimitETHSend
+
+	expectedGasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimitToUse)))
+
+	gasToSend, err := services.EthWrapper.CalculateGasToSend(gasLimitToUse)
+	if expectedGasToSend.Int64() != gasToSend.Int64() {
+		t.Fatalf("failed to calculate the gas to send: %v\n", err)
+	}
+	if expectedGasToSend.Int64() == gasToSend.Int64() && gasToSend.Int64() > 0 {
+		t.Logf("successfully calculated gas to send: %v\n", gasToSend)
+	} else if gasToSend.Int64() <= 0 {
+		t.Fatalf("calculated a gas to send amount less than zero: %v\n", gasPrice)
+	}
+}
+
 // check balance on test network test
 func Test_checkETHBalance(t *testing.T) {
 	//services.RunOnTestNet()
-	//t.Skip()
+	//t.Skip(nil)
 	// test balance for an ether account
 	// Convert string address to byte[] address form
 	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
-	if bal.Uint64() > 0 {
+	if bal.Int64() != -1 {
 		t.Logf("balance verified: %v\n", bal)
 	} else {
-		t.Fatalf("balance less than zero: %v\n", bal)
+		t.Fatalf("could not get balance")
 	}
 }
 
@@ -194,28 +212,25 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 func Test_getNonceForAccount(t *testing.T) {
 	//services.RunOnTestNet()
 	// TODO:  works remove Skip()
-	//t.Skip()
+	//t.Skip(nil)
 	// Get the nonce for the given account
 	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
 	if err != nil {
 		t.Fatalf("unable to access the account nonce : %v", err)
-	}
-	if nonce > 0 {
-		t.Logf("valid account nonce : %v", nonce)
 	} else {
-		t.Fatalf("invalid account nonce : %v", nonce)
+		t.Logf("valid account nonce : %v", nonce)
 	}
 }
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	//t.Skip(nil)
+	t.Skip(nil)
 	//services.RunOnTestNet()
 	// transfer
 	transferValue := big.NewInt(10)
 	//transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-	txs, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
+	txs, _, _, err := services.EthWrapper.SendETH(ethAddress02, transferValue)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
@@ -227,7 +242,7 @@ func Test_sendEth(t *testing.T) {
 		printTx(transaction)
 
 		// wait for confirmation
-		confirmed := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash())
+		confirmed := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash(), 3)
 		if confirmed == 1 {
 			t.Logf("confirmed ether was sent to : %v", ethAddress02.Hex())
 		} else if confirmed == 0 {
@@ -262,7 +277,7 @@ func Test_ensureTransactionStoredInPool(t *testing.T) {
 
 // ensure confirmation is made with last transaction hash from sendEth
 func Test_confirmTransactionStatus(t *testing.T) {
-	// t.Skip(nil)
+	t.Skip(nil)
 	//services.RunOnTestNet()
 	txHash := lastTransaction.Hash()
 	if len(txHash) <= 0 {
@@ -273,12 +288,12 @@ func Test_confirmTransactionStatus(t *testing.T) {
 	isPending := services.EthWrapper.PendingConfirmation(txHash)
 	if isPending {
 		// check confirmation
-		txStatus := services.EthWrapper.WaitForConfirmation(txHash)
+		txStatus := services.EthWrapper.WaitForConfirmation(txHash, 3)
 		if txStatus == 0 {
 			t.Logf("transaction failure")
 		} else if txStatus == 1 {
 			t.Logf("confirmation completed")
-			
+
 			bal := services.EthWrapper.CheckETHBalance(ethAddress02)
 			t.Logf("balance updated : %v", bal)
 		}
@@ -405,6 +420,7 @@ func Test_simOysterPearlBury(t *testing.T) {
 // testing token name access from OysterPearl Contract
 // basic test which validates the existence of the contract on the network
 func Test_tokenNameFromOysterPearl(t *testing.T) {
+	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	oysterPearl, err := services.NewOysterPearl(oysterContract, backend)
@@ -416,7 +432,6 @@ func Test_tokenNameFromOysterPearl(t *testing.T) {
 		t.Fatalf("unable to access contract name : %v", err)
 	}
 	t.Logf("oyster pearl contract name :%v", name)
-
 }
 
 // testing token balanceOf from OysterPearl Contract account
@@ -542,35 +557,6 @@ func Test_claimPRL(t *testing.T) {
 	} else {
 		t.Log("PRLs have been successfully claimed")
 	}
-
-}
-
-// claim unused prl from completed upload
-// TODO Claim tests
-func Test_claimUnusedPRL(t *testing.T) {
-
-	// TODO:  get this working and remove Skip()
-	t.Skip(nil)
-	// Setting up the ETH address from ethAddress
-	var rowWithGasTransferSuccess = models.CompletedUpload{
-		GenesisHash:   "RowWithGasTransferSuccess",
-		ETHAddr:       ethAddress02.Hex(),
-		ETHPrivateKey: "8d5366123cb560bb606379f90a0bfd4769eecc0557f1b362dcae9012b548b1e5", // need to update key for test
-		PRLStatus:     models.PRLClaimNotStarted,
-		GasStatus:     models.GasTransferSuccess,
-	}
-
-	// mock completed upload
-	completedUploads := []models.CompletedUpload{rowWithGasTransferSuccess}
-
-	// Claim PRL
-	err := services.EthWrapper.ClaimUnusedPRLs(completedUploads)
-	if err != nil {
-		t.Fatal("Failed to claim PRLs")
-	} else {
-		t.Log("PRLs have been successfully claimed")
-	}
-
 }
 
 // bury prl test comes after we set a claim
@@ -586,13 +572,27 @@ func Test_buryPRL(t *testing.T) {
 	}
 
 	// Bury PRL
-	buried := services.EthWrapper.BuryPrl(buryMsg)
+	buried, _, _ := services.EthWrapper.BuryPrl(buryMsg)
 	if buried {
 		// successful bury attempt
 		t.Log("Buried the PRLs successfully")
 	} else {
 		// failed bury attempt
 		t.Fatal("Faild to bury PRLs. Try Again?")
+	}
+}
+
+// check if an address is in a buried state
+func Test_checkBuriedState(t *testing.T) {
+
+	addr, _, _ := services.EthWrapper.GenerateEthAddr()
+
+	_, err := services.EthWrapper.CheckBuriedState(addr)
+
+	if err != nil {
+		t.Fatal("Failed to check the bury state of the given address.")
+	} else {
+		t.Log("Successfully checked bury state.")
 	}
 }
 
