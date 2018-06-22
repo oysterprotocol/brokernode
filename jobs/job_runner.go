@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	BundleSize = 300
-	Duration   = "duration"
+	BundleSize                = 300
+	Duration                  = "duration"
+	SecondsDelayForETHPolling = 1 * 60
 )
 
 var OysterWorker = worker.NewSimple()
@@ -40,6 +41,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler)
 	oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
 	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
+	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
 	if os.Getenv("OYSTER_PAYS") == "" {
 		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	}
@@ -79,6 +81,11 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{
 			Duration: 20 * time.Second,
+		})
+
+	oysterWorkerPerformIn(buryTreasureAddressesHandler,
+		worker.Args{
+			Duration: 2 * time.Minute,
 		})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
@@ -133,10 +140,17 @@ func updateTimedOutDataMapsHandler(args worker.Args) error {
 }
 
 func processPaidSessionsHandler(args worker.Args) error {
-	thresholdTime := time.Now().Add(-2 * time.Hour) // consider a transaction timed out after 2 hours
-	ProcessPaidSessions(thresholdTime, PrometheusWrapper)
+	ProcessPaidSessions(PrometheusWrapper)
 
 	oysterWorkerPerformIn(processPaidSessionsHandler, args)
+	return nil
+}
+
+func buryTreasureAddressesHandler(args worker.Args) error {
+	thresholdTime := time.Now().Add(-12 * time.Hour) // consider a transaction timed out after 12 hours
+	BuryTreasureAddresses(thresholdTime, PrometheusWrapper)
+
+	oysterWorkerPerformIn(buryTreasureAddressesHandler, args)
 	return nil
 }
 
