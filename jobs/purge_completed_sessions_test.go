@@ -1,7 +1,6 @@
 package jobs_test
 
 import (
-	"encoding/hex"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
@@ -10,15 +9,16 @@ import (
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	fileBytesCount := 2500
 	numChunks := 3
+	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
-		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
-		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
@@ -30,6 +30,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS2"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS2"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err = uploadSession2.StartUploadSession()
@@ -41,6 +44,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS3"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS3"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err = uploadSession3.StartUploadSession()
@@ -138,6 +144,6 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Equal(numChunks+1, len(genHash1Completed))
 	suite.Equal(nil, err)
 
-	suite.Equal("SOME_BETA_ETH_ADDRESS", completedUploads[0].ETHAddr)
+	suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUploads[0].ETHAddr)
 	suite.Equal("abcdeff1", completedUploads[0].GenesisHash)
 }
