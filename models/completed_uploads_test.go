@@ -2,6 +2,7 @@ package models_test
 
 import (
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"time"
 )
@@ -19,59 +20,74 @@ var (
 
 func testSetup(ms *ModelSuite) {
 
+	addr, key, _ := jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferNotStarted = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferNotStarted",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferNotStarted",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferNotStarted",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferNotStarted,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferProcessing",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferProcessing",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferProcessing",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferProcessing,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferSuccess",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferSuccess",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferSuccess",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferSuccess,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferError = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferError",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferError",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithGasTransferError",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferError,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimNotStarted = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimNotStarted",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimNotStarted",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimNotStarted",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferSuccess,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimProcessing",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimProcessing",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimProcessing",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimProcessing,
 		GasStatus:     models.GasTransferSuccess,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimSuccess",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimSuccess",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimSuccess",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimSuccess,
 		GasStatus:     models.GasTransferSuccess,
 	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimError = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimError",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimError",
-		ETHPrivateKey: "SOME_PRIVATE_KEY_RowWithPRLClaimError",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimError,
 		GasStatus:     models.GasTransferSuccess,
 	}
@@ -80,27 +96,35 @@ func testSetup(ms *ModelSuite) {
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferNotStarted)
+	RowWithGasTransferNotStarted.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferProcessing)
+	RowWithGasTransferNotStarted.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferSuccess)
+	RowWithGasTransferSuccess.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferError)
+	RowWithGasTransferError.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimNotStarted)
+	RowWithPRLClaimNotStarted.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimProcessing)
+	RowWithPRLClaimProcessing.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimSuccess)
+	RowWithPRLClaimSuccess.EncryptSessionEthKey()
 	ms.Nil(err)
 
 	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	RowWithPRLClaimError.EncryptSessionEthKey()
 	ms.Nil(err)
 }
 
@@ -136,34 +160,41 @@ func (ms *ModelSuite) Test_CompletedUploads() {
 func testNewCompletedUpload(ms *ModelSuite) {
 
 	fileBytesCount := 2500
+	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
-	err := models.NewCompletedUpload(models.UploadSession{
+	session := models.UploadSession{
 		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeBeta,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: "SOME_PRIVATE_KEY",
-	})
+		ETHPrivateKey: privateKey,
+	}
+	session.StartUploadSession()
+	err := models.NewCompletedUpload(session)
 	ms.Equal(nil, err)
 
-	err = models.NewCompletedUpload(models.UploadSession{
+	session = models.UploadSession{
 		GenesisHash:   "abcdeff2",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeAlpha,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: "SOME_PRIVATE_KEY",
-	})
+		ETHPrivateKey: privateKey,
+	}
+	session.StartUploadSession()
+	err = models.NewCompletedUpload(session)
 	ms.Equal(nil, err)
 
-	err = models.NewCompletedUpload(models.UploadSession{ // no session type
+	session = models.UploadSession{ // no session type
 		GenesisHash:   "abcdeff3",
 		FileSizeBytes: fileBytesCount,
 		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
 		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: "SOME_PRIVATE_KEY",
-	})
+		ETHPrivateKey: privateKey,
+	}
+	session.StartUploadSession()
+	err = models.NewCompletedUpload(session)
 	ms.NotEqual(err, nil)
 	ms.Equal("no session type provided for session in method models.NewCompletedUpload", err.Error())
 

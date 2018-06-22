@@ -1,10 +1,12 @@
 package models
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/getsentry/raven-go"
+	"golang.org/x/crypto/sha3"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -22,7 +24,11 @@ type CompletedUpload struct {
 	ETHAddr       string            `json:"ethAddr" db:"eth_addr"`
 	ETHPrivateKey string            `json:"ethPrivateKey" db:"eth_private_key"`
 	PRLStatus     PRLClaimStatus    `json:"prlStatus" db:"prl_status"`
+	PRLTxHash     string            `json:"prlTxHash" db:"prl_tx_hash"`
+	PRLTxNonce    int64             `json:"prlTxNonce" db:"prl_tx_nonce"`
 	GasStatus     GasTransferStatus `json:"gasStatus" db:"gas_status"`
+	GasTxHash     string            `json:"gasTxHash" db:"gas_tx_hash"`
+	GasTxNonce    int64             `json:"gasTxNonce" db:"gas_tx_nonce"`
 	Version       uint32            `json:"version" db:"version"`
 }
 
@@ -67,8 +73,8 @@ func (c CompletedUploads) String() string {
 func (c *CompletedUpload) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: c.GenesisHash, Name: "GenesisHash"},
-		&validators.StringIsPresent{Field: c.GenesisHash, Name: "EthAddr"},
-		&validators.StringIsPresent{Field: c.GenesisHash, Name: "EthPrivateKey"},
+		&validators.StringIsPresent{Field: c.ETHAddr, Name: "EthAddr"},
+		&validators.StringIsPresent{Field: c.ETHPrivateKey, Name: "EthPrivateKey"},
 	), nil
 }
 
@@ -102,6 +108,25 @@ func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 	return nil
 }
 
+func (c *CompletedUpload) EncryptSessionEthKey() {
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt))), sha3.New256())
+
+	encryptedKey := oyster_utils.Encrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
+
+	c.ETHPrivateKey = hex.EncodeToString(encryptedKey)
+	DB.ValidateAndSave(c)
+}
+
+func (c *CompletedUpload) DecryptSessionEthKey() string {
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt))), sha3.New256())
+
+	decryptedKey := oyster_utils.Decrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
+
+	return hex.EncodeToString(decryptedKey)
+}
+
 /**
  * Methods
  */
@@ -109,17 +134,25 @@ func NewCompletedUpload(session UploadSession) error {
 
 	var err error
 
+	privateKey := session.DecryptSessionEthKey()
+
 	switch session.Type {
 	case SessionTypeAlpha:
-		_, err = DB.ValidateAndSave(&CompletedUpload{
+		completedUpload := &CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrAlpha.String,
-			ETHPrivateKey: session.ETHPrivateKey})
+			ETHPrivateKey: privateKey}
+
+		_, err = DB.ValidateAndSave(completedUpload)
+		completedUpload.EncryptSessionEthKey()
 	case SessionTypeBeta:
-		_, err = DB.ValidateAndSave(&CompletedUpload{
+		completedUpload := &CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrBeta.String,
-			ETHPrivateKey: session.ETHPrivateKey})
+			ETHPrivateKey: privateKey}
+
+		_, err = DB.ValidateAndSave(completedUpload)
+		completedUpload.EncryptSessionEthKey()
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
 	}
