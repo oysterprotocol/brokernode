@@ -110,7 +110,7 @@ func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 
 func (c *CompletedUpload) EncryptSessionEthKey() {
 	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
 
 	encryptedKey := oyster_utils.Encrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
 
@@ -120,7 +120,7 @@ func (c *CompletedUpload) EncryptSessionEthKey() {
 
 func (c *CompletedUpload) DecryptSessionEthKey() string {
 	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
 
@@ -133,30 +133,45 @@ func (c *CompletedUpload) DecryptSessionEthKey() string {
 func NewCompletedUpload(session UploadSession) error {
 
 	var err error
-
+	var vErr *validate.Errors
 	privateKey := session.DecryptSessionEthKey()
+	completedUpload := CompletedUpload{}
 
 	switch session.Type {
 	case SessionTypeAlpha:
-		completedUpload := &CompletedUpload{
+		completedUpload = CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrAlpha.String,
-			ETHPrivateKey: privateKey}
+			ETHPrivateKey: privateKey,
+		}
 
-		_, err = DB.ValidateAndSave(completedUpload)
-		completedUpload.EncryptSessionEthKey()
+		vErr, err = DB.ValidateAndSave(&completedUpload)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		if len(vErr.Errors) != 0 {
+			// TODO better logging for vErr
+			fmt.Println(vErr.Errors)
+		}
 	case SessionTypeBeta:
-		completedUpload := &CompletedUpload{
+		completedUpload = CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrBeta.String,
-			ETHPrivateKey: privateKey}
+			ETHPrivateKey: privateKey,
+		}
 
-		_, err = DB.ValidateAndSave(completedUpload)
-		completedUpload.EncryptSessionEthKey()
+		vErr, err = DB.ValidateAndSave(&completedUpload)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		if len(vErr.Errors) != 0 {
+			// TODO better logging for vErr
+			fmt.Println(vErr.Errors)
+		}
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
+		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
 	}
-	oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
 
 	return err
 }

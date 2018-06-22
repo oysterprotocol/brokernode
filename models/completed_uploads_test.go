@@ -162,41 +162,36 @@ func testNewCompletedUpload(ms *ModelSuite) {
 	fileBytesCount := 2500
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
-	session := models.UploadSession{
+	session1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeBeta,
-		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
-		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
+		NumChunks:     1000,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
 		ETHPrivateKey: privateKey,
 	}
-	session.StartUploadSession()
-	err := models.NewCompletedUpload(session)
-	ms.Equal(nil, err)
+	vErr, err := session1.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
-	session = models.UploadSession{
+	session2 := models.UploadSession{
 		GenesisHash:   "abcdeff2",
 		FileSizeBytes: fileBytesCount,
 		Type:          models.SessionTypeAlpha,
-		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
-		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
+		NumChunks:     1000,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS2"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS2"), true},
 		ETHPrivateKey: privateKey,
 	}
-	session.StartUploadSession()
-	err = models.NewCompletedUpload(session)
-	ms.Equal(nil, err)
+	vErr, err = session2.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
 
-	session = models.UploadSession{ // no session type
-		GenesisHash:   "abcdeff3",
-		FileSizeBytes: fileBytesCount,
-		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
-		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: privateKey,
-	}
-	session.StartUploadSession()
-	err = models.NewCompletedUpload(session)
-	ms.NotEqual(err, nil)
-	ms.Equal("no session type provided for session in method models.NewCompletedUpload", err.Error())
+	err = models.NewCompletedUpload(session1)
+	ms.Nil(err)
+	err = models.NewCompletedUpload(session2)
+	ms.Nil(err)
 
 	completedUploads := []models.CompletedUpload{}
 	err = ms.DB.All(&completedUploads)
@@ -208,10 +203,10 @@ func testNewCompletedUpload(ms *ModelSuite) {
 		ms.Equal(true, completedUpload.GenesisHash == "abcdeff1" ||
 			completedUpload.GenesisHash == "abcdeff2")
 		if completedUpload.GenesisHash == "abcdeff1" {
-			ms.Equal("SOME_BETA_ETH_ADDRESS", completedUpload.ETHAddr)
+			ms.Equal("SOME_BETA_ETH_ADDRESS1", completedUpload.ETHAddr)
 		}
 		if completedUpload.GenesisHash == "abcdeff2" {
-			ms.Equal("SOME_ALPHA_ETH_ADDRESS", completedUpload.ETHAddr)
+			ms.Equal("SOME_ALPHA_ETH_ADDRESS2", completedUpload.ETHAddr)
 		}
 	}
 }
