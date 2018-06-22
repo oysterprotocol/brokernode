@@ -6,7 +6,6 @@ create_table("treasures", func(t) {
 	t.Column("prl_status", "int", {})
 	t.Column("message", "MEDIUMTEXT", {"null": true})
 	t.Column("address", "string", {"null": true})
-	t.Column("genesis_hash", "string", {})
 })
 
 add_index("treasures", "eth_addr", {"unique": true})

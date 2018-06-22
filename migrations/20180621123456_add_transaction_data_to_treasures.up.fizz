@@ -1,0 +1,7 @@
+add_column("treasures", "genesis_hash", "string", {})
+add_column("treasures", "prl_tx_hash", "string", {"null": true})
+add_column("treasures", "prl_tx_nonce", "BIGINT(20)", {"null": true})
+add_column("treasures", "gas_tx_hash", "string", {"null": true})
+add_column("treasures", "gas_tx_nonce", "BIGINT(20)", {"null": true})
+add_column("treasures", "bury_tx_hash", "string", {"null": true})
+add_column("treasures", "bury_tx_nonce", "BIGINT(20)", {"null": true})
