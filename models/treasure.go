@@ -29,6 +29,12 @@ type Treasure struct {
 	MsgID       string    `json:"msgId" db:"msg_id"`
 	Address     string    `json:"address" db:"address"`
 	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
+	PRLTxHash   string    `json:"prlTxHash" db:"prl_tx_hash"`
+	PRLTxNonce  int64     `json:"prlTxNonce" db:"prl_tx_nonce"`
+	GasTxHash   string    `json:"gasTxHash" db:"gas_tx_hash"`
+	GasTxNonce  int64     `json:"gasTxNonce" db:"gas_tx_nonce"`
+	BuryTxHash  string    `json:"buryTxHash" db:"bury_tx_hash"`
+	BuryTxNonce int64     `json:"buryTxNonce" db:"bury_tx_nonce"`
 }
 
 const (
