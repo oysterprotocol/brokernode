@@ -276,7 +276,6 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
 		fmt.Printf("Could not generate eth key: %v\n", err)
-		raven.CaptureError(err, nil)
 		return addr, "", err
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
@@ -386,7 +385,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
 	if err != nil {
 		log.Fatal("Client could not get gas price estimate from network")
-		raven.CaptureError(err, nil)
+		return 0, nil
 	}
 	return estimatedGasPrice, nil
 }
@@ -402,7 +401,6 @@ func checkETHBalance(addr common.Address) *big.Int {
 	balance, err := client.BalanceAt(context.Background(), addr, nil)
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
-		raven.CaptureError(err, nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -426,7 +424,6 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
 		fmt.Println("Client could not retrieve balance:", err)
-		raven.CaptureError(err, nil)
 		return big.NewInt(0)
 	}
 	return balance
@@ -445,7 +442,6 @@ func getCurrentBlock() (*types.Block, error) {
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
 		fmt.Printf("Could not get last block: %v\n", err)
-		raven.CaptureError(err, nil)
 		return nil, err
 	}
 
@@ -472,7 +468,7 @@ func isPending(txHash common.Hash) bool {
 	_, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
 		fmt.Printf("Could not get transaction by hash\n")
-		raven.CaptureError(err, nil)
+		return false
 	}
 	if isPending {
 		fmt.Printf("transaction is pending\n")
@@ -533,8 +529,8 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	//// get transaction
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
+		fmt.Printf("isPending : %v", err)
 		fmt.Println("Could not get transaction by hash")
-		raven.CaptureError(err, nil)
 		return big.NewInt(0), err
 	}
 	printTx(tx)
@@ -576,10 +572,12 @@ func waitForConfirmation(txHash common.Hash, pollingDelayInSeconds int) uint {
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
 			fmt.Printf("unable to get transaction confirmation with hash : %v\n", err)
+			raven.CaptureError(err, nil)
 			status = 0
 		} else {
 			if txStatus.Uint64() == 0 {
 				fmt.Println("transaction failure")
+				raven.CaptureError(err, nil)
 				status = 0
 				break
 			} else if txStatus.Uint64() == 1 {
@@ -602,7 +600,7 @@ func getNonce(ctx context.Context, address common.Address) (uint64, error) {
 	return client.NonceAt(ctx, address, nil)
 }
 
-// Utility to get the transaction cound in the pending tx pool
+// Utility to get the transaction count in the pending tx pool
 func getPendingTransactions() (uint, error) {
 	client, _ := sharedClient()
 	return client.PendingTransactionCount(context.Background())
@@ -813,6 +811,8 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 		GasPrice: gasPrice,
 		Context:  auth.Context,
 	})
+	
+	printTx(tx)
 
 	return tx != nil, tx.Hash().Hex(), int64(tx.Nonce())
 }
@@ -848,31 +848,41 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	// shared client
 	client, _ := sharedClient()
-
 	treasureBalance := checkPRLBalance(treasureAddress)
+	fmt.Printf("treasure balance : %v\n", treasureBalance)
+	
 	if treasureBalance.Uint64() <= 0 {
-		fmt.Printf("treasure balance insufficient")
+		msg := "treasure balance insufficient"
+		fmt.Println(msg)
+		raven.CaptureError(errors.New(msg), nil)
 		return false
 	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(treasurePrivateKey)
 	if auth == nil {
-		fmt.Printf("unable to create a new transactor")
+		msg := "unable to create a new transactor"
+		fmt.Println(msg)
+		raven.CaptureError(errors.New(msg), nil)
 	}
+	
 	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	
 	// transact with oyster pearl instance
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 	if err != nil {
-		fmt.Print("Unable to instantiate OysterPearl")
+		msg := "Unable to instantiate OysterPearl"
+		fmt.Println(msg)
+		raven.CaptureError(err, nil)
+		return false
 	}
+	gasPrice, _ := getGasPrice()
 	// setup transaction options
 	claimOpts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
-		GasLimit: auth.GasLimit,
-		Context:  auth.Context,
-		GasPrice: auth.GasPrice,
+		GasLimit: GasLimitPRLSend,
+		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
 		Value:    treasureBalance,
 	}
@@ -959,7 +969,7 @@ func sendPRL(msg OysterCallMsg) bool {
 
 	// amount is greater than balance, return error
 	if msg.Amount.Uint64() > balance.Uint64() {
-		fmt.Printf("balance too low to proceed")
+		fmt.Println("balance too low to proceed")
 		return false
 	}
 	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
@@ -981,7 +991,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		// given we have a "known transaction" error we need to respond
-		fmt.Printf("error sending transaction : %v", err)
+		fmt.Printf("error sending transaction : %v\n", err)
 		raven.CaptureError(err, nil)
 		return false
 	}
@@ -1005,10 +1015,10 @@ func sendPRL(msg OysterCallMsg) bool {
 	txStatus := waitForConfirmation(confirmTx.Hash(), SecondsDelayForETHPolling)
 
 	if txStatus == 0 {
-		fmt.Printf("transaction failure")
+		fmt.Println("transaction failure")
 		status = false
 	} else if txStatus == 1 {
-		fmt.Printf("confirmation completed")
+		fmt.Println("confirmation completed")
 		status = true
 	}
 
@@ -1046,6 +1056,7 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 		GasLimit: GasLimitPRLSend,
 		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
+		Context:  auth.Context,
 	}
 
 	tx, err := oysterPearl.Transfer(&opts, msg.To, &msg.Amount)
