@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
@@ -89,6 +90,44 @@ func Test_KVStore_MassBatchDelete(t *testing.T) {
 
 	err = services.BatchDelete(getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertNoError(err, t, "")
+}
+
+func Test_KVStore_RemoveAllKvStoreData(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	services.BatchSet(getKvPairs(2))
+	services.RemoveAllKvStoreData()
+
+	services.InitKvStore()
+	kvs, _ := services.BatchGet(getKeys(2))
+
+	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
+}
+
+func Test_KVStore_GetMessageFromDataMap_FromKVStore(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	services.BatchSet(getKvPairs(1))
+
+	dataMap := models.DataMap{
+		MsgID: "0",
+	}
+
+	oyster_utils.AssertStringEqual(services.GetMessageFromDataMap(dataMap), "0", t)
+}
+
+func Test_KVStore_GetMessageFromDataMap_FromMessage(t *testing.T) {
+	services.InitKvStore()
+	defer services.CloseKvStore()
+
+	dataMap := models.DataMap{
+		MsgID:   "1",
+		Message: "hello",
+	}
+
+	oyster_utils.AssertStringEqual(services.GetMessageFromDataMap(dataMap), "hello", t)
 }
 
 func getKvPairs(count int) *services.KVPairs {

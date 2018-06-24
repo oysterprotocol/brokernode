@@ -13,7 +13,6 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/uuid"
@@ -177,8 +176,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -198,9 +196,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
 	dMaps = &[]DataMap{}
 	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return
 }
@@ -242,10 +238,7 @@ func (u *UploadSession) GetTreasureMap() ([]TreasureMap, error) {
 	if u.TreasureIdxMap.Valid {
 		// only do this if the string value is valid
 		err = json.Unmarshal([]byte(u.TreasureIdxMap.String), &treasureIndex)
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 	}
 
 	return treasureIndex, err
@@ -277,7 +270,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
 			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in MakeTreasureIdxMap, or " +
 				"found duplicate chunks")
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return
 		}
 
@@ -296,8 +289,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 
 	treasureString, err := json.Marshal(treasureIndexArray)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
@@ -309,8 +301,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
 	treasureMap, err := u.GetTreasureMap()
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 	treasureIndexArray := make([]int, 0)
 	for _, treasure := range treasureMap {
@@ -326,9 +317,7 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 		u.GenesisHash,
 		Pending,
 		DataMap{}.Message).All(&[]DataMap{})
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return err
 }
 
@@ -353,8 +342,7 @@ func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
 
 	if int(totalSectors) != len(indexes) {
 		err = errors.New("length of treasure indexes does not match totalSectors in models/upload_sessions.go")
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return big.NewFloat(0), err
 	}
 
@@ -406,8 +394,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureInDataMapComplete).All(&sessionsByAge)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return nil, err
 	}
 
@@ -421,9 +408,7 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
 		PaymentStatusConfirmed, TreasureInDataMapPending).All(&unburiedSessions)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return unburiedSessions, err
 }
@@ -433,9 +418,7 @@ func GetReadySessions() ([]UploadSession, error) {
 
 	err := DB.Where("payment_status = ? AND treasure_status = ?",
 		PaymentStatusConfirmed, TreasureInDataMapComplete).All(&readySessions)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return readySessions, err
 }

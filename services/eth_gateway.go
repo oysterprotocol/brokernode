@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/getsentry/raven-go"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 
@@ -190,7 +189,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 	// Sets Singleton
@@ -275,7 +274,7 @@ func subscribeToNewBlocks(client *ethclient.Client, subscriptionChannel chan typ
 func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
-		fmt.Printf("Could not generate eth key: %v\n", err)
+		oyster_utils.LogIfError(fmt.Errorf("Could not generate eth key: %v\n", err), nil)
 		return addr, "", err
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
@@ -351,14 +350,14 @@ func getGasPrice() (*big.Int, error) {
 	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 
 	// there is no guarantee with estimate gas price
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal("Client could not get gas price from network")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 	return gasPrice, nil
 }
@@ -385,7 +384,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
 	if err != nil {
 		log.Fatal("Client could not get gas price estimate from network")
-		return 0, nil
+		oyster_utils.LogIfError(err, nil)
 	}
 	return estimatedGasPrice, nil
 }
@@ -400,7 +399,7 @@ func checkETHBalance(addr common.Address) *big.Int {
 
 	balance, err := client.BalanceAt(context.Background(), addr, nil)
 	if err != nil {
-		fmt.Println("Client could not retrieve balance:", err)
+		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -423,7 +422,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
-		fmt.Println("Client could not retrieve balance:", err)
+		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
 		return big.NewInt(0)
 	}
 	return balance
@@ -441,7 +440,7 @@ func getCurrentBlock() (*types.Block, error) {
 	// latest block number is nil to get the latest block
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		fmt.Printf("Could not get last block: %v\n", err)
+		oyster_utils.LogIfError(fmt.Errorf("Could not get last block: %v", err), nil)
 		return nil, err
 	}
 
@@ -571,13 +570,11 @@ func waitForConfirmation(txHash common.Hash, pollingDelayInSeconds int) uint {
 		// could be done and ready for confirmation
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
-			fmt.Printf("unable to get transaction confirmation with hash : %v\n", err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			status = 0
 		} else {
 			if txStatus.Uint64() == 0 {
-				fmt.Println("transaction failure")
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
 				status = 0
 				break
 			} else if txStatus.Uint64() == 1 {
@@ -653,8 +650,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 	logs := make(chan types.Log)
 	sub, subErr := client.SubscribeFilterLogs(ctx, query, logs)
 	if subErr != nil {
-		fmt.Printf("error subscribing to logs : %v", subErr)
-		raven.CaptureError(subErr, nil)
+		oyster_utils.LogIfError(fmt.Errorf("error subscribing to logs: %v", subErr), nil)
 		return big.NewInt(-1), subErr
 	}
 	defer sub.Unsubscribe()
@@ -662,7 +658,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return big.NewInt(0), err
 			//case <-time.After(1 * time.Minute):
 			//	log.Print("Timeout to wait for brokerAddr\n")
@@ -751,16 +747,14 @@ func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
 	if err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return types.Transactions{}, "", -1, err
 	}
 
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		// given we have a "known transaction" error we need to respond
-		fmt.Printf("error sending transaction : %v", err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("error sending transaction : %v", err), nil)
 		return types.Transactions{}, "", -1, err
 	}
 
@@ -811,7 +805,7 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 		GasPrice: gasPrice,
 		Context:  auth.Context,
 	})
-	
+
 	printTx(tx)
 
 	return tx != nil, tx.Hash().Hex(), int64(tx.Nonce())
@@ -850,30 +844,27 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	client, _ := sharedClient()
 	treasureBalance := checkPRLBalance(treasureAddress)
 	fmt.Printf("treasure balance : %v\n", treasureBalance)
-	
+
 	if treasureBalance.Uint64() <= 0 {
-		msg := "treasure balance insufficient"
-		fmt.Println(msg)
-		raven.CaptureError(errors.New(msg), nil)
+		err := errors.New("treasure balance insufficient")
+		oyster_utils.LogIfError(err, nil)
 		return false
 	}
 
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(treasurePrivateKey)
 	if auth == nil {
-		msg := "unable to create a new transactor"
-		fmt.Println(msg)
-		raven.CaptureError(errors.New(msg), nil)
+		err := errors.New("unable to create a new transactor")
+		oyster_utils.LogIfError(err, nil)
 	}
-	
+
 	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
-	
+
 	// transact with oyster pearl instance
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 	if err != nil {
-		msg := "Unable to instantiate OysterPearl"
-		fmt.Println(msg)
-		raven.CaptureError(err, nil)
+		err := errors.New("unable to instantiate OysterPearl")
+		oyster_utils.LogIfError(err, nil)
 		return false
 	}
 	gasPrice, _ := getGasPrice()
@@ -983,7 +974,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
 	if err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return false
 	}
 
@@ -991,8 +982,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		// given we have a "known transaction" error we need to respond
-		fmt.Printf("error sending transaction : %v\n", err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return false
 	}
 
@@ -1123,7 +1113,7 @@ func configureGateway(network string) {
 	if err != nil {
 		godotenv.Load()
 		log.Printf(".env error: %v", err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 	// Resolve network type
 	switch network {
@@ -1149,6 +1139,10 @@ func configureGateway(network string) {
 	if DEBUG {
 		// Print Configuration
 		printConfig()
+	}
+
+	if err != nil {
+		oyster_utils.LogIfError(fmt.Errorf("unable to load key: %v", err), nil)
 	}
 }
 

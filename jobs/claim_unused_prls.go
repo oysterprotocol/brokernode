@@ -2,12 +2,11 @@ package jobs
 
 import (
 	"errors"
-	"github.com/getsentry/raven-go"
+	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"log"
 	"time"
 )
 
@@ -36,8 +35,7 @@ func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 	timedOutGasTransfers, err := models.GetTimedOutGasTransfers(thresholdTime)
 
 	if err != nil {
-		log.Println("Error getting timed out gas transfers")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting timed out gas transfers: %v", err), nil)
 		return
 	}
 	if len(timedOutGasTransfers) > 0 {
@@ -56,8 +54,7 @@ func ResendTimedOutGasTransfers(thresholdTime time.Time) {
 func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 	timedOutPRLTransfers, err := models.GetTimedOutPRLTransfers(thresholdTime)
 	if err != nil {
-		log.Println("Error getting timed out gas transfers")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting timed out gas transfers: %v", err), nil)
 		return
 	}
 	if len(timedOutPRLTransfers) > 0 {
@@ -75,8 +72,7 @@ func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 func ResendErroredGasTransfers() {
 	gasTransferErrors, err := models.GetRowsByGasStatus(models.GasTransferError)
 	if err != nil {
-		log.Println("Error getting completed uploads whose gas transfers errored")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting completed uploads whose gas transfers errored: %v", err), nil)
 		return
 	}
 	if len(gasTransferErrors) > 0 {
@@ -95,8 +91,7 @@ func ResendErroredGasTransfers() {
 func ResendErroredPRLTransfers() {
 	prlTransferErrors, err := models.GetRowsByPRLStatus(models.PRLClaimError)
 	if err != nil {
-		log.Println("Error getting completed uploads whose PRL transfers errored")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting completed uploads whose PRL transfers errored: %v", err), nil)
 		return
 	}
 	if len(prlTransferErrors) > 0 {
@@ -115,8 +110,7 @@ func ResendErroredPRLTransfers() {
 func SendGasForNewClaims() {
 	needGas, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
 	if err != nil {
-		log.Println("Error getting completed uploads whose addresses need gas.")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting completed uploads whose addresses need gas: %v", err), nil)
 		return
 	}
 	if len(needGas) > 0 {
@@ -135,8 +129,7 @@ func SendGasForNewClaims() {
 func StartNewClaims() {
 	readyClaims, err := models.GetRowsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimNotStarted)
 	if err != nil {
-		log.Println("Error getting ready claims.")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error getting ready claims: %v", err), nil)
 		return
 	}
 	if len(readyClaims) > 0 {
@@ -155,7 +148,7 @@ func StartNewClaims() {
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 	gasToSend, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLSend)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
 	}
 	for _, upload := range uploadsThatNeedGas {
@@ -206,8 +199,7 @@ func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 func PurgeCompletedClaims() {
 	err := models.DeleteCompletedClaims()
 	if err != nil {
-		log.Println("Error purging completed claims.")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error purging completed claims: %v", err), nil)
 		return
 	}
 }

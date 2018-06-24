@@ -91,7 +91,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 				return nil
 			})
-			DeleteKvStore(moveToComplete)
+			services.DeleteMsgDatas(moveToComplete)
 		}
 	}
 }
@@ -101,7 +101,7 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 	for _, dataMap := range dataMaps {
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,
-			Message:     dataMap.Message,
+			Message:     services.GetMessageFromDataMap(dataMap),
 			NodeID:      dataMap.NodeID,
 			NodeType:    dataMap.NodeType,
 			TrunkTx:     dataMap.TrunkTx,
@@ -119,17 +119,4 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 		})
 		index++
 	}
-}
-
-/*DeleteKvStore removes dataMaps from KV-Store.*/
-func DeleteKvStore(dataMaps []models.DataMap) {
-	if !services.IsKvStoreEnabled() {
-		return
-	}
-
-	var keys services.KVKeys
-	for _, dm := range dataMaps {
-		keys = append(keys, dm.MsgID)
-	}
-	services.BatchDelete(&keys)
 }

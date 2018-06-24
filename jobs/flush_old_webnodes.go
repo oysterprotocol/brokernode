@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 

@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"os"
 
-	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
@@ -136,8 +135,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	if req.BetaIP != "" {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			c.Error(400, err)
 			return err
 		}
@@ -149,8 +147,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
 		defer betaRes.Body.Close() // we need to close the connection
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			c.Error(400, err)
 			return err
 		}
@@ -164,8 +161,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	err = models.DB.Save(&alphaSession)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -186,8 +182,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 	if len(mergedIndexes) != len(privateKeys) {
 		err := errors.New("privateKeys and mergedIndexes should have the same length")
-		raven.CaptureError(err, nil)
-		fmt.Println(err)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -231,14 +226,13 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		Set("storage_years", uploadSession.StorageLengthInYears))
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
 	if uploadSession == nil {
 		err := errors.New("Error finding sessions")
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -279,11 +273,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 		err := models.DB.RawQuery(
 			"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
 			uploadSession.GenesisHash, minChunkIdx, maxChunkIdx).All(&dms)
-
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 
 		// Convert []DataMaps to map[key]DatMap
 		dmsMap := make(map[string]models.DataMap)
@@ -305,15 +295,24 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 				continue
 			}
 
+			if dm.MsgID == "" {
+				oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
+				break
+			}
+
 			if chunk.Hash == dm.GenesisHash {
 				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
 				if err != nil {
 					panic(err.Error())
 				}
-
 				msg := string(message)
-				dm.Message = msg // TODO: Deprecate this.
-				batchSetKvMap[dm.MsgID] = msg
+				if services.IsKvStoreEnabled() {
+					batchSetKvMap[dm.MsgID] = msg
+					dm.Message = "" // Remove previous Message data.
+				} else {
+					// TODO:pzhao, remove this and this should not be called.
+					dm.Message = msg
+				}
 
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
@@ -349,8 +348,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			remainder = remainder - SQL_BATCH_SIZE
 
 			if err != nil {
-				fmt.Println(err)
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
 				break
 			}
 		}
@@ -424,8 +422,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 	if len(mergedIndexes) != len(privateKeys) {
 		err := errors.New("privateKeys and mergedIndexes should have the same length")
-		raven.CaptureError(err, nil)
-		fmt.Println(err)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -452,12 +449,12 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 
 	if err != nil {
 		c.Error(400, err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return err
 	}
 	if (session == models.UploadSession{}) {
 		err := errors.New("Did not find session that matched id" + c.Param("id"))
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
@@ -504,7 +501,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 
 	session := models.UploadSession{}
 	if err := models.DB.Find(&session, uploadSessionId); err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -512,7 +509,7 @@ func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploa
 		session.PaymentStatus = paymentStatus
 	}
 	if err := models.DB.Save(&session); err != nil {
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
