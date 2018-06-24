@@ -33,7 +33,7 @@ const (
 	COLUMNS_SEPARATOR = ", "
 
 	// The max number of retry if there is an error on SQL.
-	MaxSqlRetryCount = 3
+	MAX_NUMBER_OF_SQL_RETRY = 3
 )
 
 // Private data structure
