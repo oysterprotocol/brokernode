@@ -50,6 +50,7 @@ type DataMap struct {
 	NodeType       string    `json:"nodeType" db:"node_type"`
 	Message        string    `json:"message" db:"message"`
 	MsgID          string    `json:"msgId" db:"msg_id"`
+	MsgStatus      int       `json:"msgStatus" db:"msg_status"`
 	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx       string    `json:"branchTx" db:"branch_tx"`
 	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
