@@ -27,9 +27,6 @@ const (
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
 	MaxNumberOfValueForInsertOperation = 10
-
-	// The max number of retry if there is an error on SQL.
-	MaxSqlRetryCount = 3
 )
 
 const (
@@ -368,13 +365,13 @@ func insertsIntoDataMapsTable(columnsName string, values string, valueSize int) 
 
 	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
 	var err error
-	for i := 0; i < MaxSqlRetryCount; i++ {
+	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
 		err = DB.RawQuery(rawQuery).All(&[]DataMap{})
 		if err == nil {
 			break
 		}
 	}
-	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": MaxSqlRetryCount, "NumOfRecord": valueSize})
+	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY, "NumOfRecord": valueSize})
 	return err
 }
 

@@ -311,13 +311,20 @@ func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
 }
 
 func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
-	err := DB.RawQuery("UPDATE data_maps SET status = ? "+
-		"WHERE genesis_hash = ? AND status = ? AND message != ?",
-		Unassigned,
-		u.GenesisHash,
-		Pending,
-		DataMap{}.Message).All(&[]DataMap{})
-	oyster_utils.LogIfError(err, nil)
+	var err error
+	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
+		err = DB.RawQuery("UPDATE data_maps SET status = ? "+
+			"WHERE id IN (SELECT id FROM data_maps WHERE genesis_hash = ? AND status = ? AND message != ?)",
+			Unassigned,
+			u.GenesisHash,
+			Pending,
+			DataMap{}.Message).All(&[]DataMap{})
+
+		if err == nil {
+			break
+		}
+	}
+	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY})
 	return err
 }
 
