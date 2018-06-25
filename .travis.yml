@@ -28,7 +28,7 @@ before_install:
   - cp .env.test .env
   - sudo sed -i -e 's/HOST_IP=""/HOST_IP="TRAVIS"/' .env
 
-  - openssl aes-256-cbc -K $encrypted_2d5af0fd0db0_key -iv $encrypted_2d5af0fd0db0_iv -in id_rsa.enc -out id_rsa -d
+  - openssl aes-256-cbc -K $encrypted_2d5af0fd0db0_key -iv $encrypted_2d5af0fd0db0_iv -in ./travis/id_rsa.enc -out ./travis/id_rsa -d
 
 install:
   - rm -rf ./data
