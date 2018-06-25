@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 	"io/ioutil"
 	"log"
 	"math"
@@ -271,9 +272,19 @@ func ConvertToWeiUnit(prl *big.Float) *big.Int {
 }
 
 /* Convert wei unit to PRL unit */
-func ConverFromWeiUnit(wei *big.Int) *big.Float {
+func ConvertFromWeiUnit(wei *big.Int) *big.Float {
 	weiInFloat := new(big.Float).SetInt(wei)
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
+}
+
+func ConvertWeiToGwei(wei *big.Int) *big.Int {
+
+	return new(big.Int).Quo(wei, big.NewInt(params.Shannon))
+}
+
+func ConvertGweiToWei(gwei *big.Int) *big.Int {
+
+	return new(big.Int).Mul(gwei, big.NewInt(params.Shannon))
 }
 
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/

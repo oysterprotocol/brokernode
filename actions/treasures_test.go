@@ -1,8 +1,10 @@
 package actions
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -21,7 +23,7 @@ type mockClaimPrl struct {
 	hasCalled           bool
 	input_receiver_addr common.Address
 	input_treasure_addr common.Address
-	input_treasure_key  string
+	input_treasure_key  *ecdsa.PrivateKey
 	output_bool         bool
 }
 
@@ -43,6 +45,7 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	ethKeyInEcdsaFormat, _ := crypto.HexToECDSA(ethKey)
 
 	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": "receiverEthAddr",
@@ -62,7 +65,7 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	as.Equal(services.StringToAddress("receiverEthAddr"), mockClaimPrl.input_receiver_addr)
 	address := EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 	as.Equal(address, mockClaimPrl.input_treasure_addr)
-	as.Equal(ethKey, mockClaimPrl.input_treasure_key)
+	as.Equal(ethKeyInEcdsaFormat, mockClaimPrl.input_treasure_key)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -150,7 +153,7 @@ func (v *mockVerifyTreasure) verifyTreasure(addr []string) (bool, error) {
 }
 
 // For mocking ClaimPRL method
-func (v *mockClaimPrl) claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasureKey string) bool {
+func (v *mockClaimPrl) claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasureKey *ecdsa.PrivateKey) bool {
 	v.hasCalled = true
 	v.input_receiver_addr = receiverAddress
 	v.input_treasure_addr = treasureAddress

@@ -14,19 +14,21 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
 	}
 
 	storedGenesisHash1 := models.StoredGenesisHash{
-		GenesisHash:   "abcdef11",
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    "abcdef11",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	storedGenesisHash2 := models.StoredGenesisHash{
-		GenesisHash:   "abcdef11",
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    "abcdef11",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
@@ -52,11 +54,12 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_unassigned() {
 	}
 
 	storedGenesisHash1 := models.StoredGenesisHash{
-		GenesisHash:   "aaaaaa",
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashAssigned, // assigned already
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashAssigned, // assigned already
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
@@ -78,11 +81,12 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_below_webnode_count_lim
 	}
 
 	storedGenesisHash1 := models.StoredGenesisHash{
-		GenesisHash:   "aaaaaa",
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  models.WebnodeCountLimit + 1, // over the limit
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   models.WebnodeCountLimit + 1, // over the limit
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
@@ -106,11 +110,12 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success() {
 	genesisHash := "aaaaaa"
 
 	storedGenesisHash1 := models.StoredGenesisHash{
-		GenesisHash:   genesisHash,
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    genesisHash,
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
@@ -135,19 +140,21 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
 	olderGenesisHash := "bbbbbb"
 
 	storedGenesisHash1 := models.StoredGenesisHash{
-		GenesisHash:   newerGenesisHash,
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    newerGenesisHash,
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	storedGenesisHash2 := models.StoredGenesisHash{
-		GenesisHash:   olderGenesisHash,
-		FileSizeBytes: 5000,
-		NumChunks:     5,
-		WebnodeCount:  0,
-		Status:        models.StoredGenesisHashUnassigned,
+		GenesisHash:    olderGenesisHash,
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasureBuried,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)

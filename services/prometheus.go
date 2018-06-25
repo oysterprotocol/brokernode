@@ -11,8 +11,8 @@ var (
 )
 
 type PrepareHistogram func(name string, help string, labelNames ...string) (histogram *prometheus.HistogramVec)
-type HistogramSeconds func(histogram *prometheus.HistogramVec, start time.Time) ()
-type HistogramData func(histogram *prometheus.HistogramVec, data float64) ()
+type HistogramSeconds func(histogram *prometheus.HistogramVec, start time.Time)
+type HistogramData func(histogram *prometheus.HistogramVec, data float64)
 type TimeNow func() (start time.Time)
 
 type PrometheusService struct {
@@ -20,24 +20,25 @@ type PrometheusService struct {
 	HistogramSeconds
 	HistogramData
 	TimeNow
-	HistogramTreasuresResourceVerifyAndClaim *prometheus.HistogramVec
-	HistogramUploadSessionResourceCreate *prometheus.HistogramVec
-	HistogramUploadSessionResourceUpdate *prometheus.HistogramVec
-	HistogramUploadSessionResourceCreateBeta *prometheus.HistogramVec
+	HistogramTreasuresResourceVerifyAndClaim       *prometheus.HistogramVec
+	HistogramUploadSessionResourceCreate           *prometheus.HistogramVec
+	HistogramUploadSessionResourceUpdate           *prometheus.HistogramVec
+	HistogramUploadSessionResourceCreateBeta       *prometheus.HistogramVec
 	HistogramUploadSessionResourceGetPaymentStatus *prometheus.HistogramVec
-	HistogramWebnodeResourceCreate *prometheus.HistogramVec
-	HistogramTransactionBrokernodeResourceCreate *prometheus.HistogramVec
-	HistogramTransactionBrokernodeResourceUpdate *prometheus.HistogramVec
-	HistogramTransactionGenesisHashResourceCreate *prometheus.HistogramVec
-	HistogramTransactionGenesisHashResourceUpdate *prometheus.HistogramVec
-	HistogramClaimUnusedPRLs *prometheus.HistogramVec
-	HistogramFlushOldWebNodes *prometheus.HistogramVec
-	HistogramProcessPaidSessions *prometheus.HistogramVec
-	HistogramProcessUnassignedChunks *prometheus.HistogramVec
-	HistogramPurgeCompletedSessions *prometheus.HistogramVec
-	HistogramRemoveUnpaidUploadSession *prometheus.HistogramVec
-	HistogramUpdateTimeOutDataMaps *prometheus.HistogramVec
-	HistogramVerifyDataMaps *prometheus.HistogramVec
+	HistogramWebnodeResourceCreate                 *prometheus.HistogramVec
+	HistogramTransactionBrokernodeResourceCreate   *prometheus.HistogramVec
+	HistogramTransactionBrokernodeResourceUpdate   *prometheus.HistogramVec
+	HistogramTransactionGenesisHashResourceCreate  *prometheus.HistogramVec
+	HistogramTransactionGenesisHashResourceUpdate  *prometheus.HistogramVec
+	HistogramClaimUnusedPRLs                       *prometheus.HistogramVec
+	HistogramFlushOldWebNodes                      *prometheus.HistogramVec
+	HistogramProcessPaidSessions                   *prometheus.HistogramVec
+	HistogramBuryTreasureAddresses                 *prometheus.HistogramVec
+	HistogramProcessUnassignedChunks               *prometheus.HistogramVec
+	HistogramPurgeCompletedSessions                *prometheus.HistogramVec
+	HistogramRemoveUnpaidUploadSession             *prometheus.HistogramVec
+	HistogramUpdateTimeOutDataMaps                 *prometheus.HistogramVec
+	HistogramVerifyDataMaps                        *prometheus.HistogramVec
 }
 
 func init() {
@@ -54,6 +55,7 @@ func init() {
 	histogramClaimUnusedPRLs := prepareHistogram("claim_unsed_prls_seconds", "HistogramClaimUnusedPRLsSeconds", "code")
 	histogramFlushOldWebNodes := prepareHistogram("flush_old_web_nodes_seconds", "HistogramFlushOldWebNodes", "code")
 	histogramProcessPaidSessions := prepareHistogram("process_paid_sessions_seconds", "HistogramProcessPaidSessions", "code")
+	histogramBuryTreasureAddresses := prepareHistogram("bury_treasure_addresses_seconds", "HistogramBuryTreasureAddresses", "code")
 	histogramProcessUnassignedChunks := prepareHistogram("process_unassigned_chunks_seconds", "HistogramProcessUnassignedChunks", "code")
 	histogramPurgeCompletedSessions := prepareHistogram("purge_completed_sessions_seconds", "HistogramPurgeCompletedSessions", "code")
 	histogramRemoveUnpaidUploadSession := prepareHistogram("remove_unpaid_upload_session_seconds", "HistogramRemoveUnpaidUploadSession", "code")
@@ -63,26 +65,27 @@ func init() {
 	PrometheusWrapper = PrometheusService{
 		PrepareHistogram: prepareHistogram,
 		HistogramSeconds: histogramSeconds,
-		HistogramData: histogramData,
-		TimeNow: timeNow,
-		HistogramTreasuresResourceVerifyAndClaim: histogramTreasuresResourceVerifyAndClaim,
-		HistogramUploadSessionResourceCreate: histogramUploadSessionResourceCreate,
-		HistogramUploadSessionResourceUpdate: histogramUploadSessionResourceUpdate,
-		HistogramUploadSessionResourceCreateBeta: histogramUploadSessionResourceCreateBeta,
+		HistogramData:    histogramData,
+		TimeNow:          timeNow,
+		HistogramTreasuresResourceVerifyAndClaim:       histogramTreasuresResourceVerifyAndClaim,
+		HistogramUploadSessionResourceCreate:           histogramUploadSessionResourceCreate,
+		HistogramUploadSessionResourceUpdate:           histogramUploadSessionResourceUpdate,
+		HistogramUploadSessionResourceCreateBeta:       histogramUploadSessionResourceCreateBeta,
 		HistogramUploadSessionResourceGetPaymentStatus: histogramUploadSessionResourceGetPaymentStatus,
-		HistogramWebnodeResourceCreate: histogramWebnodeResourceCreate,
-		HistogramTransactionBrokernodeResourceCreate: histogramTransactionBrokernodeResourceCreate,
-		HistogramTransactionBrokernodeResourceUpdate: histogramTransactionBrokernodeResourceUpdate,
-		HistogramTransactionGenesisHashResourceCreate: histogramTransactionGenesisHashResourceCreate,
-		HistogramTransactionGenesisHashResourceUpdate: histogramTransactionGenesisHashResourceUpdate,
-		HistogramClaimUnusedPRLs: histogramClaimUnusedPRLs,
-		HistogramFlushOldWebNodes: histogramFlushOldWebNodes,
-		HistogramProcessPaidSessions: histogramProcessPaidSessions,
-		HistogramProcessUnassignedChunks: histogramProcessUnassignedChunks,
-		HistogramPurgeCompletedSessions: histogramPurgeCompletedSessions,
-		HistogramRemoveUnpaidUploadSession: histogramRemoveUnpaidUploadSession,
-		HistogramUpdateTimeOutDataMaps: histogramUpdateTimeOutDataMaps,
-		HistogramVerifyDataMaps: histogramVerifyDataMaps,
+		HistogramWebnodeResourceCreate:                 histogramWebnodeResourceCreate,
+		HistogramTransactionBrokernodeResourceCreate:   histogramTransactionBrokernodeResourceCreate,
+		HistogramTransactionBrokernodeResourceUpdate:   histogramTransactionBrokernodeResourceUpdate,
+		HistogramTransactionGenesisHashResourceCreate:  histogramTransactionGenesisHashResourceCreate,
+		HistogramTransactionGenesisHashResourceUpdate:  histogramTransactionGenesisHashResourceUpdate,
+		HistogramClaimUnusedPRLs:                       histogramClaimUnusedPRLs,
+		HistogramFlushOldWebNodes:                      histogramFlushOldWebNodes,
+		HistogramProcessPaidSessions:                   histogramProcessPaidSessions,
+		HistogramBuryTreasureAddresses:                 histogramBuryTreasureAddresses,
+		HistogramProcessUnassignedChunks:               histogramProcessUnassignedChunks,
+		HistogramPurgeCompletedSessions:                histogramPurgeCompletedSessions,
+		HistogramRemoveUnpaidUploadSession:             histogramRemoveUnpaidUploadSession,
+		HistogramUpdateTimeOutDataMaps:                 histogramUpdateTimeOutDataMaps,
+		HistogramVerifyDataMaps:                        histogramVerifyDataMaps,
 	}
 }
 
@@ -106,11 +109,11 @@ func prepareHistogram(name string, help string, labelNames ...string) (histogram
 	return histogram
 }
 
-func histogramSeconds(histogram *prometheus.HistogramVec, start time.Time) () {
+func histogramSeconds(histogram *prometheus.HistogramVec, start time.Time) {
 	duration := duration(start)
 	histogram.WithLabelValues("500").Observe(duration.Seconds())
 }
 
-func histogramData(histogram *prometheus.HistogramVec, data float64) () {
+func histogramData(histogram *prometheus.HistogramVec, data float64) {
 	histogram.WithLabelValues("500").Observe(data)
 }

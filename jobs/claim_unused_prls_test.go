@@ -1,19 +1,22 @@
 package jobs_test
 
 import (
-	"encoding/hex"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
+	"math/big"
 	"time"
 )
 
 var (
-	sendGasMockCalled_claim_unusued_prls         = false
-	claimUnusedPRLsMockCalled_claim_unusued_prls = false
-	EthMock                                      = services.EthMock
-	SentToClaimUnusedPRLs                        []models.CompletedUpload
-	SentToSendGas                                []models.CompletedUpload
+	hasCalledCheckPRLBalance   = false
+	hasCalledSendPRLFromOyster = false
+	hasCalledSendETH           = false
+	SentToSendPRLFromOyster    = 0
+	SentToSendETH              = 0
 )
 
 var (
@@ -27,12 +30,6 @@ var (
 )
 
 func (suite *JobsSuite) Test_ClaimUnusedPRLs() {
-
-	defer services.SetUpMock()
-
-	makeEthMocks_claim_unused_prls(&EthMock)
-
-	jobs.EthWrapper = EthMock
 
 	testSetup(suite)
 
@@ -48,97 +45,96 @@ func (suite *JobsSuite) Test_ClaimUnusedPRLs() {
 }
 
 func testResendTimedOutGasTransfers(suite *JobsSuite) {
-	suite.Equal(0, len(SentToSendGas))
-	suite.Equal(false, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendETH)
+	suite.Equal(false, hasCalledSendETH)
 
-	jobs.ResendTimedOutGasTransfers(time.Now().Add(20 * time.Minute))
+	jobs.ResendTimedOutGasTransfers(time.Now().Add(30 * time.Minute))
 	// should be one timed out
-	suite.Equal(1, len(SentToSendGas))
-	suite.Equal(true, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendETH)
+	suite.Equal(true, hasCalledSendETH)
 
 	resetTestVariables()
-	SentToSendGas = SentToSendGas[:0]
 
 	jobs.ResendTimedOutGasTransfers(time.Now().Add(-20 * time.Minute))
 	// should be none, nothing timed out yet
-	suite.Equal(0, len(SentToSendGas))
-	suite.Equal(false, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendETH)
+	suite.Equal(false, hasCalledSendETH)
 }
 
 func testResendTimedOutPRLTransfers(suite *JobsSuite) {
-	suite.Equal(0, len(SentToClaimUnusedPRLs))
-	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendPRLFromOyster)
+	suite.Equal(false, hasCalledSendPRLFromOyster)
 
-	jobs.ResendTimedOutPRLTransfers(time.Now().Add(20 * time.Minute))
+	jobs.ResendTimedOutPRLTransfers(time.Now().Add(30 * time.Minute))
 	// should be one timed out
-	suite.Equal(1, len(SentToClaimUnusedPRLs))
-	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendPRLFromOyster)
+	suite.Equal(true, hasCalledSendPRLFromOyster)
 
 	resetTestVariables()
 
 	jobs.ResendTimedOutPRLTransfers(time.Now().Add(-20 * time.Minute))
 	// should be none, nothing timed out yet
-	suite.Equal(0, len(SentToClaimUnusedPRLs))
-	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendPRLFromOyster)
+	suite.Equal(false, hasCalledSendPRLFromOyster)
 }
 
 func testResendErroredGasTransfers(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToSendGas))
-	suite.Equal(false, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendETH)
+	suite.Equal(false, hasCalledSendETH)
 
 	jobs.ResendErroredGasTransfers()
 
 	// should be one error'd gas transfer that gets resent
-	suite.Equal(1, len(SentToSendGas))
-	suite.Equal(true, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendETH)
+	suite.Equal(true, hasCalledSendETH)
 }
 
 func testResendErroredPRLTransfers(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimUnusedPRLs))
-	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendPRLFromOyster)
+	suite.Equal(false, hasCalledSendPRLFromOyster)
 
 	jobs.ResendErroredPRLTransfers()
 
 	// should be one error'd prl transfer that gets resent
-	suite.Equal(1, len(SentToClaimUnusedPRLs))
-	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendPRLFromOyster)
+	suite.Equal(true, hasCalledSendPRLFromOyster)
 }
 
 func testSendGasForNewClaims(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToSendGas))
-	suite.Equal(false, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendETH)
+	suite.Equal(false, hasCalledSendETH)
 
 	jobs.SendGasForNewClaims()
 
 	// should be one new gas transfer that gets sent
-	suite.Equal(1, len(SentToSendGas))
-	suite.Equal(true, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendETH)
+	suite.Equal(true, hasCalledSendETH)
 }
 
 func testStartNewClaims(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimUnusedPRLs))
-	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendPRLFromOyster)
+	suite.Equal(false, hasCalledSendPRLFromOyster)
 
 	jobs.StartNewClaims()
 
 	// should be one new prl claim that gets sent
-	suite.Equal(1, len(SentToClaimUnusedPRLs))
-	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(1, SentToSendPRLFromOyster)
+	suite.Equal(true, hasCalledSendPRLFromOyster)
 }
 
 func testInitiateGasTransfer(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToSendGas))
-	suite.Equal(false, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendETH)
+	suite.Equal(false, hasCalledSendETH)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
@@ -147,15 +143,15 @@ func testInitiateGasTransfer(suite *JobsSuite) {
 
 	jobs.InitiateGasTransfer(completedUploads)
 
-	suite.Equal(len(completedUploads), len(SentToSendGas))
-	suite.Equal(true, sendGasMockCalled_claim_unusued_prls)
+	suite.Equal(len(completedUploads), SentToSendETH)
+	suite.Equal(true, hasCalledSendETH)
 }
 
 func testInitiatePRLClaim(suite *JobsSuite) {
 	defer resetTestVariables()
 
-	suite.Equal(0, len(SentToClaimUnusedPRLs))
-	suite.Equal(false, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(0, SentToSendPRLFromOyster)
+	suite.Equal(false, hasCalledSendPRLFromOyster)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
@@ -164,8 +160,8 @@ func testInitiatePRLClaim(suite *JobsSuite) {
 
 	jobs.InitiatePRLClaim(completedUploads)
 
-	suite.Equal(len(completedUploads), len(SentToClaimUnusedPRLs))
-	suite.Equal(true, claimUnusedPRLsMockCalled_claim_unusued_prls)
+	suite.Equal(len(completedUploads), SentToSendPRLFromOyster)
+	suite.Equal(true, hasCalledSendPRLFromOyster)
 }
 
 func testPurgeCompletedClaims(suite *JobsSuite) {
@@ -188,52 +184,60 @@ func testPurgeCompletedClaims(suite *JobsSuite) {
 
 func testSetup(suite *JobsSuite) {
 
+	addr, key, _ := jobs.EthWrapper.GenerateEthAddr()
+
 	RowWithGasTransferNotStarted = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferNotStarted",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferNotStarted",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferNotStarted")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferNotStarted,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferProcessing",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferProcessing",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferProcessing")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferProcessing,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferSuccess",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferSuccess",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferSuccess")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferSuccess,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferError = models.CompletedUpload{
 		GenesisHash:   "RowWithGasTransferError",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithGasTransferError",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithGasTransferError")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimNotStarted,
 		GasStatus:     models.GasTransferError,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimProcessing = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimProcessing",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimProcessing",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimProcessing")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimProcessing,
 		GasStatus:     models.GasTransferSuccess,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimSuccess = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimSuccess",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimSuccess",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimSuccess")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimSuccess,
 		GasStatus:     models.GasTransferSuccess,
 	}
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
 	RowWithPRLClaimError = models.CompletedUpload{
 		GenesisHash:   "RowWithPRLClaimError",
-		ETHAddr:       "SOME_ETH_ADDR_RowWithPRLClaimError",
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY_RowWithPRLClaimError")),
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
 		PRLStatus:     models.PRLClaimError,
 		GasStatus:     models.GasTransferSuccess,
 	}
@@ -242,55 +246,67 @@ func testSetup(suite *JobsSuite) {
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferNotStarted)
+	RowWithGasTransferNotStarted.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferProcessing)
+	RowWithGasTransferProcessing.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferSuccess)
+	RowWithGasTransferSuccess.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferError)
+	RowWithGasTransferError.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimProcessing)
+	RowWithPRLClaimProcessing.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimSuccess)
+	RowWithPRLClaimSuccess.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimError)
+	RowWithPRLClaimError.EncryptSessionEthKey()
 	suite.Nil(err)
 
 	resetTestVariables()
-
-	makeEthMocks_claim_unused_prls(&EthMock)
 }
 
 func resetTestVariables() {
-	SentToClaimUnusedPRLs = nil
-	SentToClaimUnusedPRLs = []models.CompletedUpload{}
+	SentToSendPRLFromOyster = 0
 
-	SentToSendGas = nil
-	SentToSendGas = []models.CompletedUpload{}
+	SentToSendETH = 0
 
-	sendGasMockCalled_claim_unusued_prls = false
-	claimUnusedPRLsMockCalled_claim_unusued_prls = false
-}
+	hasCalledCheckPRLBalance = false
+	hasCalledSendPRLFromOyster = false
+	hasCalledSendETH = false
 
-func makeEthMocks_claim_unused_prls(ethMock *services.Eth) {
-	ethMock.ClaimUnusedPRLs = claimUnusedPRLsMock_claim_unusued_prls
-	ethMock.SendGas = sendGasMock_claim_unusued_prls
-}
-
-func claimUnusedPRLsMock_claim_unusued_prls(uploads []models.CompletedUpload) error {
-	SentToClaimUnusedPRLs = append(SentToClaimUnusedPRLs, uploads...)
-	claimUnusedPRLsMockCalled_claim_unusued_prls = true
-	return nil
-}
-
-func sendGasMock_claim_unusued_prls(uploads []models.CompletedUpload) error {
-	SentToSendGas = append(SentToSendGas, uploads...)
-	sendGasMockCalled_claim_unusued_prls = true
-	return nil
+	jobs.EthWrapper = services.Eth{
+		CreateSendPRLMessage: services.EthWrapper.CreateSendPRLMessage,
+		CheckPRLBalance: func(addr common.Address) *big.Int {
+			hasCalledCheckPRLBalance = true
+			return big.NewInt(600000000000000000)
+		},
+		SendPRLFromOyster: func(msg services.OysterCallMsg) (bool, string, int64) {
+			SentToSendPRLFromOyster++
+			hasCalledSendPRLFromOyster = true
+			// make one of the transfers unsuccessful
+			return false, "some__transaction_hash", 0
+		},
+		CalculateGasToSend: func(desiredGasLimit uint64) (*big.Int, error) {
+			gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
+			gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
+			return gasToSend, nil
+		},
+		SendETH: func(address common.Address, gas *big.Int) (types.Transactions, string, int64, error) {
+			SentToSendETH++
+			hasCalledSendETH = true
+			// make one of the transfers unsuccessful
+			return types.Transactions{}, "111111", 1, nil
+		},
+	}
 }

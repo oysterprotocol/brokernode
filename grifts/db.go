@@ -7,10 +7,12 @@ import (
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-	"github.com/oysterprotocol/brokernode/utils"
 	"math/big"
 	"os"
+	"strconv"
 )
+
+const qaTrytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 func getAddress() (common.Address, string, error) {
 	griftPrivateKey := os.Getenv("GRIFT_ETH_PRIVATE_KEY")
@@ -34,28 +36,41 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("send_prl_seed", "Adds a 'treasure' that needs PRL")
 	grift.Add("send_prl_seed", func(c *grift.Context) error {
 
-		address, griftPrivateKey, err := getAddress()
-		if err != nil {
-			fmt.Println(err)
-			return err
+		var numToCreate int
+		if len(c.Args) == 0 {
+			numToCreate = 1
+		} else {
+			numToCreate, _ = strconv.Atoi(c.Args[0])
 		}
 
-		prlAmount := big.NewFloat(float64(.0001))
-		prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
+		for i := 0; i < numToCreate; i++ {
+			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			fmt.Println("PRIVATE KEY IS:")
+			fmt.Println(griftPrivateKey)
 
-		treasure := models.Treasure{
-			ETHAddr: address.Hex(),
-			ETHKey:  griftPrivateKey,
-			Address: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-			Message: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-		}
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
 
-		treasure.SetPRLAmount(prlAmountInWei)
+			//prlAmount := big.NewFloat(float64(.0001))
+			//prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
+			prlAmountInWei := big.NewInt(7800000000000001)
 
-		vErr, err := models.DB.ValidateAndCreate(&treasure)
+			treasure := models.Treasure{
+				ETHAddr: address.Hex(),
+				ETHKey:  griftPrivateKey,
+				Address: qaTrytes,
+				Message: qaTrytes,
+			}
 
-		if err == nil && len(vErr.Errors) == 0 {
-			fmt.Println("Treasure row added")
+			treasure.SetPRLAmount(prlAmountInWei)
+
+			vErr, err := models.DB.ValidateAndCreate(&treasure)
+
+			if err == nil && len(vErr.Errors) == 0 {
+				fmt.Println("Treasure row added")
+			}
 		}
 
 		return nil
@@ -64,13 +79,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("send_prl_remove", "Removes the 'treasure' that needs PRL")
 	grift.Add("send_prl_remove", func(c *grift.Context) error {
 
-		address, _, err := getAddress()
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		err = models.DB.RawQuery("DELETE from treasures WHERE eth_addr = ?", address.Hex()).All(&[]models.Treasure{})
+		err := models.DB.RawQuery("DELETE from treasures WHERE address = ?", qaTrytes).All(&[]models.Treasure{})
 
 		if err == nil {
 			fmt.Println("Treasure row deleted")
@@ -163,23 +172,19 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("print_treasure", "Prints the treasure you are testing with")
 	grift.Add("print_treasure", func(c *grift.Context) error {
 
-		address, _, err := getAddress()
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
+		treasuresToBury := []models.Treasure{}
 
-		treasureToBury := models.Treasure{}
-
-		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+		err := models.DB.RawQuery("SELECT * from treasures where address = ?", qaTrytes).All(&treasuresToBury)
 
 		if err == nil {
-			fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
-			fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
-			fmt.Println("Iota Address: " + treasureToBury.Address)
-			fmt.Println("Iota Message: " + treasureToBury.Message)
-			fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
-			fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+			for _, treasureToBury := range treasuresToBury {
+				fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
+				fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
+				fmt.Println("Iota Address: " + treasureToBury.Address)
+				fmt.Println("Iota Message: " + treasureToBury.Message)
+				fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
+				fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+			}
 		} else {
 			fmt.Println(err)
 		}

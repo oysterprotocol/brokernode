@@ -37,6 +37,7 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 
 		if len(chunks) > 0 {
+
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: processing_chunks_for_session", analytics.NewProperties().

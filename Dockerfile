@@ -1,6 +1,6 @@
 # This is a multi-stage Dockerfile and requires >= Docker 17.05
 # https://docs.docker.com/engine/userguide/eng-image/multistage-build/
-# FROM gobuffalo/buffalo:v0.11.0 as builder
+# FROM gobuffalo/buffalo:<version> as builder
 
 # RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 # WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode

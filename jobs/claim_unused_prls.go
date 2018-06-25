@@ -1,13 +1,13 @@
 package jobs
 
 import (
+	"errors"
 	"fmt"
-	"time"
-
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"time"
 )
 
 func ClaimUnusedPRLs(thresholdTime time.Time, PrometheusWrapper services.PrometheusService) {
@@ -58,7 +58,6 @@ func ResendTimedOutPRLTransfers(thresholdTime time.Time) {
 		return
 	}
 	if len(timedOutPRLTransfers) > 0 {
-
 		for _, transfer := range timedOutPRLTransfers {
 			oyster_utils.LogToSegment("claim_unused_prls: unclaimed_prl_transfer_timed_out", analytics.NewProperties().
 				Set("eth_address_from", transfer.ETHAddr).
@@ -145,26 +144,55 @@ func StartNewClaims() {
 	}
 }
 
-// wraps calls eth_gatway's SendGas method and sets GasStatus to GasTransferProcessing
+// wraps calls eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
-	err := EthWrapper.SendGas(uploadsThatNeedGas)
+	gasToSend, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLSend)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Error sending gas: %v", err), nil)
+		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
 	}
-	//TODO un-comment this out when ETH stuff works
-	//models.SetGasStatus(needGas, models.GasTransferProcessing)
+	for _, upload := range uploadsThatNeedGas {
+		_, txHash, nonce, err := EthWrapper.SendETH(services.StringToAddress(upload.ETHAddr), gasToSend)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return
+		}
+		upload.GasStatus = models.GasTransferProcessing
+		upload.GasTxHash = txHash
+		upload.GasTxNonce = nonce
+		models.DB.ValidateAndUpdate(&upload)
+	}
 }
 
-// wraps calls eth_gatway's ClaimUnusedPRLs method and sets GasStatus to GasTransferProcessing
+// wraps calls eth_gatway's ClaimUnusedPRLs method and sets PRLStatus to PRLClaimProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
-	err := EthWrapper.ClaimUnusedPRLs(uploadsWithUnclaimedPRLs)
-	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Error claiming PRL: %v", err), nil)
-		return
+	for _, upload := range uploadsWithUnclaimedPRLs {
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(upload.ETHAddr))
+
+		privateKey := upload.DecryptSessionEthKey()
+		ecdsaPrivateKey, err := services.StringToPrivateKey(privateKey)
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return
+		}
+		callMsg, err := EthWrapper.CreateSendPRLMessage(services.StringToAddress(upload.ETHAddr),
+			ecdsaPrivateKey, services.MainWalletAddress, *balance)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return
+		}
+		sendSuccess, txHash, nonce := EthWrapper.SendPRLFromOyster(callMsg)
+		if sendSuccess {
+			upload.PRLStatus = models.PRLClaimProcessing
+			upload.PRLTxHash = txHash
+			upload.PRLTxNonce = nonce
+			models.DB.ValidateAndUpdate(&upload)
+		} else {
+			err := errors.New("error claiming unused prls from addresss: " + upload.ETHAddr)
+			oyster_utils.LogIfError(err, nil)
+		}
 	}
-	//TODO un-comment this out when ETH stuff works
-	//models.SetPRLStatus(uploadsWithUnclaimedPRLs, models.PRLClaimProcessing)
 }
 
 // purge claims whose PRLStatus is PRLClaimSuccess
