@@ -39,8 +39,11 @@ const (
 )
 
 const (
+	// Default value before adding msg_status column.
 	MsgStatusUnmigrated int = iota
+	// When client does not upload any data to brokernode.
 	MsgStatusNotUploaded
+	// When client has upload the data chunk to the brokernode.
 	MsgStatusUploaded
 )
 
