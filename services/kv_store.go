@@ -24,8 +24,12 @@ type KVKeys []string
 func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
-	// Currently disable it.
+	// Currently enable it.
 	isKvStoreEnable = true
+
+	if IsKvStoreEnable() {
+		InitKvStore()
+	}
 }
 
 /*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
