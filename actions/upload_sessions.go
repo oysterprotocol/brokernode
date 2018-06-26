@@ -313,6 +313,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 					// TODO:pzhao, remove this and this should not be called.
 					dm.Message = msg
 				}
+				dm.MsgStatus = models.MsgStatusUploaded
 
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned

@@ -491,12 +491,13 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
 
+	message := GetMessageFromDataMap(chunkOnRecord)
 	if checkBranchAndTrunk == false &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) {
+		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
 
 		return true
 
-	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) &&
+	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.TrunkTransaction), chunkOnRecord.TrunkTx) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.BranchTransaction), chunkOnRecord.BranchTx) {
 
@@ -508,7 +509,7 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 			Set("genesis_hash", chunkOnRecord.GenesisHash).
 			Set("chunk_idx", chunkOnRecord.ChunkIdx).
 			Set("address", chunkOnRecord.Address).
-			Set("db_message", chunkOnRecord.Message).
+			Set("db_message", message).
 			Set("tangle_message", chunkOnTangle.SignatureMessageFragment).
 			Set("db_trunk", chunkOnRecord.TrunkTx).
 			Set("tangle_trunk", chunkOnTangle.TrunkTransaction).
