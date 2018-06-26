@@ -38,6 +38,12 @@ const (
 	Error = -1
 )
 
+const (
+	MsgStatusUnmigrated int = iota
+	MsgStatusNotUploaded
+	MsgStatusUploaded
+)
+
 type DataMap struct {
 	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
@@ -120,6 +126,11 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 func (d *DataMap) BeforeCreate(tx *pop.Connection) error {
 	d.MsgID = d.generateMsgId()
 
+	// After adding MsgStatus column, all previous value will be 0/MsgStatusUnmigrated.
+	// And all new value should be default to MsgStatusNotUploaded.
+	if d.MsgStatus == MsgStatusUnmigrated {
+		d.MsgStatus = MsgStatusNotUploaded
+	}
 	return nil
 }
 
