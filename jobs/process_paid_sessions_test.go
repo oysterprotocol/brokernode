@@ -4,6 +4,7 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 func (suite *JobsSuite) Test_ProcessPaidSessions() {
@@ -66,25 +67,35 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// verify that we have successfully created all the data maps
 	paidButUnburied := []models.DataMap{}
 	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	paidAndBuried := []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	suite.NotEqual(0, len(paidButUnburied))
 	suite.NotEqual(0, len(paidAndBuried))
 
 	// verify that the "Message" field for every chunk in paidButUnburied is ""
 	for _, dMap := range paidButUnburied {
-		dMap.Message = "NOTEMPTY"
+		if services.IsKvStoreEnabled() {
+			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			dMap.MsgStatus = models.MsgStatusUploaded
+		} else {
+			dMap.Message = "NOTEMPTY"
+		}
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
 	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
 	for _, dMap := range paidAndBuried {
 		suite.NotEqual(models.Unassigned, dMap.Status)
-		dMap.Message = "NOTEMPTY"
+		if services.IsKvStoreEnabled() {
+			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			dMap.MsgStatus = models.MsgStatusUploaded
+		} else {
+			dMap.Message = "NOTEMPTY"
+		}
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
@@ -93,7 +104,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	paidButUnburied = []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	/* Verify the following:
 	1.  If a chunk in paidButUnburied was one of the treasure chunks, Message is no longer ""
@@ -101,16 +112,16 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	*/
 	for _, dMap := range paidButUnburied {
 		if _, ok := treasureIndexes[dMap.ChunkIdx]; ok {
-			suite.NotEqual("", dMap.Message)
+			suite.NotEqual("", services.GetMessageFromDataMap(dMap))
 		} else {
-			suite.Equal("NOTEMPTY", dMap.Message)
+			suite.Equal("NOTEMPTY", services.GetMessageFromDataMap(dMap))
 		}
 		suite.Equal(models.Unassigned, dMap.Status)
 	}
 
 	paidAndBuried = []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	// verify that all chunks in paidAndBuried have statuses changed to Unassigned
 	for _, dMap := range paidAndBuried {
@@ -121,10 +132,10 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// keys are now "" but that we still have a value for the Idx
 	paidAndUnburiedSession := models.UploadSession{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&paidAndUnburiedSession)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	treasureIndex, err := paidAndUnburiedSession.GetTreasureMap()
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	suite.Equal(3, len(treasureIndex))
 

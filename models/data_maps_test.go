@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/crypto/sha3"
+
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
 )
 
 type hashAddressConversion struct {
@@ -243,7 +245,12 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		dm.Message = "NOTEMPETY"
+		if services.IsKvStoreEnabled() {
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
+		} else {
+			dm.Message = "NOTEMPETY"
+		}
 		suite.DB.ValidateAndSave(&dm)
 	}
 
@@ -276,7 +283,12 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		dm.Message = "NOTEMPETY"
+		if services.IsKvStoreEnabled() {
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
+		} else {
+			dm.Message = "NOTEMPETY"
+		}
 		suite.DB.ValidateAndSave(&dm)
 	}
 
@@ -311,7 +323,12 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		dm.Message = "NOTEMPETY"
+		if services.IsKvStoreEnabled() {
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
+		} else {
+			dm.Message = "NOTEMPETY"
+		}
 		suite.DB.ValidateAndSave(&dm)
 	}
 
