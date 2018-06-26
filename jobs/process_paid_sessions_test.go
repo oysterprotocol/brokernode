@@ -80,10 +80,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	for _, dMap := range paidButUnburied {
 		if services.IsKvStoreEnabled() {
 			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			dMap.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dMap.Message = "NOTEMPTY"
-			suite.DB.ValidateAndSave(&dMap)
 		}
+		suite.DB.ValidateAndSave(&dMap)
 	}
 
 	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
@@ -91,10 +92,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		suite.NotEqual(models.Unassigned, dMap.Status)
 		if services.IsKvStoreEnabled() {
 			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			dMap.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dMap.Message = "NOTEMPTY"
-			suite.DB.ValidateAndSave(&dMap)
 		}
+		suite.DB.ValidateAndSave(&dMap)
 	}
 
 	// call method under test

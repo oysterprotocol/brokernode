@@ -246,11 +246,12 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"})
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dm.Message = "NOTEMPETY"
-			suite.DB.ValidateAndSave(&dm)
 		}
+		suite.DB.ValidateAndSave(&dm)
 	}
 
 	jobs.MarkBuriedMapsAsUnassigned()
@@ -283,11 +284,12 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"})
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dm.Message = "NOTEMPETY"
-			suite.DB.ValidateAndSave(&dm)
 		}
+		suite.DB.ValidateAndSave(&dm)
 	}
 
 	jobs.MarkBuriedMapsAsUnassigned()
@@ -322,11 +324,12 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"})
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			dm.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dm.Message = "NOTEMPETY"
-			suite.DB.ValidateAndSave(&dm)
 		}
+		suite.DB.ValidateAndSave(&dm)
 	}
 
 	chunksWithLimit, err := models.GetPendingChunksBySession(session, 4)
