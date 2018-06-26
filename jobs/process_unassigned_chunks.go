@@ -374,7 +374,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", services.GetMessageFromDataMap(chunks[i]))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				treasureChunksToAttach = append(treasureChunksToAttach, chunks[i])
 			} else {
