@@ -27,7 +27,7 @@ func init() {
 	// Currently enable it.
 	isKvStoreEnable = true
 
-	if IsKvStoreEnable() {
+	if IsKvStoreEnabled() {
 		InitKvStore()
 	}
 }
@@ -109,6 +109,11 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 	err = badgerDB.View(func(txn *badger.Txn) error {
 		for _, k := range *ks {
+			// Skip any empty keys.
+			if k == "" {
+				continue
+			}
+
 			item, err := txn.Get([]byte(k))
 			if err == badger.ErrKeyNotFound {
 				continue
