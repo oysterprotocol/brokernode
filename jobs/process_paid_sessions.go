@@ -58,26 +58,32 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			})
 			return err
 		}
+		treasureChunk := treasureChunks[0]
 
-		decryptedKey, err := treasureChunks[0].DecryptEthKey(entry.Key)
+		decryptedKey, err := treasureChunk.DecryptEthKey(entry.Key)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
 
-		treasureChunks[0].Message, err = models.CreateTreasurePayload(decryptedKey, treasureChunks[0].Hash, models.MaxSideChainLength)
+		message, err := models.CreateTreasurePayload(decryptedKey, treasureChunk.Hash, models.MaxSideChainLength)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
-		models.DB.ValidateAndSave(&treasureChunks[0])
+		if services.IsKvStoreEnabled() {
+			services.BatchSet(&services.KVPairs{treasureChunk.MsgID: message})
+		} else {
+			treasureChunk.Message = message
+			models.DB.ValidateAndSave(&treasureChunk)
+		}
 
 		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).
 			Set("sector", entry.Sector).
 			Set("chunk_idx", entry.Idx).
 			Set("address", treasureChunks[0].Address).
-			Set("message", treasureChunks[0].Message))
+			Set("message", message))
 	}
 	unburiedSession.TreasureStatus = models.TreasureInDataMapComplete
 	models.DB.ValidateAndSave(unburiedSession)

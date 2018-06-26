@@ -77,15 +77,25 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// verify that the "Message" field for every chunk in paidButUnburied is ""
 	for _, dMap := range paidButUnburied {
-		dMap.Message = "NOTEMPTY"
-		suite.DB.ValidateAndSave(&dMap)
+		if services.IsKvStoreEnabled() {
+			suite.DB.ValidateAndSave(&dMap)
+			services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"})
+		} else {
+			dMap.Message = "NOTEMPTY"
+			suite.DB.ValidateAndSave(&dMap)
+		}
 	}
 
 	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
 	for _, dMap := range paidAndBuried {
 		suite.NotEqual(models.Unassigned, dMap.Status)
-		dMap.Message = "NOTEMPTY"
-		suite.DB.ValidateAndSave(&dMap)
+		if services.IsKvStoreEnabled() {
+			suite.DB.ValidateAndSave(&dMap)
+			services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"})
+		} else {
+			dMap.Message = "NOTEMPTY"
+			suite.DB.ValidateAndSave(&dMap)
+		}
 	}
 
 	// call method under test
@@ -101,9 +111,9 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	*/
 	for _, dMap := range paidButUnburied {
 		if _, ok := treasureIndexes[dMap.ChunkIdx]; ok {
-			suite.NotEqual("", dMap.Message)
+			suite.NotEqual("", services.GetMessageFromDataMap(dMap))
 		} else {
-			suite.Equal("NOTEMPTY", dMap.Message)
+			suite.Equal("NOTEMPTY", services.GetMessageFromDataMap(dMap))
 		}
 		suite.Equal(models.Unassigned, dMap.Status)
 	}
