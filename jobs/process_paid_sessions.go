@@ -75,8 +75,9 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			services.BatchSet(&services.KVPairs{treasureChunk.MsgID: message})
 		} else {
 			treasureChunk.Message = message
-			models.DB.ValidateAndSave(&treasureChunk)
 		}
+		treasureChunk.MsgStatus = MsgStatusUploaded
+		models.DB.ValidateAndSave(&treasureChunk)
 
 		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).

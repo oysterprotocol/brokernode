@@ -230,7 +230,7 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				ETHAddr: ethAddress.Hex(),
 				ETHKey:  decryptedKey,
 				Address: treasureChunk.Address,
-				Message: treasureChunk.Message,
+				Message: services.GetMessageFromDataMap(treasureChunk),
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)
@@ -374,7 +374,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i]))
 
 				treasureChunksToAttach = append(treasureChunksToAttach, chunks[i])
 			} else {
@@ -383,7 +383,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				chunks[i].Status = models.Complete
 				models.DB.ValidateAndSave(&chunks[i])

@@ -80,10 +80,10 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	for _, dMap := range paidButUnburied {
 		if services.IsKvStoreEnabled() {
 			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
-			dMap.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}
+		dMap.MsgStatus = models.MsgStatusUploaded
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
@@ -92,10 +92,10 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		suite.NotEqual(models.Unassigned, dMap.Status)
 		if services.IsKvStoreEnabled() {
 			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
-			dMap.MsgStatus = models.MsgStatusUploaded
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}
+		dMap.MsgStatus = models.MsgStatusUploaded
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
