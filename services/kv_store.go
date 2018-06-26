@@ -143,6 +143,11 @@ func BatchSet(kvs *KVPairs) error {
 	var err error
 	txn := badgerDB.NewTransaction(true)
 	for k, v := range *kvs {
+		if k == "" {
+			err = errors.New("BatchSet does not accept key as empty string")
+			break
+		}
+
 		e := txn.Set([]byte(k), []byte(v))
 		if e == nil {
 			continue
