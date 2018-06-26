@@ -218,6 +218,9 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 			Address:        currAddr,
 			Status:         Pending,
 		}
+		// We use INSERT SQL query rather than default Create method.
+		dataMap.BeforeCreate(nil)
+
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
