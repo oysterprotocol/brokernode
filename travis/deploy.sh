@@ -6,8 +6,9 @@ pwd
 chmod 600 ./travis/id_rsa
 
 script=$(cat <<-END
-  echo "PRINT SOMETHINGGGGGGGGGGGGGGGGG"
-  cd brokernode
+  echo "PRINT SOMETHINGGGGGGGGGGGGGGGGG";
+  cd brokernode;
+  echo | pwd;
 END
 )
 
