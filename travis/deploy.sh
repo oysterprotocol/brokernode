@@ -6,9 +6,9 @@ pwd
 chmod 600 ./travis/id_rsa
 
 script=$(cat <<-END
-  echo "PRINT SOMETHINGGGGGGGGGGGGGGGGG";
   cd brokernode;
-  echo | pwd;
+  docker rmi $(docker images -q);
+  DEBUG=1 docker-compose up --build -d;
 END
 )
 
