@@ -98,10 +98,10 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 	index := 0
+	messagsKvPairs := services.KVPairs{}
 	for _, dataMap := range dataMaps {
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,
-			Message:     services.GetMessageFromDataMap(dataMap),
 			NodeID:      dataMap.NodeID,
 			NodeType:    dataMap.NodeType,
 			TrunkTx:     dataMap.TrunkTx,
@@ -111,12 +111,20 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
 		}
+		if !services.IsKvStoreEnabled() {
+			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
+		}
 
 		_, err := tx.ValidateAndSave(&completedDataMap)
-		oyster_utils.LogIfError(err, map[string]interface{}{
-			"numOfDataMaps":  len(dataMaps),
-			"proceededIndex": index,
-		})
+		if err == nil {
+			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
+		} else {
+			oyster_utils.LogIfError(err, map[string]interface{}{
+				"numOfDataMaps":  len(dataMaps),
+				"proceededIndex": index,
+			})
+		}
 		index++
 	}
+	services.BatchSet(&messagsKvPairs)
 }
