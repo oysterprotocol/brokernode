@@ -8,14 +8,16 @@ import (
 )
 
 var (
-	RowWithGasTransferNotStarted = models.CompletedUpload{}
-	RowWithGasTransferProcessing = models.CompletedUpload{}
-	RowWithGasTransferSuccess    = models.CompletedUpload{}
-	RowWithGasTransferError      = models.CompletedUpload{}
-	RowWithPRLClaimNotStarted    = models.CompletedUpload{}
-	RowWithPRLClaimProcessing    = models.CompletedUpload{}
-	RowWithPRLClaimSuccess       = models.CompletedUpload{}
-	RowWithPRLClaimError         = models.CompletedUpload{}
+	RowWithGasTransferNotStarted                 = models.CompletedUpload{}
+	RowWithGasTransferProcessing                 = models.CompletedUpload{}
+	RowWithGasTransferSuccess                    = models.CompletedUpload{}
+	RowWithGasTransferError                      = models.CompletedUpload{}
+	RowWithPRLClaimNotStarted                    = models.CompletedUpload{}
+	RowWithPRLClaimProcessing                    = models.CompletedUpload{}
+	RowWithPRLClaimSuccess                       = models.CompletedUpload{}
+	RowWithPRLClaimError                         = models.CompletedUpload{}
+	RowWithGasTransferLeftoversReclaimProcessing = models.CompletedUpload{}
+	RowWithGasTransferLeftoversReclaimSuccess    = models.CompletedUpload{}
 )
 
 func testSetup(ms *ModelSuite) {
@@ -92,6 +94,24 @@ func testSetup(ms *ModelSuite) {
 		GasStatus:     models.GasTransferSuccess,
 	}
 
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
+	RowWithGasTransferLeftoversReclaimProcessing = models.CompletedUpload{
+		GenesisHash:   "RowWithGasTransferLeftoversReclaimProcessing",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
+		PRLStatus:     models.PRLClaimSuccess,
+		GasStatus:     models.GasTransferLeftoversReclaimProcessing,
+	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
+	RowWithGasTransferLeftoversReclaimSuccess = models.CompletedUpload{
+		GenesisHash:   "RowWithGasTransferLeftoversReclaimSuccess",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
+		PRLStatus:     models.PRLClaimSuccess,
+		GasStatus:     models.GasTransferLeftoversReclaimSuccess,
+	}
+
 	err := ms.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
 	ms.Nil(err)
 
@@ -125,6 +145,14 @@ func testSetup(ms *ModelSuite) {
 
 	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
 	RowWithPRLClaimError.EncryptSessionEthKey()
+	ms.Nil(err)
+
+	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	RowWithGasTransferLeftoversReclaimProcessing.EncryptSessionEthKey()
+	ms.Nil(err)
+
+	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	RowWithGasTransferLeftoversReclaimSuccess.EncryptSessionEthKey()
 	ms.Nil(err)
 }
 
@@ -268,10 +296,10 @@ func testGetRowsByPRLStatus(ms *ModelSuite) {
 }
 
 func testSetPRLStatus(ms *ModelSuite) {
-	// should only be 1 of these
+	// should be 3 of these
 	startingResults, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
 	ms.Nil(err)
-	ms.Equal(1, len(startingResults))
+	ms.Equal(3, len(startingResults))
 
 	// should only be 1 of these as well
 	entriesBeingChanged, err := models.GetRowsByPRLStatus(models.PRLClaimError)
@@ -280,10 +308,10 @@ func testSetPRLStatus(ms *ModelSuite) {
 
 	models.SetPRLStatus(entriesBeingChanged, models.PRLClaimSuccess)
 
-	// should now be 2 of these
+	// should now be 4 of these
 	currentResults, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
 	ms.Nil(err)
-	ms.Equal(2, len(currentResults))
+	ms.Equal(4, len(currentResults))
 
 	// we changed a row so change it back
 	testSetup(ms)
@@ -338,10 +366,10 @@ func testSetGasStatusByAddress(ms *ModelSuite) {
 }
 
 func testSetPRLStatusByAddress(ms *ModelSuite) {
-	// should only be 1 of these
+	// should be 3 of these
 	startingResultsSuccess, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
 	ms.Nil(err)
-	ms.Equal(1, len(startingResultsSuccess))
+	ms.Equal(3, len(startingResultsSuccess))
 
 	// should only be 1 of these
 	startingResultsError, err := models.GetRowsByPRLStatus(models.PRLClaimError)
@@ -350,10 +378,10 @@ func testSetPRLStatusByAddress(ms *ModelSuite) {
 
 	models.SetPRLStatusByAddress(startingResultsSuccess[0].ETHAddr, models.PRLClaimError)
 
-	// should be none left
+	// should be 2 left
 	currentResultsSuccess, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
 	ms.Nil(err)
-	ms.Equal(0, len(currentResultsSuccess))
+	ms.Equal(2, len(currentResultsSuccess))
 
 	// should only be 2 of these
 	currentResultsError, err := models.GetRowsByPRLStatus(models.PRLClaimError)
@@ -362,17 +390,17 @@ func testSetPRLStatusByAddress(ms *ModelSuite) {
 }
 
 func testDeleteCompletedClaims(ms *ModelSuite) {
-	//should be 8 of these
+	//should be 10 of these
 	completedUploads := []models.CompletedUpload{}
 	err := ms.DB.All(&completedUploads)
 	ms.Equal(nil, err)
-	ms.Equal(8, len(completedUploads))
+	ms.Equal(10, len(completedUploads))
 
 	models.DeleteCompletedClaims()
 
-	//should be 7 now
+	//should be 9 now
 	completedUploads = []models.CompletedUpload{}
 	err = ms.DB.All(&completedUploads)
 	ms.Equal(nil, err)
-	ms.Equal(7, len(completedUploads))
+	ms.Equal(9, len(completedUploads))
 }

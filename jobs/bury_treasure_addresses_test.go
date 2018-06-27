@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"crypto/ecdsa"
 	"errors"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -246,10 +247,11 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 			}
 			return big.NewInt(600000000000000000)
 		},
-		SendETH: func(address common.Address, gas *big.Int) (types.Transactions, string, int64, error) {
+		SendETH: func(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddress common.Address,
+			gas *big.Int) (types.Transactions, string, int64, error) {
 			hasCalledSendGas = true
 			// make one of the transfers unsuccessful
-			if address == services.StringToAddress(failSendEthAddress) {
+			if toAddress == services.StringToAddress(failSendEthAddress) {
 				return types.Transactions{}, "", -1, errors.New("FAIL")
 			}
 			return types.Transactions{}, "111111", 1, nil

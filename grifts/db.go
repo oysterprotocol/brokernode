@@ -7,12 +7,15 @@ import (
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"math/big"
 	"os"
 	"strconv"
+	"time"
 )
 
 const qaTrytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+const qaGenHashStartingChars = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 func getAddress() (common.Address, string, error) {
 	griftPrivateKey := os.Getenv("GRIFT_ETH_PRIVATE_KEY")
@@ -275,6 +278,116 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		fmt.Println("Successfully deleted brokernodes from database!")
+		return nil
+	})
+
+	grift.Desc("claim_unused_test", "Adds a completed upload "+
+		"to claim unused PRLs from")
+	grift.Add("claim_unused_test", func(c *grift.Context) error {
+
+		var numToCreate int
+		if len(c.Args) == 0 {
+			numToCreate = 1
+		} else {
+			numToCreate, _ = strconv.Atoi(c.Args[0])
+		}
+
+		for i := 0; i < numToCreate; i++ {
+			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			fmt.Println("PRIVATE KEY IS:")
+			fmt.Println(griftPrivateKey)
+
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+
+			//prlAmountInWei := big.NewInt(7800000000000001)
+
+			prlAmount := big.NewFloat(float64(.0001))
+			prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
+
+			callMsg, _ := services.EthWrapper.CreateSendPRLMessage(services.MainWalletAddress,
+				services.MainWalletPrivateKey,
+				address, *prlAmountInWei)
+
+			sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+			if sendSuccess {
+				fmt.Println("Sent successfully!")
+				for {
+					fmt.Println("Polling for PRL arrival")
+					balance := services.EthWrapper.CheckPRLBalance(address)
+					if balance.Int64() > 0 {
+						fmt.Println("PRL arrived!")
+						break
+					}
+					time.Sleep(10 * time.Second)
+				}
+			}
+
+			fmt.Println("Now making a completed_upload")
+
+			validChars := []rune("abcde123456789")
+			genesisHashEndingChars := oyster_utils.RandSeq(10, validChars)
+
+			completedUpload := models.CompletedUpload{
+				GenesisHash:   qaGenHashStartingChars + genesisHashEndingChars,
+				ETHAddr:       address.String(),
+				ETHPrivateKey: griftPrivateKey,
+			}
+
+			vErr, err := models.DB.ValidateAndSave(&completedUpload)
+			completedUpload.EncryptSessionEthKey()
+
+			if len(vErr.Errors) > 0 {
+				err := errors.New("validation errors making completed upload!")
+				fmt.Println(err)
+				return err
+			}
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fmt.Println("Successfully created a completed_upload!")
+		}
+		return nil
+	})
+
+	grift.Desc("print_completed_uploads", "Prints the completed uploads")
+	grift.Add("print_completed_uploads", func(c *grift.Context) error {
+
+		completedUploads := []models.CompletedUpload{}
+
+		err := models.DB.RawQuery("SELECT * from completed_uploads").All(&completedUploads)
+
+		if err == nil {
+			for _, completedUpload := range completedUploads {
+				fmt.Println("Genesis hash:      " + completedUpload.GenesisHash)
+				fmt.Println("ETH Address:       " + completedUpload.ETHAddr)
+				fmt.Println("ETH Key:           " + completedUpload.ETHPrivateKey)
+				decrypted := completedUpload.DecryptSessionEthKey()
+				fmt.Println("decrypted ETH Key: " + decrypted)
+				fmt.Println("PRL Status:        " + models.PRLClaimStatusMap[completedUpload.PRLStatus])
+				fmt.Println("Gas Status:        " + models.GasTransferStatusMap[completedUpload.GasStatus])
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+	})
+
+	grift.Desc("delete_completed_uploads", "Deletes the completed uploads")
+	grift.Add("delete_completed_uploads", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from completed_uploads WHERE genesis_hash " +
+			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
+
+		if err == nil {
+			fmt.Println("Completed uploads deleted")
+		}
+
 		return nil
 	})
 })
