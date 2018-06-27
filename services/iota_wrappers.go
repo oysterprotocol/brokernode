@@ -169,7 +169,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			}
 			transfersArray[i].Address = address
 			transfersArray[i].Value = int64(0)
-			transfersArray[i].Message, err = giota.ToTrytes(chunk.Message)
+			transfersArray[i].Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				panic(err)
