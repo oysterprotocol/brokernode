@@ -9,7 +9,11 @@ script=$(cat <<-END
   git pull;
   cp /home/ubuntu/database.dev.yml ./database.yml;
   cp /home/ubuntu/docker-compose.dev.yml ./docker-compose.yml;
-  echo "ppppppppppppppp";
+  docker stop $(docker ps -aq);
+  docker rm $(docker ps -aq);
+  docker rmi $(docker images -q);
+  DEBUG=1 docker-compose up --build -d;
+  echo "Done!";
 END
 )
 
@@ -20,5 +24,9 @@ ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa <<-END
   git pull;
   cp /home/ubuntu/database.dev.yml ./database.yml;
   cp /home/ubuntu/docker-compose.dev.yml ./docker-compose.yml;
-  echo "ppppppppppppppp";
+  docker stop $(docker ps -aq);
+  docker rm $(docker ps -aq);
+  docker rmi $(docker images -q);
+  DEBUG=1 docker-compose up --build -d;
+  echo "Done!";
 END
