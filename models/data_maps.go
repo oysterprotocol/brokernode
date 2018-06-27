@@ -38,6 +38,15 @@ const (
 	Error = -1
 )
 
+const (
+	// Default value before adding msg_status column.
+	MsgStatusUnmigrated int = iota
+	// When client does not upload any data to brokernode.
+	MsgStatusNotUploaded
+	// When client has upload the data chunk to the brokernode.
+	MsgStatusUploaded
+)
+
 type DataMap struct {
 	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
@@ -120,6 +129,11 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 func (d *DataMap) BeforeCreate(tx *pop.Connection) error {
 	d.MsgID = d.generateMsgId()
 
+	// After adding MsgStatus column, all previous value will be 0/MsgStatusUnmigrated.
+	// And all new value should be default to MsgStatusNotUploaded.
+	if d.MsgStatus == MsgStatusUnmigrated {
+		d.MsgStatus = MsgStatusNotUploaded
+	}
 	return nil
 }
 
@@ -204,6 +218,9 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 			Address:        currAddr,
 			Status:         Pending,
 		}
+		// We use INSERT SQL query rather than default Create method.
+		dataMap.BeforeCreate(nil)
+
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))

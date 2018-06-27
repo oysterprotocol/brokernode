@@ -24,8 +24,12 @@ type KVKeys []string
 func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
-	// Currently disable it.
+	// Currently enable it.
 	isKvStoreEnable = true
+
+	if IsKvStoreEnabled() {
+		InitKvStore()
+	}
 }
 
 /*InitKvStore returns db so that caller can call CloseKvStore to close it when it is done.*/
@@ -105,6 +109,11 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 	err = badgerDB.View(func(txn *badger.Txn) error {
 		for _, k := range *ks {
+			// Skip any empty keys.
+			if k == "" {
+				continue
+			}
+
 			item, err := txn.Get([]byte(k))
 			if err == badger.ErrKeyNotFound {
 				continue
@@ -143,6 +152,11 @@ func BatchSet(kvs *KVPairs) error {
 	var err error
 	txn := badgerDB.NewTransaction(true)
 	for k, v := range *kvs {
+		if k == "" {
+			err = errors.New("BatchSet does not accept key as empty string")
+			break
+		}
+
 		e := txn.Set([]byte(k), []byte(v))
 		if e == nil {
 			continue

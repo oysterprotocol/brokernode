@@ -5,7 +5,6 @@ create_table("stored_genesis_hashes", func(t) {
     t.Column("num_chunks", "integer", {})
     t.Column("webnode_count", "integer", {"null": true})
     t.Column("status", "integer", {})
-    t.Column("treasure_status", "integer", {})
 })
 
 add_index("stored_genesis_hashes", ["genesis_hash"], {})
