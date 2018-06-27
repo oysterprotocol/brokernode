@@ -13,4 +13,12 @@ script=$(cat <<-END
 END
 )
 
-ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa $script
+ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa <<-END
+  sudo su;
+  cd /home/ubuntu/brokernode;
+  git stash;
+  git pull;
+  cp /home/ubuntu/database.dev.yml ./database.yml;
+  cp /home/ubuntu/docker-compose.dev.yml ./docker-compose.yml;
+  echo "ppppppppppppppp";
+END
