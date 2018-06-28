@@ -21,6 +21,8 @@ ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa <<-END
   sudo su;
   cd /home/ubuntu/brokernode;
   git stash;
+  git clean -f -d;
+  git checkout master;
   git pull;
   cp /home/ubuntu/database.dev.yml ./database.yml;
   cp /home/ubuntu/docker-compose.dev.yml ./docker-compose.yml;
