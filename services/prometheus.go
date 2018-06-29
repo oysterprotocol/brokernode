@@ -10,16 +10,16 @@ var (
 	PrometheusWrapper PrometheusService
 )
 
-// Return Collection Of Histograms
+// PrepareHistogram Return Collection Of Histograms
 type PrepareHistogram func(name string, help string, labelNames ...string) (histogram *prometheus.HistogramVec)
 
-// Return Histograms For A Given Period
+// HistogramSeconds Return Histograms For A Given Period
 type HistogramSeconds func(histogram *prometheus.HistogramVec, start time.Time)
 
-// Return Histogram Data
+// HistogramData Return Histogram Data
 type HistogramData func(histogram *prometheus.HistogramVec, data float64)
 
-// Utility to Get Time
+// TimeNow Utility to Get Current Time
 type TimeNow func() (start time.Time)
 
 type PrometheusService struct {
@@ -108,7 +108,7 @@ func timeNow() (start time.Time) {
 	return start
 }
 
-// Utility to prepare and build a histogram
+// PrepareHistogram Utility to prepare and build a histogram
 func prepareHistogram(name string, help string, labelNames ...string) (histogram *prometheus.HistogramVec) {
 	histogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: name,
@@ -119,7 +119,7 @@ func prepareHistogram(name string, help string, labelNames ...string) (histogram
 	return histogram
 }
 
-// Utility to access histogram data by time
+// HistogramSeconds Utility to access histogram data by time
 func histogramSeconds(histogram *prometheus.HistogramVec, start time.Time) {
 	duration := duration(start)
 	histogram.WithLabelValues("500").Observe(duration.Seconds())

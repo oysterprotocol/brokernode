@@ -58,7 +58,7 @@ type Eth struct {
 	OysterCallMsg
 }
 
-// Transaction Type Flag
+// TxType Transaction Type Flag
 type TxType int
 
 const (
@@ -69,7 +69,7 @@ const (
 )
 
 const (
-	// Delay used during transaction confirmation(s)
+	// SecondsDelayForETHPolling Delay used during transaction confirmation(s)
 	SecondsDelayForETHPolling = 10
 )
 
@@ -101,76 +101,76 @@ type TransactionWithBlockNumber struct {
 	Confirmed   *bool
 }
 
-// Gas Calculation for Sending Ether
+// CalculateGasToSend Gas Calculation for Sending Ether
 type CalculateGasToSend func(desiredGasLimit uint64) (*big.Int, error)
 
-// Generate Valid Ethereum Network Address
+// GenerateEthAddr Generate Valid Ethereum Network Address
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 
-// Generate Private Keys W/O Address
+// GenerateKeys Generate Private Keys W/O Address
 type GenerateKeys func(int) (privateKeys []string, err error)
 
-// Generate Ethereum Address from Private Keys
+// GenerateEthAddrFromPrivateKey Generate Ethereum Address from Private Keys
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
 
-// Generate Ethereum Public Key from Private Key
+// GeneratePublicKeyFromPrivateKey Generate Ethereum Public Key from Private Key
 type GeneratePublicKeyFromPrivateKey func(c elliptic.Curve, k *big.Int) *ecdsa.PrivateKey
 
-// Gas Price On Ethereum Network
+// GetGasPrice Gas Price On Ethereum Network
 type GetGasPrice func() (*big.Int, error)
 
-// Wait For Transfer to Complete
+// WaitForTransfer Wait For Transaction to Complete
 type WaitForTransfer func(brokerAddr common.Address, transferType string) (*big.Int, error)
 
-// Check Ethereum Balance
+// CheckETHBalance Check Ethereum Balance
 type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
 
-// Check PRL Balance
+// CheckPRLBalance Check PRL Balance on Oyster Pearl
 type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 
-// Get Current(Latest) Block from Ethereum Network
+// GetCurrentBlock Get Current(Latest) Block from Ethereum Network
 type GetCurrentBlock func() (*types.Block, error)
 
-// Send Ether To Valid Ethereum Network Address
+// SendETH Send Ether To Valid Ethereum Network Address
 type SendETH func(fromAddress common.Address, fromPrivateKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
 
-// Get Transaction Confirmation Status
+// GetConfirmationStatus Get Transaction Confirmation Status
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
 
-// Wait For Transaction Confirmations to Complete
+// WaitForConfirmation Wait For Transaction Confirmation to Complete
 type WaitForConfirmation func(txHash common.Hash, pollingDelayInSeconds int) uint
 
-// Check Transaction Pool For Pending Confirmation(s)
+// PendingConfirmation Check Transaction Pool For Pending Confirmation
 type PendingConfirmation func(txHash common.Hash) bool
 
-// Return Nonce For Account
+// GetNonce Return Nonce For Ethereum Account
 type GetNonce func(ctx context.Context, address common.Address) (uint64, error)
 
-// Return Transactions Table, Transactions Waiting To Confirm
+// GetTransactionTable Return Transactions Table with Transactions Waiting To Confirm
 type GetTransactionTable func() map[common.Hash]TransactionWithBlockNumber
 
-// Return Transaction By Hash
+// GetTransaction Return Transaction By Hash
 type GetTransaction func(txHash common.Hash) TransactionWithBlockNumber
 
-// Utility to Access the Internal Test Wallet
+// GetTestWallet Utility to Access the Internal Test Wallet
 type GetTestWallet func() *keystore.Key
 
-// Bury Pearl With Oyster Pearl
+// BuryPrl Bury Pearl With Oyster Pearl
 type BuryPrl func(msg OysterCallMsg) (bool, string, int64)
 
-// Check Buried State For Address
+// CheckBuriedState Check if an Address Is Buried
 type CheckBuriedState func(addressToCheck common.Address) (bool, error)
 
-// Utility to Send PRLs
+// CreateSendPRLMessage Utility to Send PRLs
 type CreateSendPRLMessage func(from common.Address, privateKey *ecdsa.PrivateKey, to common.Address, prlAmount big.Int) (OysterCallMsg, error)
 
-// Send PRL from Account to Account
+// SendPRL Send PRL from Account to Account
 type SendPRL func(msg OysterCallMsg) bool
 
-// Send PRL from Oyster Pearl
+// SendPRLFromOyster Send PRL from Oyster Pearl
 type SendPRLFromOyster func(msg OysterCallMsg) (bool, string, int64)
 
-// Claim Existing Buried PRLs
+// ClaimPRL Claim Buried PRLs from Oyster Pearl
 type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey *ecdsa.PrivateKey) bool
 
 // Singleton client
@@ -387,12 +387,12 @@ func StringToAddress(address string) common.Address {
 	return common.HexToAddress(address)
 }
 
-// Utility HexToECDSA parses a secp256k1 private key
+// StringToPrivateKey Utility HexToECDSA parses a secp256k1 private key
 func StringToPrivateKey(hexPrivateKey string) (*ecdsa.PrivateKey, error) {
 	return crypto.HexToECDSA(hexPrivateKey)
 }
 
-// Utility to parse transaction hash string to common.Hash
+// StringToTxHash Utility to parse transaction hash string to common.Hash
 func StringToTxHash(txHash string) common.Hash {
 	return common.HexToHash(txHash)
 }

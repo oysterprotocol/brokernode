@@ -489,7 +489,7 @@ func waitForBury(treasureToBury models.Treasure) {
 
 // TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
 func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce int64, txType services.TxType) {
-	
+
 	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash), SecondsDelayForETHPolling)
 
 	// we passed the row by value, get it again in case it has changed
@@ -515,7 +515,7 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 	}
 }
 
-func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) (models.PRLStatus) {
+func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
 	var newStatus models.PRLStatus
 	switch txType {
 	case services.PRLTransfer:
@@ -536,7 +536,7 @@ func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) (m
 	return newStatus
 }
 
-func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) (models.PRLStatus) {
+func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
 	var newStatus models.PRLStatus
 	switch txType {
 	case services.PRLTransfer:
