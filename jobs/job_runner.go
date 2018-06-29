@@ -86,12 +86,12 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(buryTreasureAddressesHandler,
 		worker.Args{
-			Duration: 20 * time.Second,
+			Duration: 2 * time.Minute,
 		})
 
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
 		worker.Args{
-			Duration: 20 * time.Second,
+			Duration: 2 * time.Minute,
 		})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,

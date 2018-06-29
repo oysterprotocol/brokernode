@@ -442,7 +442,7 @@ var _ = grift.Namespace("db", func() {
 					fmt.Println("MOVING ON")
 					break
 				}
-				time.Sleep(10 * time.Second)
+				time.Sleep(3 * time.Second)
 			}
 			validChars := []rune("abcde123456789")
 			genesisHashEndingChars := oyster_utils.RandSeq(10, validChars)
@@ -454,6 +454,7 @@ var _ = grift.Namespace("db", func() {
 				TreasureETHPrivateKey: privateKey,
 				SectorIdx:             0,
 				NumChunks:             100,
+				StartingClaimClock:    0,
 			}
 
 			vErr, err = models.DB.ValidateAndCreate(&treasureToClaim)

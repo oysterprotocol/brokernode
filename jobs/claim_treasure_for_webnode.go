@@ -89,20 +89,14 @@ func CheckOngoingPRLClaims() {
 	}
 
 	for _, pending := range prlsPending {
+
 		claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(pending.TreasureETHAddr))
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 
-		fmt.Println("StartingClaimClock")
-		fmt.Println(pending.StartingClaimClock)
-		fmt.Println(pending.TreasureETHAddr)
-
-		fmt.Println("current claim clock")
-		fmt.Println(claimClock.Int64())
-
-		if claimClock.Int64() != pending.StartingClaimClock {
+		if claimClock.Int64() != pending.StartingClaimClock && pending.StartingClaimClock != int64(-1) {
 			fmt.Println("PRLs claimed from " + pending.TreasureETHAddr + " to " + pending.ReceiverETHAddr + " in CheckOngoingPRLClaims() " +
 				"in claim_treasure_for_webnode")
 			pending.ClaimPRLStatus = models.PRLClaimSuccess
@@ -279,27 +273,6 @@ func StartNewTreasureClaims() {
 
 		for _, transfer := range readyClaims {
 
-			if transfer.StartingClaimClock == 0 || transfer.StartingClaimClock == -1 {
-				// set the claim clock so we can check later that we were successful
-				claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(transfer.TreasureETHAddr))
-				if err != nil {
-					oyster_utils.LogIfError(err, nil)
-					continue
-				}
-
-				transfer.StartingClaimClock = claimClock.Int64()
-				vErr, err := models.DB.ValidateAndUpdate(&transfer)
-
-				if len(vErr.Errors) > 0 {
-					oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
-					continue
-				}
-				if err != nil {
-					oyster_utils.LogIfError(err, nil)
-					continue
-				}
-			}
-
 			oyster_utils.LogToSegment("claim_treasure_for_webnode: new_treasure_claim", analytics.NewProperties().
 				Set("eth_address_from", transfer.TreasureETHAddr).
 				Set("genesis_hash", transfer.GenesisHash))
@@ -378,14 +351,7 @@ func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
 			continue
 		}
 
-		fmt.Println("THIS IS HOW MUCH GAS WE HAVE")
-		fmt.Println(ethBalance)
-		fmt.Println("THIS IS HOW MUCH GAS WE NEED")
-		fmt.Println(gasToClaim)
-		fmt.Println("THIS IS THE DIFFERENCE")
-
 		gasNeeded := new(big.Int).Sub(gasToClaim, ethBalance)
-		fmt.Println(gasNeeded)
 
 		_, txHash, nonce, err := EthWrapper.SendETH(
 			services.MainWalletAddress,
@@ -407,6 +373,29 @@ func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
 // wraps calls eth_gatway's ClaimPRLs method and sets PRLStatus to PRLClaimProcessing
 func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 	for _, treasureClaim := range treasuresWithPRLsToBeClaimed {
+
+		if treasureClaim.StartingClaimClock == -1 {
+
+			// set the claim clock so we can check later that we were successful
+			claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
+
+			treasureClaim.StartingClaimClock = claimClock.Int64()
+			vErr, err := models.DB.ValidateAndUpdate(&treasureClaim)
+
+			if len(vErr.Errors) > 0 {
+				oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+				continue
+			}
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
+		}
+
 		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(treasureClaim.TreasureETHAddr))
 
 		if balance.Int64() == 0 {

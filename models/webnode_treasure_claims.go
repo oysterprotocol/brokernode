@@ -7,6 +7,7 @@ import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
+	"math/big"
 	"time"
 
 	"github.com/gobuffalo/uuid"
@@ -79,6 +80,11 @@ func (w *WebnodeTreasureClaim) BeforeCreate(tx *pop.Connection) error {
 	// Defaults to GasTransferNotStarted.
 	if w.GasStatus == 0 {
 		w.GasStatus = GasTransferNotStarted
+	}
+
+	if w.StartingClaimClock == 0 {
+		startingClock := big.NewInt(-1)
+		w.StartingClaimClock = startingClock.Int64()
 	}
 
 	return nil
