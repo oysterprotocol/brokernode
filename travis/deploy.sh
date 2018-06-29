@@ -18,6 +18,11 @@ read -r -d '' DEPLOY_SCRIPT << EOM
   echo "Done!";
 EOM
 
-ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa << END
-  $DEPLOY_SCRIPT
+TEST_BROKERS=("52.14.218.135" "18.217.133.146")
+
+for ip_address in "${TEST_BROKERS[@]}"
+do
+  ssh -o StrictHostKeyChecking=no ubuntu@$ip_address -i ./travis/id_rsa << END
+    $DEPLOY_SCRIPT
 END
+done
