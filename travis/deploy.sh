@@ -14,7 +14,9 @@ read -r -d '' DEPLOY_SCRIPT << EOM
   docker stop $(docker ps -aq);
   docker rm $(docker ps -aq);
   docker rmi $(docker images -q);
-  DEBUG=1 docker-compose up --build -d;
+  sudo curl https://gist.githubusercontent.com/mlebkowski/471d2731176fb11e81aa/raw/4a6a18a19ac5a9f1b8c6533a07f93e01da8ddba0/cleanup-docker.sh | bash;
+  real_ip=$(curl icanhazip.com )
+  sudo sed -i -e 's/127.0.0.1/$real_ip/' ./.env
 EOM
 
 TEST_BROKERS=("52.14.218.135" "18.217.133.146")
