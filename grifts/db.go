@@ -390,4 +390,154 @@ var _ = grift.Namespace("db", func() {
 
 		return nil
 	})
+
+	grift.Desc("claim_treasure_test", "Creates a treasure to claim and then tries to claim it")
+	grift.Add("claim_treasure_test", func(c *grift.Context) error {
+
+		var numToCreate int
+		if len(c.Args) == 0 {
+			numToCreate = 1
+		} else {
+			numToCreate, _ = strconv.Atoi(c.Args[0])
+		}
+
+		for i := 0; i < numToCreate; i++ {
+			address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+			fmt.Println("PRIVATE KEY IS:")
+			fmt.Println(privateKey)
+
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+
+			//prlAmount := big.NewFloat(float64(.0001))
+			//prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
+			prlAmountInWei := big.NewInt(7800000000000001)
+
+			treasure := models.Treasure{
+				ETHAddr: address.Hex(),
+				ETHKey:  privateKey,
+				Address: qaTrytes,
+				Message: qaTrytes,
+			}
+
+			treasure.SetPRLAmount(prlAmountInWei)
+
+			vErr, err := models.DB.ValidateAndCreate(&treasure)
+
+			if err == nil && len(vErr.Errors) == 0 {
+				fmt.Println("Treasure row added")
+			}
+
+			for {
+				buried, err := services.EthWrapper.CheckBuriedState(address)
+				if err != nil {
+					fmt.Println("ERROR CHECKING BURIED STATE!")
+					return err
+				}
+				if buried {
+					fmt.Println("IT WAS BURIED!!")
+					time.Sleep(30 * time.Second)
+					fmt.Println("MOVING ON")
+					break
+				}
+				time.Sleep(10 * time.Second)
+			}
+			validChars := []rune("abcde123456789")
+			genesisHashEndingChars := oyster_utils.RandSeq(10, validChars)
+
+			treasureToClaim := models.WebnodeTreasureClaim{
+				GenesisHash:           qaGenHashStartingChars + genesisHashEndingChars,
+				ReceiverETHAddr:       "0x5C77fd6bbCBa6b40e23d083E0c0844B1D43784F5",
+				TreasureETHAddr:       address.Hex(),
+				TreasureETHPrivateKey: privateKey,
+				SectorIdx:             0,
+				NumChunks:             100,
+			}
+
+			vErr, err = models.DB.ValidateAndCreate(&treasureToClaim)
+
+			if len(vErr.Errors) == 0 && err == nil {
+				fmt.Println("Created a webnode treasure claim!")
+			}
+		}
+
+		return nil
+	})
+
+	grift.Desc("delete_webnode_treasure_claims", "Deletes webnode treasure claims")
+	grift.Add("delete_webnode_treasure_claims", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from webnode_treasure_claims WHERE genesis_hash " +
+			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
+
+		if err == nil {
+			fmt.Println("Treasure claims deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("print_webnode_treasure_claims", "Prints the treasure claims")
+	grift.Add("print_webnode_treasure_claims", func(c *grift.Context) error {
+
+		treasureClaims := []models.WebnodeTreasureClaim{}
+
+		err := models.DB.RawQuery("SELECT * from webnode_treasure_claims").All(&treasureClaims)
+
+		if err == nil {
+			fmt.Println("Printing treasure claims")
+			for _, treasureClaim := range treasureClaims {
+				fmt.Println("Genesis hash:          " + treasureClaim.GenesisHash)
+				fmt.Println("Receiver ETH Address:  " + treasureClaim.ReceiverETHAddr)
+				fmt.Println("Treasure ETH Address:  " + treasureClaim.TreasureETHAddr)
+				fmt.Println("Treasure ETH Key:      " + treasureClaim.TreasureETHPrivateKey)
+				decrypted := treasureClaim.DecryptTreasureEthKey()
+				fmt.Println("decrypted ETH Key:     " + decrypted)
+				fmt.Println("PRL Status:            " + models.PRLClaimStatusMap[treasureClaim.ClaimPRLStatus])
+				fmt.Println("Gas Status:            " + models.GasTransferStatusMap[treasureClaim.GasStatus])
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_webnode_treasure_claim_statuses", "Sets the PRL and/or Gas statuses")
+	grift.Add("set_webnode_treasure_claim_statuses", func(c *grift.Context) error {
+
+		claimPRLStatus, err := strconv.Atoi(c.Args[0])
+		gasStatus, err := strconv.Atoi(c.Args[1])
+
+		if claimPRLStatus != 0 {
+			err := models.DB.RawQuery("UPDATE webnode_treasure_claims set claim_prl_status = ?"+
+				" WHERE genesis_hash "+
+				"LIKE "+"'"+qaGenHashStartingChars+"%';", claimPRLStatus).All(&[]models.CompletedUpload{})
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fmt.Println("Setting claim prl statuses to " + models.PRLClaimStatusMap[models.PRLClaimStatus(claimPRLStatus)])
+		}
+
+		if gasStatus != 0 {
+			err := models.DB.RawQuery("UPDATE webnode_treasure_claims set gas_status = ?"+
+				" WHERE genesis_hash "+
+				"LIKE "+"'"+qaGenHashStartingChars+"%';", gasStatus).All(&[]models.CompletedUpload{})
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fmt.Println("Setting gas statuses to " + models.GasTransferStatusMap[models.GasTransferStatus(gasStatus)])
+		}
+
+		if err == nil {
+			fmt.Println("Treasure claims statuses changed")
+		}
+
+		return nil
+	})
 })

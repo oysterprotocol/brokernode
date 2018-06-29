@@ -295,7 +295,7 @@ func LogIfError(err error, extraInfo map[string]interface{}) {
 
 	fmt.Println(err)
 
-	if IsRavenEnabled() {
+	if false {
 		if extraInfo != nil {
 			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
 		} else {

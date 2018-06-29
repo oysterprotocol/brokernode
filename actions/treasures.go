@@ -1,7 +1,7 @@
 package actions
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
+	"errors"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -35,14 +35,32 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	privateKey, keyErr := crypto.HexToECDSA(req.EthKey)
-
-	if err == nil && keyErr == nil && verify {
+	if err == nil && verify {
 		ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
-		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), ethAddr, privateKey)
+
+		startingClaimClock, err := services.EthWrapper.CheckClaimClock(ethAddr)
+
+		webnodeTreasureClaim := models.WebnodeTreasureClaim{
+			GenesisHash:           req.GenesisHash,
+			SectorIdx:             req.SectorIdx,
+			NumChunks:             req.NumChunks,
+			ReceiverETHAddr:       req.ReceiverEthAddr,
+			TreasureETHAddr:       ethAddr.String(),
+			TreasureETHPrivateKey: req.EthKey,
+			StartingClaimClock:    startingClaimClock.Int64(),
+		}
+
+		vErr, err := models.DB.ValidateAndCreate(&webnodeTreasureClaim)
+		if len(vErr.Errors) > 0 {
+			oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+		}
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+
+		verify = err != nil && len(vErr.Errors) == 0
+
 	} else if err != nil {
-		c.Error(400, err)
-	} else if keyErr != nil {
 		c.Error(400, err)
 	}
 

@@ -1,0 +1,18 @@
+create_table("webnode_treasure_claims", func(t) {
+	t.Column("id", "uuid", {"primary": true})
+	t.Column("genesis_hash", "string", {})
+	t.Column("sector_idx", "int", {})
+	t.Column("num_chunks", "int", {})
+	t.Column("receiver_eth_addr", "string", {})
+	t.Column("treasure_eth_addr", "string", {})
+	t.Column("treasure_eth_private_key", "string", {})
+	t.Column("starting_claim_clock", "BIGINT(20)", {})
+	t.Column("claim_prl_status", "int", {})
+	t.Column("claim_prl_tx_hash", "string", {"null": true})
+	t.Column("claim_prl_tx_nonce", "BIGINT(20)", {"null": true})
+	t.Column("gas_status", "int", {})
+	t.Column("gas_tx_hash", "string", {"null": true})
+	t.Column("gas_tx_nonce", "BIGINT(20)", {"null": true})
+})
+
+add_index("webnode_treasure_claims", "treasure_eth_addr", {"unique": true})
