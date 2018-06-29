@@ -45,8 +45,27 @@ const (
 	GasTransferNotStarted GasTransferStatus = iota + 1
 	GasTransferProcessing
 	GasTransferSuccess
+	GasTransferLeftoversReclaimProcessing
+	GasTransferLeftoversReclaimSuccess
 	GasTransferError = -1
 )
+
+var PRLClaimStatusMap = make(map[PRLClaimStatus]string)
+var GasTransferStatusMap = make(map[GasTransferStatus]string)
+
+func init() {
+	PRLClaimStatusMap[PRLClaimNotStarted] = "PRLClaimNotStarted"
+	PRLClaimStatusMap[PRLClaimProcessing] = "PRLClaimProcessing"
+	PRLClaimStatusMap[PRLClaimSuccess] = "PRLClaimSuccess"
+	PRLClaimStatusMap[PRLClaimError] = "PRLClaimError"
+
+	GasTransferStatusMap[GasTransferNotStarted] = "GasTransferNotStarted"
+	GasTransferStatusMap[GasTransferProcessing] = "GasTransferProcessing"
+	GasTransferStatusMap[GasTransferSuccess] = "GasTransferSuccess"
+	GasTransferStatusMap[GasTransferLeftoversReclaimProcessing] = "GasTransferLeftoversReclaimProcessing"
+	GasTransferStatusMap[GasTransferLeftoversReclaimSuccess] = "GasTransferLeftoversReclaimSuccess"
+	GasTransferStatusMap[GasTransferError] = "GasTransferError"
+}
 
 // String is not required by pop and may be deleted
 func (c CompletedUpload) String() string {
@@ -170,9 +189,12 @@ func NewCompletedUpload(session UploadSession) error {
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
 		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
+		return err
 	}
 
-	return err
+	completedUpload.EncryptSessionEthKey()
+
+	return nil
 }
 
 func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
@@ -227,6 +249,15 @@ func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	return uploads, err
 }
 
+func GetTimedOutGasReclaims(thresholdTime time.Time) (uploads []CompletedUpload, err error) {
+	err = DB.Where("gas_status = ? AND updated_at <= ?",
+		GasTransferLeftoversReclaimProcessing,
+		thresholdTime).All(&uploads)
+	oyster_utils.LogIfError(err, nil)
+
+	return uploads, err
+}
+
 func SetGasStatusByAddress(transactionAddress string, newGasStatus GasTransferStatus) {
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
@@ -256,7 +287,8 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 }
 
 func DeleteCompletedClaims() error {
-	err := DB.RawQuery("DELETE from completed_uploads WHERE prl_status = ?", PRLClaimSuccess).All(&[]CompletedUpload{})
+	err := DB.RawQuery("DELETE from completed_uploads WHERE gas_status = ?",
+		GasTransferLeftoversReclaimSuccess).All(&[]CompletedUpload{})
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return err

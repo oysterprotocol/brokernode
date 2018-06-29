@@ -109,7 +109,7 @@ type WaitForTransfer func(brokerAddr common.Address, transferType string) (*big.
 type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
-type SendETH func(toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
+type SendETH func(fromAddr common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
 type WaitForConfirmation func(txHash common.Hash, pollingDelayInSeconds int) uint
 type PendingConfirmation func(txHash common.Hash) bool
@@ -360,6 +360,11 @@ func getGasPrice() (*big.Int, error) {
 		oyster_utils.LogIfError(err, nil)
 	}
 	return gasPrice, nil
+
+	// if QAing, comment out all lines above and un-comment out the lines below
+	// for faster transactions
+
+	// return oyster_utils.ConvertGweiToWei(big.NewInt(6)), nil
 }
 
 // Get Estimated Gas Price for a Transaction
@@ -688,10 +693,6 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 }
 
 func calculateGasToSend(desiredGasLimit uint64) (*big.Int, error) {
-	// keep this un-commented out while QAing
-	//gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(6))
-
-	// keep this un-commented out in production
 	gasPrice, err := getGasPrice()
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -702,7 +703,7 @@ func calculateGasToSend(desiredGasLimit uint64) (*big.Int, error) {
 }
 
 // Transfer funds from main wallet
-func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
+func sendETH(from common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
 
 	client, err := sharedClient()
 	if err != nil {
@@ -714,15 +715,13 @@ func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string
 	defer cancel()
 
 	// generate nonce
-	nonce, _ := client.PendingNonceAt(ctx, MainWalletAddress)
+	nonce, _ := client.PendingNonceAt(ctx, from)
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
-	// if QAing, uncomment this out and comment out the line above for faster transactions
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	// estimation
-	estimate, failedEstimate := getEstimatedGasPrice(toAddr, MainWalletAddress, GasLimitETHSend, *gasPrice, *amount)
+	estimate, failedEstimate := getEstimatedGasPrice(toAddr, from, GasLimitETHSend, *gasPrice, *amount)
 	if failedEstimate != nil {
 		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
 		return types.Transactions{}, "", -1, failedEstimate
@@ -730,7 +729,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
-	balance := checkETHBalance(MainWalletAddress)
+	balance := checkETHBalance(from)
 	fmt.Printf("balance : %v\n", balance)
 
 	// amount is greater than balance, return error
@@ -745,7 +744,7 @@ func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string
 	signer := types.NewEIP155Signer(chainId)
 
 	// sign transaction
-	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
+	signedTx, err := types.SignTx(tx, signer, fromPrivKey)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return types.Transactions{}, "", -1, err
@@ -1025,20 +1024,16 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 		log.Printf("unable to access contract instance at : %v", err)
 	}
 
-	log.Printf("using wallet key store from: %v", MainWalletAddress)
+	log.Printf("using wallet key store from: %v", msg.From)
 	// initialize transactor // may need to move this to a session based transactor
-	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if err != nil {
 		log.Printf("unable to create a new transactor : %v", err)
 	}
 
 	log.Printf("authorized transactor : %v", auth.From.Hex())
 
-	// use this when in production:
 	gasPrice, err := getGasPrice()
-
-	// use this when QAing:
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	opts := bind.TransactOpts{
 		From:     auth.From,

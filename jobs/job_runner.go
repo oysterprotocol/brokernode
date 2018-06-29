@@ -155,7 +155,7 @@ func buryTreasureAddressesHandler(args worker.Args) error {
 }
 
 func claimUnusedPRLsHandler(args worker.Args) error {
-	thresholdTime := time.Now().Add(-3 * time.Hour) // consider a transaction timed out if it takes more than 3 hours
+	thresholdTime := time.Now().Add(-12 * time.Hour) // consider a transaction timed out after 12 hours
 	ClaimUnusedPRLs(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler, args)
