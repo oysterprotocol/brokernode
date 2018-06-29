@@ -387,11 +387,7 @@ func sendGas(treasureToBury models.Treasure) {
 		return
 	}
 
-	_, txHash, nonce, err := EthWrapper.SendETH(
-		services.MainWalletAddress,
-		services.MainWalletPrivateKey,
-		services.StringToAddress(treasureToBury.ETHAddr),
-		gasToSend)
+	_, txHash, nonce, err := EthWrapper.SendETH(services.StringToAddress(treasureToBury.ETHAddr), gasToSend)
 	if err != nil {
 		errorString := "\nFailure sending " + fmt.Sprint(gasToSend.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
@@ -491,12 +487,10 @@ func waitForBury(treasureToBury models.Treasure) {
 	waitForConfirmation(treasureToBury, treasureToBury.BuryTxHash, treasureToBury.BuryTxNonce, services.PRLBury)
 }
 
+// TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
 func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce int64, txType services.TxType) {
-
-	// TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
-
-	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash),
-		SecondsDelayForETHPolling)
+	
+	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash), SecondsDelayForETHPolling)
 
 	// we passed the row by value, get it again in case it has changed
 	treasureRow := models.Treasure{}
@@ -509,43 +503,9 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 	var newStatus models.PRLStatus
 
 	if success == 1 {
-		switch txType {
-		case services.PRLTransfer:
-			if treasureRow.PRLStatus == models.PRLPending || treasureRow.PRLStatus == models.PRLError {
-				newStatus = models.PRLConfirmed
-			}
-		case services.EthTransfer:
-			if treasureRow.PRLStatus == models.GasPending || treasureRow.PRLStatus == models.GasError {
-				newStatus = models.GasConfirmed
-			}
-		case services.PRLBury:
-			if treasureRow.PRLStatus == models.BuryPending || treasureRow.PRLStatus == models.BuryError {
-				newStatus = models.BuryConfirmed
-			}
-		default:
-			invalidTxTypeErr := errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation")
-			oyster_utils.LogIfError(invalidTxTypeErr, nil)
-			return
-		}
+		newStatus = updateStatusSuccess(txType, treasureRow)
 	} else if success == 0 {
-		switch txType {
-		case services.PRLTransfer:
-			if treasureRow.PRLStatus == models.PRLPending {
-				newStatus = models.PRLError
-			}
-		case services.EthTransfer:
-			if treasureRow.PRLStatus == models.GasPending {
-				newStatus = models.GasError
-			}
-		case services.PRLBury:
-			if treasureRow.PRLStatus == models.BuryPending {
-				newStatus = models.BuryError
-			}
-		default:
-			invalidTxTypeErr := errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation")
-			oyster_utils.LogIfError(invalidTxTypeErr, nil)
-			return
-		}
+		newStatus = updateStatusFailed(txType, treasureRow)
 	}
 
 	if _, ok := models.PRLStatusMap[newStatus]; ok {
@@ -553,4 +513,50 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 		_, err = models.DB.ValidateAndUpdate(&treasureToBury)
 		oyster_utils.LogIfError(err, nil)
 	}
+}
+
+func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) (models.PRLStatus) {
+	var newStatus models.PRLStatus
+	switch txType {
+	case services.PRLTransfer:
+		if treasureRow.PRLStatus == models.PRLPending || treasureRow.PRLStatus == models.PRLError {
+			newStatus = models.PRLConfirmed
+		}
+	case services.EthTransfer:
+		if treasureRow.PRLStatus == models.GasPending || treasureRow.PRLStatus == models.GasError {
+			newStatus = models.GasConfirmed
+		}
+	case services.PRLBury:
+		if treasureRow.PRLStatus == models.BuryPending || treasureRow.PRLStatus == models.BuryError {
+			newStatus = models.BuryConfirmed
+		}
+	default:
+		logInvalidTxType()
+	}
+	return newStatus
+}
+
+func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) (models.PRLStatus) {
+	var newStatus models.PRLStatus
+	switch txType {
+	case services.PRLTransfer:
+		if treasureRow.PRLStatus == models.PRLPending {
+			newStatus = models.PRLError
+		}
+	case services.EthTransfer:
+		if treasureRow.PRLStatus == models.GasPending {
+			newStatus = models.GasError
+		}
+	case services.PRLBury:
+		if treasureRow.PRLStatus == models.BuryPending {
+			newStatus = models.BuryError
+		}
+	default:
+		logInvalidTxType()
+	}
+	return newStatus
+}
+
+func logInvalidTxType() {
+	oyster_utils.LogIfError(errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation"), nil)
 }
