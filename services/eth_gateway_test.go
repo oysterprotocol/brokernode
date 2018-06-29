@@ -228,17 +228,13 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	t.Skip(nil)
+	//t.Skip(nil)
 	services.RunOnTestNet()
 	// transfer
-	transferValue := big.NewInt(1)
+	transferValue := big.NewInt(13)
 	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-
-	prlWallet := getWallet(prl1File)
-
-	txs, _, _, err := services.EthWrapper.SendETH(prlWallet.Address,
-		prlWallet.PrivateKey, ethAddress02, transferValueInWei)
+	txs, _, _, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
