@@ -18,4 +18,6 @@ read -r -d '' DEPLOY_SCRIPT << EOM
   echo "Done!";
 EOM
 
-ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa $DEPLOY_SCRIPT
+ssh -o StrictHostKeyChecking=no ubuntu@52.14.218.135 -i ./travis/id_rsa << END
+  $DEPLOY_SCRIPT
+END
