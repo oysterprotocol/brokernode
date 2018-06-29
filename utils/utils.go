@@ -95,11 +95,16 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		LogIfError(err, nil)
+		LogIfError(err, map[string]interface{}{
+			"HttpMethod":    req.Method,
+			"Url":           req.URL,
+			"Header":        req.Header,
+			"ContentLength": req.ContentLength,
+			"Body":          req.Body})
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
-
+	LogIfError(err, nil)
 	return
 }
 
@@ -114,7 +119,7 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
-
+	LogIfError(err, nil)
 	return
 }
 
