@@ -46,7 +46,7 @@ before_script:
 
 script: docker-compose exec app buffalo test
 
-after_success: sh travis/deploy.sh
+after_success: bash travis/deploy.sh
 
 notifications:
   slack:
