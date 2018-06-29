@@ -42,6 +42,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
 	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
 	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
+	oysterWorker.Register(getHandlerName(claimTreasureForWebnodeHandler), claimTreasureForWebnodeHandler)
 	if os.Getenv("OYSTER_PAYS") == "" {
 		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	}
@@ -88,6 +89,11 @@ func doWork(oysterWorker *worker.Simple) {
 			Duration: 2 * time.Minute,
 		})
 
+	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
+		worker.Args{
+			Duration: 2 * time.Minute,
+		})
+
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
 		worker.Args{
 			Duration: 10 * time.Minute,
@@ -97,6 +103,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{
 			Duration: 24 * time.Hour,
 		})
+
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{
 			Duration: 10 * time.Minute,
@@ -147,15 +154,23 @@ func processPaidSessionsHandler(args worker.Args) error {
 }
 
 func buryTreasureAddressesHandler(args worker.Args) error {
-	thresholdTime := time.Now().Add(-12 * time.Hour) // consider a transaction timed out after 12 hours
+	thresholdTime := time.Now().Add(-18 * time.Hour) // consider a transaction timed out after 18 hours
 	BuryTreasureAddresses(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(buryTreasureAddressesHandler, args)
 	return nil
 }
 
+func claimTreasureForWebnodeHandler(args worker.Args) error {
+	thresholdTime := time.Now().Add(-18 * time.Hour) // consider a transaction timed out after 18 hours
+	ClaimTreasureForWebnode(thresholdTime, PrometheusWrapper)
+
+	oysterWorkerPerformIn(claimTreasureForWebnodeHandler, args)
+	return nil
+}
+
 func claimUnusedPRLsHandler(args worker.Args) error {
-	thresholdTime := time.Now().Add(-12 * time.Hour) // consider a transaction timed out after 12 hours
+	thresholdTime := time.Now().Add(-18 * time.Hour) // consider a transaction timed out after 18 hours
 	ClaimUnusedPRLs(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler, args)
