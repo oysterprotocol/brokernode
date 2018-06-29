@@ -197,9 +197,5 @@ func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 
 // purge claims whose PRLStatus is PRLClaimSuccess
 func PurgeCompletedClaims() {
-	err := models.DeleteCompletedClaims()
-	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Error purging completed claims: %v", err), nil)
-		return
-	}
+	models.DeleteCompletedClaims()
 }
