@@ -349,25 +349,25 @@ func StringToTxHash(txHash string) common.Hash {
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
-	//// connect ethereum client
-	//client, err := sharedClient()
-	//if err != nil {
-	//	log.Fatal("Could not get gas price from network")
-	//	oyster_utils.LogIfError(err, nil)
-	//}
-	//
-	//// there is no guarantee with estimate gas price
-	//gasPrice, err := client.SuggestGasPrice(context.Background())
-	//if err != nil {
-	//	log.Fatal("Client could not get gas price from network")
-	//	oyster_utils.LogIfError(err, nil)
-	//}
-	//return gasPrice, nil
+	// connect ethereum client
+	client, err := sharedClient()
+	if err != nil {
+		log.Fatal("Could not get gas price from network")
+		oyster_utils.LogIfError(err, nil)
+	}
+
+	// there is no guarantee with estimate gas price
+	gasPrice, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		log.Fatal("Client could not get gas price from network")
+		oyster_utils.LogIfError(err, nil)
+	}
+	return gasPrice, nil
 
 	// if QAing, comment out all lines above and un-comment out the lines below
 	// for faster transactions
 
-	return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
+	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
 }
 
 // Get Estimated Gas Price for a Transaction
@@ -425,7 +425,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
-		fmt.Println("unable to access contract instance at :%v", err)
+		fmt.Printf("unable to access contract instance at :%v", err)
 	}
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
@@ -798,12 +798,6 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 	// upon when we sent the eth earlier in the sequence
 	gasPrice := new(big.Int).Quo(ethBalance, big.NewInt(int64(GasLimitPRLBury)))
 
-	fmt.Println("auth.From")
-	fmt.Println(auth.From)
-	fmt.Println(auth.From.Hex())
-	fmt.Println("auth.Signer")
-	fmt.Println(auth.Signer)
-
 	// call bury on oyster pearl
 	tx, err := oysterPearl.Bury(&bind.TransactOpts{
 		From:     auth.From,
@@ -927,12 +921,6 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	// upon when we sent the eth earlier in the sequence
 	gasPrice := new(big.Int).Quo(ethBalance, big.NewInt(int64(GasLimitPRLClaim)))
 
-	//fmt.Println("auth.From")
-	//fmt.Println(auth.From)
-	//fmt.Println(auth.From.Hex())
-	//fmt.Println("auth.Signer")
-	//fmt.Println(auth.Signer)
-
 	// setup transaction options
 	claimOpts := bind.TransactOpts{
 		From:     auth.From,
@@ -941,13 +929,12 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
 		Context:  auth.Context,
-		//Value:    treasureBalance,
 	}
 	// call claim, receiver is payout, fee coming from the treasure address and private key
 	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, MainWalletAddress)
 
 	if err != nil {
-		fmt.Println("unable to call claim with transactor : %v", err)
+		fmt.Printf("unable to call claim with transactor : %v", err)
 		return false
 	}
 
@@ -955,28 +942,21 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	storeTransaction(tx)
 	printTx(tx)
 
-	/*
-		var status = false
+	var status = false
 
-		// confirm status of transaction
-		txStatus := waitForConfirmation(tx.Hash(), SecondsDelayForETHPolling)
+	// confirm status of transaction
+	txStatus := waitForConfirmation(tx.Hash(), SecondsDelayForETHPolling)
 
-		if txStatus == 0 {
-			fmt.Printf("transaction failure")
-			status = false
-		} else if txStatus == 1 {
-			fmt.Printf("confirmation completed")
-			flushTransaction(tx.Hash())
-			status = true
-		}
-
-		return status
-	*/
-	if err == nil {
-		return true
+	if txStatus == 0 {
+		fmt.Printf("transaction failure")
+		status = false
+	} else if txStatus == 1 {
+		fmt.Printf("confirmation completed")
+		flushTransaction(tx.Hash())
+		status = true
 	}
-	return false
-	//REMOVE THIS
+
+	return status
 }
 
 func createSendPRLMessage(from common.Address, privateKey *ecdsa.PrivateKey, to common.Address, prlAmount big.Int) (OysterCallMsg, error) {

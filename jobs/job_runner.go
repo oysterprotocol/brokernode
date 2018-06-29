@@ -162,7 +162,7 @@ func buryTreasureAddressesHandler(args worker.Args) error {
 }
 
 func claimTreasureForWebnodeHandler(args worker.Args) error {
-	thresholdTime := time.Now().Add(-3 * time.Minute) // consider a transaction timed out after 18 hours
+	thresholdTime := time.Now().Add(-18 * time.Hour) // consider a transaction timed out after 18 hours
 	ClaimTreasureForWebnode(thresholdTime, PrometheusWrapper)
 
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler, args)

@@ -2,9 +2,9 @@ package actions
 
 import (
 	"errors"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -35,11 +35,31 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	if err == nil && verify {
-		ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
+	_, keyErr := crypto.HexToECDSA(req.EthKey)
 
-		startingClaimClock, err := services.EthWrapper.CheckClaimClock(ethAddr)
+	if err != nil {
+		c.Error(400, err)
+	}
+	if keyErr != nil {
+		c.Error(400, keyErr)
+	}
+	if !verify {
+		res := treasureRes{
+			Success: verify,
+		}
+		return c.Render(200, r.JSON(res))
+	}
 
+	ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
+
+	startingClaimClock, claimClockErr := EthWrapper.CheckClaimClock(ethAddr)
+
+	if startingClaimClock.Int64() == int64(0) {
+		err = errors.New("claim clock should be 1 or a timestamp but received 0")
+		c.Error(400, err)
+	} else if claimClockErr != nil {
+		c.Error(400, err)
+	} else {
 		webnodeTreasureClaim := models.WebnodeTreasureClaim{
 			GenesisHash:           req.GenesisHash,
 			SectorIdx:             req.SectorIdx,
@@ -58,14 +78,13 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 			oyster_utils.LogIfError(err, nil)
 		}
 
-		verify = err != nil && len(vErr.Errors) == 0
-
-	} else if err != nil {
-		c.Error(400, err)
+		verify = err == nil && len(vErr.Errors) == 0
 	}
 
 	res := treasureRes{
-		Success: verify,
+		Success: verify &&
+			startingClaimClock.Int64() != int64(0) &&
+			claimClockErr == nil,
 	}
 
 	return c.Render(200, r.JSON(res))
