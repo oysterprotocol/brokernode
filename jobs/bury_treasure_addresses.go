@@ -387,7 +387,7 @@ func sendGas(treasureToBury models.Treasure) {
 		return
 	}
 
-	_, txHash, nonce, err := EthWrapper.SendETH(services.StringToAddress(treasureToBury.ETHAddr), gasToSend)
+	_, txHash, nonce, err := EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, services.StringToAddress(treasureToBury.ETHAddr), gasToSend)
 	if err != nil {
 		errorString := "\nFailure sending " + fmt.Sprint(gasToSend.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)

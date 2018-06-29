@@ -132,7 +132,7 @@ type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
 type GetCurrentBlock func() (*types.Block, error)
 
 // Send Ether To Valid Ethereum Network Address
-type SendETH func(toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
+type SendETH func(fromAddress common.Address, fromPrivateKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
 
 // Get Transaction Confirmation Status
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
@@ -185,7 +185,7 @@ var (
 	EthWrapper           Eth
 )
 
-// Actual transactions on etherscan, tends to be 53898
+// Limits selected based on actual transactions from etherscan
 const (
 	// PRL Gas Limit
 	GasLimitPRLSend uint64 = 60000
@@ -747,7 +747,7 @@ func calculateGasToSend(desiredGasLimit uint64) (*big.Int, error) {
 }
 
 // Transfer funds from main wallet
-func sendETH(toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
+func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
 
 	client, err := sharedClient()
 	if err != nil {

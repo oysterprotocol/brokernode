@@ -231,10 +231,10 @@ func Test_sendEth(t *testing.T) {
 	//t.Skip(nil)
 	services.RunOnTestNet()
 	// transfer
-	transferValue := big.NewInt(13)
+	transferValue := big.NewInt(1)
 	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-	txs, _, _, err := services.EthWrapper.SendETH(ethAddress02, transferValueInWei)
+	txs, _, _, err := services.EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, ethAddress02, transferValueInWei)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
