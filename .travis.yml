@@ -46,7 +46,11 @@ before_script:
 
 script: docker-compose exec app buffalo test
 
-after_success: bash travis/deploy.sh
+deploy:
+  provider: script
+  script: bash travis/deploy.sh production
+  on:
+    branch: master
 
 notifications:
   slack:

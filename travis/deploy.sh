@@ -15,7 +15,6 @@ read -r -d '' DEPLOY_SCRIPT << EOM
   docker rm $(docker ps -aq);
   docker rmi $(docker images -q);
   DEBUG=1 docker-compose up --build -d;
-  echo "Done!";
 EOM
 
 TEST_BROKERS=("52.14.218.135" "18.217.133.146")
