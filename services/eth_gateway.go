@@ -662,9 +662,7 @@ func getTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
 	return client.TransactionReceipt(ctx, txHash)
 }
 
-// WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH.
-// If it is completed return number of PRL.
-// TODO:  Does this need to return both PRL and ETH?
+// WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH
 func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
 	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
@@ -680,7 +678,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 	query := ethereum.FilterQuery{
 		FromBlock: nil, // beginning of the queried range, nil means genesis block
 		ToBlock:   nil, // end of the range, nil means latest block
-		Addresses: nil, //[]common.Address{MainWalletAddress},
+		Addresses: []common.Address{brokerAddr},
 		Topics:    nil, // matches any topic list
 	}
 
@@ -1046,17 +1044,16 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 
 	if err != nil {
-		log.Printf("unable to access contract instance at : %v", err)
+		log.Printf("unable to access contract instance at : %v\n", err)
 	}
-
-	log.Printf("using wallet key store from: %v", MainWalletAddress)
+	
 	// initialize transactor // may need to move this to a session based transactor
-	auth := bind.NewKeyedTransactor(MainWalletPrivateKey)
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if err != nil {
 		log.Printf("unable to create a new transactor : %v", err)
 	}
 
-	log.Printf("authorized transactor : %v", auth.From.Hex())
+	log.Printf("authorized transactor : %v\n", auth.From.Hex())
 
 	// use this when in production:
 	gasPrice, err := getGasPrice()
