@@ -319,6 +319,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 					dm.Status = models.Unassigned
 				}
 				vErr, _ := dm.Validate(nil)
+				oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
 				if len(vErr.Errors) == 0 {
 					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
 				}
