@@ -759,7 +759,7 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	defer cancel()
 
 	// generate nonce
-	nonce, _ := client.PendingNonceAt(ctx, MainWalletAddress)
+	nonce, _ := client.PendingNonceAt(ctx, fromAddress)
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
@@ -767,7 +767,7 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	// estimation
-	estimate, failedEstimate := getEstimatedGasPrice(toAddr, MainWalletAddress, GasLimitETHSend, *gasPrice, *amount)
+	estimate, failedEstimate := getEstimatedGasPrice(toAddr, fromAddress, GasLimitETHSend, *gasPrice, *amount)
 	if failedEstimate != nil {
 		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
 		return types.Transactions{}, "", -1, failedEstimate
@@ -775,7 +775,7 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
-	balance := checkETHBalance(MainWalletAddress)
+	balance := checkETHBalance(fromAddress)
 	fmt.Printf("balance : %v\n", balance)
 
 	// amount is greater than balance, return error
@@ -790,7 +790,7 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	signer := types.NewEIP155Signer(chainId)
 
 	// sign transaction
-	signedTx, err := types.SignTx(tx, signer, MainWalletPrivateKey)
+	signedTx, err := types.SignTx(tx, signer, fromPrivKey)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return types.Transactions{}, "", -1, err
