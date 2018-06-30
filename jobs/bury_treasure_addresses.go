@@ -59,7 +59,7 @@ func CheckPRLTransactions() {
 			}
 			if len(vErr.Errors) > 0 {
 				oyster_utils.LogIfValidationError(
-					"validation errors in bury_treasure_addresses in CheckPRLTransactions", vErr, nil)
+					"validation errors in bury_treasure_addresses in CheckPRLTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckPRLTransactions", analytics.NewProperties().
@@ -88,7 +88,8 @@ func CheckGasTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				oyster_utils.LogIfValidationError("validation errors in bury_treasure_addresses in CheckGasTransactions", vErr, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckGasTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckGasTransactions", analytics.NewProperties().
@@ -121,7 +122,7 @@ func CheckBuryTransactions() {
 			}
 			if len(vErr.Errors) > 0 {
 				oyster_utils.LogIfValidationError(
-					"validation errors in bury_treasure_addresses in CheckBuryTransactions", vErr, nil)
+					"validation errors in bury_treasure_addresses in CheckBuryTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckBuryTransactions", analytics.NewProperties().
@@ -154,7 +155,7 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError", vErr, nil)
+				"validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError.", vErr, nil)
 			continue
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: SetTimedOutTransactionsToError", analytics.NewProperties().
@@ -201,7 +202,7 @@ func StageTransactionsWithErrorsForRetry() {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -214,7 +215,7 @@ func StageTransactionsWithErrorsForRetry() {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -227,7 +228,7 @@ func StageTransactionsWithErrorsForRetry() {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -349,7 +350,7 @@ func sendPRL(treasureToBury models.Treasure) {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in sendPRL", vErr, nil)
+				"validation errors in bury_treasure_addresses in sendPRL.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendPRL", analytics.NewProperties().
@@ -401,7 +402,7 @@ func sendGas(treasureToBury models.Treasure) {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in sendGas", vErr, nil)
+				"validation errors in bury_treasure_addresses in sendGas.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendGas", analytics.NewProperties().
@@ -457,7 +458,7 @@ func buryPRL(treasureToBury models.Treasure) {
 		}
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in buryPRL", vErr, nil)
+				"validation errors in bury_treasure_addresses in buryPRL.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: buryPRL", analytics.NewProperties().

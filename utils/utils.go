@@ -316,7 +316,7 @@ func LogIfValidationError(msg string, err *validate.Errors, extraInfo map[string
 		return
 	}
 
-	fmt.Println(err)
+	fmt.Printf("%v: %v\n", msg, err.Errors)
 	if IsRavenEnabled() {
 		info := make(map[string]interface{})
 		for k, v := range err.Errors {
