@@ -58,10 +58,8 @@ func CheckPRLTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckPRLTransactions: " +
-					fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckPRLTransactions", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckPRLTransactions", analytics.NewProperties().
@@ -90,9 +88,7 @@ func CheckGasTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckGasTransactions: " + fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError("validation errors in bury_treasure_addresses in CheckGasTransactions", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckGasTransactions", analytics.NewProperties().
@@ -124,9 +120,8 @@ func CheckBuryTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckBuryTransactions: " + fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckBuryTransactions", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckBuryTransactions", analytics.NewProperties().
@@ -158,9 +153,8 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError", vErr, nil)
 			continue
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: SetTimedOutTransactionsToError", analytics.NewProperties().
@@ -206,9 +200,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
 			continue
 		}
 	}
@@ -220,9 +213,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
 			continue
 		}
 	}
@@ -234,9 +226,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry", vErr, nil)
 			continue
 		}
 	}
@@ -357,9 +348,8 @@ func sendPRL(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in sendPRL: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in sendPRL", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendPRL", analytics.NewProperties().
@@ -410,9 +400,8 @@ func sendGas(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in sendGas: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in sendGas", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendGas", analytics.NewProperties().
@@ -467,9 +456,8 @@ func buryPRL(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in buryPRL: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in buryPRL", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: buryPRL", analytics.NewProperties().

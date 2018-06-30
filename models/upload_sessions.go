@@ -177,6 +177,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
 		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfValidationError("validation error for creating UploadSession.", vErr, nil)
 		return
 	}
 
