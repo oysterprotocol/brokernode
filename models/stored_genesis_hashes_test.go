@@ -33,11 +33,11 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
 
 	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	vErr, err = suite.DB.ValidateAndCreate(&storedGenesisHash2)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
@@ -64,7 +64,7 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_none_unassigned() {
 
 	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
@@ -91,7 +91,7 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_none_below_webnode_count_
 
 	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
@@ -120,7 +120,7 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_success() {
 
 	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
@@ -159,11 +159,11 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
 
 	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	vErr, err = suite.DB.ValidateAndCreate(&storedGenesisHash2)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	// forcibly updated the "created_at" time for the second stored_genesis_hash so it will be
 	// older

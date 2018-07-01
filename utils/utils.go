@@ -125,17 +125,17 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 }
 
 /*ConvertToByte converts trytes to bytes.*/
-func ConvertToByte(trytes int) int {
-	return int(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
+func ConvertToByte(trytes uint64) uint64 {
+	return uint64(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
 }
 
 /*ConvertToTrytes convert bytes to trytes.*/
-func ConvertToTrytes(bytes int) int {
+func ConvertToTrytes(bytes uint64) uint64 {
 	return bytes * ByteToTrytes
 }
 
 /*GetTotalFileChunkIncludingBuriedPearlsUsingFileSize returns the total file chunk, including burying pearl.*/
-func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte int) int {
+func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte uint64) int {
 	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
 
@@ -164,7 +164,7 @@ func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 }
 
 /*GenerateInsertedIndexesForPearl randomly generates a set of indexes in each sector.*/
-func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
+func GenerateInsertedIndexesForPearl(fileSizeInByte uint64) []int {
 	var indexes []int
 	if fileSizeInByte <= 0 {
 		return indexes

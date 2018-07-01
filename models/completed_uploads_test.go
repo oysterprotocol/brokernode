@@ -187,7 +187,7 @@ func (suite *ModelSuite) Test_CompletedUploads() {
 
 func testNewCompletedUpload(suite *ModelSuite) {
 
-	fileBytesCount := 2500
+	fileBytesCount := uint64(2500)
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
 	session1 := models.UploadSession{
@@ -200,8 +200,8 @@ func testNewCompletedUpload(suite *ModelSuite) {
 		ETHPrivateKey: privateKey,
 	}
 	vErr, err := session1.StartUploadSession()
-	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+  suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	session2 := models.UploadSession{
 		GenesisHash:   "abcdeff2",
@@ -214,7 +214,7 @@ func testNewCompletedUpload(suite *ModelSuite) {
 	}
 	vErr, err = session2.StartUploadSession()
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+  suite.False(vErr.HasAny())
 
 	err = models.NewCompletedUpload(session1)
 	suite.Nil(err)

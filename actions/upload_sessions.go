@@ -32,7 +32,7 @@ type UploadSessionResource struct {
 type uploadSessionCreateReq struct {
 	GenesisHash          string         `json:"genesisHash"`
 	NumChunks            int            `json:"numChunks"`
-	FileSizeBytes        int            `json:"fileSizeBytes"` // This is Trytes instead of Byte
+	FileSizeBytes        uint64         `json:"fileSizeBytes"` // This is Trytes instead of Byte
 	BetaIP               string         `json:"betaIp"`
 	StorageLengthInYears int            `json:"storageLengthInYears"`
 	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`

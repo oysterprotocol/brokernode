@@ -25,7 +25,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}

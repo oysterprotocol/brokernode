@@ -34,7 +34,7 @@ func (suite *ModelSuite) Test_BuildDataMaps() {
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	expectedObfuscatedHashes := []string{ // 1 extra chunk for treasure
 		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
@@ -113,19 +113,19 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 
 	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	genHash1 := []models.DataMap{} // 1 unassigned
 	genHash2 := []models.DataMap{} // 1 error
@@ -172,19 +172,19 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 
 	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	genHash1 := []models.DataMap{} // 1 unassigned
 	genHash2 := []models.DataMap{} // 1 error
@@ -356,15 +356,12 @@ func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorOne() {
 }
 
 func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
-	genHash := "abcdef"
-	fileSizeBytes := 123
-
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		GenesisHash:          "abcdef",
+		FileSizeBytes:        123,
 		NumChunks:            400,
 		StorageLengthInYears: 4,
 		ETHPrivateKey:        hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
