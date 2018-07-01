@@ -397,7 +397,7 @@ func testCheckProcessingGasReclaims_still_pending(suite *JobsSuite) {
 		// return a balance that is worth trying to reclaim
 		return ethRemaining
 	}
-	jobs.EthWrapper.CalculateGasToSend = func(desiredGasLimit uint64) (*big.Int, error) {
+	jobs.EthWrapper.CalculateGasNeeded = func(desiredGasLimit uint64) (*big.Int, error) {
 		gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
 		gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
 		return gasToSend, nil
@@ -604,7 +604,7 @@ func resetTestVariables() {
 			hasCalledSendPRLFromOyster = true
 			return false, "some__transaction_hash", 0
 		},
-		CalculateGasToSend: func(desiredGasLimit uint64) (*big.Int, error) {
+		CalculateGasNeeded: func(desiredGasLimit uint64) (*big.Int, error) {
 			gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
 			gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
 			return gasToSend, nil
