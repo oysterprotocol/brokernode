@@ -32,7 +32,7 @@ type mockCheckPRLBalance struct {
 	output_int *big.Int
 }
 
-func (as *ActionSuite) Test_UploadSessionsCreate() {
+func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	mockWaitForTransfer := mockWaitForTransfer{
 		output_error: nil,
 		output_int:   big.NewInt(100),
@@ -47,7 +47,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 		GenerateKeys:    services.EthWrapper.GenerateKeys,
 	}
 
-	res := as.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
+	res := suite.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
 		"genesisHash":          "abcdef",
 		"fileSizeBytes":        123,
 		"numChunks":            2,
@@ -57,34 +57,34 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 	// Parse response
 	resParsed := uploadSessionCreateRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Equal(200, res.Code)
-	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
-	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
-	as.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
-	as.NotEqual(0, resParsed.Invoice.Cost)
-	as.NotEqual("", resParsed.Invoice.EthAddress)
+	suite.Equal(200, res.Code)
+	suite.Equal("abcdef", resParsed.UploadSession.GenesisHash)
+	suite.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	suite.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
+	suite.NotEqual(0, resParsed.Invoice.Cost)
+	suite.NotEqual("", resParsed.Invoice.EthAddress)
 
 	time.Sleep(50 * time.Millisecond) // Force it to wait for goroutine to excute.
 
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
-	//as.True(mockWaitForTransfer.hasCalled)
-	//as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
+	//suite.True(mockWaitForTransfer.hasCalled)
+	//suite.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 
 	// mockCheckPRLBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
 	// it again.
-	as.False(mockSendPrl.hasCalled)
+	suite.False(mockSendPrl.hasCalled)
 
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 }
 
-func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
+func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	mockWaitForTransfer := mockWaitForTransfer{
 		output_error: nil,
 		output_int:   big.NewInt(100),
@@ -98,7 +98,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 		GenerateKeys:    services.EthWrapper.GenerateKeys,
 	}
 
-	res := as.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
+	res := suite.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
 		"genesisHash":          "abcdef",
 		"fileSizeBytes":        123,
 		"numChunks":            2,
@@ -109,32 +109,32 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// Parse response
 	resParsed := uploadSessionCreateBetaRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Equal(200, res.Code)
-	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
-	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
-	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
-	as.Equal(1, len(resParsed.BetaTreasureIndexes))
-	as.NotEqual(0, resParsed.Invoice.Cost)
-	as.NotEqual("", resParsed.Invoice.EthAddress)
+	suite.Equal(200, res.Code)
+	suite.Equal("abcdef", resParsed.UploadSession.GenesisHash)
+	suite.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	suite.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
+	suite.Equal(1, len(resParsed.BetaTreasureIndexes))
+	suite.NotEqual(0, resParsed.Invoice.Cost)
+	suite.NotEqual("", resParsed.Invoice.EthAddress)
 
 	time.Sleep(50 * time.Millisecond) // Force it to wait for goroutine to excute.
 
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out this test.
-	//as.True(mockWaitForTransfer.hasCalled)
-	as.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
-	as.False(mockSendPrl.hasCalled)
+	//suite.True(mockWaitForTransfer.hasCalled)
+	suite.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
+	suite.False(mockSendPrl.hasCalled)
 
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
+func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
 	mockCheckPRLBalance := mockCheckPRLBalance{}
 	EthWrapper = services.Eth{
@@ -147,13 +147,13 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 		PaymentStatus: models.PaymentStatusConfirmed,
 	}
 
-	resParsed := getPaymentStatus(uploadSession1, as)
+	resParsed := getPaymentStatus(uploadSession1, suite)
 
-	as.Equal("confirmed", resParsed.PaymentStatus)
-	as.False(mockCheckPRLBalance.hasCalled)
+	suite.Equal("confirmed", resParsed.PaymentStatus)
+	suite.False(mockCheckPRLBalance.hasCalled)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComplete() {
+func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComplete() {
 	//setup
 	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(10),
@@ -172,22 +172,22 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 		ETHAddrBeta:   nulls.NewString("beta"),
 	}
 
-	resParsed := getPaymentStatus(uploadSession1, as)
+	resParsed := getPaymentStatus(uploadSession1, suite)
 
-	as.Equal("confirmed", resParsed.PaymentStatus)
+	suite.Equal("confirmed", resParsed.PaymentStatus)
 
 	// checkPRLBalance has been called twice. 1st for Alpha, and 2nd for Beta, we only record Beta addr
 	// Since both time, it returns a positive balance, thus, alpha won't call sendPrl method.
-	as.True(mockCheckPRLBalance.hasCalled)
-	as.False(mockSendPrl.hasCalled)
-	as.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckPRLBalance.input_addr)
+	suite.True(mockCheckPRLBalance.hasCalled)
+	suite.False(mockSendPrl.hasCalled)
+	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
-	as.Nil(as.DB.Find(&session, resParsed.ID))
-	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
+	suite.Nil(suite.DB.Find(&session, resParsed.ID))
+	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
+func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckIncomplete() {
 	//setup
 	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(0),
@@ -203,18 +203,18 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckInco
 		ETHAddrAlpha:  nulls.NewString("alpha"),
 	}
 
-	resParsed := getPaymentStatus(uploadSession1, as)
+	resParsed := getPaymentStatus(uploadSession1, suite)
 
-	as.Equal("invoiced", resParsed.PaymentStatus)
-	as.True(mockCheckPRLBalance.hasCalled)
-	as.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
+	suite.Equal("invoiced", resParsed.PaymentStatus)
+	suite.True(mockCheckPRLBalance.hasCalled)
+	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
-	as.Nil(as.DB.Find(&session, resParsed.ID))
-	as.Equal(models.PaymentStatusInvoiced, session.PaymentStatus)
+	suite.Nil(suite.DB.Find(&session, resParsed.ID))
+	suite.Equal(models.PaymentStatusInvoiced, session.PaymentStatus)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
+func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(10),
 	}
@@ -233,47 +233,47 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 		ETHAddrAlpha:  nulls.NewString("alpha"),
 	}
 
-	resParsed := getPaymentStatus(uploadSession1, as)
+	resParsed := getPaymentStatus(uploadSession1, suite)
 
-	as.Equal("confirmed", resParsed.PaymentStatus)
-	as.True(mockCheckPRLBalance.hasCalled)
-	as.False(mockSendPrl.hasCalled)
+	suite.Equal("confirmed", resParsed.PaymentStatus)
+	suite.True(mockCheckPRLBalance.hasCalled)
+	suite.False(mockSendPrl.hasCalled)
 
 	session := models.UploadSession{}
-	as.Nil(as.DB.Find(&session, resParsed.ID))
-	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
+	suite.Nil(suite.DB.Find(&session, resParsed.ID))
+	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
 
-func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
-	//res := as.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
+func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
+	//res := suite.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
 
 	//TODO: Return better error response when ID does not exist
 }
 
-func getPaymentStatus(seededUploadSession models.UploadSession, as *ActionSuite) paymentStatusCreateRes {
+func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateRes {
 	seededUploadSession.StartUploadSession()
 
 	session := models.UploadSession{}
-	as.Nil(as.DB.Where("genesis_hash = ?", seededUploadSession.GenesisHash).First(&session))
+	suite.Nil(suite.DB.Where("genesis_hash = ?", seededUploadSession.GenesisHash).First(&session))
 
 	//execute method
-	res := as.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
+	res := suite.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
 
 	// Parse response
 	resParsed := paymentStatusCreateRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Nil(json.Unmarshal(bodyBytes, &resParsed))
+	suite.Nil(json.Unmarshal(bodyBytes, &resParsed))
 
 	return resParsed
 }
 
-func verifyPaymentConfirmation(as *ActionSuite, sessionId string) {
+func verifyPaymentConfirmation(sessionId string, suite *ActionSuite) {
 	session := models.UploadSession{}
-	err := as.DB.Find(&session, sessionId)
-	as.Nil(err)
-	as.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
+	err := suite.DB.Find(&session, sessionId)
+	suite.Nil(err)
+	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
 
 func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
