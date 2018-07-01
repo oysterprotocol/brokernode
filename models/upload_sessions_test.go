@@ -21,6 +21,11 @@ func (ms *ModelSuite) Test_BigFileSize() {
 	vErr, err := ms.DB.ValidateAndCreate(&u)
 	ms.Nil(err)
 	ms.False(vErr.HasAny())
+
+	uploadSession := models.UploadSession{}
+	ms.Nil(ms.DB.Find(&uploadSession, u.ID))
+
+	ms.Equal(uploadSession.FileSizeBytes, uint64(9223372036854775808))
 }
 
 func (ms *ModelSuite) Test_StartUploadSession() {
