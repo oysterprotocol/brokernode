@@ -31,7 +31,8 @@ import (
 )
 
 type Eth struct {
-	CalculateGasToSend
+	CalculateGasNeeded
+	CheckIfWorthReclaimingGas
 	ClaimPRL
 	GenerateEthAddr
 	GenerateKeys
@@ -100,7 +101,8 @@ type TransactionWithBlockNumber struct {
 	Confirmed   *bool
 }
 
-type CalculateGasToSend func(desiredGasLimit uint64) (*big.Int, error)
+type CalculateGasNeeded func(desiredGasLimit uint64) (*big.Int, error)
+type CheckIfWorthReclaimingGas func(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error)
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
 type GenerateKeys func(int) (privateKeys []string, err error)
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
@@ -152,7 +154,8 @@ func init() {
 	RunOnMainETHNetwork()
 
 	EthWrapper = Eth{
-		CalculateGasToSend:              calculateGasToSend,
+		CalculateGasNeeded:              calculateGasNeeded,
+		CheckIfWorthReclaimingGas:       checkIfWorthReclaimingGas,
 		CreateSendPRLMessage:            createSendPRLMessage,
 		SendPRL:                         sendPRL,
 		SendPRLFromOyster:               sendPRLFromOyster,
@@ -695,7 +698,26 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 }
 
-func calculateGasToSend(desiredGasLimit uint64) (*big.Int, error) {
+func checkIfWorthReclaimingGas(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error) {
+	ethBalance := checkETHBalance(address)
+	if ethBalance.Int64() == 0 {
+		return false, big.NewInt(0), nil
+	} else if ethBalance.Int64() == -1 {
+		return false, big.NewInt(0), errors.New("error checking if worth " +
+			"reclaiming gas because could not get ethBalance")
+	}
+
+	gasNeededToReclaimETH, err := calculateGasNeeded(desiredGasLimit)
+	if err != nil {
+		return false, big.NewInt(0), err
+	}
+	if gasNeededToReclaimETH.Int64() >= ethBalance.Int64() {
+		return false, big.NewInt(0), nil
+	}
+	return true, new(big.Int).Sub(ethBalance, gasNeededToReclaimETH), nil
+}
+
+func calculateGasNeeded(desiredGasLimit uint64) (*big.Int, error) {
 	gasPrice, err := getGasPrice()
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
