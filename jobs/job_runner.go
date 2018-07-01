@@ -47,6 +47,8 @@ func registerHandlers(oysterWorker *worker.Simple) {
 		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	}
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
+	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
+	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 
 	if services.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
@@ -102,6 +104,16 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
 		worker.Args{
 			Duration: 24 * time.Hour,
+		})
+
+	oysterWorkerPerformIn(checkAlphaPaymentsHandler,
+		worker.Args{
+			Duration: 10 * time.Second,
+		})
+
+	oysterWorkerPerformIn(checkBetaPaymentsHandler,
+		worker.Args{
+			Duration: 100 * time.Second,
 		})
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
@@ -181,6 +193,23 @@ func removeUnpaidUploadSessionHandler(args worker.Args) error {
 	RemoveUnpaidUploadSession(PrometheusWrapper)
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
+	return nil
+}
+
+func checkAlphaPaymentsHandler(args worker.Args) error {
+	CheckAlphaPayments(PrometheusWrapper)
+
+	oysterWorkerPerformIn(checkAlphaPaymentsHandler, args)
+	return nil
+}
+
+func checkBetaPaymentsHandler(args worker.Args) error {
+	durationToWaitBeforeTimingOut := time.Duration(-6 * time.Hour)
+	// consider a beta transaction timed out after 6 hours if on alpha
+	// consider a beta transaction timed out after 18 hours if on beta
+	CheckBetaPayments(durationToWaitBeforeTimingOut, PrometheusWrapper)
+
+	oysterWorkerPerformIn(checkBetaPaymentsHandler, args)
 	return nil
 }
 
