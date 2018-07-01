@@ -24,7 +24,7 @@ func (suite *ModelSuite) Test_BigFileSize() {
 	suite.False(vErr.HasAny())
 
 	uploadSession := models.UploadSession{}
-	suite.Nil(ms.DB.Find(&uploadSession, u.ID))
+	suite.Nil(suite.DB.Find(&uploadSession, u.ID))
 
 	suite.Equal(uploadSession.FileSizeBytes, fileSizeBytes)
 }
