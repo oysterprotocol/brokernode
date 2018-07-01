@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func (ms *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
+func (suite *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
 
 	existingGenesisHashes := []string{
 		"abcdef11",
@@ -31,21 +31,21 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
 		TreasureStatus: models.TreasureBuried,
 	}
 
-	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
-	vErr, err = ms.DB.ValidateAndCreate(&storedGenesisHash2)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err = suite.DB.ValidateAndCreate(&storedGenesisHash2)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
-	ms.Equal(models.StoredGenesisHash{}, storedGenesisHash)
-	ms.Equal(models.NoGenHashesMessage, err.Error())
+	suite.Equal(models.StoredGenesisHash{}, storedGenesisHash)
+	suite.Equal(models.NoGenHashesMessage, err.Error())
 }
 
-func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_unassigned() {
+func (suite *ModelSuite) Test_GetGenesisHashForWebnode_none_unassigned() {
 
 	existingGenesisHashes := []string{
 		"abcdef11",
@@ -62,17 +62,17 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_unassigned() {
 		TreasureStatus: models.TreasureBuried,
 	}
 
-	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
-	ms.Equal(models.StoredGenesisHash{}, storedGenesisHash)
-	ms.Equal(models.NoGenHashesMessage, err.Error())
+	suite.Equal(models.StoredGenesisHash{}, storedGenesisHash)
+	suite.Equal(models.NoGenHashesMessage, err.Error())
 }
 
-func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_below_webnode_count_limit() {
+func (suite *ModelSuite) Test_GetGenesisHashForWebnode_none_below_webnode_count_limit() {
 
 	existingGenesisHashes := []string{
 		"abcdef11",
@@ -89,17 +89,17 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_none_below_webnode_count_lim
 		TreasureStatus: models.TreasureBuried,
 	}
 
-	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
-	ms.Equal(models.StoredGenesisHash{}, storedGenesisHash)
-	ms.Equal(models.NoGenHashesMessage, err.Error())
+	suite.Equal(models.StoredGenesisHash{}, storedGenesisHash)
+	suite.Equal(models.NoGenHashesMessage, err.Error())
 }
 
-func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success() {
+func (suite *ModelSuite) Test_GetGenesisHashForWebnode_success() {
 
 	existingGenesisHashes := []string{
 		"abcdef11",
@@ -118,17 +118,17 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success() {
 		TreasureStatus: models.TreasureBuried,
 	}
 
-	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
-	ms.Equal(storedGenesisHash1.GenesisHash, storedGenesisHash.GenesisHash)
-	ms.Nil(err)
+	suite.Equal(storedGenesisHash1.GenesisHash, storedGenesisHash.GenesisHash)
+	suite.Nil(err)
 }
 
-func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
+func (suite *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
 
 	existingGenesisHashes := []string{
 		"abcdef11",
@@ -157,22 +157,22 @@ func (ms *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
 		TreasureStatus: models.TreasureBuried,
 	}
 
-	vErr, err := ms.DB.ValidateAndCreate(&storedGenesisHash1)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
-	vErr, err = ms.DB.ValidateAndCreate(&storedGenesisHash2)
-	ms.Nil(err)
-	ms.False(vErr.HasAny())
+	vErr, err = suite.DB.ValidateAndCreate(&storedGenesisHash2)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	// forcibly updated the "created_at" time for the second stored_genesis_hash so it will be
 	// older
-	err = ms.DB.RawQuery("UPDATE stored_genesis_hashes SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE stored_genesis_hashes SET created_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-20*time.Second), storedGenesisHash2.GenesisHash).All(&[]models.StoredGenesisHash{})
-	ms.Nil(err)
+	suite.Nil(err)
 
 	storedGenesisHash, err := models.GetGenesisHashForWebnode(existingGenesisHashes)
 
-	ms.Equal(olderGenesisHash, storedGenesisHash.GenesisHash)
-	ms.Nil(err)
+	suite.Equal(olderGenesisHash, storedGenesisHash.GenesisHash)
+	suite.Nil(err)
 }
