@@ -225,7 +225,7 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				// already captured error in upstream function
 				return
 			}
-			ethAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
 				ETHAddr: ethAddress.Hex(),
 				ETHKey:  decryptedKey,
