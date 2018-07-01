@@ -8,7 +8,7 @@ import (
 )
 
 func (suite *JobsSuite) Test_ProcessPaidSessions() {
-	fileBytesCount := 500000
+	fileBytesCount := uint64(500000)
 
 	// This map seems pointless but it makes the testing
 	// in the for loop later on a bit simpler

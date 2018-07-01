@@ -64,7 +64,7 @@ func (suite *ModelSuite) Test_NewBrokerBrokerTransaction() {
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        uint64(fileSizeBytes),
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 		ETHPrivateKey:        privateKey,
@@ -269,7 +269,7 @@ func (suite *ModelSuite) Test_SetUploadSessionToPaid() {
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        uint64(fileSizeBytes),
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 		ETHPrivateKey:        privateKey,

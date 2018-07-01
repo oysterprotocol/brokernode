@@ -22,6 +22,7 @@ import (
 
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/validate"
 )
 
 const (
@@ -127,30 +128,30 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 	return
 }
 
-// Convert trytes to bytes
-
-func ConvertToByte(trytes int) int {
-	return int(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
+/*ConvertToByte converts trytes to bytes.*/
+func ConvertToByte(trytes uint64) uint64 {
+	return uint64(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
 }
 
-func ConvertToTrytes(bytes int) int {
+/*ConvertToTrytes convert bytes to trytes.*/
+func ConvertToTrytes(bytes uint64) uint64 {
 	return bytes * ByteToTrytes
 }
 
-// Return the total file chunk, including burying pearl
-func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte int) int {
+/*GetTotalFileChunkIncludingBuriedPearlsUsingFileSize returns the total file chunk, including burying pearl.*/
+func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte uint64) int {
 	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
 
 	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
 }
 
-// Return the total file chunk, including burying pearl
+/*GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks returns the total file chunk, including burying pearl.*/
 func GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks int) int {
 	return numChunks + int(math.Ceil(float64(numChunks)/float64(FileSectorInChunkSize)))
 }
 
-// Transforms index with correct position for insertion after considering the buried indexes.
+/*TransformIndexWithBuriedIndexes transforms index with correct position for insertion after considering the buried indexes.*/
 func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	if len(treasureIdxMap) == 0 {
 		log.Println("TransformIndexWithBuriedIndexes(): treasureIdxMap as []int{} is empty")
@@ -166,8 +167,8 @@ func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	}
 }
 
-// Randomly generate a set of indexes in each sector
-func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
+/*GenerateInsertedIndexesForPearl randomly generates a set of indexes in each sector.*/
+func GenerateInsertedIndexesForPearl(fileSizeInByte uint64) []int {
 	var indexes []int
 	if fileSizeInByte <= 0 {
 		return indexes
@@ -185,7 +186,7 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	return indexes
 }
 
-// Return the IdxMap for treasure to burried
+/*GetTreasureIdxMap returns the IdxMap for treasure to burried.*/
 func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
 	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
 	var idxMap nulls.String
@@ -197,7 +198,7 @@ func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
 	return idxMap
 }
 
-// Returns int[] for serialized nulls.String
+/*GetTreasureIdxIndexes returns int[] for serialized nulls.String.*/
 func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	if !idxMap.Valid {
 		// TODO(pzhao5): add some logging here
@@ -206,7 +207,7 @@ func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	return IntsSplit(idxMap.String, IntsJoinDelim)
 }
 
-// Convert an []string array to a string.
+/*StringsJoin converts an []string array to a string.*/
 func StringsJoin(A []string, delim string) string {
 	var buffer bytes.Buffer
 	for i := 0; i < len(A); i++ {
@@ -219,7 +220,7 @@ func StringsJoin(A []string, delim string) string {
 	return buffer.String()
 }
 
-// Convert an int array to a string.
+/*IntsJoin converts an int array to a string.*/
 func IntsJoin(a []int, delim string) string {
 	var buffer bytes.Buffer
 	for i := 0; i < len(a); i++ {
@@ -231,7 +232,7 @@ func IntsJoin(a []int, delim string) string {
 	return buffer.String()
 }
 
-// Convert an string back to int array
+/*IntsSplit converts an string back to int array.*/
 func IntsSplit(a string, delim string) []int {
 	var ints []int
 	substrings := strings.Split(a, delim)
@@ -273,14 +274,14 @@ func RandSeq(length int, sequence []rune) string {
 	return string(b)
 }
 
-/* Convert PRL unit to wei unit. */
+/*ConvertToWeiUnit converts PRL unit to wei unit. */
 func ConvertToWeiUnit(prl *big.Float) *big.Int {
 	f := new(big.Float).Mul(prl, big.NewFloat(float64(PrlInWeiUnit)))
 	wei, _ := f.Int(new(big.Int)) // ignore the accuracy
 	return wei
 }
 
-/* Convert wei unit to PRL unit */
+/*ConvertFromWeiUnit converts wei unit to PRL unit */
 func ConvertFromWeiUnit(wei *big.Int) *big.Float {
 	weiInFloat := new(big.Float).SetInt(wei)
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
@@ -329,4 +330,26 @@ func ReturnDecryptedEthKey(id uuid.UUID, createdAt time.Time, encryptedPrivateKe
 	decryptedKey := Decrypt(hashedSessionID, encryptedPrivateKey, hashedCreationTime)
 
 	return hex.EncodeToString(decryptedKey)
+}
+
+/*LogIfValidationError logs any validation error from database. */
+func LogIfValidationError(msg string, err *validate.Errors, extraInfo map[string]interface{}) {
+	if err == nil || err.Count() == 0 {
+		return
+	}
+
+	fmt.Printf("%v: %v\n", msg, err.Errors)
+	if IsRavenEnabled() {
+		info := make(map[string]interface{})
+		for k, v := range err.Errors {
+			info[k] = v
+		}
+		if extraInfo != nil {
+			for k, v := range extraInfo {
+				info[k] = v
+			}
+		}
+
+		raven.CaptureError(raven.WrapWithExtra(errors.New(msg), info), logErrorTags)
+	}
 }

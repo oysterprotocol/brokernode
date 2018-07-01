@@ -35,7 +35,7 @@ type UploadSession struct {
 	UpdatedAt            time.Time `json:"updatedAt" db:"updated_at"`
 	GenesisHash          string    `json:"genesisHash" db:"genesis_hash"`
 	NumChunks            int       `json:"numChunks" db:"num_chunks"`
-	FileSizeBytes        int       `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
+	FileSizeBytes        uint64    `json:"fileSizeBytes" db:"file_size_bytes"` // In Trytes rather than Bytes
 	StorageLengthInYears int       `json:"storageLengthInYears" db:"storage_length_in_years"`
 	Type                 int       `json:"type" db:"type"`
 
@@ -93,11 +93,14 @@ func (u UploadSessions) String() string {
 // Validate gets run every time you call a "pop.Validate*" (pop.ValidateAndSave, pop.ValidateAndCreate, pop.ValidateAndUpdate) method.
 // This method is not required and may be deleted.
 func (u *UploadSession) Validate(tx *pop.Connection) (*validate.Errors, error) {
-	return validate.Validate(
+	err := validate.Validate(
 		&validators.StringIsPresent{Field: u.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsPresent{Field: u.NumChunks, Name: "NumChunks"},
-		&validators.IntIsPresent{Field: u.FileSizeBytes, Name: "FileSize"},
-	), nil
+	)
+	if u.FileSizeBytes == 0 {
+		err.Add("FileSizeByte", "FileSizeByte is 0 and it should be a positive value.")
+	}
+	return err, nil
 }
 
 // ValidateCreate gets run every time you call "pop.ValidateAndCreate" method.
@@ -174,6 +177,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	vErr, err = DB.ValidateAndCreate(u)
 	if err != nil || len(vErr.Errors) > 0 {
 		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfValidationError("validation error for creating UploadSession.", vErr, nil)
 		return
 	}
 

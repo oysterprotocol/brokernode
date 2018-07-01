@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -158,8 +157,8 @@ func NewCompletedUpload(session UploadSession) error {
 			oyster_utils.LogIfError(err, nil)
 		}
 		if len(vErr.Errors) != 0 {
-			// TODO better logging for vErr
-			fmt.Println(vErr.Errors)
+			oyster_utils.LogIfValidationError(
+				"validation errors for creating completedUpload with SessionTypeAlpha.", vErr, nil)
 		}
 	case SessionTypeBeta:
 		completedUpload = CompletedUpload{
@@ -173,8 +172,8 @@ func NewCompletedUpload(session UploadSession) error {
 			oyster_utils.LogIfError(err, nil)
 		}
 		if len(vErr.Errors) != 0 {
-			// TODO better logging for vErr
-			fmt.Println(vErr.Errors)
+			oyster_utils.LogIfValidationError(
+				"validation errors for creating completedUpload with SessionTypeBeta.", vErr, nil)
 		}
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")

@@ -57,9 +57,8 @@ func CheckProcessingGasTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in claim_unused_prls in CheckProcessingGasTransactions: " + fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in claim_unused_prls in CheckProcessingGasTransaction", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("claim_unused_prls: CheckProcessingGasTransactions", analytics.NewProperties().
@@ -89,10 +88,8 @@ func CheckProcessingPRLTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in claim_unused_prls in CheckProcessingPRLTransactions: " +
-					fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in claim_unused_prls in CheckProcessingPRLTransactions", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("claim_unused_prls: CheckProcessingPRLTransactions", analytics.NewProperties().
