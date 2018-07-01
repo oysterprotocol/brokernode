@@ -12,10 +12,11 @@ import (
 )
 
 func (ms *ModelSuite) Test_BigFileSize() {
+	fileSizeBytes := uint64(9223372036854775808) // 2^63+1, more than signed int64 range.
 	u := models.UploadSession{
 		GenesisHash:   "hello",
 		NumChunks:     2,
-		FileSizeBytes: 9223372036854775808, // 2^63+1, if signed,
+		FileSizeBytes: fileSizeBytes,
 	}
 
 	vErr, err := ms.DB.ValidateAndCreate(&u)
@@ -25,7 +26,7 @@ func (ms *ModelSuite) Test_BigFileSize() {
 	uploadSession := models.UploadSession{}
 	ms.Nil(ms.DB.Find(&uploadSession, u.ID))
 
-	ms.Equal(uploadSession.FileSizeBytes, uint64(9223372036854775808))
+	ms.Equal(uploadSession.FileSizeBytes, fileSizeBytes)
 }
 
 func (ms *ModelSuite) Test_StartUploadSession() {
