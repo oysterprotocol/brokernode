@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,14 +9,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
-
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
 )
 
@@ -391,22 +388,13 @@ func (u *UploadSession) GetPaymentStatus() string {
 }
 
 func (u *UploadSession) EncryptSessionEthKey() {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt.Clock()))), sha3.New256())
-
-	encryptedKey := oyster_utils.Encrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
-
-	u.ETHPrivateKey = hex.EncodeToString(encryptedKey)
+	u.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
 	DB.ValidateAndSave(u)
 }
 
 func (u *UploadSession) DecryptSessionEthKey() string {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(u.CreatedAt.Clock()))), sha3.New256())
+	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
 
-	decryptedKey := oyster_utils.Decrypt(hashedSessionID, u.ETHPrivateKey, hashedCreationTime)
-
-	return hex.EncodeToString(decryptedKey)
 }
 
 func GetSessionsByAge() ([]UploadSession, error) {
@@ -443,4 +431,15 @@ func GetReadySessions() ([]UploadSession, error) {
 	oyster_utils.LogIfError(err, nil)
 
 	return readySessions, err
+}
+
+func SetBrokerTransactionToPaid(session UploadSession) error {
+	err := DB.RawQuery("UPDATE broker_broker_transactions set payment_status = ? WHERE "+
+		"payment_status != ? AND genesis_hash = ?",
+		BrokerTxAlphaPaymentConfirmed,
+		BrokerTxAlphaPaymentConfirmed,
+		session.GenesisHash).All(&[]BrokerBrokerTransaction{})
+
+	oyster_utils.LogIfError(err, nil)
+	return err
 }

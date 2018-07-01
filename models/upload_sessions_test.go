@@ -3,6 +3,7 @@ package models_test
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -502,4 +503,46 @@ func (ms *ModelSuite) Test_PaymentStatus() {
 
 	u.PaymentStatus = models.PaymentStatusError
 	ms.Equal(u.GetPaymentStatus(), "error")
+}
+
+func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
+	genHash := "abcdef"
+	fileSizeBytes := 123
+	numChunks := 2
+	storageLengthInYears := 2
+	privateKey := "abcdef1234567890"
+	startingEthAddr := "0000000000"
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          genHash,
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		ETHPrivateKey:        privateKey,
+		ETHAddrAlpha:         nulls.String{string(startingEthAddr), true},
+		ETHAddrBeta:          nulls.String{string(startingEthAddr), true},
+		TotalCost:            totalCost,
+	}
+
+	vErr, err := u.StartUploadSession()
+	ms.Nil(err)
+	ms.Equal(0, len(vErr.Errors))
+
+	uSession := models.UploadSession{}
+	ms.DB.Where("genesis_hash = ?", genHash).All(&uSession)
+
+	models.NewBrokerBrokerTransaction(&uSession)
+
+	brokerTxs := returnAllBrokerBrokerTxs(ms)
+	ms.Equal(1, len(brokerTxs))
+
+	ms.Equal(models.BrokerTxAlphaPaymentPending, brokerTxs[0].PaymentStatus)
+
+	models.SetBrokerTransactionToPaid(uSession)
+
+	brokerTxs = returnAllBrokerBrokerTxs(ms)
+	ms.Equal(1, len(brokerTxs))
+
+	ms.Equal(models.BrokerTxAlphaPaymentConfirmed, brokerTxs[0].PaymentStatus)
 }
