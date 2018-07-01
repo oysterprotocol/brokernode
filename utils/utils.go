@@ -2,10 +2,13 @@ package oyster_utils
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/gobuffalo/uuid"
+	"golang.org/x/crypto/sha3"
 	"io/ioutil"
 	"log"
 	"math"
@@ -15,6 +18,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/nulls"
@@ -307,4 +311,22 @@ func LogIfError(err error, extraInfo map[string]interface{}) {
 			raven.CaptureError(err, logErrorTags)
 		}
 	}
+}
+
+func ReturnEncryptedEthKey(id uuid.UUID, createdAt time.Time, rawPrivateKey string) string {
+	hashedSessionID := HashHex(hex.EncodeToString([]byte(fmt.Sprint(id))), sha3.New256())
+	hashedCreationTime := HashHex(hex.EncodeToString([]byte(fmt.Sprint(createdAt.Clock()))), sha3.New256())
+
+	encryptedKey := Encrypt(hashedSessionID, rawPrivateKey, hashedCreationTime)
+
+	return hex.EncodeToString(encryptedKey)
+}
+
+func ReturnDecryptedEthKey(id uuid.UUID, createdAt time.Time, encryptedPrivateKey string) string {
+	hashedSessionID := HashHex(hex.EncodeToString([]byte(fmt.Sprint(id))), sha3.New256())
+	hashedCreationTime := HashHex(hex.EncodeToString([]byte(fmt.Sprint(createdAt.Clock()))), sha3.New256())
+
+	decryptedKey := Decrypt(hashedSessionID, encryptedPrivateKey, hashedCreationTime)
+
+	return hex.EncodeToString(decryptedKey)
 }
