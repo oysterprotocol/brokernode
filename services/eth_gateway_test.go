@@ -228,7 +228,7 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	//t.Skip(nil)
+	t.Skip(nil)
 	services.RunOnTestNet()
 	// transfer
 	transferValue := big.NewInt(1)
