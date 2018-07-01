@@ -146,7 +146,7 @@ func SendPaymentToBeta() {
 		[]models.PaymentStatus{models.BrokerTxGasPaymentConfirmed})
 
 	for _, brokerTx := range brokerTxs {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(brokerTx.ETHAddrBeta))
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(brokerTx.ETHAddrAlpha))
 		checkAndSendHalfPrlToBeta(brokerTx, balance)
 	}
 }

@@ -547,7 +547,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Add("test_broker_txs", func(c *grift.Context) error {
 
 		alphaAddr, key, _ := services.EthWrapper.GenerateEthAddr()
-		betaAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+		betaAddr, betaKey, _ := services.EthWrapper.GenerateEthAddr()
 
 		validChars := []rune("abcde123456789")
 		genesisHashEndingCharsAlpha := oyster_utils.RandSeq(10, validChars)
@@ -584,7 +584,7 @@ var _ = grift.Namespace("db", func() {
 			Type:          models.SessionTypeBeta,
 			ETHAddrAlpha:  alphaAddr.Hex(),
 			ETHAddrBeta:   betaAddr.Hex(),
-			ETHPrivateKey: "",
+			ETHPrivateKey: betaKey,
 			TotalCost:     totalCost,
 			PaymentStatus: models.BrokerTxAlphaPaymentPending,
 		}
@@ -599,13 +599,14 @@ var _ = grift.Namespace("db", func() {
 			return err
 		}
 
-		_, _, _, err = services.EthWrapper.SendETH(
+		callMsg, _ := services.EthWrapper.CreateSendPRLMessage(
 			services.MainWalletAddress,
 			services.MainWalletPrivateKey,
-			alphaAddr,
-			totalCostInWei)
+			services.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
 
-		if err != nil {
+		sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+
+		if !sendSuccess {
 			fmt.Println(err)
 			return err
 		}
@@ -632,7 +633,7 @@ var _ = grift.Namespace("db", func() {
 				decrypted := brokerTx.DecryptEthKey()
 				fmt.Println("decrypted ETH Key:      " + decrypted)
 				fmt.Println("Beta ETH Address:       " + brokerTx.ETHAddrBeta)
-				fmt.Println("Payment status:   " + string(brokerTx.PaymentStatus))
+				fmt.Println("Payment status:   " + models.PaymentStatusMap[brokerTx.PaymentStatus])
 				fmt.Println("________________________________________________________")
 			}
 		} else {
