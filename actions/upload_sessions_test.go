@@ -63,7 +63,7 @@ func (as *ActionSuite) Test_UploadSessionsCreate() {
 
 	as.Equal(200, res.Code)
 	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
-	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	as.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
 	as.NotEqual(0, resParsed.Invoice.Cost)
 	as.NotEqual("", resParsed.Invoice.EthAddress)
@@ -115,7 +115,7 @@ func (as *ActionSuite) Test_UploadSessionsCreateBeta() {
 
 	as.Equal(200, res.Code)
 	as.Equal("abcdef", resParsed.UploadSession.GenesisHash)
-	as.Equal(123, resParsed.UploadSession.FileSizeBytes)
+	as.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
 	as.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
 	as.Equal(1, len(resParsed.BetaTreasureIndexes))
 	as.NotEqual(0, resParsed.Invoice.Cost)
