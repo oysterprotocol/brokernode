@@ -200,7 +200,7 @@ func testNewCompletedUpload(suite *ModelSuite) {
 		ETHPrivateKey: privateKey,
 	}
 	vErr, err := session1.StartUploadSession()
-  suite.Nil(err)
+	suite.Nil(err)
 	suite.False(vErr.HasAny())
 
 	session2 := models.UploadSession{
@@ -214,7 +214,7 @@ func testNewCompletedUpload(suite *ModelSuite) {
 	}
 	vErr, err = session2.StartUploadSession()
 	suite.Nil(err)
-  suite.False(vErr.HasAny())
+	suite.False(vErr.HasAny())
 
 	err = models.NewCompletedUpload(session1)
 	suite.Nil(err)

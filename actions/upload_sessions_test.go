@@ -63,7 +63,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 
 	suite.Equal(200, res.Code)
 	suite.Equal("abcdef", resParsed.UploadSession.GenesisHash)
-  suite.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
+	suite.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
 	suite.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
 	suite.NotEqual(0, resParsed.Invoice.Cost)
 	suite.NotEqual("", resParsed.Invoice.EthAddress)
