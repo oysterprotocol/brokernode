@@ -180,7 +180,7 @@ func (as *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckComp
 	// Since both time, it returns a positive balance, thus, alpha won't call sendPrl method.
 	as.True(mockCheckPRLBalance.hasCalled)
 	as.False(mockSendPrl.hasCalled)
-	as.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckPRLBalance.input_addr)
+	as.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	as.Nil(as.DB.Find(&session, resParsed.ID))

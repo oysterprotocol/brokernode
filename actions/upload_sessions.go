@@ -122,6 +122,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		return err
 	}
 
+	models.NewBrokerBrokerTransaction(&alphaSession)
+
 	invoice := alphaSession.GetInvoice()
 
 	// Mutates this because copying in golang sucks...
@@ -397,6 +399,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Set("storage_years", u.StorageLengthInYears))
 
 	vErr, err := u.StartUploadSession()
+
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -407,6 +410,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		c.Render(422, r.JSON(vErr.Errors))
 		return err
 	}
+
+	models.NewBrokerBrokerTransaction(&u)
 
 	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
@@ -469,8 +474,9 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 			err = models.DB.Save(&session)
 			if err != nil {
 				session.PaymentStatus = previousPaymentStatus
+			} else {
+				models.SetBrokerTransactionToPaid(session)
 			}
-			checkAndSendHalfPrlToBeta(session, balance)
 		}
 	}
 
