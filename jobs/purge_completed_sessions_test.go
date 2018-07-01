@@ -8,7 +8,7 @@ import (
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
-	fileBytesCount := 2500
+	fileBytesCount := uint64(2500)
 	numChunks := 3
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
@@ -23,7 +23,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	uploadSession2 := models.UploadSession{
@@ -37,7 +37,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	}
 
 	vErr, err = uploadSession2.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	uploadSession3 := models.UploadSession{
@@ -51,7 +51,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	}
 
 	vErr, err = uploadSession3.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	allDataMaps := []models.DataMap{}

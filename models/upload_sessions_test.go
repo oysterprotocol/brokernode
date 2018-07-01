@@ -11,9 +11,21 @@ import (
 	"time"
 )
 
+func (ms *ModelSuite) Test_BigFileSize() {
+	u := models.UploadSession{
+		GenesisHash:   "hello",
+		NumChunks:     2,
+		FileSizeBytes: 9223372036854775808, // 2^63+1, if signed,
+	}
+
+	vErr, err := ms.DB.ValidateAndCreate(&u)
+	ms.Nil(err)
+	ms.False(vErr.HasAny())
+}
+
 func (ms *ModelSuite) Test_StartUploadSession() {
 	genHash := "abcdef"
-	fileSizeBytes := 123
+	fileSizeBytes := uint64(123)
 	numChunks := 2
 	storageLengthInYears := 2
 
@@ -27,7 +39,7 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	uSession := models.UploadSession{}
 	ms.DB.Where("genesis_hash = ?", genHash).First(&uSession)
@@ -42,20 +54,19 @@ func (ms *ModelSuite) Test_StartUploadSession() {
 
 func (ms *ModelSuite) Test_DataMapsForSession() {
 	genHash := "abcdef"
-	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 3
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	expectedHashes := []string{
 		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
@@ -73,7 +84,6 @@ func (ms *ModelSuite) Test_DataMapsForSession() {
 
 func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	genHash := "abcdef"
-	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 3
 
@@ -100,14 +110,14 @@ func (ms *ModelSuite) Test_TreasureMapGetterAndSetter() {
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	ms.Nil(u.SetTreasureMap(treasureIndexArray))
 
@@ -179,19 +189,19 @@ func (ms *ModelSuite) Test_GetSessionsByAge() {
 
 	vErr, err := uploadSession1.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 	vErr, err = uploadSession2.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 	vErr, err = uploadSession3.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 	vErr, err = uploadSession4.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 	vErr, err = uploadSession5.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	// set uploadSession3 to be the oldest
 	err = ms.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
@@ -217,7 +227,6 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	genHash := "abcdef"
-	fileSizeBytes := 123
 	numChunks := 250
 	storageLengthInYears := 3
 	alphaIndexes := []int{2, 121, 245}
@@ -225,7 +234,7 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
@@ -244,7 +253,7 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 
 	treasureIdxMap, err := u.GetTreasureMap()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	ms.Equal(0, treasureIdxMap[0].Sector)
 	ms.Equal(1, treasureIdxMap[1].Sector)
@@ -262,7 +271,6 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	genHash := "abcdef"
-	fileSizeBytes := 123
 	numChunks := 250
 	storageLengthInYears := 3
 	alphaIndexes := []int{2, 121, 245}
@@ -270,7 +278,7 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
@@ -282,7 +290,7 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
 	ms.Nil(err)
@@ -297,14 +305,12 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 func (ms *ModelSuite) Test_EncryptAndDecryptEthKey() {
 	genHash := "abcdef"
-	fileSizeBytes := 123
-
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            400,
 		StorageLengthInYears: 4,
 		ETHPrivateKey:        ethKey,
@@ -312,7 +318,7 @@ func (ms *ModelSuite) Test_EncryptAndDecryptEthKey() {
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	ms.NotEqual(ethKey, u.ETHPrivateKey) // it should be encrypted by now
 
@@ -327,8 +333,6 @@ func (ms *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 
 	defer func() { models.StoragePeg = currentStoragePeg }()
 
-	fileSizeBytes := 9000000
-
 	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
 
@@ -336,14 +340,14 @@ func (ms *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          "abcdef",
 		NumChunks:            2,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        9000000,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
 	invoice := u.GetInvoice()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	// expecting to be charged for 1 full sector even though we aren't using the whole sector
 	ms.Equal(decimal.New(468750000000000, -16), invoice.Cost)
@@ -358,8 +362,6 @@ func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
 	defer func() { models.StoragePeg = currentStoragePeg }()
 
-	fileSizeBytes := 1500000000
-
 	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
 
@@ -367,14 +369,14 @@ func (ms *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          "abcdef",
 		NumChunks:            2,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        1500000000,
 		StorageLengthInYears: storageLengthInYears,
 	}
 
 	vErr, err := u.StartUploadSession()
 	invoice := u.GetInvoice()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	// expecting to be charged for 2 full sectors even though we're only using 1.5
 	ms.Equal(decimal.New(937500000000000, -16), invoice.Cost)
@@ -389,7 +391,7 @@ func (ms *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
 	defer func() { models.StoragePeg = currentStoragePeg }()
 
-	fileSizeBytes := 1999999 * oyster_utils.FileChunkSizeInByte
+	fileSizeBytes := uint64(1999999 * oyster_utils.FileChunkSizeInByte)
 
 	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
@@ -405,7 +407,7 @@ func (ms *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 	vErr, err := u.StartUploadSession()
 	invoice := u.GetInvoice()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	// expecting to be charged for 2 sectors
 	ms.Equal(decimal.New(937500000000000, -16), invoice.Cost)
@@ -420,7 +422,7 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 
 	defer func() { models.StoragePeg = currentStoragePeg }()
 
-	fileSizeBytes := 2000000 * oyster_utils.FileChunkSizeInByte
+	fileSizeBytes := uint64(2000000 * oyster_utils.FileChunkSizeInByte)
 
 	models.StoragePeg = decimal.NewFromFloat(float64(64))
 	storageLengthInYears := 3
@@ -436,7 +438,7 @@ func (ms *ModelSuite) Test_CalculatePayment_2_GB() {
 	vErr, err := u.StartUploadSession()
 	invoice := u.GetInvoice()
 	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	ms.False(vErr.HasAny())
 
 	// expecting to be charged for 3 sectors
 	// we are 1 chunk over
@@ -451,7 +453,6 @@ func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
 	numSectors := 3
 
 	genHash := "abcdef"
-	fileSizeBytes := 123
 	numChunks := 250
 	storageLengthInYears := 3
 	mergedIndexes := []int{2, 121, 245}
@@ -463,7 +464,7 @@ func (ms *ModelSuite) Test_GetPRLsPerTreasure() {
 
 	u := models.UploadSession{
 		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 	}
