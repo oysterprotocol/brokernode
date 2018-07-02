@@ -531,7 +531,7 @@ func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) mo
 			newStatus = models.BuryConfirmed
 		}
 	default:
-		logInvalidTxType()
+		logInvalidTxType(txType, treasureRow.PRLStatus)
 	}
 	return newStatus
 }
@@ -552,11 +552,30 @@ func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) mod
 			newStatus = models.BuryError
 		}
 	default:
-		logInvalidTxType()
+		logInvalidTxType(txType, treasureRow.PRLStatus)
 	}
 	return newStatus
 }
 
-func logInvalidTxType() {
-	oyster_utils.LogIfError(errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation"), nil)
+// logInvalidTxType Utility to log txType errors and prlStatus
+func logInvalidTxType(txType services.TxType, status models.PRLStatus) {
+	txString := txToString(txType)
+	errorMsg := fmt.Sprintf("not a valid tx type (%v) in bury_treasure_addresses waitForConfirmation  status : %v", txString, status)
+	oyster_utils.LogIfError(errors.New(errorMsg), nil)
+}
+
+// txToString Utility to return the transaction type
+func txToString(value services.TxType) (string) {
+	status := "Not Found"
+	switch value {
+	case services.PRLTransfer:
+		status = "PRL Transfer"
+	case services.EthTransfer:
+		status = "Ether Transfer"
+	case services.PRLBury:
+		status = "PRL Bury"
+	case services.PRLClaim:
+		status = "PRL Claim"
+	}
+	return status
 }
