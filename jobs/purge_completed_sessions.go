@@ -1,6 +1,8 @@
 package jobs
 
 import (
+	"errors"
+
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -46,41 +48,43 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 				continue
 			}
 
-			models.DB.Transaction(func(tx *pop.Connection) error {
-				MoveToComplete(tx, moveToComplete) // Passed in the connection
+			err = models.DB.Transaction(func(tx *pop.Connection) error {
+				// Passed in the connection
+				if err := MoveToComplete(tx, moveToComplete); err != nil {
+					return err
+				}
 
-				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
-				if err != nil {
+				if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{}); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
 				session := []models.UploadSession{}
-
-				err = tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session)
-				if err != nil {
+				if err := tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
 				if len(session) > 0 {
-					_, err = tx.ValidateAndSave(&models.StoredGenesisHash{
+					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
 						GenesisHash:   session[0].GenesisHash,
 						NumChunks:     session[0].NumChunks,
 						FileSizeBytes: session[0].FileSizeBytes,
 					})
+					if vErr.HasAny() {
+						oyster_utils.LogIfValidationError("StoredGenesisHash validation failed.", vErr, nil)
+						return errors.New("Unable to validate StoredGenesisHash")
+					}
 					if err != nil {
 						oyster_utils.LogIfError(err, nil)
 						return err
 					}
-					err = models.NewCompletedUpload(session[0])
-					if err != nil {
+					if err := models.NewCompletedUpload(session[0]); err != nil {
 						return err
 					}
 				}
 
-				err = tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{})
-				if err != nil {
+				if err := tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{}); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}
@@ -91,12 +95,14 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 				return nil
 			})
-			services.DeleteMsgDatas(moveToComplete)
+			if err == nil && services.IsKvStoreEnabled() {
+				services.DeleteMsgDatas(moveToComplete)
+			}
 		}
 	}
 }
 
-func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
+func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 	index := 0
 	messagsKvPairs := services.KVPairs{}
 	for _, dataMap := range dataMaps {
@@ -115,16 +121,29 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
 		}
 
-		_, err := tx.ValidateAndSave(&completedDataMap)
-		if err == nil {
+		vErr, err := tx.ValidateAndSave(&completedDataMap)
+		if err == nil && !vErr.HasAny() {
 			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
 		} else {
+			if vErr.HasAny() {
+				oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, map[string]interface{}{
+					"numOfDataMaps":  len(dataMaps),
+					"proceededIndex": index,
+				})
+				return errors.New("Unable to create CompletedDataMap")
+			}
+
 			oyster_utils.LogIfError(err, map[string]interface{}{
 				"numOfDataMaps":  len(dataMaps),
 				"proceededIndex": index,
 			})
+			return err
 		}
 		index++
 	}
-	services.BatchSet(&messagsKvPairs)
+
+	if services.IsKvStoreEnabled() {
+		services.BatchSet(&messagsKvPairs)
+	}
+	return nil
 }
