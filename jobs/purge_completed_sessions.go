@@ -40,9 +40,9 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 	for _, genesisHash := range allGenesisHashes {
 		if _, hasKey := notComplete[genesisHash]; !hasKey {
-			var moveToComplete = []models.DataMap{}
+			var moveToCompleteDm = []models.DataMap{}
 
-			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
+			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToCompleteDm)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				continue
@@ -50,7 +50,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
 			err = models.DB.Transaction(func(tx *pop.Connection) error {
 				// Passed in the connection
-				if err := MoveToComplete(tx, moveToComplete); err != nil {
+				if err := moveToComplete(tx, moveToCompleteDm); err != nil {
 					return err
 				}
 
@@ -96,13 +96,13 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 				return nil
 			})
 			if err == nil && services.IsKvStoreEnabled() {
-				services.DeleteMsgDatas(moveToComplete)
+				services.DeleteMsgDatas(moveToCompleteDm)
 			}
 		}
 	}
 }
 
-func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
+func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 	index := 0
 	messagsKvPairs := services.KVPairs{}
 	for _, dataMap := range dataMaps {
