@@ -216,6 +216,8 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
+    sectorSize := 100
+
 	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 250
@@ -231,7 +233,7 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	}
 
 	vErr, err := u.StartUploadSession()
-	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 
 	ms.Nil(err)
 	privateKeys := []string{
@@ -250,16 +252,18 @@ func (ms *ModelSuite) Test_MakeTreasureIdxMap() {
 	ms.Equal(1, treasureIdxMap[1].Sector)
 	ms.Equal(2, treasureIdxMap[2].Sector)
 
-	// When we update MergeIndexes to hash the indexes, this test will start failing
-	ms.Equal(5, treasureIdxMap[0].Idx)
-	ms.Equal(105, treasureIdxMap[1].Idx)
-	ms.Equal(237, treasureIdxMap[2].Idx)
+    // This will break anytime we change the hashing method.
+    ms.Equal(68, treasureIdxMap[0].Idx)
+    ms.Equal(148, treasureIdxMap[1].Idx)
+	ms.Equal(210, treasureIdxMap[2].Idx)
 }
 
 func (ms *ModelSuite) Test_GetTreasureIndexes() {
 
 	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+    sectorSize:= 100
 
 	genHash := "abcdef"
 	fileSizeBytes := 123
@@ -276,22 +280,22 @@ func (ms *ModelSuite) Test_GetTreasureIndexes() {
 	}
 
 	expectedIndexes := make([]int, 0)
-	expectedIndexes = append(expectedIndexes, 5)
-	expectedIndexes = append(expectedIndexes, 105)
-	expectedIndexes = append(expectedIndexes, 237)
+	expectedIndexes = append(expectedIndexes, 68)
+	expectedIndexes = append(expectedIndexes, 148)
+	expectedIndexes = append(expectedIndexes, 210)
 
 	vErr, err := u.StartUploadSession()
 	ms.Nil(err)
 	ms.Equal(0, len(vErr.Errors))
 
-	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 	ms.Nil(err)
 	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
 	ms.Nil(err)
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	actualIndexes, err := u.GetTreasureIndexes()
 
-	// When we update MergeIndexes to hash the indexes, this test will start failing
+	// This will break anytime we change the hashing method.
 	ms.Equal(expectedIndexes, actualIndexes)
 }
 

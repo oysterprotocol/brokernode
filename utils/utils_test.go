@@ -167,19 +167,6 @@ func Test_MergeIndexes_SameSize(t *testing.T) {
 	assertTrue(len(indexes) == 3, t, "Must result an error")
 }
 
-func Test_GetTreasureIdxMap_ValidInput(t *testing.T) {
-	idxMap := GetTreasureIdxMap([]int{1}, []int{2})
-
-	assertTrue(idxMap.Valid, t, "")
-}
-
-func Test_GetTreasureIdxMap_InvalidInput(t *testing.T) {
-	idxMap := GetTreasureIdxMap([]int{1}, []int{1, 2})
-
-	assertTrue(idxMap.String == "", t, "")
-	assertTrue(!idxMap.Valid, t, "")
-}
-
 func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
 	indexes := GetTreasureIdxIndexes(nulls.String{"", false})
 
