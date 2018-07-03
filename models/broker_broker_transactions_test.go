@@ -259,6 +259,10 @@ func (suite *ModelSuite) Test_GetTransactionsBySessionTypesPaymentStatusesAndTim
 }
 
 func (suite *ModelSuite) Test_SetUploadSessionToPaid() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2

@@ -21,9 +21,8 @@ var checkClaimClockCalled = false
 var ethAddressCalledWithCheckClaimClock common.Address
 
 func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
-
 	checkClaimClockCalled = false
-
+  
 	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
@@ -135,8 +134,6 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 		"numChunks":       5,
 		"ethKey":          ethKey,
 	})
-
-	suite.Equal(200, res.Code)
 
 	suite.Equal(200, res.Code)
 

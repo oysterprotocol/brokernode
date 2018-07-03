@@ -54,7 +54,7 @@ func CheckOngoingGasTransactions() {
 	}
 	gasToProcessTransaction, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLClaim)
 	if err != nil {
-		fmt.Println("Cannot calculate gas to send to webnode_treasure_claims with pending " +
+		fmt.Println("Cannot calculate gas needed in webnode_treasure_claims with pending " +
 			"gas transfers: " + err.Error())
 		/* already captured error in upstream function */
 		return
