@@ -1,13 +1,12 @@
 package actions
 
 import (
-	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/oysterprotocol/brokernode/services"
-	"github.com/pkg/errors"
 	"io/ioutil"
+	"math/big"
 )
 
 // Record data for VerifyTreasure method
@@ -18,16 +17,12 @@ type mockVerifyTreasure struct {
 	output_error error
 }
 
-// Record data for ClaimPRL method
-type mockClaimPrl struct {
-	hasCalled           bool
-	input_receiver_addr common.Address
-	input_treasure_addr common.Address
-	input_treasure_key  *ecdsa.PrivateKey
-	output_bool         bool
-}
+var checkClaimClockCalled = false
+var ethAddressCalledWithCheckClaimClock common.Address
 
 func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
+	checkClaimClockCalled = false
+  
 	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
@@ -35,20 +30,20 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	mockClaimPrl := mockClaimPrl{
-		output_bool:         true,
-		input_receiver_addr: common.HexToAddress("0x0D8e461687b7D06f86EC348E0c270b0F279855F0"),
-	}
 	EthWrapper = services.Eth{
-		ClaimPRL:                      mockClaimPrl.claimPRL,
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
+		CheckClaimClock: func(address common.Address) (*big.Int, error) {
+			checkClaimClockCalled = true
+			ethAddressCalledWithCheckClaimClock = address
+			return big.NewInt(1), nil
+		},
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
-	ethKeyInEcdsaFormat, _ := crypto.HexToECDSA(ethKey)
+	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
-		"receiverEthAddr": "receiverEthAddr",
+		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
@@ -60,12 +55,9 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	// Check mockVerifyTreasure
 	suite.True(mockVerifyTreasure.hasCalled)
 	suite.Equal(5, len(mockVerifyTreasure.input_addr))
-	// Check mockClaimPrl
-	suite.True(mockClaimPrl.hasCalled)
-	suite.Equal(services.StringToAddress("receiverEthAddr"), mockClaimPrl.input_receiver_addr)
-	address := EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
-	suite.Equal(address, mockClaimPrl.input_treasure_addr)
-	suite.Equal(ethKeyInEcdsaFormat, mockClaimPrl.input_treasure_key)
+
+	suite.Equal(addr, ethAddressCalledWithCheckClaimClock)
+	suite.Equal(true, checkClaimClockCalled)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -78,6 +70,9 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 }
 
 func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
+
+	checkClaimClockCalled = false
+
 	m := mockVerifyTreasure{
 		output_bool:  false,
 		output_error: errors.New("Invalid address"),
@@ -86,8 +81,11 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 		VerifyTreasure: m.verifyTreasure,
 	}
 
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
-		"receiverEthAddr": "receiverEthAddr",
+		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
@@ -106,7 +104,10 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 	suite.Equal(false, resParsed.Success)
 }
 
-func (suite *ActionSuite) Test_Claim_Failure() {
+func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
+
+	checkClaimClockCalled = false
+
 	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
@@ -114,26 +115,30 @@ func (suite *ActionSuite) Test_Claim_Failure() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	mockClaimPrl := mockClaimPrl{
-		output_bool: false,
-	}
 	EthWrapper = services.Eth{
-		ClaimPRL:                      mockClaimPrl.claimPRL,
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
+		CheckClaimClock: func(address common.Address) (*big.Int, error) {
+			ethAddressCalledWithCheckClaimClock = address
+			checkClaimClockCalled = true
+			return big.NewInt(-1), errors.New("error")
+		},
 	}
 
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
-		"receiverEthAddr": "receiverEthAddr",
+		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
-		"ethKey":          "9999999999999999999999999999999999999999999999999999999999999999",
+		"ethKey":          ethKey,
 	})
 
 	suite.Equal(200, res.Code)
 
 	suite.True(mockVerifyTreasure.hasCalled)
-	suite.True(mockClaimPrl.hasCalled)
+	suite.True(checkClaimClockCalled)
 
 	// Parse response
 	resParsed := treasureRes{}
@@ -150,13 +155,4 @@ func (v *mockVerifyTreasure) verifyTreasure(addr []string) (bool, error) {
 	v.hasCalled = true
 	v.input_addr = addr
 	return v.output_bool, v.output_error
-}
-
-// For mocking ClaimPRL method
-func (v *mockClaimPrl) claimPRL(receiverAddress common.Address, treasureAddress common.Address, treasureKey *ecdsa.PrivateKey) bool {
-	v.hasCalled = true
-	v.input_receiver_addr = receiverAddress
-	v.input_treasure_addr = treasureAddress
-	v.input_treasure_key = treasureKey
-	return v.output_bool
 }

@@ -38,6 +38,7 @@ type PrometheusService struct {
 	HistogramTransactionGenesisHashResourceCreate  *prometheus.HistogramVec
 	HistogramTransactionGenesisHashResourceUpdate  *prometheus.HistogramVec
 	HistogramClaimUnusedPRLs                       *prometheus.HistogramVec
+	HistogramClaimTreasureForWebnode               *prometheus.HistogramVec
 	HistogramFlushOldWebNodes                      *prometheus.HistogramVec
 	HistogramProcessPaidSessions                   *prometheus.HistogramVec
 	HistogramBuryTreasureAddresses                 *prometheus.HistogramVec
@@ -59,7 +60,8 @@ func init() {
 	histogramTransactionBrokernodeResourceUpdate := prepareHistogram("transaction_brokernode_resource_update_seconds", "HistogramTransactionBrokernodeResourceUpdateSeconds", "code")
 	histogramTransactionGenesisHashResourceCreate := prepareHistogram("transaction_genesis_hash_resource_create_seconds", "HistogramTransactionGenesisHashResourceCreateSeconds", "code")
 	histogramTransactionGenesisHashResourceUpdate := prepareHistogram("transaction_genesis_hash_resource_seconds", "HistogramTransactionGenesisHashResourceUpdateSeconds", "code")
-	histogramClaimUnusedPRLs := prepareHistogram("claim_unsed_prls_seconds", "HistogramClaimUnusedPRLsSeconds", "code")
+	histogramClaimUnusedPRLs := prepareHistogram("claim_unused_prls_seconds", "HistogramClaimUnusedPRLsSeconds", "code")
+	histogramClaimTreasureForWebnode := prepareHistogram("claim_treasure_for_webnode_seconds", "HistogramTreasureForWebnodeSeconds", "code")
 	histogramFlushOldWebNodes := prepareHistogram("flush_old_web_nodes_seconds", "HistogramFlushOldWebNodes", "code")
 	histogramProcessPaidSessions := prepareHistogram("process_paid_sessions_seconds", "HistogramProcessPaidSessions", "code")
 	histogramBuryTreasureAddresses := prepareHistogram("bury_treasure_addresses_seconds", "HistogramBuryTreasureAddresses", "code")
@@ -85,6 +87,7 @@ func init() {
 		HistogramTransactionGenesisHashResourceCreate:  histogramTransactionGenesisHashResourceCreate,
 		HistogramTransactionGenesisHashResourceUpdate:  histogramTransactionGenesisHashResourceUpdate,
 		HistogramClaimUnusedPRLs:                       histogramClaimUnusedPRLs,
+		HistogramClaimTreasureForWebnode:               histogramClaimTreasureForWebnode,
 		HistogramFlushOldWebNodes:                      histogramFlushOldWebNodes,
 		HistogramProcessPaidSessions:                   histogramProcessPaidSessions,
 		HistogramBuryTreasureAddresses:                 histogramBuryTreasureAddresses,

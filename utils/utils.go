@@ -46,7 +46,7 @@ var isRavenEnabled bool = true
 var logErrorTags map[string]string
 
 func init() {
-	isRavenEnabled = !IsInUnitTest()
+	isRavenEnabled = os.Getenv("RAVEN_ENABLED") != "false"
 
 	isOysterPay := "enabled"
 	if os.Getenv("OYSTER_PAYS") == "" {
@@ -81,7 +81,7 @@ func IsInUnitTest() bool {
 
 /*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
 func IsRavenEnabled() bool {
-	return isRavenEnabled
+	return isRavenEnabled && !IsInUnitTest()
 }
 
 /*SetLogInfoForDatabaseUrl updates db_url for log info.*/
