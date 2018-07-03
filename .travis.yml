@@ -28,6 +28,8 @@ before_install:
   - cp .env.test .env
   - sudo sed -i -e 's/HOST_IP=""/HOST_IP="TRAVIS"/' .env
 
+  - openssl aes-256-cbc -K $encrypted_2d5af0fd0db0_key -iv $encrypted_2d5af0fd0db0_iv -in ./travis/id_rsa.enc -out ./travis/id_rsa -d
+
 install:
   - rm -rf ./data
   - docker-compose up --build -d
@@ -43,6 +45,12 @@ before_script:
   #   "
 
 script: docker-compose exec app buffalo test
+
+deploy:
+  provider: script
+  script: bash travis/deploy.sh production
+  on:
+    branch: master
 
 notifications:
   slack:
