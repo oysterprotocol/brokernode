@@ -154,15 +154,32 @@ func Test_getGasPrice(t *testing.T) {
 	t.Logf("current network gas price :%v", gasPrice.String())
 }
 
+// check if it's worth it to try and reclaiming eth from an address
+func Test_checkIfWorthReclaimingGas(t *testing.T) {
+	worthIt, amountToReclaim, err := services.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, services.GasLimitETHSend)
+
+	if worthIt {
+		t.Logf("Should try to reclaim gas: %v\n", "true")
+	} else {
+		t.Logf("Should try to reclaim gas: %v\n", "false")
+	}
+
+	t.Logf("Will attempt to reclaim this much: %v\n", amountToReclaim.String())
+
+	if err != nil {
+		t.Fatalf("Received an error: %v\n", err.Error())
+	}
+}
+
 // get gas price from network test
-func Test_calculateGasToSend(t *testing.T) {
+func Test_calculateGasNeeded(t *testing.T) {
 
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	gasLimitToUse := services.GasLimitETHSend
 
 	expectedGasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimitToUse)))
 
-	gasToSend, err := services.EthWrapper.CalculateGasToSend(gasLimitToUse)
+	gasToSend, err := services.EthWrapper.CalculateGasNeeded(gasLimitToUse)
 	if expectedGasToSend.Int64() != gasToSend.Int64() {
 		t.Fatalf("failed to calculate the gas to send: %v\n", err)
 	}
@@ -618,12 +635,30 @@ func Test_checkBuriedState(t *testing.T) {
 
 	addr, _, _ := services.EthWrapper.GenerateEthAddr()
 
-	_, err := services.EthWrapper.CheckBuriedState(addr)
+	buried, err := services.EthWrapper.CheckBuriedState(addr)
 
 	if err != nil {
 		t.Fatal("Failed to check the bury state of the given address.")
 	} else {
-		t.Log("Successfully checked bury state.")
+		result := "false"
+		if buried {
+			result = "true"
+		}
+		t.Log("Successfully checked bury state: " + result)
+	}
+}
+
+// check the claim clock value of an address
+func Test_checkClaimClock(t *testing.T) {
+
+	addr, _, _ := services.EthWrapper.GenerateEthAddr()
+
+	claimClock, err := services.EthWrapper.CheckClaimClock(addr)
+
+	if err != nil {
+		t.Fatal("Failed to check the claim of the given address.")
+	} else {
+		t.Log("Successfully checked claim clock of the address: " + claimClock.String())
 	}
 }
 

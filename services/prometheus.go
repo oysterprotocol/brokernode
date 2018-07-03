@@ -39,6 +39,8 @@ type PrometheusService struct {
 	HistogramTransactionGenesisHashResourceUpdate  *prometheus.HistogramVec
 	HistogramClaimUnusedPRLs                       *prometheus.HistogramVec
 	HistogramClaimTreasureForWebnode               *prometheus.HistogramVec
+	HistogramCheckAlphaPayments                    *prometheus.HistogramVec
+	HistogramCheckBetaPayments                     *prometheus.HistogramVec
 	HistogramFlushOldWebNodes                      *prometheus.HistogramVec
 	HistogramProcessPaidSessions                   *prometheus.HistogramVec
 	HistogramBuryTreasureAddresses                 *prometheus.HistogramVec
@@ -61,7 +63,9 @@ func init() {
 	histogramTransactionGenesisHashResourceCreate := prepareHistogram("transaction_genesis_hash_resource_create_seconds", "HistogramTransactionGenesisHashResourceCreateSeconds", "code")
 	histogramTransactionGenesisHashResourceUpdate := prepareHistogram("transaction_genesis_hash_resource_seconds", "HistogramTransactionGenesisHashResourceUpdateSeconds", "code")
 	histogramClaimUnusedPRLs := prepareHistogram("claim_unused_prls_seconds", "HistogramClaimUnusedPRLsSeconds", "code")
-	histogramClaimTreasureForWebnode := prepareHistogram("claim_treasure_for_webnode_seconds", "HistogramTreasureForWebnodeSeconds", "code")
+	histogramClaimTreasureForWebnode := prepareHistogram("claim_treasure_for_webnode_seconds", "HistogramClaimTreasureForWebnodeSeconds", "code")
+	histogramCheckAlphaPayments := prepareHistogram("check_alpha_payments_seconds", "HistogramCheckAlphaPaymentsSeconds", "code")
+	histogramCheckBetaPayments := prepareHistogram("check_beta_payments_seconds", "HistogramCheckBetaPaymentsSeconds", "code")
 	histogramFlushOldWebNodes := prepareHistogram("flush_old_web_nodes_seconds", "HistogramFlushOldWebNodes", "code")
 	histogramProcessPaidSessions := prepareHistogram("process_paid_sessions_seconds", "HistogramProcessPaidSessions", "code")
 	histogramBuryTreasureAddresses := prepareHistogram("bury_treasure_addresses_seconds", "HistogramBuryTreasureAddresses", "code")
@@ -88,6 +92,8 @@ func init() {
 		HistogramTransactionGenesisHashResourceUpdate:  histogramTransactionGenesisHashResourceUpdate,
 		HistogramClaimUnusedPRLs:                       histogramClaimUnusedPRLs,
 		HistogramClaimTreasureForWebnode:               histogramClaimTreasureForWebnode,
+		HistogramCheckAlphaPayments:                    histogramCheckAlphaPayments,
+		HistogramCheckBetaPayments:                     histogramCheckBetaPayments,
 		HistogramFlushOldWebNodes:                      histogramFlushOldWebNodes,
 		HistogramProcessPaidSessions:                   histogramProcessPaidSessions,
 		HistogramBuryTreasureAddresses:                 histogramBuryTreasureAddresses,

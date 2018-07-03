@@ -362,7 +362,7 @@ func sendPRL(treasureToBury models.Treasure) {
 
 func sendGas(treasureToBury models.Treasure) {
 
-	gasToSend, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLBury)
+	gasToSend, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLBury)
 	if err != nil {
 		fmt.Println("Cannot send Gas to treasure address: " + err.Error())
 		// already captured error in upstream function
