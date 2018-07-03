@@ -60,6 +60,7 @@ type Eth struct {
 	OysterCallMsg
 }
 
+// TxType Transaction Type Flag
 type TxType int
 
 const (
@@ -70,6 +71,7 @@ const (
 )
 
 const (
+	// SecondsDelayForETHPolling Delay used during transaction confirmation(s)
 	SecondsDelayForETHPolling = 10
 )
 
@@ -101,32 +103,85 @@ type TransactionWithBlockNumber struct {
 	Confirmed   *bool
 }
 
+// CalculateGasNeeded Gas Calculation for Sending Transaction
 type CalculateGasNeeded func(desiredGasLimit uint64) (*big.Int, error)
+
+// CheckIfWorthReclaimingGas Accept an address and desired gas limit and decide if it is worth reclaiming the leftover ETH
 type CheckIfWorthReclaimingGas func(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error)
+
+// CalculateGasToSend Gas Calculation for Sending Ether
+type CalculateGasToSend func(desiredGasLimit uint64) (*big.Int, error)
+
+// GenerateEthAddr Generate Valid Ethereum Network Address
 type GenerateEthAddr func() (addr common.Address, privateKey string, err error)
+
+// GenerateKeys Generate Private Keys W/O Address
 type GenerateKeys func(int) (privateKeys []string, err error)
+
+// GenerateEthAddrFromPrivateKey Generate Ethereum Address from Private Keys
 type GenerateEthAddrFromPrivateKey func(privateKey string) (addr common.Address)
+
+// GeneratePublicKeyFromPrivateKey Generate Ethereum Public Key from Private Key
 type GeneratePublicKeyFromPrivateKey func(c elliptic.Curve, k *big.Int) *ecdsa.PrivateKey
+
+// GetGasPrice Gas Price On Ethereum Network
 type GetGasPrice func() (*big.Int, error)
+
+// WaitForTransfer Wait For Transaction to Complete
 type WaitForTransfer func(brokerAddr common.Address, transferType string) (*big.Int, error)
+
+// CheckETHBalance Check Ethereum Balance
 type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
+
+// CheckPRLBalance Check PRL Balance on Oyster Pearl
 type CheckPRLBalance func(common.Address) /*In Wei Unit*/ *big.Int
+
+// GetCurrentBlock Get Current(Latest) Block from Ethereum Network
 type GetCurrentBlock func() (*types.Block, error)
-type SendETH func(fromAddr common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
+
+// SendETH Send Ether To Valid Ethereum Network Address
+type SendETH func(fromAddress common.Address, fromPrivateKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error)
+
+// GetConfirmationStatus Get Transaction Confirmation Status
 type GetConfirmationStatus func(txHash common.Hash) (*big.Int, error)
+
+// WaitForConfirmation Wait For Transaction Confirmation to Complete
 type WaitForConfirmation func(txHash common.Hash, pollingDelayInSeconds int) uint
+
+// PendingConfirmation Check Transaction Pool For Pending Confirmation
 type PendingConfirmation func(txHash common.Hash) bool
+
+// GetNonce Return Nonce For Ethereum Account
 type GetNonce func(ctx context.Context, address common.Address) (uint64, error)
+
+// GetTransactionTable Return Transactions Table with Transactions Waiting To Confirm
 type GetTransactionTable func() map[common.Hash]TransactionWithBlockNumber
+
+// GetTransaction Return Transaction By Hash
 type GetTransaction func(txHash common.Hash) TransactionWithBlockNumber
+
+// GetTestWallet Utility to Access the Internal Test Wallet
 type GetTestWallet func() *keystore.Key
 
+// BuryPrl Bury Pearl With Oyster Pearl
 type BuryPrl func(msg OysterCallMsg) (bool, string, int64)
+
+// CheckBuriedState Check if an Address Is Buried
 type CheckBuriedState func(addressToCheck common.Address) (bool, error)
+
+// CheckClaimClock Call the smart contrat to check the claim clock status of an address
 type CheckClaimClock func(addressToCheck common.Address) (*big.Int, error)
+
+// CreateSendPRLMessage Utility to Send PRLs
 type CreateSendPRLMessage func(from common.Address, privateKey *ecdsa.PrivateKey, to common.Address, prlAmount big.Int) (OysterCallMsg, error)
+
+// SendPRL Send PRL from Account to Account
 type SendPRL func(msg OysterCallMsg) bool
+
+// SendPRLFromOyster Send PRL from Oyster Pearl
 type SendPRLFromOyster func(msg OysterCallMsg) (bool, string, int64)
+
+// ClaimPRL Claim Buried PRLs from Oyster Pearl
 type ClaimPRL func(receiverAddress common.Address, treasureAddress common.Address, treasurePrivateKey *ecdsa.PrivateKey) bool
 
 // Singleton client
@@ -141,12 +196,16 @@ var (
 	EthWrapper           Eth
 )
 
+// Limits selected based on actual transactions from etherscan
 const (
-	GasLimitPRLSend  uint64 = 60000
-	GasLimitETHSend  uint64 = 21000
-	GasLimitPRLBury  uint64 = 66000
+	// PRL Gas Limit
+	GasLimitPRLSend uint64 = 60000
+	// ETH Gas Limit
+	GasLimitETHSend uint64 = 21000
+	// PRL Bury Gas Limit
+	GasLimitPRLBury uint64 = 66000
+	// PRL Claim Gas Limit
 	GasLimitPRLClaim uint64 = 85000
-	// from actual transactions on etherscan, this tends to be 53898
 )
 
 func init() {
@@ -285,7 +344,7 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
-	if privateKey[0] == '0' {
+	if privateKey[0] == '0' || len(privateKey) != 64 {
 		return generateEthAddr()
 	}
 	return addr, privateKey, err
@@ -341,10 +400,12 @@ func StringToAddress(address string) common.Address {
 	return common.HexToAddress(address)
 }
 
+// StringToPrivateKey Utility HexToECDSA parses a secp256k1 private key
 func StringToPrivateKey(hexPrivateKey string) (*ecdsa.PrivateKey, error) {
 	return crypto.HexToECDSA(hexPrivateKey)
 }
 
+// StringToTxHash Utility to parse transaction hash string to common.Hash
 func StringToTxHash(txHash string) common.Hash {
 	return common.HexToHash(txHash)
 }
@@ -352,6 +413,9 @@ func StringToTxHash(txHash string) common.Hash {
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
+  // if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
+	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
+  
 	// connect ethereum client
 	client, err := sharedClient()
 	if err != nil {
@@ -366,11 +430,6 @@ func getGasPrice() (*big.Int, error) {
 		oyster_utils.LogIfError(err, nil)
 	}
 	return gasPrice, nil
-
-	// if QAing, comment out all lines above and un-comment out the lines below
-	// for faster transactions
-
-	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
 }
 
 // Get Estimated Gas Price for a Transaction
@@ -556,29 +615,20 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	// get transaction receipt
 	receipt, err := getTransactionReceipt(txHash)
 	if err != nil {
-		fmt.Errorf("unable to get transaction receipt : %v\n", err)
+		fmt.Printf("unable to get transaction receipt : %v\n", err)
 		return big.NewInt(0), err
 	}
 	fmt.Printf("receipt status: %v\n", receipt.Status)
 	return big.NewInt(int64(receipt.Status)), nil
 }
 
-// Wait For Confirmation
-// TODO add a channel output to return result via subscription
-//func waitForConfirmation(txHash common.Hash, status chan<- uint) (ethereum.Subscription, error) {
+// Wait For Transaction Confirmation
 func waitForConfirmation(txHash common.Hash, pollingDelayInSeconds int) uint {
 	var status uint
 	pollingDelayDuration := time.Duration(pollingDelayInSeconds) * time.Second
 	for {
 		// access confirmation status until we get the correct response
 		// need to be aware of possible *known transaction* error
-		// to prevent from calling this method unless we have a pending tx
-		pendingCount, _ := getPendingTransactions()
-		if pendingCount > 0 {
-			continue
-		}
-		// need to break, need to provide older hash from previous txs to enact the error
-		// could be done and ready for confirmation
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -628,9 +678,7 @@ func getTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
 	return client.TransactionReceipt(ctx, txHash)
 }
 
-// WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH.
-// If it is completed return number of PRL.
-// TODO:  Does this need to return both PRL and ETH?
+// WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH
 func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
 	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
@@ -646,7 +694,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 	query := ethereum.FilterQuery{
 		FromBlock: nil, // beginning of the queried range, nil means genesis block
 		ToBlock:   nil, // end of the range, nil means latest block
-		Addresses: nil, //[]common.Address{MainWalletAddress},
+		Addresses: []common.Address{brokerAddr},
 		Topics:    nil, // matches any topic list
 	}
 
@@ -698,6 +746,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 }
 
+
 func checkIfWorthReclaimingGas(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error) {
 	ethBalance := checkETHBalance(address)
 	if ethBalance.Int64() == 0 {
@@ -728,7 +777,7 @@ func calculateGasNeeded(desiredGasLimit uint64) (*big.Int, error) {
 }
 
 // Transfer funds from main wallet
-func sendETH(from common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
+func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.Address, amount *big.Int) (types.Transactions, string, int64, error) {
 
 	client, err := sharedClient()
 	if err != nil {
@@ -740,13 +789,15 @@ func sendETH(from common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.A
 	defer cancel()
 
 	// generate nonce
-	nonce, _ := client.PendingNonceAt(ctx, from)
+	nonce, _ := client.PendingNonceAt(ctx, fromAddress)
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
+	// if QAing, uncomment this out and comment out the line above for faster transactions
+	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	// estimation
-	estimate, failedEstimate := getEstimatedGasPrice(toAddr, from, GasLimitETHSend, *gasPrice, *amount)
+	estimate, failedEstimate := getEstimatedGasPrice(toAddr, fromAddress, GasLimitETHSend, *gasPrice, *amount)
 	if failedEstimate != nil {
 		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
 		return types.Transactions{}, "", -1, failedEstimate
@@ -754,7 +805,7 @@ func sendETH(from common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr common.A
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
-	balance := checkETHBalance(from)
+	balance := checkETHBalance(fromAddress)
 	fmt.Printf("balance : %v\n", balance)
 
 	// amount is greater than balance, return error
@@ -1017,20 +1068,6 @@ func sendPRL(msg OysterCallMsg) bool {
 	// generate nonce
 	nonce, _ := client.PendingNonceAt(ctx, msg.From)
 
-	// default gasLimit on oysterby 4294967295
-	gasPrice, _ := getGasPrice()
-	currentBlock, _ := getCurrentBlock()
-	gasLimit := currentBlock.GasLimit()
-
-	// estimation
-	estimate, failedEstimate := getEstimatedGasPrice(msg.To, msg.From, gasLimit, *gasPrice, msg.Amount)
-	if failedEstimate != nil {
-		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
-		return false
-	}
-	estimatedGas := new(big.Int).SetUint64(estimate)
-	fmt.Printf("estimatedGas : %v\n", estimatedGas)
-
 	balance := checkPRLBalance(msg.From)
 	fmt.Printf("balance : %v\n", balance)
 
@@ -1040,8 +1077,11 @@ func sendPRL(msg OysterCallMsg) bool {
 		return false
 	}
 	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
-	// create new transaction
 
+	// default gasLimit on oysterby 4294967295
+	gasPrice, _ := getGasPrice()
+
+	// create new transaction
 	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, msg.Gas, gasPrice, nil)
 
 	// signer
@@ -1075,20 +1115,10 @@ func sendPRL(msg OysterCallMsg) bool {
 		confirmTx = *transaction
 	}
 
-	var status = false
-
 	// confirm status of transaction
 	txStatus := waitForConfirmation(confirmTx.Hash(), SecondsDelayForETHPolling)
 
-	if txStatus == 0 {
-		fmt.Println("transaction failure")
-		status = false
-	} else if txStatus == 1 {
-		fmt.Println("confirmation completed")
-		status = true
-	}
-
-	return status
+	return processTxStatus(txStatus)
 }
 
 // send prl from oyster via contract transfer method
@@ -1098,19 +1128,22 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 
 	if err != nil {
-		log.Printf("unable to access contract instance at : %v", err)
+		log.Printf("unable to access contract instance at : %v\n", err)
 	}
-
-	log.Printf("using wallet key store from: %v", msg.From)
+	
 	// initialize transactor // may need to move this to a session based transactor
 	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if err != nil {
 		log.Printf("unable to create a new transactor : %v", err)
 	}
 
-	log.Printf("authorized transactor : %v", auth.From.Hex())
+	log.Printf("authorized transactor : %v\n", auth.From.Hex())
 
+	// use this when in production:
 	gasPrice, err := getGasPrice()
+
+	// use this when QAing:
+	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	opts := bind.TransactOpts{
 		From:     auth.From,
@@ -1132,6 +1165,19 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	printTx(tx)
 
 	return true, tx.Hash().Hex(), int64(tx.Nonce())
+}
+
+// utility to process the transaction status
+func processTxStatus(txStatus uint) bool {
+	status := false
+	if txStatus == 0 {
+		fmt.Println("transaction failure")
+		status = false
+	} else if txStatus == 1 {
+		fmt.Println("confirmation completed")
+		status = true
+	}
+	return status
 }
 
 // utility to access the test wallet keystore
