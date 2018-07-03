@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -154,9 +155,11 @@ func NewCompletedUpload(session UploadSession) error {
 
 		vErr, err = DB.ValidateAndSave(&completedUpload)
 		if err != nil {
+			fmt.Println("error saving completed upload")
 			oyster_utils.LogIfError(err, nil)
 		}
 		if len(vErr.Errors) != 0 {
+			fmt.Println("validation errors saving completed upload")
 			oyster_utils.LogIfValidationError(
 				"validation errors for creating completedUpload with SessionTypeAlpha.", vErr, nil)
 		}
@@ -169,14 +172,19 @@ func NewCompletedUpload(session UploadSession) error {
 
 		vErr, err = DB.ValidateAndSave(&completedUpload)
 		if err != nil {
+			fmt.Println("error saving completed upload")
 			oyster_utils.LogIfError(err, nil)
 		}
 		if len(vErr.Errors) != 0 {
+			fmt.Println("validation errors saving completed upload")
 			oyster_utils.LogIfValidationError(
 				"validation errors for creating completedUpload with SessionTypeBeta.", vErr, nil)
 		}
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
+		if err != nil {
+			fmt.Println(err)
+		}
 		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
 		return err
 	}
