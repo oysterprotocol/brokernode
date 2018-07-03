@@ -110,7 +110,7 @@ func CheckProcessingGasReclaims() {
 	for _, pending := range gasReclaimPending {
 		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.ETHAddr))
 		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasToSend(services.GasLimitETHSend)
+			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
 			if err != nil {
 				fmt.Println("Could not calculate gas needed to retrieve ETH from " + pending.ETHAddr +
 					" in CheckProcessingGasReclaims() in claim_unused_prls")
@@ -229,7 +229,20 @@ func SendGasForNewClaims() {
 		oyster_utils.LogIfError(fmt.Errorf("Error getting completed uploads whose addresses need gas: %v", err), nil)
 		return
 	}
-	if len(needGas) > 0 {
+	needGasHavePRLs := []models.CompletedUpload{}
+	for _, completedUpload := range needGas {
+		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(completedUpload.ETHAddr))
+
+		if balance.Int64() == 0 {
+			fmt.Println("No balance at address " + completedUpload.ETHAddr)
+			// this is most likely a beta treasure address
+			// it will get skipped until there is a balance at the address
+			continue
+		} else {
+			needGasHavePRLs = append(needGasHavePRLs, completedUpload)
+		}
+	}
+	if len(needGasHavePRLs) > 0 {
 
 		for _, transfer := range needGas {
 			oyster_utils.LogToSegment("claim_unused_prls: send_gas_for_new_claim", analytics.NewProperties().
@@ -237,7 +250,7 @@ func SendGasForNewClaims() {
 				Set("genesis_hash", transfer.GenesisHash))
 		}
 
-		InitiateGasTransfer(needGas)
+		InitiateGasTransfer(needGasHavePRLs)
 	}
 }
 
@@ -270,7 +283,7 @@ func RetrieveLeftoverETH() {
 	for _, completedClaim := range completedClaims {
 		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(completedClaim.ETHAddr))
 		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasToSend(services.GasLimitETHSend)
+			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
 			if err != nil {
 				fmt.Println("Could not calculate gas needed to retrieve ETH from " + completedClaim.ETHAddr +
 					" in RetrieveLeftoverETH() in claim_unused_prls")
@@ -312,9 +325,9 @@ func RetrieveLeftoverETH() {
 	}
 }
 
-// wraps calls eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing
+// wraps call to eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
-	gasToSend, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLSend)
+	gasToSend, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLSend)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
@@ -337,7 +350,7 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 	}
 }
 
-// wraps calls eth_gatway's ClaimUnusedPRLs method and sets PRLStatus to PRLClaimProcessing
+// wraps calls eth_gatway's SendPRLFromOyster method and sets PRLStatus to PRLClaimProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 	for _, upload := range uploadsWithUnclaimedPRLs {
 		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(upload.ETHAddr))
