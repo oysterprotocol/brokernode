@@ -54,7 +54,7 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 
 	// Check mockVerifyTreasure
 	suite.True(mockVerifyTreasure.hasCalled)
-	v.Equal(5, len(mockVerifyTreasure.input_addr))
+	suite.Equal(5, len(mockVerifyTreasure.input_addr))
 
 	suite.Equal(addr, ethAddressCalledWithCheckClaimClock)
 	suite.Equal(true, checkClaimClockCalled)
