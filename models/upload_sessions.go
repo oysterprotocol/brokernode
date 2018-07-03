@@ -341,25 +341,6 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 			break
 		}
 	}
-
-	allDataMaps := []DataMap{}
-
-	err = DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ? AND status = ?",
-		u.GenesisHash,
-		Pending).All(&allDataMaps)
-
-	oyster_utils.LogIfError(err, nil)
-
-	for _, dataMap := range allDataMaps {
-		fmt.Println("_________________")
-		fmt.Println("In bulk update:")
-		fmt.Println("message:                " + dataMap.Message)
-		fmt.Printf("message status:  %d\n", dataMap.MsgStatus)
-		fmt.Printf("message status:  %v\n", MsgStatusMap[dataMap.MsgStatus])
-		fmt.Printf("message id:      %v\n", dataMap.MsgID)
-		fmt.Println("_________________")
-	}
-
 	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY})
 
 	return err
