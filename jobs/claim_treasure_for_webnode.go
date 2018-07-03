@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+/* ClaimTreasureForWebnode handles all the operations needed to claim PRL for a webnode */
 func ClaimTreasureForWebnode(thresholdTime time.Time, PrometheusWrapper services.PrometheusService) {
 
 	start := PrometheusWrapper.TimeNow()
@@ -28,6 +29,7 @@ func ClaimTreasureForWebnode(thresholdTime time.Time, PrometheusWrapper services
 
 		ResendErroredETHTransfers()
 		ResendErroredPRLClaims()
+		ResendErroredGasReclaims()
 
 		SendGasForNewTreasureClaims()
 		StartNewTreasureClaims()
@@ -37,22 +39,24 @@ func ClaimTreasureForWebnode(thresholdTime time.Time, PrometheusWrapper services
 	}
 }
 
+/* CheckOngoingGasTransactions checks the status of gas transfers to
+treasure addresses that are currently in progress */
 func CheckOngoingGasTransactions() {
 	gasPending, err := models.GetTreasureClaimsByGasStatus(models.GasTransferProcessing)
 	if err != nil {
 		fmt.Println("Cannot get webnode_treasure_claims with pending gas transfers: " + err.Error())
-		// already captured error in upstream function
+		/* already captured error in upstream function */
 		return
 	}
 
 	if len(gasPending) <= 0 {
 		return
 	}
-	gasToProcessTransaction, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLClaim)
+	gasToProcessTransaction, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLClaim)
 	if err != nil {
-		fmt.Println("Cannot calculate gas to send to webnode_treasure_claims with pending " +
+		fmt.Println("Cannot calculate gas needed in webnode_treasure_claims with pending " +
 			"gas transfers: " + err.Error())
-		// already captured error in upstream function
+		/* already captured error in upstream function */
 		return
 	}
 
@@ -80,11 +84,13 @@ func CheckOngoingGasTransactions() {
 	}
 }
 
+/* CheckOngoingPRLClaims checks the claimClock of an address we are in the process of trying to claim PRL from
+to see if it has changed from what it was initially--if it has, the transaction is complete */
 func CheckOngoingPRLClaims() {
 	prlsPending, err := models.GetTreasureClaimsByPRLStatus(models.PRLClaimProcessing)
 	if err != nil {
 		fmt.Println("Cannot get webnode_treasure_claims with pending PRL retrieval: " + err.Error())
-		// already captured error in upstream function
+		/* already captured error in upstream function */
 		return
 	}
 
@@ -97,7 +103,8 @@ func CheckOngoingPRLClaims() {
 		}
 
 		if claimClock.Int64() != pending.StartingClaimClock && pending.StartingClaimClock != int64(-1) {
-			fmt.Println("PRLs claimed from " + pending.TreasureETHAddr + " to " + pending.ReceiverETHAddr + " in CheckOngoingPRLClaims() " +
+			fmt.Println("PRLs claimed from " + pending.TreasureETHAddr + " to " + pending.ReceiverETHAddr +
+				" in CheckOngoingPRLClaims() " +
 				"in claim_treasure_for_webnode")
 			pending.ClaimPRLStatus = models.PRLClaimSuccess
 			vErr, err := models.DB.ValidateAndUpdate(&pending)
@@ -112,25 +119,27 @@ func CheckOngoingPRLClaims() {
 				oyster_utils.LogIfError(err, nil)
 				continue
 			}
-			oyster_utils.LogToSegment("claim_treasure_for_webnode: CheckOngoingPRLClaims", analytics.NewProperties().
-				Set("new_status", models.PRLClaimStatusMap[pending.ClaimPRLStatus]).
-				Set("eth_address_from", pending.TreasureETHAddr))
+			oyster_utils.LogToSegment("claim_treasure_for_webnode: CheckOngoingPRLClaims",
+				analytics.NewProperties().
+					Set("new_status", models.PRLClaimStatusMap[pending.ClaimPRLStatus]).
+					Set("eth_address_from", pending.TreasureETHAddr))
 		}
 	}
 }
 
+/* CheckOngoingGasReclaims checks the status of gas reclaims that are currently in progress */
 func CheckOngoingGasReclaims() {
 	gasReclaimPending, err := models.GetTreasureClaimsByGasStatus(models.GasTransferLeftoversReclaimProcessing)
 	if err != nil {
 		fmt.Println("Cannot get webnode_treasure_claims with pending gas transfers: " + err.Error())
-		// already captured error in upstream function
+		/* already captured error in upstream function */
 		return
 	}
 
 	for _, pending := range gasReclaimPending {
 		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.TreasureETHAddr))
 		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasToSend(services.GasLimitETHSend)
+			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
 			if err != nil {
 				fmt.Println("Could not calculate gas needed to retrieve ETH from " + pending.TreasureETHAddr +
 					" in CheckProcessingGasReclaims() in claim_treasure_for_webnode")
@@ -139,7 +148,7 @@ func CheckOngoingGasReclaims() {
 			if gasNeededToReclaimETH.Int64() > ethBalance.Int64() {
 				fmt.Println("Not enough ETH to retrieve leftover ETH from " + pending.TreasureETHAddr +
 					" in CheckOngoingGasReclaims() in claim_treasure_for_webnode, setting to success")
-				// won't be able to reclaim whatever is left, just set to success
+				/* won't be able to reclaim whatever is left, just set to success */
 				pending.GasStatus = models.GasTransferLeftoversReclaimSuccess
 				models.DB.ValidateAndUpdate(&pending)
 			}
@@ -152,7 +161,7 @@ func CheckOngoingGasReclaims() {
 	}
 }
 
-// for gas transfers that are still processing by the time of the threshold
+/* ResendOldETHTransfers will retry gas transfers that are still processing by the time of the threshold */
 func ResendOldETHTransfers(thresholdTime time.Time) {
 	oldGasTransfers, err := models.GetTreasureClaimsWithTimedOutGasTransfers(thresholdTime)
 
@@ -172,7 +181,7 @@ func ResendOldETHTransfers(thresholdTime time.Time) {
 	}
 }
 
-// for prl transfers that are still processing by the time of the threshold
+/* ResendOldPRLClaims will retry claims that are still processing by the time of the threshold */
 func ResendOldPRLClaims(thresholdTime time.Time) {
 	oldPRLClaims, err := models.GetTreasureClaimsWithTimedOutPRLClaims(thresholdTime)
 	if err != nil {
@@ -190,7 +199,7 @@ func ResendOldPRLClaims(thresholdTime time.Time) {
 	}
 }
 
-// for leftover gas reclaims that are still processing by the time of the threshold
+/* ResendOldGasReclaims will reset timed out gas reclaims to a previous state to trigger a retry */
 func ResendOldGasReclaims(thresholdTime time.Time) {
 	oldGasReclaims, err := models.GetTreasureClaimsWithTimedOutGasReclaims(thresholdTime)
 	if err != nil {
@@ -198,13 +207,13 @@ func ResendOldGasReclaims(thresholdTime time.Time) {
 		return
 	}
 	for _, reclaim := range oldGasReclaims {
-		// reset it back to a prior state so we will try again
+		/* reset it back to a prior state so we will try again */
 		reclaim.GasStatus = models.GasTransferSuccess
 		models.DB.ValidateAndUpdate(&reclaim)
 	}
 }
 
-// for gas transfers that are in an error state
+/* ResendErroredETHTransfers will retry gas transfers for earlier gas transfers with an error */
 func ResendErroredETHTransfers() {
 	gasTransferErrors, err := models.GetTreasureClaimsByGasStatus(models.GasTransferError)
 	if err != nil {
@@ -223,7 +232,7 @@ func ResendErroredETHTransfers() {
 	}
 }
 
-// for prl transfers that are in an error state
+/* ResendErroredPRLClaims will retry PRL claims if a previous claim attempt had an error */
 func ResendErroredPRLClaims() {
 	prlTransferErrors, err := models.GetTreasureClaimsByPRLStatus(models.PRLClaimError)
 	if err != nil {
@@ -243,7 +252,21 @@ func ResendErroredPRLClaims() {
 	}
 }
 
-// for new claims with no gas
+/* ResendErroredGasReclaims sets the errored gas reclaims back to a previous state so we will try again */
+func ResendErroredGasReclaims() {
+	errorGasReclaims, err := models.GetTreasureClaimsByGasStatus(models.GasTransferLeftoversReclaimError)
+	if err != nil {
+		oyster_utils.LogIfError(fmt.Errorf("Error getting errored gas reclaims: %v", err), nil)
+		return
+	}
+	for _, reclaim := range errorGasReclaims {
+		/* reset it back to a prior state so we will try again */
+		reclaim.GasStatus = models.GasTransferSuccess
+		models.DB.ValidateAndUpdate(&reclaim)
+	}
+}
+
+/* SendGasForNewTreasureClaims will send gas to new treasure claims so we will be able to invoke claim() */
 func SendGasForNewTreasureClaims() {
 	needGas, err := models.GetTreasureClaimsByGasStatus(models.GasTransferNotStarted)
 	if err != nil {
@@ -262,7 +285,8 @@ func SendGasForNewTreasureClaims() {
 	}
 }
 
-// for claims whose gas transfers succeeded but there is still unclaimed PRL
+/* StartNewTreasureClaims will initiate PRL claims for treasure addresses that have gas but have not had their PRL
+claimed yet*/
 func StartNewTreasureClaims() {
 	readyClaims, err := models.GetTreasureClaimsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimNotStarted)
 	if err != nil {
@@ -282,7 +306,8 @@ func StartNewTreasureClaims() {
 	}
 }
 
-// for claims whose gas transfers succeeded but there is still unclaimed PRL
+/* RetrieveLeftoverETHFromTreasureClaiming will retrieve leftover gas at the treasure addresses if there is enough to
+justify the transaction */
 func RetrieveLeftoverETHFromTreasureClaiming() {
 	completedClaims, err := models.GetTreasureClaimsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimSuccess)
 	if err != nil {
@@ -290,53 +315,45 @@ func RetrieveLeftoverETHFromTreasureClaiming() {
 		return
 	}
 	for _, completedClaim := range completedClaims {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(completedClaim.TreasureETHAddr))
-		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasToSend(services.GasLimitETHSend)
-			if err != nil {
-				fmt.Println("Could not calculate gas needed to retrieve ETH from " + completedClaim.TreasureETHAddr +
-					" in RetrieveLeftoverETHFromTreasureClaiming() in claim_treasure_for_webnode")
-				continue
-			}
-			if gasNeededToReclaimETH.Int64() > ethBalance.Int64() {
-				fmt.Println("Not enough ETH to retrieve leftover ETH from " + completedClaim.TreasureETHAddr +
-					" in RetrieveLeftoverETHFromTreasureClaiming() in claim_treasure_for_webnode, setting to success")
-				// won't be able to reclaim whatever is left, just set to success
-				completedClaim.GasStatus = models.GasTransferLeftoversReclaimSuccess
-				models.DB.ValidateAndUpdate(&completedClaim)
-				continue
-			}
-
-			gasToReclaim := new(big.Int).Sub(ethBalance, gasNeededToReclaimETH)
-
-			privateKey, err := services.StringToPrivateKey(completedClaim.DecryptTreasureEthKey())
-
-			_, _, _, err = EthWrapper.SendETH(
-				services.StringToAddress(completedClaim.TreasureETHAddr),
-				privateKey,
-				services.MainWalletAddress,
-				gasToReclaim)
-			if err != nil {
-				fmt.Println("Could not reclaim leftover ETH from " + completedClaim.TreasureETHAddr +
-					" in RetrieveLeftoverETH in claim_treasure_for_webnode")
-			} else {
-				fmt.Println("Reclaiming leftover ETH from " + completedClaim.TreasureETHAddr + " in RetrieveLeftoverETHFromTreasureClaiming " +
-					"in claim_treasure_for_webnode")
-				completedClaim.GasStatus = models.GasTransferLeftoversReclaimProcessing
-				models.DB.ValidateAndUpdate(&completedClaim)
-			}
-		} else {
-			fmt.Println("No extra gas to reclaim from " + completedClaim.TreasureETHAddr + " in RetrieveLeftoverETHFromTreasureClaiming " +
-				"in claim_treasure_for_webnode")
+		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
+			services.StringToAddress(completedClaim.TreasureETHAddr), services.GasLimitETHSend)
+		if err != nil {
+			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
+				completedClaim.TreasureETHAddr +
+				" in RetrieveLeftoverETHFromTreasureClaiming() in claim_treasure_for_webnode.")
+			continue
+		} else if !worthReclaimingGas {
+			fmt.Println("Not enough ETH to retrieve leftover ETH from " + completedClaim.TreasureETHAddr +
+				" in RetrieveLeftoverETHFromTreasureClaiming() in claim_treasure_for_webnode, setting to success")
+			/* won't be able to reclaim whatever is left, just set to success */
 			completedClaim.GasStatus = models.GasTransferLeftoversReclaimSuccess
 			models.DB.ValidateAndUpdate(&completedClaim)
+			continue
 		}
+
+		privateKey, err := services.StringToPrivateKey(completedClaim.DecryptTreasureEthKey())
+
+		_, _, _, err = EthWrapper.SendETH(
+			services.StringToAddress(completedClaim.TreasureETHAddr),
+			privateKey,
+			services.MainWalletAddress,
+			gasToReclaim)
+		if err != nil {
+			fmt.Println("Could not reclaim leftover ETH from " + completedClaim.TreasureETHAddr +
+				" in RetrieveLeftoverETH in claim_treasure_for_webnode")
+		} else {
+			fmt.Println("Reclaiming leftover ETH from " + completedClaim.TreasureETHAddr + " in RetrieveLeftoverETHFromTreasureClaiming " +
+				"in claim_treasure_for_webnode")
+			completedClaim.GasStatus = models.GasTransferLeftoversReclaimProcessing
+			models.DB.ValidateAndUpdate(&completedClaim)
+		}
+
 	}
 }
 
-// wraps call to eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing
+/* SendGas wraps call to eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing */
 func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
-	gasToClaim, err := EthWrapper.CalculateGasToSend(services.GasLimitPRLClaim)
+	gasToClaim, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLClaim)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
@@ -345,7 +362,7 @@ func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
 
 		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(treasureClaim.TreasureETHAddr))
 		if ethBalance.Int64() > gasToClaim.Int64() {
-			// already have enough gas
+			/* already have enough gas */
 			treasureClaim.GasStatus = models.GasTransferSuccess
 			models.DB.ValidateAndUpdate(&treasureClaim)
 			continue
@@ -370,69 +387,77 @@ func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
 	}
 }
 
-// wraps calls eth_gatway's ClaimPRLs method and sets PRLStatus to PRLClaimProcessing
+/*ClaimPRL wraps calls eth_gatway's ClaimPRLs method and sets PRLStatus to PRLClaimProcessing */
 func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 	for _, treasureClaim := range treasuresWithPRLsToBeClaimed {
 
-		if treasureClaim.StartingClaimClock == -1 {
-
-			// set the claim clock so we can check later that we were successful
-			claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				continue
-			}
-
-			treasureClaim.StartingClaimClock = claimClock.Int64()
-			vErr, err := models.DB.ValidateAndUpdate(&treasureClaim)
-
-			if len(vErr.Errors) > 0 {
-				oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
-				continue
-			}
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				continue
-			}
+		/* set the claim clock so we can check later that we were successful */
+		err := SetClaimClockIfUnset(&treasureClaim)
+		if err != nil {
+			continue
 		}
 
 		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(treasureClaim.TreasureETHAddr))
 
 		if balance.Int64() == 0 {
-			// no claimable treasure
-			err := errors.New("expected treasure but got balance of 0 at " + treasureClaim.TreasureETHAddr)
-			oyster_utils.LogIfError(err, nil)
+			/* no claimable treasure */
+			oyster_utils.LogIfError(errors.New("expected treasure but got balance of 0 at "+
+				treasureClaim.TreasureETHAddr), nil)
 			treasureClaim.ClaimPRLStatus = models.PRLClaimSuccess
 			models.DB.ValidateAndUpdate(&treasureClaim)
 			continue
 		}
 
 		privateKey := treasureClaim.DecryptTreasureEthKey()
-
 		ecdsaPrivateKey, err := services.StringToPrivateKey(privateKey)
-
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 
-		claimSuccess := services.EthWrapper.ClaimPRL(
+		claimSuccess := EthWrapper.ClaimPRL(
 			services.StringToAddress(treasureClaim.ReceiverETHAddr),
 			services.StringToAddress(treasureClaim.TreasureETHAddr),
 			ecdsaPrivateKey)
-
 		if claimSuccess {
 			fmt.Println("ClaimPRL processing from " + treasureClaim.TreasureETHAddr + " claim_treasure_for_webnode")
 			treasureClaim.ClaimPRLStatus = models.PRLClaimProcessing
 			models.DB.ValidateAndUpdate(&treasureClaim)
 		} else {
-			err := errors.New("error claiming prls from treasure addresss: " + treasureClaim.TreasureETHAddr)
+			err := errors.New("error claiming prls from treasure address: " + treasureClaim.TreasureETHAddr)
 			oyster_utils.LogIfError(err, nil)
+			treasureClaim.ClaimPRLStatus = models.PRLClaimError
+			models.DB.ValidateAndUpdate(&treasureClaim)
 		}
 	}
 }
 
-// purge claims whose GasStatus is GasTransferLeftoversReclaimSuccess
+/* SetClaimClockIfUnset will set the claim clock of a claim if it has not already been set */
+func SetClaimClockIfUnset(treasureClaim *models.WebnodeTreasureClaim) error {
+
+	if treasureClaim.StartingClaimClock == -1 {
+		claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		treasureClaim.StartingClaimClock = claimClock.Int64()
+		vErr, err := models.DB.ValidateAndUpdate(treasureClaim)
+
+		if len(vErr.Errors) > 0 {
+			oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+			return err
+		}
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+	}
+	return nil
+}
+
+/* PurgeCompletedTreasureClaims purges claims whose GasStatus is GasTransferLeftoversReclaimSuccess */
 func PurgeCompletedTreasureClaims() {
 	err := models.DeleteCompletedTreasureClaims()
 	if err != nil {

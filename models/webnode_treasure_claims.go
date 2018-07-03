@@ -1,12 +1,9 @@
 package models
 
 import (
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/utils"
-	"golang.org/x/crypto/sha3"
 	"math/big"
 	"time"
 
@@ -33,6 +30,9 @@ type WebnodeTreasureClaim struct {
 	GasTxHash             string            `json:"gasTxHash" db:"gas_tx_hash"`
 	GasTxNonce            int64             `json:"gasTxNonce" db:"gas_tx_nonce"`
 }
+
+/* UnsetClaimClockValue will allow us to check if the claim clock needs to be set */
+var UnsetClaimClockValue = big.NewInt(-1)
 
 // String is not required by pop and may be deleted
 func (w WebnodeTreasureClaim) String() string {
@@ -83,7 +83,7 @@ func (w *WebnodeTreasureClaim) BeforeCreate(tx *pop.Connection) error {
 	}
 
 	if w.StartingClaimClock == 0 {
-		startingClock := big.NewInt(-1)
+		startingClock := UnsetClaimClockValue
 		w.StartingClaimClock = startingClock.Int64()
 	}
 
@@ -98,22 +98,12 @@ func (w *WebnodeTreasureClaim) AfterCreate(tx *pop.Connection) error {
 }
 
 func (w *WebnodeTreasureClaim) EncryptTreasureEthKey() {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(w.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(w.CreatedAt.Clock()))), sha3.New256())
-
-	encryptedKey := oyster_utils.Encrypt(hashedSessionID, w.TreasureETHPrivateKey, hashedCreationTime)
-
-	w.TreasureETHPrivateKey = hex.EncodeToString(encryptedKey)
+	w.TreasureETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(w.ID, w.CreatedAt, w.TreasureETHPrivateKey)
 	DB.ValidateAndSave(w)
 }
 
 func (w *WebnodeTreasureClaim) DecryptTreasureEthKey() string {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(w.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(w.CreatedAt.Clock()))), sha3.New256())
-
-	decryptedKey := oyster_utils.Decrypt(hashedSessionID, w.TreasureETHPrivateKey, hashedCreationTime)
-
-	return hex.EncodeToString(decryptedKey)
+	return oyster_utils.ReturnDecryptedEthKey(w.ID, w.CreatedAt, w.TreasureETHPrivateKey)
 }
 
 func GetTreasureClaimsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (treasureClaims []WebnodeTreasureClaim, err error) {

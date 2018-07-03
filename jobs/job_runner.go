@@ -47,6 +47,8 @@ func registerHandlers(oysterWorker *worker.Simple) {
 		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	}
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
+	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
+	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 
 	if services.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
@@ -55,59 +57,43 @@ func registerHandlers(oysterWorker *worker.Simple) {
 
 func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(flushOldWebnodesHandler,
-		worker.Args{
-			Duration: 5 * time.Minute,
-		})
+		worker.Args{Duration: 5 * time.Minute})
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler,
-		worker.Args{
-			Duration: time.Duration(services.GetProcessingFrequency()) * time.Second,
-		})
+		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
-		worker.Args{
-			Duration: 60 * time.Second,
-		})
+		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
-		worker.Args{
-			Duration: 30 * time.Second,
-		})
+		worker.Args{Duration: 30 * time.Second})
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
-		worker.Args{
-			Duration: 60 * time.Second,
-		})
+		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
-		worker.Args{
-			Duration: 20 * time.Second,
-		})
+		worker.Args{Duration: 20 * time.Second})
 
 	oysterWorkerPerformIn(buryTreasureAddressesHandler,
-		worker.Args{
-			Duration: 2 * time.Minute,
-		})
+		worker.Args{Duration: 2 * time.Minute})
 
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
-		worker.Args{
-			Duration: 2 * time.Minute,
-		})
+		worker.Args{Duration: 2 * time.Minute})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
-		worker.Args{
-			Duration: 10 * time.Minute,
-		})
+		worker.Args{Duration: 10 * time.Minute})
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
-		worker.Args{
-			Duration: 24 * time.Hour,
-		})
+		worker.Args{Duration: 24 * time.Hour})
+
+	oysterWorkerPerformIn(checkAlphaPaymentsHandler,
+		worker.Args{Duration: 10 * time.Second})
+
+	oysterWorkerPerformIn(checkBetaPaymentsHandler,
+		worker.Args{Duration: 100 * time.Second})
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
-		worker.Args{
-			Duration: 10 * time.Minute,
-		})
+		worker.Args{Duration: 10 * time.Minute})
 }
 
 func flushOldWebnodesHandler(args worker.Args) error {
@@ -181,6 +167,23 @@ func removeUnpaidUploadSessionHandler(args worker.Args) error {
 	RemoveUnpaidUploadSession(PrometheusWrapper)
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
+	return nil
+}
+
+func checkAlphaPaymentsHandler(args worker.Args) error {
+	CheckAlphaPayments(PrometheusWrapper)
+
+	oysterWorkerPerformIn(checkAlphaPaymentsHandler, args)
+	return nil
+}
+
+func checkBetaPaymentsHandler(args worker.Args) error {
+	durationToWaitBeforeTimingOut := time.Duration(-6 * time.Hour)
+	// consider a beta transaction timed out after 6 hours if on alpha
+	// consider a beta transaction timed out after 18 hours if on beta
+	CheckBetaPayments(durationToWaitBeforeTimingOut, PrometheusWrapper)
+
+	oysterWorkerPerformIn(checkBetaPaymentsHandler, args)
 	return nil
 }
 
