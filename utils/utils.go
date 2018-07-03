@@ -2,6 +2,8 @@ package oyster_utils
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -186,18 +188,6 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte uint64) []int {
 	return indexes
 }
 
-/*GetTreasureIdxMap returns the IdxMap for treasure to burried.*/
-func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
-	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
-	var idxMap nulls.String
-	if err == nil {
-		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
-	} else {
-		idxMap = nulls.String{"", false}
-	}
-	return idxMap
-}
-
 /*GetTreasureIdxIndexes returns int[] for serialized nulls.String.*/
 func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	if !idxMap.Valid {
@@ -247,7 +237,7 @@ func IntsSplit(a string, delim string) []int {
 
 // Private methods
 // Merge 2 different indexes into 1 indexes. Computed Merged indexes
-func MergeIndexes(a []int, b []int) ([]int, error) {
+func MergeIndexes(a []int, b []int, sectorSize int, numChunks int) ([]int, error) {
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
@@ -256,8 +246,16 @@ func MergeIndexes(a []int, b []int) ([]int, error) {
 	}
 
 	for i := 0; i < len(a); i++ {
-		// TODO(pzhao5): figure a better way to hash it.
-		idx := (a[i] + b[i]) / 2
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(a[i]+b[i]))
+		hash := md5.Sum(buf)
+		val := binary.BigEndian.Uint64(hash[:])
+		chunkIdxOffset := sectorSize * i
+		maxIdx := sectorSize
+		if i == len(a)-1 {
+			maxIdx = numChunks - sectorSize*(len(a)-1)
+		}
+		idx := int(math.Mod(float64(val), float64(maxIdx))) + chunkIdxOffset
 		if idx == 0 {
 			idx = 1
 		}

@@ -168,7 +168,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		return err
 	}
 
-	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		// not doing error handling here, relying on beta to throw the error since returning
 		// an error here breaks the unit tests
@@ -413,8 +413,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	models.NewBrokerBrokerTransaction(&u)
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 
-	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)

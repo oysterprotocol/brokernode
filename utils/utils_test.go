@@ -164,34 +164,21 @@ func Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNextSector(t *testing
 }
 
 func Test_MergedIndexes_EmptyIndexes(t *testing.T) {
-	_, err := oyster_utils.MergeIndexes([]int{}, nil)
+	_, err := oyster_utils.MergeIndexes([]int{}, nil, 100, 3)
 
 	oyster_utils.AssertError(err, t, "")
 }
 
 func Test_MergedIndexes_OneNonEmptyIndexes(t *testing.T) {
-	_, err := oyster_utils.MergeIndexes(nil, []int{1, 2})
+	_, err := oyster_utils.MergeIndexes(nil, []int{1, 2}, 100, 3)
 
 	oyster_utils.AssertError(err, t, "Must result an error")
 }
 
 func Test_MergeIndexes_SameSize(t *testing.T) {
-	indexes, _ := oyster_utils.MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3})
+	indexes, _ := oyster_utils.MergeIndexes([]int{1, 2, 3}, []int{1, 2, 3}, 100, 3)
 
 	oyster_utils.AssertTrue(len(indexes) == 3, t, "Must result an error")
-}
-
-func Test_GetTreasureIdxMap_ValidInput(t *testing.T) {
-	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{2})
-
-	oyster_utils.AssertTrue(idxMap.Valid, t, "")
-}
-
-func Test_GetTreasureIdxMap_InvalidInput(t *testing.T) {
-	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{1, 2})
-
-	oyster_utils.AssertStringEqual(idxMap.String, "", t)
-	oyster_utils.AssertTrue(!idxMap.Valid, t, "")
 }
 
 func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
