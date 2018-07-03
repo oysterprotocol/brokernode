@@ -296,10 +296,9 @@ func SetUploadSessionToPaid(brokerTx BrokerBrokerTransaction) error {
 
 /* DeleteCompletedBrokerTransactions deletes any brokerTxs for which both alpha and beta are paid */
 func DeleteCompletedBrokerTransactions() {
-	err := DB.RawQuery("DELETE from broker_broker_transactions WHERE payment_status = ? AND type = ? OR "+
+	err := DB.RawQuery("DELETE from broker_broker_transactions WHERE payment_status = ? OR "+
 		"payment_status = ? AND type = ?",
 		BrokerTxGasReclaimConfirmed,
-		SessionTypeAlpha,
 		BrokerTxBetaPaymentConfirmed,
 		SessionTypeBeta).All(&[]BrokerBrokerTransaction{})
 
