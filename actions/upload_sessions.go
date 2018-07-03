@@ -355,7 +355,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			// Do an insert operation and dup by primary key.
 
 			rawQuery := fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE "+
-				"message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
+				"message = VALUES(message), msg_status = VALUES(msg_status), status = VALUES(status), updated_at = VALUES(updated_at)",
 				dbOperation.GetColumns(), strings.Join(sectionUpdatedDms, ","))
 
 			fmt.Println("printing rawQuery")
