@@ -47,6 +47,8 @@ const (
 	GasConfirmed
 	BuryPending
 	BuryConfirmed
+	GasReclaimPending
+	GasReclaimConfirmed
 
 	// error states
 	PRLError  = -1
@@ -64,6 +66,8 @@ func init() {
 	PRLStatusMap[GasConfirmed] = "GasConfirmed"
 	PRLStatusMap[BuryPending] = "BuryPending"
 	PRLStatusMap[BuryConfirmed] = "BuryConfirmed"
+	PRLStatusMap[GasReclaimPending] = "GasReclaimPending"
+	PRLStatusMap[GasReclaimConfirmed] = "GasReclaimConfirmed"
 
 	PRLStatusMap[PRLError] = "PRLError"
 	PRLStatusMap[GasError] = "GasError"
