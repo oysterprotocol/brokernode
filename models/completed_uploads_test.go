@@ -20,7 +20,7 @@ var (
 	RowWithGasTransferLeftoversReclaimSuccess    = models.CompletedUpload{}
 )
 
-func testSetup(ms *ModelSuite) {
+func testSetup(suite *ModelSuite) {
 
 	addr, key, _ := jobs.EthWrapper.GenerateEthAddr()
 	RowWithGasTransferNotStarted = models.CompletedUpload{
@@ -112,82 +112,82 @@ func testSetup(ms *ModelSuite) {
 		GasStatus:     models.GasTransferLeftoversReclaimSuccess,
 	}
 
-	err := ms.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
-	ms.Nil(err)
+	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferNotStarted)
+	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferNotStarted)
 	RowWithGasTransferNotStarted.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferProcessing)
+	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferProcessing)
 	RowWithGasTransferNotStarted.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferSuccess)
+	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferSuccess)
 	RowWithGasTransferSuccess.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithGasTransferError)
+	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferError)
 	RowWithGasTransferError.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimNotStarted)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimNotStarted)
 	RowWithPRLClaimNotStarted.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimProcessing)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimProcessing)
 	RowWithPRLClaimProcessing.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimSuccess)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimSuccess)
 	RowWithPRLClaimSuccess.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimError)
 	RowWithPRLClaimError.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimError)
 	RowWithGasTransferLeftoversReclaimProcessing.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 
-	_, err = ms.DB.ValidateAndSave(&RowWithPRLClaimError)
+	_, err = suite.DB.ValidateAndSave(&RowWithPRLClaimError)
 	RowWithGasTransferLeftoversReclaimSuccess.EncryptSessionEthKey()
-	ms.Nil(err)
+	suite.Nil(err)
 }
 
-func (ms *ModelSuite) Test_CompletedUploads() {
+func (suite *ModelSuite) Test_CompletedUploads() {
 
-	testNewCompletedUpload(ms)
+	testNewCompletedUpload(suite)
 
 	// don't need this for the first test
-	testSetup(ms)
+	testSetup(suite)
 
-	testGetRowsByGasAndPRLStatus(ms)
-	testGetRowsByGasStatus(ms)
-	testGetRowsByPRLStatus(ms)
+	testGetRowsByGasAndPRLStatus(suite)
+	testGetRowsByGasStatus(suite)
+	testGetRowsByPRLStatus(suite)
 
-	testSetGasStatus(ms)
+	testSetGasStatus(suite)
 
-	testSetup(ms)
-	testSetPRLStatus(ms)
+	testSetup(suite)
+	testSetPRLStatus(suite)
 
-	testSetup(ms)
-	testGetTimedOutGasTransfers(ms)
-	testGetTimedOutPRLTransfers(ms)
+	testSetup(suite)
+	testGetTimedOutGasTransfers(suite)
+	testGetTimedOutPRLTransfers(suite)
 
-	testSetGasStatusByAddress(ms)
+	testSetGasStatusByAddress(suite)
 
-	testSetup(ms)
-	testSetPRLStatusByAddress(ms)
+	testSetup(suite)
+	testSetPRLStatusByAddress(suite)
 
-	testSetup(ms)
-	testDeleteCompletedClaims(ms)
+	testSetup(suite)
+	testDeleteCompletedClaims(suite)
 }
 
-func testNewCompletedUpload(ms *ModelSuite) {
+func testNewCompletedUpload(suite *ModelSuite) {
 
-	fileBytesCount := 2500
+	fileBytesCount := uint64(2500)
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
 	session1 := models.UploadSession{
@@ -200,8 +200,8 @@ func testNewCompletedUpload(ms *ModelSuite) {
 		ETHPrivateKey: privateKey,
 	}
 	vErr, err := session1.StartUploadSession()
-	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	session2 := models.UploadSession{
 		GenesisHash:   "abcdeff2",
@@ -213,194 +213,194 @@ func testNewCompletedUpload(ms *ModelSuite) {
 		ETHPrivateKey: privateKey,
 	}
 	vErr, err = session2.StartUploadSession()
-	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	err = models.NewCompletedUpload(session1)
-	ms.Nil(err)
+	suite.Nil(err)
 	err = models.NewCompletedUpload(session2)
-	ms.Nil(err)
+	suite.Nil(err)
 
 	completedUploads := []models.CompletedUpload{}
-	err = ms.DB.All(&completedUploads)
-	ms.Equal(nil, err)
+	err = suite.DB.All(&completedUploads)
+	suite.Equal(nil, err)
 
-	ms.Equal(2, len(completedUploads))
+	suite.Equal(2, len(completedUploads))
 
 	for _, completedUpload := range completedUploads {
-		ms.Equal(true, completedUpload.GenesisHash == "abcdeff1" ||
+		suite.Equal(true, completedUpload.GenesisHash == "abcdeff1" ||
 			completedUpload.GenesisHash == "abcdeff2")
 		if completedUpload.GenesisHash == "abcdeff1" {
-			ms.Equal("SOME_BETA_ETH_ADDRESS1", completedUpload.ETHAddr)
+			suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUpload.ETHAddr)
 		}
 		if completedUpload.GenesisHash == "abcdeff2" {
-			ms.Equal("SOME_ALPHA_ETH_ADDRESS2", completedUpload.ETHAddr)
+			suite.Equal("SOME_ALPHA_ETH_ADDRESS2", completedUpload.ETHAddr)
 		}
 	}
 }
 
-func testGetRowsByGasAndPRLStatus(ms *ModelSuite) {
+func testGetRowsByGasAndPRLStatus(suite *ModelSuite) {
 	// this is one of the rows we created
 	results, err := models.GetRowsByGasAndPRLStatus(models.GasTransferError, models.PRLClaimNotStarted)
-	ms.Nil(err)
-	ms.Equal(1, len(results))
-	ms.Equal("RowWithGasTransferError", results[0].GenesisHash)
+	suite.Nil(err)
+	suite.Equal(1, len(results))
+	suite.Equal("RowWithGasTransferError", results[0].GenesisHash)
 
 	// this is not one of the rows we created
 	results, err = models.GetRowsByGasAndPRLStatus(models.GasTransferError, models.PRLClaimSuccess)
-	ms.Nil(err)
-	ms.Equal(0, len(results))
+	suite.Nil(err)
+	suite.Equal(0, len(results))
 }
 
-func testGetRowsByGasStatus(ms *ModelSuite) {
+func testGetRowsByGasStatus(suite *ModelSuite) {
 	// this is one of the rows we created
 	results, err := models.GetRowsByGasStatus(models.GasTransferError)
-	ms.Nil(err)
-	ms.Equal(1, len(results))
-	ms.Equal("RowWithGasTransferError", results[0].GenesisHash)
+	suite.Nil(err)
+	suite.Equal(1, len(results))
+	suite.Equal("RowWithGasTransferError", results[0].GenesisHash)
 
 	// we created several rows with this gas status
 	results, err = models.GetRowsByGasStatus(models.GasTransferSuccess)
-	ms.Nil(err)
-	ms.Equal(5, len(results))
+	suite.Nil(err)
+	suite.Equal(5, len(results))
 }
 
-func testSetGasStatus(ms *ModelSuite) {
+func testSetGasStatus(suite *ModelSuite) {
 	// should only be 1 of these
 	startingResults, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
-	ms.Nil(err)
-	ms.Equal(1, len(startingResults))
+	suite.Nil(err)
+	suite.Equal(1, len(startingResults))
 
 	// should only be 1 of these as well
 	entriesBeingChanged, err := models.GetRowsByGasStatus(models.GasTransferError)
-	ms.Nil(err)
-	ms.Equal(1, len(entriesBeingChanged))
+	suite.Nil(err)
+	suite.Equal(1, len(entriesBeingChanged))
 
 	models.SetGasStatus(entriesBeingChanged, models.GasTransferNotStarted)
 
 	// should now be 2 of these
 	currentResults, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
-	ms.Nil(err)
-	ms.Equal(2, len(currentResults))
+	suite.Nil(err)
+	suite.Equal(2, len(currentResults))
 
 	// we changed a row so change it back
-	testSetup(ms)
+	testSetup(suite)
 }
 
-func testGetRowsByPRLStatus(ms *ModelSuite) {
+func testGetRowsByPRLStatus(suite *ModelSuite) {
 	// this is one of the rows we created
 	results, err := models.GetRowsByPRLStatus(models.PRLClaimError)
-	ms.Nil(err)
-	ms.Equal(1, len(results))
-	ms.Equal("RowWithPRLClaimError", results[0].GenesisHash)
+	suite.Nil(err)
+	suite.Equal(1, len(results))
+	suite.Equal("RowWithPRLClaimError", results[0].GenesisHash)
 }
 
-func testSetPRLStatus(ms *ModelSuite) {
+func testSetPRLStatus(suite *ModelSuite) {
 	// should be 3 of these
 	startingResults, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
-	ms.Nil(err)
-	ms.Equal(3, len(startingResults))
+	suite.Nil(err)
+	suite.Equal(3, len(startingResults))
 
 	// should only be 1 of these as well
 	entriesBeingChanged, err := models.GetRowsByPRLStatus(models.PRLClaimError)
-	ms.Nil(err)
-	ms.Equal(1, len(entriesBeingChanged))
+	suite.Nil(err)
+	suite.Equal(1, len(entriesBeingChanged))
 
 	models.SetPRLStatus(entriesBeingChanged, models.PRLClaimSuccess)
 
 	// should now be 4 of these
 	currentResults, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
-	ms.Nil(err)
-	ms.Equal(4, len(currentResults))
+	suite.Nil(err)
+	suite.Equal(4, len(currentResults))
 
 	// we changed a row so change it back
-	testSetup(ms)
+	testSetup(suite)
 }
 
-func testGetTimedOutGasTransfers(ms *ModelSuite) {
+func testGetTimedOutGasTransfers(suite *ModelSuite) {
 	// should be none
 	shouldBeNone, err := models.GetTimedOutGasTransfers(time.Now().Add(-5 * time.Minute))
-	ms.Nil(err)
-	ms.Equal(0, len(shouldBeNone))
+	suite.Nil(err)
+	suite.Equal(0, len(shouldBeNone))
 
 	// should be 1
 	shouldBeOne, err := models.GetTimedOutGasTransfers(time.Now().Add(5 * time.Minute))
-	ms.Nil(err)
-	ms.Equal(1, len(shouldBeOne))
+	suite.Nil(err)
+	suite.Equal(1, len(shouldBeOne))
 }
 
-func testGetTimedOutPRLTransfers(ms *ModelSuite) {
+func testGetTimedOutPRLTransfers(suite *ModelSuite) {
 	// should be none
 	shouldBeNone, err := models.GetTimedOutPRLTransfers(time.Now().Add(-5 * time.Minute))
-	ms.Nil(err)
-	ms.Equal(0, len(shouldBeNone))
+	suite.Nil(err)
+	suite.Equal(0, len(shouldBeNone))
 
 	// should be 1
 	shouldBeOne, err := models.GetTimedOutPRLTransfers(time.Now().Add(5 * time.Minute))
-	ms.Nil(err)
-	ms.Equal(1, len(shouldBeOne))
+	suite.Nil(err)
+	suite.Equal(1, len(shouldBeOne))
 }
 
-func testSetGasStatusByAddress(ms *ModelSuite) {
+func testSetGasStatusByAddress(suite *ModelSuite) {
 	// should only be 1 of these
 	startingResultsNotStarted, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
-	ms.Nil(err)
-	ms.Equal(1, len(startingResultsNotStarted))
+	suite.Nil(err)
+	suite.Equal(1, len(startingResultsNotStarted))
 
 	// should only be 1 of these
 	startingResultsError, err := models.GetRowsByGasStatus(models.GasTransferError)
-	ms.Nil(err)
-	ms.Equal(1, len(startingResultsError))
+	suite.Nil(err)
+	suite.Equal(1, len(startingResultsError))
 
 	models.SetGasStatusByAddress(startingResultsNotStarted[0].ETHAddr, models.GasTransferError)
 
 	// should be none left
 	currentResultsNotStarted, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
-	ms.Nil(err)
-	ms.Equal(0, len(currentResultsNotStarted))
+	suite.Nil(err)
+	suite.Equal(0, len(currentResultsNotStarted))
 
 	// should only be 2 of these
 	currentResultsError, err := models.GetRowsByGasStatus(models.GasTransferError)
-	ms.Nil(err)
-	ms.Equal(2, len(currentResultsError))
+	suite.Nil(err)
+	suite.Equal(2, len(currentResultsError))
 }
 
-func testSetPRLStatusByAddress(ms *ModelSuite) {
+func testSetPRLStatusByAddress(suite *ModelSuite) {
 	// should be 3 of these
 	startingResultsSuccess, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
-	ms.Nil(err)
-	ms.Equal(3, len(startingResultsSuccess))
+	suite.Nil(err)
+	suite.Equal(3, len(startingResultsSuccess))
 
 	// should only be 1 of these
 	startingResultsError, err := models.GetRowsByPRLStatus(models.PRLClaimError)
-	ms.Nil(err)
-	ms.Equal(1, len(startingResultsError))
+	suite.Nil(err)
+	suite.Equal(1, len(startingResultsError))
 
 	models.SetPRLStatusByAddress(startingResultsSuccess[0].ETHAddr, models.PRLClaimError)
 
 	// should be 2 left
 	currentResultsSuccess, err := models.GetRowsByPRLStatus(models.PRLClaimSuccess)
-	ms.Nil(err)
-	ms.Equal(2, len(currentResultsSuccess))
+	suite.Nil(err)
+	suite.Equal(2, len(currentResultsSuccess))
 
 	// should only be 2 of these
 	currentResultsError, err := models.GetRowsByPRLStatus(models.PRLClaimError)
-	ms.Nil(err)
-	ms.Equal(2, len(currentResultsError))
+	suite.Nil(err)
+	suite.Equal(2, len(currentResultsError))
 }
 
-func testDeleteCompletedClaims(ms *ModelSuite) {
+func testDeleteCompletedClaims(suite *ModelSuite) {
 	//should be 10 of these
 	completedUploads := []models.CompletedUpload{}
-	err := ms.DB.All(&completedUploads)
-	ms.Equal(nil, err)
-	ms.Equal(10, len(completedUploads))
+	err := suite.DB.All(&completedUploads)
+	suite.Equal(nil, err)
+	suite.Equal(10, len(completedUploads))
 
 	models.DeleteCompletedClaims()
 
 	//should be 9 now
 	completedUploads = []models.CompletedUpload{}
-	err = ms.DB.All(&completedUploads)
-	ms.Equal(nil, err)
-	ms.Equal(9, len(completedUploads))
+	err = suite.DB.All(&completedUploads)
+	suite.Equal(nil, err)
+	suite.Equal(9, len(completedUploads))
 }

@@ -223,6 +223,8 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
+		oyster_utils.LogIfValidationError(
+			"validation errors for creating dataMap for batch insertion.", vErr, nil)
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
 
 		currHash = oyster_utils.HashHex(currHash, sha256.New())
@@ -440,6 +442,8 @@ func GetDataMap(genHash string, numChunks int) (dataMaps []DataMap, vErr *valida
 		// Validate the data
 		var err error
 		vErr, err = dataMap.Validate(nil)
+		oyster_utils.LogIfValidationError(
+			"validation errors for dataMap in GetDataMap.", vErr, nil)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue

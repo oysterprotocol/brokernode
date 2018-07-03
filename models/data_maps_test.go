@@ -28,13 +28,13 @@ var encryptedTreasureCases = []hashAddressConversion{
 		ethPrivateSeed: "7777777774444444777777744444447777777444444777777744444777777744"},
 }
 
-func (ms *ModelSuite) Test_BuildDataMaps() {
+func (suite *ModelSuite) Test_BuildDataMaps() {
 	genHash := "abcdef"
 	numChunks := 7
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
-	ms.Nil(err)
-	ms.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 
 	expectedObfuscatedHashes := []string{ // 1 extra chunk for treasure
 		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
@@ -69,28 +69,28 @@ func (ms *ModelSuite) Test_BuildDataMaps() {
 	}
 
 	dMaps := []models.DataMap{}
-	ms.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
+	suite.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
 
-	ms.Equal(numChunks, len(dMaps))
+	suite.Equal(numChunks, len(dMaps))
 
 	for i, dMap := range dMaps {
-		ms.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)
-		ms.Equal(expectedHashChainHashes[i], dMap.Hash)
-		ms.Equal(expectedAddresses[i], dMap.Address)
-		ms.NotNil(dMap.MsgID)
+		suite.Equal(expectedObfuscatedHashes[i], dMap.ObfuscatedHash)
+		suite.Equal(expectedHashChainHashes[i], dMap.Hash)
+		suite.Equal(expectedAddresses[i], dMap.Address)
+		suite.NotNil(dMap.MsgID)
 	}
 }
 
-func (ms *ModelSuite) Test_CreateTreasurePayload() {
+func (suite *ModelSuite) Test_CreateTreasurePayload() {
 	maxSideChainLength := 10
 	matchesFound := 0
 
 	for _, tc := range encryptedTreasureCases {
 		payload, err := models.CreateTreasurePayload(tc.ethPrivateSeed, tc.sha256Hash, maxSideChainLength)
-		ms.Nil(err)
+		suite.Nil(err)
 
 		trytes, err := giota.ToTrytes(payload[0:models.TreasurePayloadLength])
-		ms.Nil(err)
+		suite.Nil(err)
 		payloadInBytes := oyster_utils.TrytesToBytes(trytes)
 
 		currentHash := tc.sha256Hash
@@ -99,13 +99,13 @@ func (ms *ModelSuite) Test_CreateTreasurePayload() {
 			currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
 			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
 			if result != nil {
-				ms.Equal(true, strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
-				ms.Equal(hex.EncodeToString(result)[len(models.TreasurePrefix):], tc.ethPrivateSeed)
+				suite.Equal(true, strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
+				suite.Equal(hex.EncodeToString(result)[len(models.TreasurePrefix):], tc.ethPrivateSeed)
 				matchesFound++
 			}
 		}
 	}
-	ms.Equal(3, matchesFound)
+	suite.Equal(3, matchesFound)
 }
 
 func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
@@ -113,19 +113,19 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 
 	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	genHash1 := []models.DataMap{} // 1 unassigned
 	genHash2 := []models.DataMap{} // 1 error
@@ -172,19 +172,19 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 
 	vErr, err := models.BuildDataMaps("abcdeff1", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff2", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff3", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff4", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	vErr, err = models.BuildDataMaps("abcdeff5", numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	genHash1 := []models.DataMap{} // 1 unassigned
 	genHash2 := []models.DataMap{} // 1 error
@@ -356,15 +356,12 @@ func (suite *ModelSuite) Test_ComputeSectorDataMapAddress_AtSectorOne() {
 }
 
 func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
-	genHash := "abcdef"
-	fileSizeBytes := 123
-
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
-		FileSizeBytes:        fileSizeBytes,
+		GenesisHash:          "abcdef",
+		FileSizeBytes:        123,
 		NumChunks:            400,
 		StorageLengthInYears: 4,
 		ETHPrivateKey:        hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),

@@ -117,7 +117,7 @@ func Test_TransformIndexWithBuriedIndexes_LastSector(t *testing.T) {
 }
 
 func Test_GenerateInsertedIndexesForPearl_BadFileSize(t *testing.T) {
-	indexes := oyster_utils.GenerateInsertedIndexesForPearl(-1)
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(0)
 
 	oyster_utils.AssertTrue(len(indexes) == 0, t, "Len must equal to 0")
 }
@@ -131,7 +131,7 @@ func Test_GenerateInsertedIndexesForPearl_SmallFileSize(t *testing.T) {
 
 func Test_GenerateInsertedIndexesForPearl_LargeFileSize(t *testing.T) {
 	// Test on 2.6GB
-	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.6 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(uint64(2.6 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
 	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
 	oyster_utils.AssertTrue(indexes[0] >= 0 && indexes[0] < oyster_utils.FileSectorInChunkSize, t, "")
@@ -141,7 +141,7 @@ func Test_GenerateInsertedIndexesForPearl_LargeFileSize(t *testing.T) {
 
 func Test_GenerateInsertedIndexesForPearl_MediumFileSize(t *testing.T) {
 	// Test on 2MB
-	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2000 * oyster_utils.FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(uint64(2000 * oyster_utils.FileChunkSizeInByte))
 
 	oyster_utils.AssertTrue(len(indexes) == 1, t, "")
 	oyster_utils.AssertTrue(indexes[0] >= 0 && indexes[0] < 2001, t, "Must within range of [0, 2001)")
@@ -149,7 +149,7 @@ func Test_GenerateInsertedIndexesForPearl_MediumFileSize(t *testing.T) {
 
 func Test_GenerateInsertIndexesForPearl_ExtendedToNextSector(t *testing.T) {
 	// Test on 2.999998GB, by adding Pearls, it will extend to 3.000001GB
-	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.999998 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(uint64(2.999998 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
 	oyster_utils.AssertTrue(len(indexes) == 4, t, "")
 	oyster_utils.AssertTrue(indexes[3] == 0 || indexes[3] == 1, t, "Must either 0 or 1")
@@ -157,7 +157,7 @@ func Test_GenerateInsertIndexesForPearl_ExtendedToNextSector(t *testing.T) {
 
 func Test_GenerateInsertIndexesForPearl_NotNeedToExtendedToNextSector(t *testing.T) {
 	// Test on 2.999997GB, by adding Pearls, it will extend to 3GB
-	indexes := oyster_utils.GenerateInsertedIndexesForPearl(int(2.999997 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
+	indexes := oyster_utils.GenerateInsertedIndexesForPearl(uint64(2.999997 * oyster_utils.FileSectorInChunkSize * oyster_utils.FileChunkSizeInByte))
 
 	oyster_utils.AssertTrue(len(indexes) == 3, t, "")
 	oyster_utils.AssertTrue(indexes[2] >= 0 && indexes[2] < oyster_utils.FileSectorInChunkSize, t, "Must within range of [0, FileSectorInChunkSize)")

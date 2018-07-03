@@ -1,7 +1,5 @@
-package models
+package models_test
 
-import "testing"
-
-func Test_CompletedDataMap(t *testing.T) {
-	t.Log("Nothing to test yet")
+func (suite *ModelSuite) Test_CompletedDataMap() {
+	// TODO: implement this method.
 }

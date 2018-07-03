@@ -58,10 +58,8 @@ func CheckPRLTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckPRLTransactions: " +
-					fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckPRLTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckPRLTransactions", analytics.NewProperties().
@@ -90,9 +88,8 @@ func CheckGasTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckGasTransactions: " + fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckGasTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckGasTransactions", analytics.NewProperties().
@@ -124,9 +121,8 @@ func CheckBuryTransactions() {
 				continue
 			}
 			if len(vErr.Errors) > 0 {
-				errString := "validation errors in bury_treasure_addresses in CheckBuryTransactions: " + fmt.Sprint(vErr.Errors)
-				err = errors.New(errString)
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfValidationError(
+					"validation errors in bury_treasure_addresses in CheckBuryTransactions.", vErr, nil)
 				continue
 			}
 			oyster_utils.LogToSegment("bury_treasure_addresses: CheckBuryTransactions", analytics.NewProperties().
@@ -158,9 +154,8 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in SetTimedOutTransactionsToError.", vErr, nil)
 			continue
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: SetTimedOutTransactionsToError", analytics.NewProperties().
@@ -206,9 +201,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -220,9 +214,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -234,9 +227,8 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
 			continue
 		}
 	}
@@ -357,9 +349,8 @@ func sendPRL(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in sendPRL: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in sendPRL.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendPRL", analytics.NewProperties().
@@ -387,11 +378,7 @@ func sendGas(treasureToBury models.Treasure) {
 		return
 	}
 
-	_, txHash, nonce, err := EthWrapper.SendETH(
-		services.MainWalletAddress,
-		services.MainWalletPrivateKey,
-		services.StringToAddress(treasureToBury.ETHAddr),
-		gasToSend)
+	_, txHash, nonce, err := EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, services.StringToAddress(treasureToBury.ETHAddr), gasToSend)
 	if err != nil {
 		errorString := "\nFailure sending " + fmt.Sprint(gasToSend.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
@@ -410,9 +397,8 @@ func sendGas(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in sendGas: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in sendGas.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: sendGas", analytics.NewProperties().
@@ -467,9 +453,8 @@ func buryPRL(treasureToBury models.Treasure) {
 			return
 		}
 		if len(vErr.Errors) > 0 {
-			errString := "validation errors in bury_treasure_addresses in buryPRL: " + fmt.Sprint(vErr.Errors)
-			err = errors.New(errString)
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError(
+				"validation errors in bury_treasure_addresses in buryPRL.", vErr, nil)
 			return
 		}
 		oyster_utils.LogToSegment("bury_treasure_addresses: buryPRL", analytics.NewProperties().
@@ -491,12 +476,10 @@ func waitForBury(treasureToBury models.Treasure) {
 	waitForConfirmation(treasureToBury, treasureToBury.BuryTxHash, treasureToBury.BuryTxNonce, services.PRLBury)
 }
 
+// TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
 func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce int64, txType services.TxType) {
 
-	// TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
-
-	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash),
-		SecondsDelayForETHPolling)
+	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash), SecondsDelayForETHPolling)
 
 	// we passed the row by value, get it again in case it has changed
 	treasureRow := models.Treasure{}
@@ -509,43 +492,9 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 	var newStatus models.PRLStatus
 
 	if success == 1 {
-		switch txType {
-		case services.PRLTransfer:
-			if treasureRow.PRLStatus == models.PRLPending || treasureRow.PRLStatus == models.PRLError {
-				newStatus = models.PRLConfirmed
-			}
-		case services.EthTransfer:
-			if treasureRow.PRLStatus == models.GasPending || treasureRow.PRLStatus == models.GasError {
-				newStatus = models.GasConfirmed
-			}
-		case services.PRLBury:
-			if treasureRow.PRLStatus == models.BuryPending || treasureRow.PRLStatus == models.BuryError {
-				newStatus = models.BuryConfirmed
-			}
-		default:
-			invalidTxTypeErr := errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation")
-			oyster_utils.LogIfError(invalidTxTypeErr, nil)
-			return
-		}
+		newStatus = updateStatusSuccess(txType, treasureRow)
 	} else if success == 0 {
-		switch txType {
-		case services.PRLTransfer:
-			if treasureRow.PRLStatus == models.PRLPending {
-				newStatus = models.PRLError
-			}
-		case services.EthTransfer:
-			if treasureRow.PRLStatus == models.GasPending {
-				newStatus = models.GasError
-			}
-		case services.PRLBury:
-			if treasureRow.PRLStatus == models.BuryPending {
-				newStatus = models.BuryError
-			}
-		default:
-			invalidTxTypeErr := errors.New("not a valid tx type in bury_treasure_addresses waitForConfirmation")
-			oyster_utils.LogIfError(invalidTxTypeErr, nil)
-			return
-		}
+		newStatus = updateStatusFailed(txType, treasureRow)
 	}
 
 	if _, ok := models.PRLStatusMap[newStatus]; ok {
@@ -553,4 +502,69 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 		_, err = models.DB.ValidateAndUpdate(&treasureToBury)
 		oyster_utils.LogIfError(err, nil)
 	}
+}
+
+func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
+	var newStatus models.PRLStatus
+	switch txType {
+	case services.PRLTransfer:
+		if treasureRow.PRLStatus == models.PRLPending || treasureRow.PRLStatus == models.PRLError {
+			newStatus = models.PRLConfirmed
+		}
+	case services.EthTransfer:
+		if treasureRow.PRLStatus == models.GasPending || treasureRow.PRLStatus == models.GasError {
+			newStatus = models.GasConfirmed
+		}
+	case services.PRLBury:
+		if treasureRow.PRLStatus == models.BuryPending || treasureRow.PRLStatus == models.BuryError {
+			newStatus = models.BuryConfirmed
+		}
+	default:
+		logInvalidTxType(txType, treasureRow.PRLStatus)
+	}
+	return newStatus
+}
+
+func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
+	var newStatus models.PRLStatus
+	switch txType {
+	case services.PRLTransfer:
+		if treasureRow.PRLStatus == models.PRLPending {
+			newStatus = models.PRLError
+		}
+	case services.EthTransfer:
+		if treasureRow.PRLStatus == models.GasPending {
+			newStatus = models.GasError
+		}
+	case services.PRLBury:
+		if treasureRow.PRLStatus == models.BuryPending {
+			newStatus = models.BuryError
+		}
+	default:
+		logInvalidTxType(txType, treasureRow.PRLStatus)
+	}
+	return newStatus
+}
+
+// logInvalidTxType Utility to log txType errors and prlStatus
+func logInvalidTxType(txType services.TxType, status models.PRLStatus) {
+	txString := txToString(txType)
+	errorMsg := fmt.Sprintf("not a valid tx type (%v) in bury_treasure_addresses waitForConfirmation  status : %v", txString, status)
+	oyster_utils.LogIfError(errors.New(errorMsg), nil)
+}
+
+// txToString Utility to return the transaction type
+func txToString(value services.TxType) (string) {
+	status := "Not Found"
+	switch value {
+	case services.PRLTransfer:
+		status = "PRL Transfer"
+	case services.EthTransfer:
+		status = "Ether Transfer"
+	case services.PRLBury:
+		status = "PRL Bury"
+	case services.PRLClaim:
+		status = "PRL Claim"
+	}
+	return status
 }

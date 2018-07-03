@@ -32,7 +32,7 @@ type UploadSessionResource struct {
 type uploadSessionCreateReq struct {
 	GenesisHash          string         `json:"genesisHash"`
 	NumChunks            int            `json:"numChunks"`
-	FileSizeBytes        int            `json:"fileSizeBytes"` // This is Trytes instead of Byte
+	FileSizeBytes        uint64         `json:"fileSizeBytes"` // This is Trytes instead of Byte
 	BetaIP               string         `json:"betaIp"`
 	StorageLengthInYears int            `json:"storageLengthInYears"`
 	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
@@ -319,6 +319,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 					dm.Status = models.Unassigned
 				}
 				vErr, _ := dm.Validate(nil)
+				oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
 				if len(vErr.Errors) == 0 {
 					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
 				}

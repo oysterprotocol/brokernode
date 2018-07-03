@@ -2,7 +2,6 @@ package actions
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"math"
 	"os"
 	"strings"
@@ -87,14 +86,8 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			storedGenesisHash.Status = models.StoredGenesisHashAssigned
 		}
 		vErr, err := tx.ValidateAndSave(&storedGenesisHash)
-
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
-		if len(vErr.Error()) > 0 {
-			err = errors.New("validation errors in transaction_genesis_hashes: " + fmt.Sprint(vErr.Errors))
-			oyster_utils.LogIfError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfValidationError("validation errors in transaction_genesis_hashes.", vErr, nil)
 
 		t = models.Transaction{
 			Type:      models.TransactionTypeGenesisHash,

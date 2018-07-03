@@ -20,10 +20,9 @@ type mockVerifyTreasure struct {
 var checkClaimClockCalled = false
 var ethAddressCalledWithCheckClaimClock common.Address
 
-func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
-
+func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	checkClaimClockCalled = false
-
+  
 	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
@@ -43,7 +42,7 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
-	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
+	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
@@ -51,26 +50,26 @@ func (as *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 		"ethKey":          ethKey,
 	})
 
-	as.Equal(200, res.Code)
+	suite.Equal(200, res.Code)
 
 	// Check mockVerifyTreasure
-	as.True(mockVerifyTreasure.hasCalled)
-	as.Equal(5, len(mockVerifyTreasure.input_addr))
+	suite.True(mockVerifyTreasure.hasCalled)
+	v.Equal(5, len(mockVerifyTreasure.input_addr))
 
-	as.Equal(addr, ethAddressCalledWithCheckClaimClock)
-	as.Equal(true, checkClaimClockCalled)
+	suite.Equal(addr, ethAddressCalledWithCheckClaimClock)
+	suite.Equal(true, checkClaimClockCalled)
 
 	// Parse response
 	resParsed := treasureRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Equal(true, resParsed.Success)
+	suite.Equal(true, resParsed.Success)
 }
 
-func (as *ActionSuite) Test_VerifyTreasure_FailureWithError() {
+func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 
 	checkClaimClockCalled = false
 
@@ -85,27 +84,27 @@ func (as *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
-	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
+	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
 		"numChunks":       5,
 	})
 
-	as.True(m.hasCalled)
-	as.Equal(5, len(m.input_addr))
+	suite.True(m.hasCalled)
+	suite.Equal(5, len(m.input_addr))
 
 	// Parse response
 	resParsed := treasureRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Equal(false, resParsed.Success)
+	suite.Equal(false, resParsed.Success)
 }
 
-func (as *ActionSuite) Test_Check_Claim_Clock_Error() {
+func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 
 	checkClaimClockCalled = false
 
@@ -128,7 +127,7 @@ func (as *ActionSuite) Test_Check_Claim_Clock_Error() {
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
-	res := as.JSON("/api/v2/treasures").Post(map[string]interface{}{
+	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
 		"genesisHash":     "1234",
 		"sectorIdx":       1,
@@ -136,19 +135,19 @@ func (as *ActionSuite) Test_Check_Claim_Clock_Error() {
 		"ethKey":          ethKey,
 	})
 
-	as.Equal(200, res.Code)
+	suite.Equal(200, res.Code)
 
-	as.True(mockVerifyTreasure.hasCalled)
-	as.True(checkClaimClockCalled)
+	suite.True(mockVerifyTreasure.hasCalled)
+	suite.True(checkClaimClockCalled)
 
 	// Parse response
 	resParsed := treasureRes{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
-	as.Nil(err)
+	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
-	as.Nil(err)
+	suite.Nil(err)
 
-	as.Equal(false, resParsed.Success)
+	suite.Equal(false, resParsed.Success)
 }
 
 // For mocking VerifyTreasure method
