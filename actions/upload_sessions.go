@@ -122,8 +122,6 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		return err
 	}
 
-	models.NewBrokerBrokerTransaction(&alphaSession)
-
 	invoice := alphaSession.GetInvoice()
 
 	// Mutates this because copying in golang sucks...
@@ -167,6 +165,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 		return err
 	}
+
+	models.NewBrokerBrokerTransaction(&alphaSession)
 
 	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
 	if err != nil {
@@ -316,11 +316,20 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 					dm.Message = msg
 				}
 				dm.MsgStatus = models.MsgStatusUploaded
+				fmt.Printf("message status:  %v\n", models.MsgStatusMap[dm.MsgStatus])
 
 				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 					dm.Status = models.Unassigned
 				}
-				vErr, _ := dm.Validate(nil)
+				vErr, err := dm.Validate(nil)
+				if err != nil {
+					fmt.Println("THERE WAS AN ERROR")
+					panic(err)
+				}
+				if len(vErr.Errors) > 0 {
+					fmt.Println("THERE WAS a vErr")
+					panic(vErr.Errors)
+				}
 				oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
 				if len(vErr.Errors) == 0 {
 					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
@@ -338,10 +347,19 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 			sectionUpdatedDms := updatedDms[lower:upper]
 
+			for _, sectionUpdatedDm := range sectionUpdatedDms {
+				fmt.Println("sectionUpdatedDms")
+				fmt.Println(sectionUpdatedDm)
+			}
+
 			// Do an insert operation and dup by primary key.
 
-			rawQuery := fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
+			rawQuery := fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE "+
+				"message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at)",
 				dbOperation.GetColumns(), strings.Join(sectionUpdatedDms, ","))
+
+			fmt.Println("printing rawQuery")
+			fmt.Println(rawQuery)
 
 			err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
 			for err != nil {
