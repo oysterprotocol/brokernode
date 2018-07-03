@@ -413,9 +413,9 @@ func StringToTxHash(txHash string) common.Hash {
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
-  // if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
+	// if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
 	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
-  
+
 	// connect ethereum client
 	client, err := sharedClient()
 	if err != nil {
@@ -746,24 +746,26 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 }
 
-
 func checkIfWorthReclaimingGas(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error) {
 	ethBalance := checkETHBalance(address)
-	if ethBalance.Int64() == 0 {
-		return false, big.NewInt(0), nil
-	} else if ethBalance.Int64() == -1 {
-		return false, big.NewInt(0), errors.New("error checking if worth " +
-			"reclaiming gas because could not get ethBalance")
-	}
 
-	gasNeededToReclaimETH, err := calculateGasNeeded(desiredGasLimit)
-	if err != nil {
-		return false, big.NewInt(0), err
+	if ethBalance.Int64() > 0 {
+		gasNeededToReclaimETH, err := calculateGasNeeded(desiredGasLimit)
+		if err != nil {
+			return false, big.NewInt(0), err
+		}
+		if gasNeededToReclaimETH.Int64() >= ethBalance.Int64() {
+			return false, big.NewInt(0), nil
+		}
+		return true, new(big.Int).Sub(ethBalance, gasNeededToReclaimETH), nil
+	} else {
+		var balErr error
+		if ethBalance.Int64() == -1 {
+			balErr = errors.New("error checking if worth " +
+				"reclaiming gas because could not get ethBalance")
+		}
+		return false, big.NewInt(0), balErr
 	}
-	if gasNeededToReclaimETH.Int64() >= ethBalance.Int64() {
-		return false, big.NewInt(0), nil
-	}
-	return true, new(big.Int).Sub(ethBalance, gasNeededToReclaimETH), nil
 }
 
 func calculateGasNeeded(desiredGasLimit uint64) (*big.Int, error) {
@@ -793,8 +795,6 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
-	// if QAing, uncomment this out and comment out the line above for faster transactions
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	// estimation
 	estimate, failedEstimate := getEstimatedGasPrice(toAddr, fromAddress, GasLimitETHSend, *gasPrice, *amount)
@@ -1130,7 +1130,7 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	if err != nil {
 		log.Printf("unable to access contract instance at : %v\n", err)
 	}
-	
+
 	// initialize transactor // may need to move this to a session based transactor
 	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if err != nil {
@@ -1141,9 +1141,6 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 
 	// use this when in production:
 	gasPrice, err := getGasPrice()
-
-	// use this when QAing:
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	opts := bind.TransactOpts{
 		From:     auth.From,

@@ -314,6 +314,7 @@ func LogIfError(err error, extraInfo map[string]interface{}) {
 	}
 }
 
+/* ReturnEncryptedEthKey will be used by several models to encrypt the eth key so we are not storing a naked key */
 func ReturnEncryptedEthKey(id uuid.UUID, createdAt time.Time, rawPrivateKey string) string {
 	hashedSessionID := HashHex(hex.EncodeToString([]byte(fmt.Sprint(id))), sha3.New256())
 	hashedCreationTime := HashHex(hex.EncodeToString([]byte(fmt.Sprint(createdAt.Clock()))), sha3.New256())
@@ -323,6 +324,7 @@ func ReturnEncryptedEthKey(id uuid.UUID, createdAt time.Time, rawPrivateKey stri
 	return hex.EncodeToString(encryptedKey)
 }
 
+/* ReturnDecryptedEthKey will be used by several models to decrypt the eth key to be used for transactions */
 func ReturnDecryptedEthKey(id uuid.UUID, createdAt time.Time, encryptedPrivateKey string) string {
 	hashedSessionID := HashHex(hex.EncodeToString([]byte(fmt.Sprint(id))), sha3.New256())
 	hashedCreationTime := HashHex(hex.EncodeToString([]byte(fmt.Sprint(createdAt.Clock()))), sha3.New256())

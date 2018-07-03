@@ -57,69 +57,43 @@ func registerHandlers(oysterWorker *worker.Simple) {
 
 func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(flushOldWebnodesHandler,
-		worker.Args{
-			Duration: 5 * time.Minute,
-		})
+		worker.Args{Duration: 5 * time.Minute})
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler,
-		worker.Args{
-			Duration: time.Duration(services.GetProcessingFrequency()) * time.Second,
-		})
+		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
-		worker.Args{
-			Duration: 60 * time.Second,
-		})
+		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
-		worker.Args{
-			Duration: 30 * time.Second,
-		})
+		worker.Args{Duration: 30 * time.Second})
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
-		worker.Args{
-			Duration: 60 * time.Second,
-		})
+		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
-		worker.Args{
-			Duration: 20 * time.Second,
-		})
+		worker.Args{Duration: 20 * time.Second})
 
 	oysterWorkerPerformIn(buryTreasureAddressesHandler,
-		worker.Args{
-			Duration: 2 * time.Minute,
-		})
+		worker.Args{Duration: 2 * time.Minute})
 
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
-		worker.Args{
-			Duration: 2 * time.Minute,
-		})
+		worker.Args{Duration: 2 * time.Minute})
 
 	oysterWorkerPerformIn(claimUnusedPRLsHandler,
-		worker.Args{
-			Duration: 10 * time.Minute,
-		})
+		worker.Args{Duration: 10 * time.Minute})
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
-		worker.Args{
-			Duration: 24 * time.Hour,
-		})
+		worker.Args{Duration: 24 * time.Hour})
 
 	oysterWorkerPerformIn(checkAlphaPaymentsHandler,
-		worker.Args{
-			Duration: 10 * time.Second,
-		})
+		worker.Args{Duration: 10 * time.Second})
 
 	oysterWorkerPerformIn(checkBetaPaymentsHandler,
-		worker.Args{
-			Duration: 100 * time.Second,
-		})
+		worker.Args{Duration: 100 * time.Second})
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
-		worker.Args{
-			Duration: 10 * time.Minute,
-		})
+		worker.Args{Duration: 10 * time.Minute})
 }
 
 func flushOldWebnodesHandler(args worker.Args) error {

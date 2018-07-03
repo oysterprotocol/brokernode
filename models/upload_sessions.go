@@ -437,6 +437,10 @@ func GetReadySessions() ([]UploadSession, error) {
 	return readySessions, err
 }
 
+/* SetBrokerTransactionToPaid will find the the upload session's corresponding broker_broker_transaction and set it
+to paid.  This will happen if the polling in actions/upload_sessions.go detects payment before the job in
+check_alpha_payments.go
+*/
 func SetBrokerTransactionToPaid(session UploadSession) error {
 	err := DB.RawQuery("UPDATE broker_broker_transactions set payment_status = ? WHERE "+
 		"payment_status != ? AND genesis_hash = ?",

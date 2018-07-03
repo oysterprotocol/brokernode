@@ -31,6 +31,7 @@ type WebnodeTreasureClaim struct {
 	GasTxNonce            int64             `json:"gasTxNonce" db:"gas_tx_nonce"`
 }
 
+/* UnsetClaimClockValue will allow us to check if the claim clock needs to be set */
 var UnsetClaimClockValue = big.NewInt(-1)
 
 // String is not required by pop and may be deleted

@@ -14,6 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+/* BrokerBrokerTransaction defines the model for the table which will deal with broker to broker transactions */
 type BrokerBrokerTransaction struct {
 	ID            uuid.UUID       `json:"id" db:"id"`
 	GenesisHash   string          `json:"genesisHash" db:"genesis_hash"`
@@ -27,6 +28,7 @@ type BrokerBrokerTransaction struct {
 	PaymentStatus PaymentStatus   `json:"paymentStatus" db:"payment_status"`
 }
 
+/* Payment status will hold the status of the payment of the broker_broker_transaction row */
 type PaymentStatus int
 
 const (
@@ -48,6 +50,7 @@ const (
 	BrokerTxGasReclaimError   PaymentStatus = -6
 )
 
+/* PaymentStatusMap is used for pretty printing the payment statuses */
 var PaymentStatusMap = make(map[PaymentStatus]string)
 
 func init() {

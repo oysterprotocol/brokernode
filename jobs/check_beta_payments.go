@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+/* CheckBetaPayments triggers the methods associated with checking beta payments */
 func CheckBetaPayments(thresholdDuration time.Duration, PrometheusWrapper services.PrometheusService) {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramCheckBetaPayments, start)

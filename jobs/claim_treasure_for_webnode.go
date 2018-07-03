@@ -435,25 +435,24 @@ func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 /* SetClaimClockIfUnset will set the claim clock of a claim if it has not already been set */
 func SetClaimClockIfUnset(treasureClaim *models.WebnodeTreasureClaim) error {
 
-	if treasureClaim.StartingClaimClock != -1 {
-		return nil
-	}
-	claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
-	}
+	if treasureClaim.StartingClaimClock == -1 {
+		claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
 
-	treasureClaim.StartingClaimClock = claimClock.Int64()
-	vErr, err := models.DB.ValidateAndUpdate(treasureClaim)
+		treasureClaim.StartingClaimClock = claimClock.Int64()
+		vErr, err := models.DB.ValidateAndUpdate(treasureClaim)
 
-	if len(vErr.Errors) > 0 {
-		oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
-		return err
-	}
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
+		if len(vErr.Errors) > 0 {
+			oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+			return err
+		}
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
 	}
 	return nil
 }
