@@ -283,7 +283,6 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 			treasureChunksInserted++
 			i++ // skip an iteration
 		} else if _, ok := treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]; ok {
-			// LOOK INTO THIS
 			chunks = append(chunks[:i+2], chunks[i+1:]...)
 			chunks[i+1] = treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]
 			treasureChunksInserted++
