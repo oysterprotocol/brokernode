@@ -1,9 +1,11 @@
 package jobs_test
 
 import (
+	"time"
+
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"time"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
@@ -14,7 +16,7 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
@@ -28,7 +30,7 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 	}
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.UpdateTimeOutDataMaps(time.Now().Add(60 * time.Second))
+	jobs.UpdateTimeOutDataMaps(time.Now().Add(60*time.Second), jobs.PrometheusWrapper)
 
 	allDataMaps = []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
@@ -36,7 +38,7 @@ func (suite *JobsSuite) Test_UpdateTimedOutDataMaps() {
 	suite.Equal(numChunks, len(allDataMaps))
 
 	for _, dataMap := range allDataMaps {
-		if dataMap.Message != "" {
+		if services.GetMessageFromDataMap(dataMap) != "" {
 			// if no message, will not mark as Unassigned
 			// the treasure chunk currently has no message
 			suite.Equal(models.Unassigned, dataMap.Status)

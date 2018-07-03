@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -17,6 +18,7 @@ type CompletedDataMap struct {
 	NodeID         string    `json:"nodeID" db:"node_id"`
 	NodeType       string    `json:"nodeType" db:"node_type"`
 	Message        string    `json:"message" db:"message"`
+	MsgID          string    `json:"msgId" db:"msg_id"`
 	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx       string    `json:"branchTx" db:"branch_tx"`
 	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
@@ -64,4 +66,14 @@ func (d *CompletedDataMap) ValidateCreate(tx *pop.Connection) (*validate.Errors,
 // This method is not required and may be deleted.
 func (d *CompletedDataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
+}
+
+// BeforeCreate runs every time when CompletedDataMap is created.
+func (d *CompletedDataMap) BeforeCreate(tx *pop.Connection) error {
+	d.MsgID = d.generateMsgId()
+	return nil
+}
+
+func (d *CompletedDataMap) generateMsgId() string {
+	return fmt.Sprintf("completeDataMap_%v__%d", d.GenesisHash, d.ChunkIdx)
 }

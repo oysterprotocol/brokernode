@@ -2,21 +2,23 @@ package jobs
 
 import (
 	"fmt"
-	"math"
-	"os"
-	"time"
-
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
+	"math"
+	"os"
+	"time"
 )
 
 const PercentOfChunksToSkipVerification = 45
 
-func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
+func ProcessUnassignedChunks(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessUnassignedChunks, start)
+
 	sessions, _ := models.GetSessionsByAge()
 
 	if len(sessions) > 0 {
@@ -35,6 +37,7 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 
 		if len(chunks) > 0 {
+
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: processing_chunks_for_session", analytics.NewProperties().
@@ -93,7 +96,11 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, map[string]interface{}{
+			"forLoopIndex":   i,
+			"totalLoopCount": len(chunksIn),
+			"numOfChunk":     len(restOfChunks),
+		})
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
@@ -223,7 +230,7 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				ETHAddr: ethAddress.Hex(),
 				ETHKey:  decryptedKey,
 				Address: treasureChunk.Address,
-				Message: treasureChunk.Message,
+				Message: services.GetMessageFromDataMap(treasureChunk),
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)
@@ -327,7 +334,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
@@ -350,19 +357,24 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	for i := 0; i < len(chunks); i++ {
 		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
 			address := make([]giota.Address, 0, 1)
-			address = append(address, giota.Address(chunks[i].Address))
+			chunkAddress, err := giota.ToAddress(chunks[i].Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
+			}
+			address = append(address, chunkAddress)
 			transactionsMap, err := iotaWrapper.FindTransactions(address)
 			if err != nil {
-				fmt.Println(err)
-				raven.CaptureError(err, nil)
+				oyster_utils.LogIfError(err, nil)
+				return chunks, []models.DataMap{}
 			}
-			if _, ok := transactionsMap[giota.Address(chunks[i].Address)]; !ok || transactionsMap == nil {
+			if _, ok := transactionsMap[chunkAddress]; !ok || transactionsMap == nil {
 				oyster_utils.LogToSegment("process_unassigned_chunks: "+
 					"treasure_chunk_not_attached", analytics.NewProperties().
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				treasureChunksToAttach = append(treasureChunksToAttach, chunks[i])
 			} else {
@@ -371,7 +383,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				chunks[i].Status = models.Complete
 				models.DB.ValidateAndSave(&chunks[i])

@@ -1,7 +1,5 @@
-package models
+package models_test
 
-import "testing"
-
-func Test_Brokernode(t *testing.T) {
-	t.Log("This test needs to be implemented!")
+func (suite *ModelSuite) Test_Brokernode() {
+	// TODO: Implement this method.
 }

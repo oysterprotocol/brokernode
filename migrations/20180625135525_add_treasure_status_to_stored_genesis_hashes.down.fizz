@@ -1,0 +1,1 @@
+drop_column("stored_genesis_hashes", "treasure_status")

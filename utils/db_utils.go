@@ -29,7 +29,12 @@ type dbUpdateOperation interface {
 	GetUpdatedValue(ValueT) string
 }
 
-const COLUMNS_SEPARATOR = ", "
+const (
+	COLUMNS_SEPARATOR = ", "
+
+	// The max number of retry if there is an error on SQL.
+	MAX_NUMBER_OF_SQL_RETRY = 3
+)
 
 // Private data structure
 type dbUpdateModel struct {

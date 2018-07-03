@@ -14,7 +14,7 @@ var (
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = false
 	findTransactionsMockCalled_process_unassigned_chunks                 = false
 	AllChunksCalled                                                      []models.DataMap
-	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
@@ -93,7 +93,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	suite.Nil(err)
 
 	// call method under test
-	jobs.ProcessUnassignedChunks(IotaMock)
+	jobs.ProcessUnassignedChunks(IotaMock, jobs.PrometheusWrapper)
 
 	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
@@ -174,6 +174,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 			ChunkIdx:    i,
 			GenesisHash: "abcdeff1",
 			Hash:        "SOMEHASH",
+			Address:     "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 		})
 	}
 
@@ -447,7 +448,8 @@ func findTransactions_process_unassigned_chunks(addresses []giota.Address) (map[
 
 	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
 
-	if addresses[0] == giota.Address(fakeFindTransactionsAddress) {
+	address, _ := giota.ToAddress(fakeFindTransactionsAddress)
+	if addresses[0] == address {
 		// only add to the map if the address is the address we decided to check for
 		addrToTransactionMap[addresses[0]] = []giota.Transaction{}
 	}

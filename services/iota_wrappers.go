@@ -2,8 +2,6 @@ package services
 
 import (
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
-	"log"
 	"math"
 	"os"
 	"runtime"
@@ -11,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
@@ -41,6 +39,7 @@ type IotaService struct {
 	ChunksMatch
 	VerifyTreasure
 	FindTransactions
+	GetTransactionsToApprove
 }
 
 type ProcessingFrequency struct {
@@ -54,6 +53,7 @@ type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks Filter
 type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
 type VerifyTreasure func([]string) (verify bool, err error)
 type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transaction, error)
+type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
 
 type FilteredChunk struct {
 	MatchesTangle      []models.DataMap
@@ -86,6 +86,7 @@ var (
 	api             *giota.API
 	PoWFrequency    ProcessingFrequency
 	minPoWFrequency = 1
+	OysterTag, _    = giota.ToTrytes("OYSTERGOLANG")
 )
 
 func init() {
@@ -93,13 +94,11 @@ func init() {
 	// Load ENV variables
 	err := godotenv.Load()
 	if err != nil {
-		log.Printf(".env file : %v", err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(fmt.Errorf(".env file : %v", err), nil)
 	}
 
 	host_ip := os.Getenv("HOST_IP")
 	if host_ip == "" {
-		raven.CaptureError(err, nil)
 		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
@@ -118,6 +117,7 @@ func init() {
 		ChunksMatch:                    chunksMatch,
 		VerifyTreasure:                 verifyTreasure,
 		FindTransactions:               findTransactions,
+		GetTransactionsToApprove:       getTransactionsToApprove,
 	}
 
 	PowProcs = runtime.NumCPU()
@@ -162,27 +162,29 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		transfersArray := make([]giota.Transfer, len(powJobRequest.Chunks))
 
 		for i, chunk := range powJobRequest.Chunks {
-			transfersArray[i].Address = giota.Address(chunk.Address)
+			address, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				panic(err)
+			}
+			transfersArray[i].Address = address
 			transfersArray[i].Value = int64(0)
-			transfersArray[i].Message = giota.Trytes(chunk.Message)
-			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
-			fmt.Println("Address: " + transfersArray[i].Address)
+			transfersArray[i].Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				panic(err)
+			}
+			transfersArray[i].Tag = OysterTag
 		}
 
 		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
 
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 
 		transactions := []giota.Transaction(bdl)
 
-		transactionsToApprove, err := api.GetTransactionsToApprove(minDepth, minDepth, "")
-		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
-		}
+		transactionsToApprove, err := getTransactionsToApprove()
+		oyster_utils.LogIfError(err, nil)
 
 		err = doPowAndBroadcast(
 			transactionsToApprove.BranchTransaction,
@@ -203,6 +205,10 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		fmt.Println("PowWorker: Leaving")
 		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
 	}
+}
+
+func getTransactionsToApprove() (*giota.GetTransactionsToApproveResponse, error) {
+	return api.GetTransactionsToApprove(minDepth, minDepth, "")
 }
 
 func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
@@ -252,14 +258,12 @@ func findTransactions(addresses []giota.Address) (map[giota.Address][]giota.Tran
 		}
 		resp, err := api.FindTransactions(&req)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 		transactionResp, err := api.GetTrytes(resp.Hashes)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 
@@ -305,8 +309,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 		mutex.Unlock()
 
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return err
 		}
 
@@ -325,8 +328,7 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 			// Async log
 			oyster_utils.LogToSegment("iota_wrappers: broadcast_FAIL", broadcastProperties)
 
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 		} else {
 
 			err = api.StoreTransactions(trytes)
@@ -409,7 +411,13 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 		// this will cause this chunk to automatically get added to 'NotAttached' array
 		// and send to the channels
 		if chunk.Status != models.Error {
-			addresses = append(addresses, giota.Address(chunk.Address))
+			address, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				// trytes were not valid, skip this iteration
+				continue
+			}
+			addresses = append(addresses, address)
 		}
 	}
 
@@ -424,16 +432,14 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 	response, err := api.FindTransactions(&request)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return filteredChunks, err
 	}
 
 	if response != nil && len(response.Hashes) > 0 {
 		trytesArray, err := api.GetTrytes(response.Hashes)
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return filteredChunks, err
 		}
 
@@ -445,9 +451,15 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 
 		for _, chunk := range chunks {
 
-			if _, ok := transactionObjects[giota.Address(chunk.Address)]; ok {
+			chunkAddress, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				// trytes were not valid, skip this iteration
+				continue
+			}
+			if _, ok := transactionObjects[chunkAddress]; ok {
 				matchFound := false
-				for _, txObject := range transactionObjects[giota.Address(chunk.Address)] {
+				for _, txObject := range transactionObjects[chunkAddress] {
 					if chunksMatch(txObject, chunk, checkChunkAndBranch) {
 						matchFound = true
 						break
@@ -479,12 +491,13 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
 
+	message := GetMessageFromDataMap(chunkOnRecord)
 	if checkBranchAndTrunk == false &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) {
+		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
 
 		return true
 
-	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), chunkOnRecord.Message) &&
+	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.TrunkTransaction), chunkOnRecord.TrunkTx) &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.BranchTransaction), chunkOnRecord.BranchTx) {
 
@@ -496,7 +509,7 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, 
 			Set("genesis_hash", chunkOnRecord.GenesisHash).
 			Set("chunk_idx", chunkOnRecord.ChunkIdx).
 			Set("address", chunkOnRecord.Address).
-			Set("db_message", chunkOnRecord.Message).
+			Set("db_message", message).
 			Set("tangle_message", chunkOnTangle.SignatureMessageFragment).
 			Set("db_trunk", chunkOnRecord.TrunkTx).
 			Set("tangle_trunk", chunkOnTangle.TrunkTransaction).
@@ -513,14 +526,18 @@ func verifyTreasure(addr []string) (bool, error) {
 	iotaAddr := make([]giota.Address, len(addr))
 
 	for i, address := range addr {
-		iotaAddr[i] = giota.Address(address)
+		validAddress, err := giota.ToAddress(address)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return false, err
+		}
+		iotaAddr[i] = validAddress
 	}
 
 	transactionsMap, err := findTransactions(iotaAddr)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return false, err
 	}
 

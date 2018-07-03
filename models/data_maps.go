@@ -5,20 +5,17 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/getsentry/raven-go"
-	"golang.org/x/crypto/sha3"
+	"fmt"
 	"math/rand"
-
+	"strings"
 	"time"
 
-	"github.com/oysterprotocol/brokernode/utils"
-
-	"fmt"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
-	"strings"
+	"github.com/oysterprotocol/brokernode/utils"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -29,7 +26,7 @@ const (
 	DataMapTableName = "data_maps"
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.
-	MaxNumberOfValueForInsertOperation = 50
+	MaxNumberOfValueForInsertOperation = 10
 )
 
 const (
@@ -41,6 +38,15 @@ const (
 	Error = -1
 )
 
+const (
+	// Default value before adding msg_status column.
+	MsgStatusUnmigrated int = iota
+	// When client does not upload any data to brokernode.
+	MsgStatusNotUploaded
+	// When client has upload the data chunk to the brokernode.
+	MsgStatusUploaded
+)
+
 type DataMap struct {
 	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
@@ -49,6 +55,8 @@ type DataMap struct {
 	NodeID         string    `json:"nodeID" db:"node_id"`
 	NodeType       string    `json:"nodeType" db:"node_type"`
 	Message        string    `json:"message" db:"message"`
+	MsgID          string    `json:"msgId" db:"msg_id"`
+	MsgStatus      int       `json:"msgStatus" db:"msg_status"`
 	TrunkTx        string    `json:"trunkTx" db:"trunk_tx"`
 	BranchTx       string    `json:"branchTx" db:"branch_tx"`
 	GenesisHash    string    `json:"genesisHash" db:"genesis_hash"`
@@ -114,14 +122,28 @@ func (d *DataMap) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.NewErrors(), nil
 }
 
+/**
+ * Callbacks
+ */
+
+func (d *DataMap) BeforeCreate(tx *pop.Connection) error {
+	d.MsgID = d.generateMsgId()
+
+	// After adding MsgStatus column, all previous value will be 0/MsgStatusUnmigrated.
+	// And all new value should be default to MsgStatusNotUploaded.
+	if d.MsgStatus == MsgStatusUnmigrated {
+		d.MsgStatus = MsgStatusNotUploaded
+	}
+	return nil
+}
+
 func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
 
 	session := UploadSession{}
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 
@@ -138,8 +160,7 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 
 	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return "", err
 	}
 
@@ -148,6 +169,10 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 
 	decryptedKey := oyster_utils.Decrypt(hashedSessionID, encryptedKey, hashedChunkCreationTime)
 	return hex.EncodeToString(decryptedKey), nil
+}
+
+func (d *DataMap) generateMsgId() string {
+	return fmt.Sprintf("%v__%d", d.GenesisHash, d.ChunkIdx)
 }
 
 // Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.
@@ -193,21 +218,27 @@ func BuildDataMaps(genHash string, numChunks int) (vErr *validate.Errors, err er
 			Address:        currAddr,
 			Status:         Pending,
 		}
+		// We use INSERT SQL query rather than default Create method.
+		dataMap.BeforeCreate(nil)
+
 		// Validate the data
 		vErr, _ = dataMap.Validate(nil)
+		oyster_utils.LogIfValidationError(
+			"validation errors for creating dataMap for batch insertion.", vErr, nil)
 		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
 
 		currHash = oyster_utils.HashHex(currHash, sha256.New())
 
 		insertionCount++
 		if insertionCount >= MaxNumberOfValueForInsertOperation {
-			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
+			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
 			insertionCount = 0
 			values = nil
 		}
 	}
-	err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR))
-
+	if len(values) > 0 {
+		err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
+	}
 	return
 }
 
@@ -236,8 +267,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 		Error).All(&genesisHashesUnassigned)
 
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return nil, err
 	}
 
@@ -256,10 +286,7 @@ func GetUnassignedGenesisHashes() ([]interface{}, error) {
 func GetUnassignedChunks() (dataMaps []DataMap, err error) {
 	dataMaps = []DataMap{}
 	err = DB.Where("status = ? OR status = ?", Unassigned, Error).All(&dataMaps)
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -273,11 +300,7 @@ func GetAllUnassignedChunksBySession(session UploadSession) (dataMaps []DataMap,
 		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
 			session.GenesisHash, Unassigned, Error).All(&dataMaps)
 	}
-
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -292,10 +315,7 @@ func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []
 			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
 	}
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -305,10 +325,7 @@ func GetPendingChunksBySession(session UploadSession, limit int) (dataMaps []Dat
 	err = DB.Where("genesis_hash = ? AND status = ? LIMIT ?",
 		session.GenesisHash, Pending, limit).All(&dataMaps)
 
-	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -326,8 +343,7 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 		err := DB.Where("genesis_hash in (?)", genesisHashes...).All(&incompleteSessions)
 
 		if err != nil {
-			fmt.Println(err)
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			return nil, err
 		}
 		if len(incompleteSessions) <= 0 {
@@ -361,17 +377,20 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 	return nil, nil
 }
 
-func insertsIntoDataMapsTable(columnsName string, values string) error {
+func insertsIntoDataMapsTable(columnsName string, values string, valueSize int) error {
 	if len(values) == 0 {
 		return nil
 	}
 
 	rawQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", DataMapTableName, columnsName, values)
-	err := DB.RawQuery(rawQuery).All(&[]DataMap{})
-	if err != nil {
-		raven.CaptureError(err, nil)
+	var err error
+	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
+		err = DB.RawQuery(rawQuery).All(&[]DataMap{})
+		if err == nil {
+			break
+		}
 	}
-
+	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY, "NumOfRecord": valueSize})
 	return err
 }
 
@@ -381,10 +400,8 @@ func GetDataMapByGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) ([]Dat
 	dataMaps := []DataMap{}
 	err := DB.Where("genesis_hash = ?",
 		genesisHash).Where("chunk_idx = ?", chunkIdx).All(&dataMaps)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
 
+	oyster_utils.LogIfError(err, nil)
 	return dataMaps, err
 }
 
@@ -425,8 +442,10 @@ func GetDataMap(genHash string, numChunks int) (dataMaps []DataMap, vErr *valida
 		// Validate the data
 		var err error
 		vErr, err = dataMap.Validate(nil)
+		oyster_utils.LogIfValidationError(
+			"validation errors for dataMap in GetDataMap.", vErr, nil)
 		if err != nil {
-			raven.CaptureError(err, nil)
+			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 		dataMaps = append(dataMaps, dataMap)

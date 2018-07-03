@@ -22,6 +22,9 @@ type webnodeCreateRes struct {
 
 // Creates a webnode.
 func (usr *WebnodeResource) Create(c buffalo.Context) error {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramWebnodeResourceCreate, start)
+
 	req := webnodeCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 

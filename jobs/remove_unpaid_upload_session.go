@@ -11,13 +11,17 @@ import (
 const UnpaidExpirationInHour = 24
 
 /*RemoveUnpaidUploadSession cleans up unpload_sessions and data_maps talbe for expired/unpaid session. */
-func RemoveUnpaidUploadSession() {
+func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramRemoveUnpaidUploadSession, start)
+
 	sessions := []models.UploadSession{}
 	err := models.DB.RawQuery(
 		"SELECT * from upload_sessions WHERE payment_status != ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
 		models.PaymentStatusConfirmed, UnpaidExpirationInHour).All(&sessions)
 	if err != nil {
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
@@ -27,8 +31,9 @@ func RemoveUnpaidUploadSession() {
 			continue
 		}
 
+		dataMaps := []models.DataMap{}
 		err := models.DB.Transaction(func(tx *pop.Connection) error {
-			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&[]models.DataMap{}); err != nil {
+			if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&dataMaps); err != nil {
 				return err
 			}
 			if err := tx.RawQuery("DELETE from upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{}); err != nil {
@@ -36,6 +41,9 @@ func RemoveUnpaidUploadSession() {
 			}
 			return nil
 		})
-		oyster_utils.LogIfError(err)
+		oyster_utils.LogIfError(err, nil)
+		if err == nil {
+			services.DeleteMsgDatas(dataMaps)
+		}
 	}
 }

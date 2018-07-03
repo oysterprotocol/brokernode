@@ -3,7 +3,6 @@ package oyster_utils
 import (
 	"encoding/hex"
 	"errors"
-	"github.com/getsentry/raven-go"
 	"github.com/iotaledger/giota"
 	"strings"
 )
@@ -11,6 +10,8 @@ import (
 var (
 	TrytesAlphabet = []rune("9ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
+
+const StopperTryte = "A"
 
 func AsciiToTrytes(asciiString string) (string, error) {
 	var b strings.Builder
@@ -21,7 +22,9 @@ func AsciiToTrytes(asciiString string) (string, error) {
 		// If not recognizable ASCII character, return null
 		if charCode > 255 {
 			err := errors.New("asciiString is not ASCII char in AsciiToTrytes method")
-			raven.CaptureError(err, nil)
+			if err != nil {
+				LogIfError(err, nil)
+			}
 			return "", err
 		}
 
@@ -51,7 +54,9 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 	// If input length is odd, return an error
 	if len(inputTrytes)%2 != 0 {
 		err := errors.New("TrytesToAscii needs input with an even number of characters!")
-		raven.CaptureError(err, nil)
+		if err != nil {
+			LogIfError(err, nil)
+		}
 		return "", err
 	}
 
@@ -85,6 +90,30 @@ func TrytesToBytes(t giota.Trytes) []byte {
 	return output
 }
 
+func ChunkMessageToTrytesWithStopper(messageString string) (giota.Trytes, error) {
+	// messageString will be either a binary string or will already be in trytes
+	trytes, err := giota.ToTrytes(messageString)
+	if err == nil {
+		// not capturing here since this isn't a "real" error
+		return trytes, nil
+	}
+	trytes, err = giota.ToTrytes(RunesToTrytes([]rune(messageString)) + StopperTryte)
+	if err != nil {
+		LogIfError(err, nil)
+	}
+	return trytes, err
+}
+
+func RunesToTrytes(r []rune) string {
+	var output string
+	for _, c := range r {
+		v1 := c % 27
+		v2 := (c - v1) / 27
+		output += string(TrytesAlphabet[v1]) + string(TrytesAlphabet[v2])
+	}
+	return output
+}
+
 func BytesToTrytes(b []byte) giota.Trytes {
 	var output string
 	for _, c := range b {
@@ -92,13 +121,17 @@ func BytesToTrytes(b []byte) giota.Trytes {
 		v2 := (c - v1) / 27
 		output += string(TrytesAlphabet[v1]) + string(TrytesAlphabet[v2])
 	}
-	return giota.Trytes(output)
+	trytes, err := giota.ToTrytes(output)
+	if err != nil {
+		LogIfError(err, nil)
+	}
+	return trytes
 }
 
 func MakeAddress(hashString string) string {
 	bytes, err := hex.DecodeString(hashString)
 	if err != nil {
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return ""
 	}
 

@@ -1,10 +1,10 @@
 create_table("stored_genesis_hashes", func(t) {
 	t.Column("id", "uuid", {"primary": true})
 	t.Column("genesis_hash", "string", {})
-  t.Column("file_size_bytes", "integer", {})
-  t.Column("num_chunks", "integer", {})
-  t.Column("webnode_count", "integer", {"null": true})
-  t.Column("status", "integer", {})
+    t.Column("file_size_bytes", "integer", {})
+    t.Column("num_chunks", "integer", {})
+    t.Column("webnode_count", "integer", {"null": true})
+    t.Column("status", "integer", {})
 })
 
 add_index("stored_genesis_hashes", ["genesis_hash"], {})

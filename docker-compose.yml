@@ -1,7 +1,12 @@
 version: "3"
 
 services:
-
+  prometheus:
+    image: quay.io/prometheus/prometheus:latest
+    ports:
+    - "9090:9090"
+    volumes:
+     - "./prometheus.yml:/var/lib/prometheus/prometheus.yml"
   app:
     build: "."
     restart: "always"

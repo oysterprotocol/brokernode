@@ -1,7 +1,5 @@
-package models
+package models_test
 
-import "testing"
-
-func Test_Transaction(t *testing.T) {
-	t.Log("This test needs to be implemented!")
+func (suite *ModelSuite) Test_Transaction() {
+	// TODO: implement this method.
 }

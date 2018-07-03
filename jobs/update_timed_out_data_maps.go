@@ -4,15 +4,20 @@ import (
 	"time"
 
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
-func UpdateTimeOutDataMaps(thresholdTime time.Time) {
+func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUpdateTimeOutDataMaps, start)
+
 	timedOutDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
-	oyster_utils.LogIfError(err)
+	oyster_utils.LogIfError(err, nil)
 
 	if len(timedOutDataMaps) > 0 {
 
