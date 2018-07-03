@@ -21,4 +21,4 @@ test:
   password: "secret"
 
 production:
-  url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}
+    url: {{envOr "DATABASE_URL" "mysql://root:root@(localhost:3306)/brokernode_production?parseTime=true&multiStatements=true&readTimeout=1s"}}

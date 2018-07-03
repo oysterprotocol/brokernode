@@ -184,18 +184,6 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte uint64) []int {
 	return indexes
 }
 
-/*GetTreasureIdxMap returns the IdxMap for treasure to burried.*/
-func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
-	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
-	var idxMap nulls.String
-	if err == nil {
-		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
-	} else {
-		idxMap = nulls.String{"", false}
-	}
-	return idxMap
-}
-
 /*GetTreasureIdxIndexes returns int[] for serialized nulls.String.*/
 func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	if !idxMap.Valid {

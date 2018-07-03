@@ -181,19 +181,6 @@ func Test_MergeIndexes_SameSize(t *testing.T) {
 	oyster_utils.AssertTrue(len(indexes) == 3, t, "Must result an error")
 }
 
-func Test_GetTreasureIdxMap_ValidInput(t *testing.T) {
-	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{2})
-
-	oyster_utils.AssertTrue(idxMap.Valid, t, "")
-}
-
-func Test_GetTreasureIdxMap_InvalidInput(t *testing.T) {
-	idxMap := oyster_utils.GetTreasureIdxMap([]int{1}, []int{1, 2})
-
-	oyster_utils.AssertStringEqual(idxMap.String, "", t)
-	oyster_utils.AssertTrue(!idxMap.Valid, t, "")
-}
-
 func Test_GetTreasureIdxIndexes_InvalidInput(t *testing.T) {
 	indexes := oyster_utils.GetTreasureIdxIndexes(nulls.String{"", false})
 
