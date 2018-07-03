@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS `broker_broker_transactions`;

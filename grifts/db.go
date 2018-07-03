@@ -8,6 +8,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/shopspring/decimal"
 	"math/big"
 	"os"
 	"strconv"
@@ -386,6 +387,271 @@ var _ = grift.Namespace("db", func() {
 
 		if err == nil {
 			fmt.Println("Completed uploads deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("claim_treasure_test", "Creates a treasure to claim and then tries to claim it")
+	grift.Add("claim_treasure_test", func(c *grift.Context) error {
+
+		var numToCreate int
+		if len(c.Args) == 0 {
+			numToCreate = 1
+		} else {
+			numToCreate, _ = strconv.Atoi(c.Args[0])
+		}
+
+		for i := 0; i < numToCreate; i++ {
+			address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+			fmt.Println("PRIVATE KEY IS:")
+			fmt.Println(privateKey)
+
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+
+			//prlAmount := big.NewFloat(float64(.0001))
+			//prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
+			prlAmountInWei := big.NewInt(7800000000000001)
+
+			treasure := models.Treasure{
+				ETHAddr: address.Hex(),
+				ETHKey:  privateKey,
+				Address: qaTrytes,
+				Message: qaTrytes,
+			}
+
+			treasure.SetPRLAmount(prlAmountInWei)
+
+			vErr, err := models.DB.ValidateAndCreate(&treasure)
+
+			if err == nil && len(vErr.Errors) == 0 {
+				fmt.Println("Treasure row added")
+			}
+
+			for {
+				buried, err := services.EthWrapper.CheckBuriedState(address)
+				if err != nil {
+					fmt.Println("ERROR CHECKING BURIED STATE!")
+					return err
+				}
+				if buried {
+					fmt.Println("IT WAS BURIED!!")
+					time.Sleep(30 * time.Second)
+					fmt.Println("MOVING ON")
+					break
+				}
+				time.Sleep(3 * time.Second)
+			}
+			validChars := []rune("abcde123456789")
+			genesisHashEndingChars := oyster_utils.RandSeq(10, validChars)
+
+			treasureToClaim := models.WebnodeTreasureClaim{
+				GenesisHash:           qaGenHashStartingChars + genesisHashEndingChars,
+				ReceiverETHAddr:       "0x5C77fd6bbCBa6b40e23d083E0c0844B1D43784F5",
+				TreasureETHAddr:       address.Hex(),
+				TreasureETHPrivateKey: privateKey,
+				SectorIdx:             0,
+				NumChunks:             100,
+				StartingClaimClock:    0,
+			}
+
+			vErr, err = models.DB.ValidateAndCreate(&treasureToClaim)
+
+			if len(vErr.Errors) == 0 && err == nil {
+				fmt.Println("Created a webnode treasure claim!")
+			}
+		}
+
+		return nil
+	})
+
+	grift.Desc("delete_webnode_treasure_claims", "Deletes webnode treasure claims")
+	grift.Add("delete_webnode_treasure_claims", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from webnode_treasure_claims WHERE genesis_hash " +
+			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
+
+		if err == nil {
+			fmt.Println("Treasure claims deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("print_webnode_treasure_claims", "Prints the treasure claims")
+	grift.Add("print_webnode_treasure_claims", func(c *grift.Context) error {
+
+		treasureClaims := []models.WebnodeTreasureClaim{}
+
+		err := models.DB.RawQuery("SELECT * from webnode_treasure_claims").All(&treasureClaims)
+
+		if err == nil {
+			fmt.Println("Printing treasure claims")
+			for _, treasureClaim := range treasureClaims {
+				fmt.Println("Genesis hash:          " + treasureClaim.GenesisHash)
+				fmt.Println("Receiver ETH Address:  " + treasureClaim.ReceiverETHAddr)
+				fmt.Println("Treasure ETH Address:  " + treasureClaim.TreasureETHAddr)
+				fmt.Println("Treasure ETH Key:      " + treasureClaim.TreasureETHPrivateKey)
+				decrypted := treasureClaim.DecryptTreasureEthKey()
+				fmt.Println("decrypted ETH Key:     " + decrypted)
+				fmt.Println("PRL Status:            " + models.PRLClaimStatusMap[treasureClaim.ClaimPRLStatus])
+				fmt.Println("Gas Status:            " + models.GasTransferStatusMap[treasureClaim.GasStatus])
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_webnode_treasure_claim_statuses", "Sets the PRL and/or Gas statuses")
+	grift.Add("set_webnode_treasure_claim_statuses", func(c *grift.Context) error {
+
+		claimPRLStatus, err := strconv.Atoi(c.Args[0])
+		gasStatus, err := strconv.Atoi(c.Args[1])
+
+		if claimPRLStatus != 0 {
+			err := models.DB.RawQuery("UPDATE webnode_treasure_claims set claim_prl_status = ?"+
+				" WHERE genesis_hash "+
+				"LIKE "+"'"+qaGenHashStartingChars+"%';", claimPRLStatus).All(&[]models.CompletedUpload{})
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fmt.Println("Setting claim prl statuses to " + models.PRLClaimStatusMap[models.PRLClaimStatus(claimPRLStatus)])
+		}
+
+		if gasStatus != 0 {
+			err := models.DB.RawQuery("UPDATE webnode_treasure_claims set gas_status = ?"+
+				" WHERE genesis_hash "+
+				"LIKE "+"'"+qaGenHashStartingChars+"%';", gasStatus).All(&[]models.CompletedUpload{})
+			if err != nil {
+				fmt.Println(err)
+				return err
+			}
+			fmt.Println("Setting gas statuses to " + models.GasTransferStatusMap[models.GasTransferStatus(gasStatus)])
+		}
+
+		if err == nil {
+			fmt.Println("Treasure claims statuses changed")
+		}
+
+		return nil
+	})
+
+	grift.Desc("test_broker_txs", "Tests check_alpha_payments and check_beta_payments")
+	grift.Add("test_broker_txs", func(c *grift.Context) error {
+
+		alphaAddr, key, _ := services.EthWrapper.GenerateEthAddr()
+		betaAddr, betaKey, _ := services.EthWrapper.GenerateEthAddr()
+
+		validChars := []rune("abcde123456789")
+		genesisHashEndingCharsAlpha := oyster_utils.RandSeq(10, validChars)
+
+		//totalCost := decimal.NewFromFloat(float64(0.015625))
+		totalCost := decimal.NewFromFloat(float64(0.0002))
+		float64Cost, _ := totalCost.Float64()
+		bigFloatCost := big.NewFloat(float64Cost)
+		totalCostInWei := oyster_utils.ConvertToWeiUnit(bigFloatCost)
+
+		brokerTxAlpha := models.BrokerBrokerTransaction{
+			GenesisHash:   qaGenHashStartingChars + genesisHashEndingCharsAlpha,
+			Type:          models.SessionTypeAlpha,
+			ETHAddrAlpha:  alphaAddr.Hex(),
+			ETHAddrBeta:   betaAddr.Hex(),
+			ETHPrivateKey: key,
+			TotalCost:     totalCost,
+			PaymentStatus: models.BrokerTxAlphaPaymentPending,
+		}
+
+		vErr, err := models.DB.ValidateAndCreate(&brokerTxAlpha)
+		if len(vErr.Errors) > 0 {
+			fmt.Println(vErr.Error())
+			return errors.New(vErr.Error())
+		}
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		genesisHashEndingCharsBeta := oyster_utils.RandSeq(10, validChars)
+		brokerTxBeta := models.BrokerBrokerTransaction{
+			GenesisHash:   qaGenHashStartingChars + genesisHashEndingCharsBeta,
+			Type:          models.SessionTypeBeta,
+			ETHAddrAlpha:  alphaAddr.Hex(),
+			ETHAddrBeta:   betaAddr.Hex(),
+			ETHPrivateKey: betaKey,
+			TotalCost:     totalCost,
+			PaymentStatus: models.BrokerTxAlphaPaymentPending,
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&brokerTxBeta)
+		if len(vErr.Errors) > 0 {
+			fmt.Println(vErr.Error())
+			return errors.New(vErr.Error())
+		}
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		callMsg, _ := services.EthWrapper.CreateSendPRLMessage(
+			services.MainWalletAddress,
+			services.MainWalletPrivateKey,
+			services.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
+
+		sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+
+		if !sendSuccess {
+			fmt.Println(err)
+			return err
+		}
+
+		fmt.Println("Alpha is: " + alphaAddr.Hex())
+		fmt.Println("Beta is: " + betaAddr.Hex())
+
+		return nil
+	})
+
+	grift.Desc("print_broker_txs", "Prints broker_broker_transactions")
+	grift.Add("print_broker_txs", func(c *grift.Context) error {
+
+		brokerTxs := []models.BrokerBrokerTransaction{}
+
+		err := models.DB.RawQuery("SELECT * from broker_broker_transactions").All(&brokerTxs)
+
+		if err == nil {
+			fmt.Println("Printing broker transactions")
+			for _, brokerTx := range brokerTxs {
+				fmt.Println("Genesis hash:           " + brokerTx.GenesisHash)
+				fmt.Println("Alpha ETH Address:      " + brokerTx.ETHAddrAlpha)
+				fmt.Println("ETH Key:           " + brokerTx.ETHPrivateKey)
+				decrypted := brokerTx.DecryptEthKey()
+				fmt.Println("decrypted ETH Key:      " + decrypted)
+				fmt.Println("Beta ETH Address:       " + brokerTx.ETHAddrBeta)
+				fmt.Println("Payment status:   " + models.PaymentStatusMap[brokerTx.PaymentStatus])
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+		return nil
+	})
+
+	grift.Desc("delete_broker_txs", "Deletes the broker_txs")
+	grift.Add("delete_broker_txs", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from broker_broker_transactions WHERE genesis_hash " +
+			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.BrokerBrokerTransaction{})
+
+		if err == nil {
+			fmt.Println("Broker_txs deleted")
 		}
 
 		return nil

@@ -1,11 +1,8 @@
 package models
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"golang.org/x/crypto/sha3"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -47,7 +44,9 @@ const (
 	GasTransferSuccess
 	GasTransferLeftoversReclaimProcessing
 	GasTransferLeftoversReclaimSuccess
-	GasTransferError = -1
+
+	GasTransferError                 = -1
+	GasTransferLeftoversReclaimError = -2
 )
 
 var PRLClaimStatusMap = make(map[PRLClaimStatus]string)
@@ -127,22 +126,12 @@ func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 }
 
 func (c *CompletedUpload) EncryptSessionEthKey() {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
-
-	encryptedKey := oyster_utils.Encrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
-
-	c.ETHPrivateKey = hex.EncodeToString(encryptedKey)
+	c.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(c.ID, c.CreatedAt, c.ETHPrivateKey)
 	DB.ValidateAndSave(c)
 }
 
 func (c *CompletedUpload) DecryptSessionEthKey() string {
-	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
-	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
-
-	decryptedKey := oyster_utils.Decrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
-
-	return hex.EncodeToString(decryptedKey)
+	return oyster_utils.ReturnDecryptedEthKey(c.ID, c.CreatedAt, c.ETHPrivateKey)
 }
 
 /**

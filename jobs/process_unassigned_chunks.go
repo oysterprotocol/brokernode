@@ -225,7 +225,7 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				// already captured error in upstream function
 				return
 			}
-			ethAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
 				ETHAddr: ethAddress.Hex(),
 				ETHKey:  decryptedKey,
@@ -283,6 +283,7 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 			treasureChunksInserted++
 			i++ // skip an iteration
 		} else if _, ok := treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]; ok {
+			// LOOK INTO THIS
 			chunks = append(chunks[:i+2], chunks[i+1:]...)
 			chunks[i+1] = treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]
 			treasureChunksInserted++

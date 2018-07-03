@@ -176,11 +176,11 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 
 	suite.Equal("confirmed", resParsed.PaymentStatus)
 
-	// checkPRLBalance has been called twice. 1st for Alpha, and 2nd for Beta, we only record Beta addr
-	// Since both time, it returns a positive balance, thus, alpha won't call sendPrl method.
+	/* checkPRLBalance has been called once just for alpha.  Sending
+	 to beta now occurs in a job. */
 	suite.True(mockCheckPRLBalance.hasCalled)
 	suite.False(mockSendPrl.hasCalled)
-	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrBeta.String), mockCheckPRLBalance.input_addr)
+	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	suite.Nil(suite.DB.Find(&session, resParsed.ID))

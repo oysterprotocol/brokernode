@@ -231,7 +231,7 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(3, len(waitingForGas))
 
-	hasCalledCalculateGasToSend := false
+	hasCalledCalculateGasNeeded := false
 	hasCalledCheckETHBalance := false
 	hasCalledSendGas := false
 
@@ -257,8 +257,8 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 			return types.Transactions{}, "111111", 1, nil
 		},
 		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
-		CalculateGasToSend: func(desiredGasLimit uint64) (*big.Int, error) {
-			hasCalledCalculateGasToSend = true
+		CalculateGasNeeded: func(desiredGasLimit uint64) (*big.Int, error) {
+			hasCalledCalculateGasNeeded = true
 			gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
 			gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
 			return gasToSend, nil
@@ -289,7 +289,7 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(1, len(errored))
 
-	suite.Equal(true, hasCalledCalculateGasToSend)
+	suite.Equal(true, hasCalledCalculateGasNeeded)
 	suite.Equal(true, hasCalledCheckETHBalance)
 	suite.Equal(true, hasCalledSendGas)
 }

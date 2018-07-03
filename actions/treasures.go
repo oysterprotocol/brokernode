@@ -1,10 +1,10 @@
 package actions
 
 import (
+	"errors"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -35,19 +35,56 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
-	privateKey, keyErr := crypto.HexToECDSA(req.EthKey)
+	_, keyErr := crypto.HexToECDSA(req.EthKey)
 
-	if err == nil && keyErr == nil && verify {
-		ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
-		verify = EthWrapper.ClaimPRL(services.StringToAddress(req.ReceiverEthAddr), ethAddr, privateKey)
-	} else if err != nil {
+	if err != nil {
 		c.Error(400, err)
-	} else if keyErr != nil {
+	}
+	if keyErr != nil {
+		c.Error(400, keyErr)
+	}
+	if !verify {
+		res := treasureRes{
+			Success: verify,
+		}
+		return c.Render(200, r.JSON(res))
+	}
+
+	ethAddr := EthWrapper.GenerateEthAddrFromPrivateKey(req.EthKey)
+
+	startingClaimClock, claimClockErr := EthWrapper.CheckClaimClock(ethAddr)
+
+	if startingClaimClock.Int64() == int64(0) {
+		err = errors.New("claim clock should be 1 or a timestamp but received 0")
 		c.Error(400, err)
+	} else if claimClockErr != nil {
+		c.Error(400, err)
+	} else {
+		webnodeTreasureClaim := models.WebnodeTreasureClaim{
+			GenesisHash:           req.GenesisHash,
+			SectorIdx:             req.SectorIdx,
+			NumChunks:             req.NumChunks,
+			ReceiverETHAddr:       req.ReceiverEthAddr,
+			TreasureETHAddr:       ethAddr.String(),
+			TreasureETHPrivateKey: req.EthKey,
+			StartingClaimClock:    startingClaimClock.Int64(),
+		}
+
+		vErr, err := models.DB.ValidateAndCreate(&webnodeTreasureClaim)
+		if len(vErr.Errors) > 0 {
+			oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+		}
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+
+		verify = err == nil && len(vErr.Errors) == 0
 	}
 
 	res := treasureRes{
-		Success: verify,
+		Success: verify &&
+			startingClaimClock.Int64() != int64(0) &&
+			claimClockErr == nil,
 	}
 
 	return c.Render(200, r.JSON(res))

@@ -31,7 +31,8 @@ import (
 )
 
 type Eth struct {
-	CalculateGasToSend
+	CalculateGasNeeded
+	CheckIfWorthReclaimingGas
 	ClaimPRL
 	GenerateEthAddr
 	GenerateKeys
@@ -39,6 +40,7 @@ type Eth struct {
 	GeneratePublicKeyFromPrivateKey
 	BuryPrl
 	CheckBuriedState
+	CheckClaimClock
 	SendETH
 	CreateSendPRLMessage
 	SendPRL
@@ -101,6 +103,12 @@ type TransactionWithBlockNumber struct {
 	Confirmed   *bool
 }
 
+// CalculateGasNeeded Gas Calculation for Sending Transaction
+type CalculateGasNeeded func(desiredGasLimit uint64) (*big.Int, error)
+
+// CheckIfWorthReclaimingGas Accept an address and desired gas limit and decide if it is worth reclaiming the leftover ETH
+type CheckIfWorthReclaimingGas func(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error)
+
 // CalculateGasToSend Gas Calculation for Sending Ether
 type CalculateGasToSend func(desiredGasLimit uint64) (*big.Int, error)
 
@@ -161,6 +169,9 @@ type BuryPrl func(msg OysterCallMsg) (bool, string, int64)
 // CheckBuriedState Check if an Address Is Buried
 type CheckBuriedState func(addressToCheck common.Address) (bool, error)
 
+// CheckClaimClock Call the smart contrat to check the claim clock status of an address
+type CheckClaimClock func(addressToCheck common.Address) (*big.Int, error)
+
 // CreateSendPRLMessage Utility to Send PRLs
 type CreateSendPRLMessage func(from common.Address, privateKey *ecdsa.PrivateKey, to common.Address, prlAmount big.Int) (OysterCallMsg, error)
 
@@ -202,13 +213,15 @@ func init() {
 	RunOnMainETHNetwork()
 
 	EthWrapper = Eth{
-		CalculateGasToSend:              calculateGasToSend,
+		CalculateGasNeeded:              calculateGasNeeded,
+		CheckIfWorthReclaimingGas:       checkIfWorthReclaimingGas,
 		CreateSendPRLMessage:            createSendPRLMessage,
 		SendPRL:                         sendPRL,
 		SendPRLFromOyster:               sendPRLFromOyster,
 		SendETH:                         sendETH,
 		BuryPrl:                         buryPrl,
 		CheckBuriedState:                checkBuriedState,
+		CheckClaimClock:                 checkClaimClock,
 		ClaimPRL:                        claimPRLs,
 		GeneratePublicKeyFromPrivateKey: generatePublicKeyFromPrivateKey,
 		GenerateEthAddr:                 generateEthAddr,
@@ -400,6 +413,9 @@ func StringToTxHash(txHash string) common.Hash {
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
+	// if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
+	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
+
 	// connect ethereum client
 	client, err := sharedClient()
 	if err != nil {
@@ -730,11 +746,29 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 
 }
 
-func calculateGasToSend(desiredGasLimit uint64) (*big.Int, error) {
-	// keep this un-commented out while QAing
-	//gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(6))
+func checkIfWorthReclaimingGas(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error) {
+	ethBalance := checkETHBalance(address)
 
-	// keep this un-commented out in production
+	if ethBalance.Int64() > 0 {
+		gasNeededToReclaimETH, err := calculateGasNeeded(desiredGasLimit)
+		if err != nil {
+			return false, big.NewInt(0), err
+		}
+		if gasNeededToReclaimETH.Int64() >= ethBalance.Int64() {
+			return false, big.NewInt(0), nil
+		}
+		return true, new(big.Int).Sub(ethBalance, gasNeededToReclaimETH), nil
+	} else {
+		var balErr error
+		if ethBalance.Int64() == -1 {
+			balErr = errors.New("error checking if worth " +
+				"reclaiming gas because could not get ethBalance")
+		}
+		return false, big.NewInt(0), balErr
+	}
+}
+
+func calculateGasNeeded(desiredGasLimit uint64) (*big.Int, error) {
 	gasPrice, err := getGasPrice()
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -761,8 +795,6 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
-	// if QAing, uncomment this out and comment out the line above for faster transactions
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	// estimation
 	estimate, failedEstimate := getEstimatedGasPrice(toAddr, fromAddress, GasLimitETHSend, *gasPrice, *amount)
@@ -876,8 +908,42 @@ func checkBuriedState(address common.Address) (bool, error) {
 
 	// check buried state
 	buried, err := oysterPearl.Buried(&callOpts, address)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return false, err
+	}
 
 	return buried, err
+}
+
+// Check the claim clock value of an address
+func checkClaimClock(address common.Address) (*big.Int, error) {
+
+	// shared client
+	client, _ := sharedClient()
+
+	// transact
+	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
+	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
+	if err != nil {
+		fmt.Printf("unable to access contract instance at :%v", err)
+		return big.NewInt(-1), err
+	}
+
+	// create callOpts
+	callOpts := bind.CallOpts{
+		From:    OysterPearlAddress,
+		Pending: true,
+	}
+
+	// check buried state
+	claimClock, err := oysterPearl.Claimed(&callOpts, address)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return big.NewInt(-1), err
+	}
+
+	return claimClock, err
 }
 
 // Claim PRL allows the receiver to unlock the treasure address and private key to enable the transfer
@@ -890,6 +956,17 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	if treasureBalance.Uint64() <= 0 {
 		err := errors.New("treasure balance insufficient")
+		oyster_utils.LogIfError(err, nil)
+		return false
+	}
+
+	buried, err := checkBuriedState(treasureAddress)
+	if err != nil {
+		fmt.Println("cannot claim PRLs in claimPRL due to: " + err.Error())
+		return false
+	}
+	if !buried {
+		err = errors.New("treasure address is not in a buried state")
 		oyster_utils.LogIfError(err, nil)
 		return false
 	}
@@ -910,21 +987,28 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		oyster_utils.LogIfError(err, nil)
 		return false
 	}
-	gasPrice, _ := getGasPrice()
+
+	ethBalance := checkETHBalance(auth.From)
+
+	// determine the gas price we are willing to pay by the gas price we settled
+	// upon when we sent the eth earlier in the sequence
+	gasPrice := new(big.Int).Quo(ethBalance, big.NewInt(int64(GasLimitPRLClaim)))
+
 	// setup transaction options
 	claimOpts := bind.TransactOpts{
 		From:     auth.From,
 		Signer:   auth.Signer,
-		GasLimit: GasLimitPRLSend,
+		GasLimit: GasLimitPRLClaim,
 		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
-		Value:    treasureBalance,
+		Context:  auth.Context,
 	}
 	// call claim, receiver is payout, fee coming from the treasure address and private key
-	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, treasureAddress)
+	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, MainWalletAddress)
 
 	if err != nil {
 		fmt.Printf("unable to call claim with transactor : %v", err)
+		return false
 	}
 
 	// store in broker transaction pool
@@ -1046,7 +1130,7 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	if err != nil {
 		log.Printf("unable to access contract instance at : %v\n", err)
 	}
-	
+
 	// initialize transactor // may need to move this to a session based transactor
 	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if err != nil {
@@ -1057,9 +1141,6 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 
 	// use this when in production:
 	gasPrice, err := getGasPrice()
-
-	// use this when QAing:
-	//gasPrice = oyster_utils.ConvertGweiToWei(big.NewInt(5))
 
 	opts := bind.TransactOpts{
 		From:     auth.From,
