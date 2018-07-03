@@ -182,12 +182,14 @@ var _ = grift.Namespace("db", func() {
 
 		if err == nil {
 			for _, treasureToBury := range treasuresToBury {
+				fmt.Println("________________________________________________________")
 				fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
 				fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
 				fmt.Println("Iota Address: " + treasureToBury.Address)
 				fmt.Println("Iota Message: " + treasureToBury.Message)
 				fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
 				fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+				fmt.Println("________________________________________________________")
 			}
 		} else {
 			fmt.Println(err)
@@ -282,6 +284,41 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("print_data_map_stats", "Counts the statuses of all data maps")
+	grift.Add("print_data_map_stats", func(c *grift.Context) error {
+
+		dataMapAll := []models.DataMap{}
+
+		dataMapPending := []models.DataMap{}
+		dataMapUnassigned := []models.DataMap{}
+		dataMapUnverified := []models.DataMap{}
+		dataMapComplete := []models.DataMap{}
+		dataMapConfirmed := []models.DataMap{}
+		dataMapError := []models.DataMap{}
+
+		models.DB.RawQuery("SELECT * from data_maps").All(&dataMapAll)
+
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Pending).All(&dataMapPending)
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Unassigned).All(&dataMapUnassigned)
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Unverified).All(&dataMapUnverified)
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Complete).All(&dataMapComplete)
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Confirmed).All(&dataMapConfirmed)
+		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Error).All(&dataMapError)
+
+		fmt.Println("____________________________________________")
+		fmt.Printf("Pending count:      %d\n", len(dataMapPending))
+		fmt.Printf("Unassigned count:   %d\n", len(dataMapUnassigned))
+		fmt.Printf("Unverified count:   %d\n", len(dataMapUnverified))
+		fmt.Printf("Complete count:     %d\n", len(dataMapComplete))
+		fmt.Printf("Confirmed count:    %d\n", len(dataMapConfirmed))
+		fmt.Printf("Error count:        %d\n", len(dataMapError))
+		fmt.Println("_____________")
+		fmt.Printf("Total count:        %v\n", len(dataMapAll))
+		fmt.Printf("____________________________________________\n")
+
+		return nil
+	})
+
 	grift.Desc("claim_unused_test", "Adds a completed upload "+
 		"to claim unused PRLs from")
 	grift.Add("claim_unused_test", func(c *grift.Context) error {
@@ -354,6 +391,61 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("print_upload_sessions", "Prints the upload_sessions")
+	grift.Add("print_upload_sessions", func(c *grift.Context) error {
+
+		uploads := []models.UploadSession{}
+
+		err := models.DB.RawQuery("SELECT * from upload_sessions").All(&uploads)
+
+		if err == nil {
+
+			for _, upload := range uploads {
+
+				session := "Beta"
+				if upload.Type == models.SessionTypeAlpha {
+					session = "Alpha"
+				}
+
+				paymentStatus := "PaymentStatusInvoiced"
+
+				switch upload.PaymentStatus {
+				case models.PaymentStatusPending:
+					paymentStatus = "PaymentStatusPending"
+				case models.PaymentStatusConfirmed:
+					paymentStatus = "PaymentStatusConfirmed"
+				case models.PaymentStatusError:
+					paymentStatus = "PaymentStatusError"
+				}
+
+				treasureStatus := "TreasureGeneratingKeys"
+
+				switch upload.TreasureStatus {
+				case models.TreasureInDataMapPending:
+					treasureStatus = "TreasureInDataMapPending"
+				case models.TreasureInDataMapComplete:
+					treasureStatus = "TreasureInDataMapComplete"
+				}
+
+				fmt.Println("________________________________________________________")
+				fmt.Println("Type:                " + session)
+				fmt.Println("Genesis hash:        " + upload.GenesisHash)
+				fmt.Println("ETH Address Alpha:   " + upload.ETHAddrAlpha.String)
+				fmt.Println("ETH Address Beta:    " + upload.ETHAddrBeta.String)
+				fmt.Println("ETH Key:             " + upload.ETHPrivateKey)
+				decrypted := upload.DecryptSessionEthKey()
+				fmt.Println("decrypted ETH Key:   " + decrypted)
+				fmt.Println("Payment Status:      " + paymentStatus)
+				fmt.Println("Treasure Status:     " + treasureStatus)
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+	})
+
 	grift.Desc("print_completed_uploads", "Prints the completed uploads")
 	grift.Add("print_completed_uploads", func(c *grift.Context) error {
 
@@ -363,6 +455,7 @@ var _ = grift.Namespace("db", func() {
 
 		if err == nil {
 			for _, completedUpload := range completedUploads {
+				fmt.Println("________________________________________________________")
 				fmt.Println("Genesis hash:      " + completedUpload.GenesisHash)
 				fmt.Println("ETH Address:       " + completedUpload.ETHAddr)
 				fmt.Println("ETH Key:           " + completedUpload.ETHPrivateKey)
@@ -491,6 +584,7 @@ var _ = grift.Namespace("db", func() {
 		if err == nil {
 			fmt.Println("Printing treasure claims")
 			for _, treasureClaim := range treasureClaims {
+				fmt.Println("________________________________________________________")
 				fmt.Println("Genesis hash:          " + treasureClaim.GenesisHash)
 				fmt.Println("Receiver ETH Address:  " + treasureClaim.ReceiverETHAddr)
 				fmt.Println("Treasure ETH Address:  " + treasureClaim.TreasureETHAddr)
@@ -627,13 +721,20 @@ var _ = grift.Namespace("db", func() {
 		if err == nil {
 			fmt.Println("Printing broker transactions")
 			for _, brokerTx := range brokerTxs {
+
+				sessionType := "Beta"
+				if brokerTx.Type == models.SessionTypeAlpha {
+					sessionType = "Alpha"
+				}
+				fmt.Println("________________________________________________________")
+				fmt.Println("Session type:           " + sessionType)
 				fmt.Println("Genesis hash:           " + brokerTx.GenesisHash)
 				fmt.Println("Alpha ETH Address:      " + brokerTx.ETHAddrAlpha)
-				fmt.Println("ETH Key:           " + brokerTx.ETHPrivateKey)
+				fmt.Println("Beta ETH Address:       " + brokerTx.ETHAddrBeta)
+				fmt.Println("ETH Key:                " + brokerTx.ETHPrivateKey)
 				decrypted := brokerTx.DecryptEthKey()
 				fmt.Println("decrypted ETH Key:      " + decrypted)
-				fmt.Println("Beta ETH Address:       " + brokerTx.ETHAddrBeta)
-				fmt.Println("Payment status:   " + models.PaymentStatusMap[brokerTx.PaymentStatus])
+				fmt.Println("Payment status:         " + models.PaymentStatusMap[brokerTx.PaymentStatus])
 				fmt.Println("________________________________________________________")
 			}
 		} else {
@@ -644,11 +745,23 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
-	grift.Desc("delete_broker_txs", "Deletes the broker_txs")
-	grift.Add("delete_broker_txs", func(c *grift.Context) error {
+	grift.Desc("delete_qa_broker_txs", "Deletes the qa broker_txs")
+	grift.Add("delete_qa_broker_txs", func(c *grift.Context) error {
 
 		err := models.DB.RawQuery("DELETE from broker_broker_transactions WHERE genesis_hash " +
 			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.BrokerBrokerTransaction{})
+
+		if err == nil {
+			fmt.Println("Broker_txs deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("delete_all_broker_txs", "Deletes all the broker_txs")
+	grift.Add("delete_all_broker_txs", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
 
 		if err == nil {
 			fmt.Println("Broker_txs deleted")
