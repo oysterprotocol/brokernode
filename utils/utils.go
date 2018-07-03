@@ -2,8 +2,8 @@ package oyster_utils
 
 import (
 	"bytes"
-    "crypto/md5"
-    "encoding/binary"
+	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -246,16 +246,16 @@ func MergeIndexes(a []int, b []int, sectorSize int, numChunks int) ([]int, error
 	}
 
 	for i := 0; i < len(a); i++ {
-        buf := make([]byte, 8)
-        binary.BigEndian.PutUint64(buf, uint64(a[i] + b[i]))
-        hash := md5.Sum(buf)
-        val := binary.BigEndian.Uint64(hash[:])
-        chunkIdxOffset := sectorSize * i
-        maxIdx := sectorSize
-        if i == len(a) - 1 {
-            maxIdx = numChunks - sectorSize * (len(a) - 1)
-        }
-        idx := int(math.Mod(float64(val), float64(maxIdx))) + chunkIdxOffset
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, uint64(a[i]+b[i]))
+		hash := md5.Sum(buf)
+		val := binary.BigEndian.Uint64(hash[:])
+		chunkIdxOffset := sectorSize * i
+		maxIdx := sectorSize
+		if i == len(a)-1 {
+			maxIdx = numChunks - sectorSize*(len(a)-1)
+		}
+		idx := int(math.Mod(float64(val), float64(maxIdx))) + chunkIdxOffset
 		if idx == 0 {
 			idx = 1
 		}
