@@ -166,6 +166,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			transfersArray[i].Value = int64(0)
 			transfersArray[i].Message = giota.Trytes(chunk.Message)
 			transfersArray[i].Tag = giota.Trytes("OYSTERGOLANG")
+			fmt.Println("Address: " + transfersArray[i].Address)
 		}
 
 		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
