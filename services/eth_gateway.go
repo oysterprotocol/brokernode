@@ -774,7 +774,7 @@ func configureGateway(network string) {
 	switch network {
 	case MAIN:
 		// ethereum main net chain id
-		chainId = params.MainnetChainConfig.ChainId
+		chainId = params.MainnetChainConfig.ChainID
 		break
 	case TEST:
 		// oysterby test net chain id
