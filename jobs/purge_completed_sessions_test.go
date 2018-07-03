@@ -1,71 +1,78 @@
 package jobs_test
 
 import (
-	"encoding/hex"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
-	fileBytesCount := 2500
+	fileBytesCount := uint64(2500)
 	numChunks := 3
+	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
-		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS"), true},
-		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS"), true},
-		ETHPrivateKey: hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
-	suite.Equal(nil, err)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	uploadSession2 := models.UploadSession{
 		GenesisHash:   "abcdeff2",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS2"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS2"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err = uploadSession2.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
-	suite.Equal(nil, err)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	uploadSession3 := models.UploadSession{
 		GenesisHash:   "abcdeff3",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS3"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS3"), true},
+		ETHPrivateKey: privateKey,
 	}
 
 	vErr, err = uploadSession3.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
-	suite.Equal(nil, err)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	allDataMaps := []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	completedDataMaps := []models.CompletedDataMap{}
 	err = suite.DB.All(&completedDataMaps)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	uploadSessions := []models.UploadSession{}
 	err = suite.DB.All(&uploadSessions)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	storedGenHashes := []models.StoredGenesisHash{}
 	err = suite.DB.All(&storedGenHashes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	completedUploads := []models.CompletedUpload{}
 	err = suite.DB.All(&completedUploads)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	// verify initial lengths are what we expected
 	suite.Equal(3*(numChunks+1), len(allDataMaps)) // 3 data maps so 3 extra chunks have been added
@@ -77,7 +84,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	// set all chunks of first data map to complete or confirmed
 	allDone := []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&allDone)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	for _, dataMap := range allDone {
 		dataMap.Status = models.Complete
@@ -91,33 +98,43 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	// set one chunk of second data map to complete
 	someDone := []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&someDone)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	someDone[0].Status = models.Complete
 	suite.DB.ValidateAndSave(&someDone[0])
 
 	//call method under test
-	jobs.PurgeCompletedSessions()
+	jobs.PurgeCompletedSessions(jobs.PrometheusWrapper)
 
 	allDataMaps = []models.DataMap{}
 	err = suite.DB.All(&allDataMaps)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	completedDataMaps = []models.CompletedDataMap{}
 	err = suite.DB.All(&completedDataMaps)
-	suite.Equal(nil, err)
+	suite.Nil(err)
+
+	if services.IsKvStoreEnabled() {
+		var keys services.KVKeys
+		for _, cDataMap := range completedDataMaps {
+			keys = append(keys, cDataMap.MsgID)
+		}
+		kvPairs, err := services.BatchGet(&keys)
+		suite.Nil(err)
+		suite.Equal(len(completedDataMaps), len(*kvPairs))
+	}
 
 	uploadSessions = []models.UploadSession{}
 	err = suite.DB.All(&uploadSessions)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	storedGenHashes = []models.StoredGenesisHash{}
 	err = suite.DB.All(&storedGenHashes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	completedUploads = []models.CompletedUpload{}
 	err = suite.DB.All(&completedUploads)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	// verify final lengths are what we expected
 	suite.Equal(2*(numChunks+1), len(allDataMaps))   // 2 data maps so 2 extra chunks
@@ -131,13 +148,13 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	genHash1InDataMaps := []models.DataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1InDataMaps)
 	suite.Equal(0, len(genHash1InDataMaps))
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	genHash1Completed := []models.CompletedDataMap{}
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1Completed)
 	suite.Equal(numChunks+1, len(genHash1Completed))
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
-	suite.Equal("SOME_BETA_ETH_ADDRESS", completedUploads[0].ETHAddr)
+	suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUploads[0].ETHAddr)
 	suite.Equal("abcdeff1", completedUploads[0].GenesisHash)
 }

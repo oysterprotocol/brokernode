@@ -3,14 +3,15 @@ package jobs
 import (
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
-func init() {
-}
+func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 
-func PurgeCompletedSessions() {
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramPurgeCompletedSessions, start)
 
 	var genesisHashesNotComplete = []models.DataMap{}
 	var allGenesisHashesStruct = []models.DataMap{}
@@ -35,13 +36,17 @@ func PurgeCompletedSessions() {
 		notComplete[genesisHash.GenesisHash] = true
 	}
 
-	var moveToComplete = []models.DataMap{}
-
 	for _, genesisHash := range allGenesisHashes {
-		if !notComplete[genesisHash] {
+		if _, hasKey := notComplete[genesisHash]; !hasKey {
+			var moveToComplete = []models.DataMap{}
+
+			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 
 			models.DB.Transaction(func(tx *pop.Connection) error {
-				tx.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToComplete)
 				MoveToComplete(tx, moveToComplete) // Passed in the connection
 
 				err = tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{})
@@ -70,7 +75,6 @@ func PurgeCompletedSessions() {
 					}
 					err = models.NewCompletedUpload(session[0])
 					if err != nil {
-						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}
@@ -87,16 +91,17 @@ func PurgeCompletedSessions() {
 
 				return nil
 			})
+			services.DeleteMsgDatas(moveToComplete)
 		}
 	}
 }
 
 func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 	index := 0
+	messagsKvPairs := services.KVPairs{}
 	for _, dataMap := range dataMaps {
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,
-			Message:     dataMap.Message,
 			NodeID:      dataMap.NodeID,
 			NodeType:    dataMap.NodeType,
 			TrunkTx:     dataMap.TrunkTx,
@@ -106,12 +111,20 @@ func MoveToComplete(tx *pop.Connection, dataMaps []models.DataMap) {
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
 		}
+		if !services.IsKvStoreEnabled() {
+			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
+		}
 
 		_, err := tx.ValidateAndSave(&completedDataMap)
-		oyster_utils.LogIfError(err, map[string]interface{}{
-			"numOfDataMaps":  len(dataMaps),
-			"proceededIndex": index,
-		})
+		if err == nil {
+			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
+		} else {
+			oyster_utils.LogIfError(err, map[string]interface{}{
+				"numOfDataMaps":  len(dataMaps),
+				"proceededIndex": index,
+			})
+		}
 		index++
 	}
+	services.BatchSet(&messagsKvPairs)
 }

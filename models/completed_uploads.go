@@ -1,16 +1,18 @@
 package models
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/getsentry/raven-go"
+	"golang.org/x/crypto/sha3"
 	"time"
 
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/gobuffalo/validate/validators"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type CompletedUpload struct {
@@ -21,7 +23,11 @@ type CompletedUpload struct {
 	ETHAddr       string            `json:"ethAddr" db:"eth_addr"`
 	ETHPrivateKey string            `json:"ethPrivateKey" db:"eth_private_key"`
 	PRLStatus     PRLClaimStatus    `json:"prlStatus" db:"prl_status"`
+	PRLTxHash     string            `json:"prlTxHash" db:"prl_tx_hash"`
+	PRLTxNonce    int64             `json:"prlTxNonce" db:"prl_tx_nonce"`
 	GasStatus     GasTransferStatus `json:"gasStatus" db:"gas_status"`
+	GasTxHash     string            `json:"gasTxHash" db:"gas_tx_hash"`
+	GasTxNonce    int64             `json:"gasTxNonce" db:"gas_tx_nonce"`
 	Version       uint32            `json:"version" db:"version"`
 }
 
@@ -39,8 +45,27 @@ const (
 	GasTransferNotStarted GasTransferStatus = iota + 1
 	GasTransferProcessing
 	GasTransferSuccess
+	GasTransferLeftoversReclaimProcessing
+	GasTransferLeftoversReclaimSuccess
 	GasTransferError = -1
 )
+
+var PRLClaimStatusMap = make(map[PRLClaimStatus]string)
+var GasTransferStatusMap = make(map[GasTransferStatus]string)
+
+func init() {
+	PRLClaimStatusMap[PRLClaimNotStarted] = "PRLClaimNotStarted"
+	PRLClaimStatusMap[PRLClaimProcessing] = "PRLClaimProcessing"
+	PRLClaimStatusMap[PRLClaimSuccess] = "PRLClaimSuccess"
+	PRLClaimStatusMap[PRLClaimError] = "PRLClaimError"
+
+	GasTransferStatusMap[GasTransferNotStarted] = "GasTransferNotStarted"
+	GasTransferStatusMap[GasTransferProcessing] = "GasTransferProcessing"
+	GasTransferStatusMap[GasTransferSuccess] = "GasTransferSuccess"
+	GasTransferStatusMap[GasTransferLeftoversReclaimProcessing] = "GasTransferLeftoversReclaimProcessing"
+	GasTransferStatusMap[GasTransferLeftoversReclaimSuccess] = "GasTransferLeftoversReclaimSuccess"
+	GasTransferStatusMap[GasTransferError] = "GasTransferError"
+}
 
 // String is not required by pop and may be deleted
 func (c CompletedUpload) String() string {
@@ -66,8 +91,8 @@ func (c CompletedUploads) String() string {
 func (c *CompletedUpload) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: c.GenesisHash, Name: "GenesisHash"},
-		&validators.StringIsPresent{Field: c.GenesisHash, Name: "EthAddr"},
-		&validators.StringIsPresent{Field: c.GenesisHash, Name: "EthPrivateKey"},
+		&validators.StringIsPresent{Field: c.ETHAddr, Name: "EthAddr"},
+		&validators.StringIsPresent{Field: c.ETHPrivateKey, Name: "EthPrivateKey"},
 	), nil
 }
 
@@ -101,45 +126,86 @@ func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 	return nil
 }
 
+func (c *CompletedUpload) EncryptSessionEthKey() {
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
+
+	encryptedKey := oyster_utils.Encrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
+
+	c.ETHPrivateKey = hex.EncodeToString(encryptedKey)
+	DB.ValidateAndSave(c)
+}
+
+func (c *CompletedUpload) DecryptSessionEthKey() string {
+	hashedSessionID := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.ID))), sha3.New256())
+	hashedCreationTime := oyster_utils.HashHex(hex.EncodeToString([]byte(fmt.Sprint(c.CreatedAt.Clock()))), sha3.New256())
+
+	decryptedKey := oyster_utils.Decrypt(hashedSessionID, c.ETHPrivateKey, hashedCreationTime)
+
+	return hex.EncodeToString(decryptedKey)
+}
+
 /**
  * Methods
  */
 func NewCompletedUpload(session UploadSession) error {
 
 	var err error
+	var vErr *validate.Errors
+	privateKey := session.DecryptSessionEthKey()
+	completedUpload := CompletedUpload{}
 
 	switch session.Type {
 	case SessionTypeAlpha:
-		_, err = DB.ValidateAndSave(&CompletedUpload{
+		completedUpload = CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrAlpha.String,
-			ETHPrivateKey: session.ETHPrivateKey})
+			ETHPrivateKey: privateKey,
+		}
+
+		vErr, err = DB.ValidateAndSave(&completedUpload)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		if len(vErr.Errors) != 0 {
+			oyster_utils.LogIfValidationError(
+				"validation errors for creating completedUpload with SessionTypeAlpha.", vErr, nil)
+		}
 	case SessionTypeBeta:
-		_, err = DB.ValidateAndSave(&CompletedUpload{
+		completedUpload = CompletedUpload{
 			GenesisHash:   session.GenesisHash,
 			ETHAddr:       session.ETHAddrBeta.String,
-			ETHPrivateKey: session.ETHPrivateKey})
+			ETHPrivateKey: privateKey,
+		}
+
+		vErr, err = DB.ValidateAndSave(&completedUpload)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		if len(vErr.Errors) != 0 {
+			oyster_utils.LogIfValidationError(
+				"validation errors for creating completedUpload with SessionTypeBeta.", vErr, nil)
+		}
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
+		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
+		return err
 	}
 
-	return err
+	completedUpload.EncryptSessionEthKey()
+
+	return nil
 }
 
 func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ? AND prl_status = ?", gasStatus, prlStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
-
+	oyster_utils.LogIfError(err, nil)
 	return uploads, err
 }
 
 func GetRowsByGasStatus(gasStatus GasTransferStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("gas_status = ?", gasStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -153,9 +219,7 @@ func SetGasStatus(uploads []CompletedUpload, newGasStatus GasTransferStatus) {
 
 func GetRowsByPRLStatus(prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {
 	err = DB.Where("prl_status = ?", prlStatus).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -171,9 +235,7 @@ func GetTimedOutGasTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("gas_status = ? AND updated_at <= ?",
 		GasTransferProcessing,
 		thresholdTime).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -182,9 +244,16 @@ func GetTimedOutPRLTransfers(thresholdTime time.Time) (uploads []CompletedUpload
 	err = DB.Where("prl_status = ? AND updated_at <= ?",
 		PRLClaimProcessing,
 		thresholdTime).All(&uploads)
-	if err != nil {
-		raven.CaptureError(err, nil)
-	}
+	oyster_utils.LogIfError(err, nil)
+
+	return uploads, err
+}
+
+func GetTimedOutGasReclaims(thresholdTime time.Time) (uploads []CompletedUpload, err error) {
+	err = DB.Where("gas_status = ? AND updated_at <= ?",
+		GasTransferLeftoversReclaimProcessing,
+		thresholdTime).All(&uploads)
+	oyster_utils.LogIfError(err, nil)
 
 	return uploads, err
 }
@@ -193,8 +262,7 @@ func SetGasStatusByAddress(transactionAddress string, newGasStatus GasTransferSt
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 	if uploadRow.ID == uuid.Nil {
@@ -208,8 +276,7 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 	uploadRow := CompletedUpload{}
 	err := DB.Where("eth_addr = ?", transactionAddress).First(&uploadRow)
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return
 	}
 	if uploadRow.ID == uuid.Nil {
@@ -220,10 +287,10 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 }
 
 func DeleteCompletedClaims() error {
-	err := DB.RawQuery("DELETE from completed_uploads WHERE prl_status = ?", PRLClaimSuccess).All(&[]CompletedUpload{})
+	err := DB.RawQuery("DELETE from completed_uploads WHERE gas_status = ?",
+		GasTransferLeftoversReclaimSuccess).All(&[]CompletedUpload{})
 	if err != nil {
-		fmt.Println(err)
-		raven.CaptureError(err, nil)
+		oyster_utils.LogIfError(err, nil)
 		return err
 	}
 

@@ -16,23 +16,23 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	// setting the threshold time to be more recent than when the webnodes were updated
 	thresholdTime := time.Now().Add(time.Millisecond * 10000)
 
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	webnodes := []models.Webnode{}
 
 	// check that there are 2 webnodes
 	err = suite.DB.All(&webnodes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
-	jobs.FlushOldWebNodes(thresholdTime)
+	jobs.FlushOldWebNodes(thresholdTime, jobs.PrometheusWrapper)
 
 	webnodes = []models.Webnode{}
 
 	// checking that all webnodes have been removed
 	err = suite.DB.All(&webnodes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(0, len(webnodes))
 
 	// Testing that it doesn't remove new webnodes
@@ -43,22 +43,22 @@ func (suite *JobsSuite) Test_FlushOldWebnodes() {
 	// setting the threshold time to be less recent than when the webnodes were updated
 	thresholdTime = time.Now().Add(time.Millisecond * -10000)
 
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	webnodes = []models.Webnode{}
 
 	// check that there are 2 webnodes
 	err = suite.DB.All(&webnodes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(2, len(webnodes))
 
 	// call method under test
-	jobs.FlushOldWebNodes(thresholdTime)
+	jobs.FlushOldWebNodes(thresholdTime, jobs.PrometheusWrapper)
 
 	webnodes = []models.Webnode{}
 
 	// checking that all webnodes are still there
 	err = suite.DB.All(&webnodes)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(2, len(webnodes))
 }

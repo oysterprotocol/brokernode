@@ -14,7 +14,11 @@ import (
 
 const PercentOfChunksToSkipVerification = 45
 
-func ProcessUnassignedChunks(iotaWrapper services.IotaService) {
+func ProcessUnassignedChunks(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessUnassignedChunks, start)
+
 	sessions, _ := models.GetSessionsByAge()
 
 	if len(sessions) > 0 {
@@ -33,6 +37,7 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
 
 		if len(chunks) > 0 {
+
 			FilterAndAssignChunksToChannels(chunks, channels, iotaWrapper, session)
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: processing_chunks_for_session", analytics.NewProperties().
@@ -225,7 +230,7 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				ETHAddr: ethAddress.Hex(),
 				ETHKey:  decryptedKey,
 				Address: treasureChunk.Address,
-				Message: treasureChunk.Message,
+				Message: services.GetMessageFromDataMap(treasureChunk),
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)
@@ -369,7 +374,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				treasureChunksToAttach = append(treasureChunksToAttach, chunks[i])
 			} else {
@@ -378,7 +383,7 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
 					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", chunks[i].Message))
+					Set("message", services.GetMessageFromDataMap(chunks[i])))
 
 				chunks[i].Status = models.Complete
 				models.DB.ValidateAndSave(&chunks[i])

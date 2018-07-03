@@ -25,7 +25,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 
 	vErr, err := models.BuildDataMaps(genHash, numChunks)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	// check that it is the length we expect
 	allDataMaps := []models.DataMap{}
@@ -39,7 +39,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	}
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
 
 	// verify the mock methods were called
 	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)

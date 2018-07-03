@@ -1,7 +1,12 @@
 version: "3"
 
 services:
-
+  prometheus:
+    image: quay.io/prometheus/prometheus:latest
+    ports:
+    - "9090:9090"
+    volumes:
+     - "./prometheus.yml:/var/lib/prometheus/prometheus.yml"
   app:
     build: "."
     restart: "always"
@@ -14,6 +19,8 @@ services:
     - "db_test"
     volumes:
     - ".:/go/src/github.com/oysterprotocol/brokernode"
+    - "./data/badger/prod:/var/lib/badger/prod"
+    - "./data/badger/test:/var/lib/badger/test"
     working_dir: "/go/src/github.com/oysterprotocol/brokernode"
     command: >
       bash -c "

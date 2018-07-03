@@ -17,8 +17,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/validate"
 )
 
 const (
@@ -41,19 +43,47 @@ const (
 	PrlInWeiUnit = 1e18
 )
 
+// Enable/Disalbe raven reporting.
+var isRavenEnabled bool = true
 var logErrorTags map[string]string
 
 func init() {
+	isRavenEnabled = !IsInUnitTest()
+
 	isOysterPay := "enabled"
 	if os.Getenv("OYSTER_PAYS") == "" {
 		isOysterPay = "disabled"
 	}
-	logErrorTags = map[string]string{
-		"mode":       os.Getenv("MODE"),
-		"hostIp":     os.Getenv("HOST_IP"),
-		"ethNodeUrl": os.Getenv("ETH_NODE_URL"),
-		"osyterPay":  isOysterPay,
+	displayName := "Unknown"
+	if v := os.Getenv("DISPLAY_NAME"); v != "" {
+		displayName = v
 	}
+
+	logErrorTags = map[string]string{
+		"mode":        os.Getenv("MODE"),
+		"hostIp":      os.Getenv("HOST_IP"),
+		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
+		"osyterPay":   isOysterPay,
+		"displayName": displayName,
+	}
+}
+
+/*IsInUnitTest returns true if it is running in test mode.*/
+func IsInUnitTest() bool {
+	// Check whether current is in unit test mode.
+	// If provided -v, then it would be -test.v=true. By default, it would output to a log dir
+	// with the following format: -test.testlogfile=/tmp/go-build797632719/b292/testlog.txt
+	for _, v := range os.Args {
+		if strings.HasPrefix(v, "-test.") {
+			return true
+		}
+	}
+	return false
+}
+
+/*IsRavenEnabled returns whether Raven logging is enabled or disabled.*/
+func IsRavenEnabled() bool {
+	return isRavenEnabled
 }
 
 /*SetLogInfoForDatabaseUrl updates db_url for log info.*/
@@ -68,11 +98,16 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
-		LogIfError(err, nil)
+		LogIfError(err, map[string]interface{}{
+			"HttpMethod":    req.Method,
+			"Url":           req.URL,
+			"Header":        req.Header,
+			"ContentLength": req.ContentLength,
+			"Body":          req.Body})
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
-
+	LogIfError(err, nil)
 	return
 }
 
@@ -87,34 +122,34 @@ func ParseResBody(res *http.Response, dest interface{}) (err error) {
 		return
 	}
 	err = json.Unmarshal(bodyBytes, dest)
-
+	LogIfError(err, nil)
 	return
 }
 
-// Convert trytes to bytes
-
-func ConvertToByte(trytes int) int {
-	return int(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
+/*ConvertToByte converts trytes to bytes.*/
+func ConvertToByte(trytes uint64) uint64 {
+	return uint64(math.Ceil(float64(trytes) / float64(ByteToTrytes)))
 }
 
-func ConvertToTrytes(bytes int) int {
+/*ConvertToTrytes convert bytes to trytes.*/
+func ConvertToTrytes(bytes uint64) uint64 {
 	return bytes * ByteToTrytes
 }
 
-// Return the total file chunk, including burying pearl
-func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte int) int {
+/*GetTotalFileChunkIncludingBuriedPearlsUsingFileSize returns the total file chunk, including burying pearl.*/
+func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte uint64) int {
 	fileSectorInByte := FileChunkSizeInByte * (FileSectorInChunkSize - 1)
 	numOfSectors := int(math.Ceil(float64(fileSizeInByte) / float64(fileSectorInByte)))
 
 	return numOfSectors + int(math.Ceil(float64(fileSizeInByte)/float64(FileChunkSizeInByte)))
 }
 
-// Return the total file chunk, including burying pearl
+/*GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks returns the total file chunk, including burying pearl.*/
 func GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks int) int {
 	return numChunks + int(math.Ceil(float64(numChunks)/float64(FileSectorInChunkSize)))
 }
 
-// Transforms index with correct position for insertion after considering the buried indexes.
+/*TransformIndexWithBuriedIndexes transforms index with correct position for insertion after considering the buried indexes.*/
 func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	if len(treasureIdxMap) == 0 {
 		log.Println("TransformIndexWithBuriedIndexes(): treasureIdxMap as []int{} is empty")
@@ -130,8 +165,8 @@ func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
 	}
 }
 
-// Randomly generate a set of indexes in each sector
-func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
+/*GenerateInsertedIndexesForPearl randomly generates a set of indexes in each sector.*/
+func GenerateInsertedIndexesForPearl(fileSizeInByte uint64) []int {
 	var indexes []int
 	if fileSizeInByte <= 0 {
 		return indexes
@@ -149,7 +184,19 @@ func GenerateInsertedIndexesForPearl(fileSizeInByte int) []int {
 	return indexes
 }
 
-// Returns int[] for serialized nulls.String
+/*GetTreasureIdxMap returns the IdxMap for treasure to burried.*/
+func GetTreasureIdxMap(alphaIndexes []int, betaIndexs []int) nulls.String {
+	mergedIndexes, err := MergeIndexes(alphaIndexes, betaIndexs)
+	var idxMap nulls.String
+	if err == nil {
+		idxMap = nulls.NewString(IntsJoin(mergedIndexes, IntsJoinDelim))
+	} else {
+		idxMap = nulls.String{"", false}
+	}
+	return idxMap
+}
+
+/*GetTreasureIdxIndexes returns int[] for serialized nulls.String.*/
 func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	if !idxMap.Valid {
 		// TODO(pzhao5): add some logging here
@@ -158,7 +205,7 @@ func GetTreasureIdxIndexes(idxMap nulls.String) []int {
 	return IntsSplit(idxMap.String, IntsJoinDelim)
 }
 
-// Convert an []string array to a string.
+/*StringsJoin converts an []string array to a string.*/
 func StringsJoin(A []string, delim string) string {
 	var buffer bytes.Buffer
 	for i := 0; i < len(A); i++ {
@@ -171,7 +218,7 @@ func StringsJoin(A []string, delim string) string {
 	return buffer.String()
 }
 
-// Convert an int array to a string.
+/*IntsJoin converts an int array to a string.*/
 func IntsJoin(a []int, delim string) string {
 	var buffer bytes.Buffer
 	for i := 0; i < len(a); i++ {
@@ -183,7 +230,7 @@ func IntsJoin(a []int, delim string) string {
 	return buffer.String()
 }
 
-// Convert an string back to int array
+/*IntsSplit converts an string back to int array.*/
 func IntsSplit(a string, delim string) []int {
 	var ints []int
 	substrings := strings.Split(a, delim)
@@ -202,7 +249,7 @@ func MergeIndexes(a []int, b []int, sectorSize int, numChunks int) ([]int, error
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
-		raven.CaptureError(err, nil)
+		LogIfError(err, map[string]interface{}{"aInputSize": len(a), "bInputSize": len(b)})
 		return nil, err
 	}
 
@@ -233,28 +280,64 @@ func RandSeq(length int, sequence []rune) string {
 	return string(b)
 }
 
-/* Convert PRL unit to wei unit. */
+/*ConvertToWeiUnit converts PRL unit to wei unit. */
 func ConvertToWeiUnit(prl *big.Float) *big.Int {
 	f := new(big.Float).Mul(prl, big.NewFloat(float64(PrlInWeiUnit)))
 	wei, _ := f.Int(new(big.Int)) // ignore the accuracy
 	return wei
 }
 
-/* Convert wei unit to PRL unit */
-func ConverFromWeiUnit(wei *big.Int) *big.Float {
+/*ConvertFromWeiUnit converts wei unit to PRL unit */
+func ConvertFromWeiUnit(wei *big.Int) *big.Float {
 	weiInFloat := new(big.Float).SetInt(wei)
 	return new(big.Float).Quo(weiInFloat, big.NewFloat(float64(PrlInWeiUnit)))
 }
 
+func ConvertWeiToGwei(wei *big.Int) *big.Int {
+
+	return new(big.Int).Quo(wei, big.NewInt(params.Shannon))
+}
+
+func ConvertGweiToWei(gwei *big.Int) *big.Int {
+
+	return new(big.Int).Mul(gwei, big.NewInt(params.Shannon))
+}
+
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
 func LogIfError(err error, extraInfo map[string]interface{}) {
-	if err != nil {
-		fmt.Println(err)
+	if err == nil {
+		return
+	}
 
+	fmt.Println(err)
+
+	if IsRavenEnabled() {
 		if extraInfo != nil {
 			raven.CaptureError(raven.WrapWithExtra(err, extraInfo), logErrorTags)
 		} else {
 			raven.CaptureError(err, logErrorTags)
 		}
+	}
+}
+
+/*LogIfValidationError logs any validation error from database. */
+func LogIfValidationError(msg string, err *validate.Errors, extraInfo map[string]interface{}) {
+	if err == nil || err.Count() == 0 {
+		return
+	}
+
+	fmt.Printf("%v: %v\n", msg, err.Errors)
+	if IsRavenEnabled() {
+		info := make(map[string]interface{})
+		for k, v := range err.Errors {
+			info[k] = v
+		}
+		if extraInfo != nil {
+			for k, v := range extraInfo {
+				info[k] = v
+			}
+		}
+
+		raven.CaptureError(raven.WrapWithExtra(errors.New(msg), info), logErrorTags)
 	}
 }

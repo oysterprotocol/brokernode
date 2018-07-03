@@ -5,11 +5,15 @@ import (
 	"time"
 
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
-func FlushOldWebNodes(thresholdTime time.Time) {
+func FlushOldWebNodes(thresholdTime time.Time, PrometheusWrapper services.PrometheusService) {
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramFlushOldWebNodes, start)
 
 	webnodes := []models.Webnode{}
 	err := models.DB.Where("updated_at <= ?", thresholdTime).All(&webnodes)

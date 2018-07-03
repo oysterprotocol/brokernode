@@ -3,13 +3,14 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
+	"time"
+
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 	"github.com/oysterprotocol/brokernode/utils"
 	"golang.org/x/crypto/sha3"
-	"math/big"
-	"time"
 )
 
 type PRLStatus int
@@ -17,15 +18,23 @@ type PRLStatus int
 // IMPORTANT:  Do not remove Message and Address from
 // this struct; they are used for encryption
 type Treasure struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	ETHAddr   string    `json:"ethAddr" db:"eth_addr"`
-	ETHKey    string    `json:"ethKey" db:"eth_key"`
-	PRLAmount string    `json:"prlAmount" db:"prl_amount"`
-	PRLStatus PRLStatus `json:"prlStatus" db:"prl_status"`
-	Message   string    `json:"message" db:"message"`
-	Address   string    `json:"address" db:"address"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ETHAddr     string    `json:"ethAddr" db:"eth_addr"`
+	ETHKey      string    `json:"ethKey" db:"eth_key"`
+	PRLAmount   string    `json:"prlAmount" db:"prl_amount"`
+	PRLStatus   PRLStatus `json:"prlStatus" db:"prl_status"`
+	Message     string    `json:"message" db:"message"`
+	MsgID       string    `json:"msgId" db:"msg_id"`
+	Address     string    `json:"address" db:"address"`
+	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
+	PRLTxHash   string    `json:"prlTxHash" db:"prl_tx_hash"`
+	PRLTxNonce  int64     `json:"prlTxNonce" db:"prl_tx_nonce"`
+	GasTxHash   string    `json:"gasTxHash" db:"gas_tx_hash"`
+	GasTxNonce  int64     `json:"gasTxNonce" db:"gas_tx_nonce"`
+	BuryTxHash  string    `json:"buryTxHash" db:"bury_tx_hash"`
+	BuryTxNonce int64     `json:"buryTxNonce" db:"bury_tx_nonce"`
 }
 
 const (

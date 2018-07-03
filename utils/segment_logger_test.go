@@ -1,1 +1,1 @@
-package oyster_utils
+package oyster_utils_test

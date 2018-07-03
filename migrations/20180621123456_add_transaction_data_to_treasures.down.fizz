@@ -1,0 +1,7 @@
+drop_column("treasures", "genesis_hash")
+drop_column("treasures", "prl_tx_hash")
+drop_column("treasures", "prl_tx_nonce")
+drop_column("treasures", "gas_tx_hash")
+drop_column("treasures", "gas_tx_nonce")
+drop_column("treasures", "bury_tx_hash")
+drop_column("treasures", "bury_tx_nonce")

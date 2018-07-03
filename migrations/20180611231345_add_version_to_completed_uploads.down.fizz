@@ -1,0 +1,1 @@
+drop_column("completed_uploads", "version")
