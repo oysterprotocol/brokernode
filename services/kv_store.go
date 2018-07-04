@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -11,18 +12,20 @@ import (
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
 const badgerDir = "/var/lib/badger/prod"
-const badgerDirTest = "/var/lib/badger/test"
 
 // Singleton DB
 var badgerDB *badger.DB
 var dbNoInitError error
 var isKvStoreEnable bool
+var badgerDirTest string
 
 type KVPairs map[string]string
 type KVKeys []string
 
 func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
+
+	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
 
 	// Currently enable it.
 	isKvStoreEnable = true
