@@ -11,7 +11,7 @@ import (
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
 const badgerDir = "/var/lib/badger/prod"
-const badgerDirTest = "/tmp/lib/badger/test"
+const badgerDirTest = "/var/lib/badger/test"
 
 // Singleton DB
 var badgerDB *badger.DB
