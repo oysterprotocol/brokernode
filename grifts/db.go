@@ -319,6 +319,27 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("print_data_maps", "Prints all data_maps")
+	grift.Add("print_data_maps", func(c *grift.Context) error {
+
+		dataMapAll := []models.DataMap{}
+
+		models.DB.RawQuery("SELECT * from data_maps").All(&dataMapAll)
+
+		for _, dataMap := range dataMapAll {
+			fmt.Println("____________________________________________")
+			fmt.Println("Address:            " + dataMap.Address)
+			fmt.Println("Genesis Hash:       " + dataMap.GenesisHash)
+			fmt.Println("Message in mysql:   " + dataMap.Message)
+			fmt.Println("Message in badger:  " + services.GetMessageFromDataMap(dataMap))
+			fmt.Println("Status:             " + models.StatusMap[dataMap.Status])
+			fmt.Println("Message Status:     " + models.MsgStatusMap[dataMap.MsgStatus])
+			fmt.Println("____________________________________________")
+		}
+
+		return nil
+	})
+
 	grift.Desc("claim_unused_test", "Adds a completed upload "+
 		"to claim unused PRLs from")
 	grift.Add("claim_unused_test", func(c *grift.Context) error {

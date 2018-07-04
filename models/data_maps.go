@@ -73,12 +73,20 @@ type TypeAndChunkMap struct {
 
 var (
 	MsgStatusMap          = make(map[int]string)
+	StatusMap             = make(map[int]string)
 	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
 	TreasurePayloadLength = len(TreasurePrefix) + 96
 	TreasureChunkPadding  = int(FileBytesChunkSize) - TreasurePayloadLength
 )
 
 func init() {
+	StatusMap[Pending] = "Pending"
+	StatusMap[Unassigned] = "Unassigned"
+	StatusMap[Unverified] = "Unverified"
+	StatusMap[Complete] = "Complete"
+	StatusMap[Confirmed] = "Confirmed"
+	StatusMap[Error] = "Error"
+
 	MsgStatusMap[MsgStatusUnmigrated] = "MsgStatusUnmigrated"
 	MsgStatusMap[MsgStatusNotUploaded] = "MsgStatusNotUploaded"
 	MsgStatusMap[MsgStatusUploaded] = "MsgStatusUploaded"
