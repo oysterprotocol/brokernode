@@ -189,7 +189,7 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
 	/*TODO add tests for this method*/
 
-	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
+	if len(treasureChunks) == 0 || oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 		return
 	}
 	treasureIdxMapArray, err := session.GetTreasureMap()
