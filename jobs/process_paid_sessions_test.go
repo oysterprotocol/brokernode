@@ -141,6 +141,6 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	for _, entry := range treasureIndex {
 		_, ok := treasureIndexes[entry.Idx]
-		suite.Equal(true, ok)
+		suite.True(ok)
 	}
 }
