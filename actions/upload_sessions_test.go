@@ -12,6 +12,7 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type mockWaitForTransfer struct {
@@ -285,7 +286,8 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
 		suite.Nil(err)
 		suite.Equal(1, len(*values))
-		suite.Equal(strconv.Itoa(dm.ChunkIdx), (*values)[dm.MsgID])
+		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
+		suite.Equal(string(message), (*values)[dm.MsgID])
 	}
 }
 
@@ -327,7 +329,8 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 
 		if isProccessed {
 			suite.Equal(1, len(*values))
-			suite.Equal(strconv.Itoa(dm.ChunkIdx), (*values)[dm.MsgID])
+			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
+			suite.Equal(string(message), (*values)[dm.MsgID])
 		} else {
 			suite.Equal(0, len(*values))
 		}
