@@ -436,7 +436,7 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 
 	err = batchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
 	// Save Message field into KVStore
-	if err != nil && services.IsKvStoreEnabled() {
+	if err == nil && services.IsKvStoreEnabled() {
 		services.BatchSet(&batchSetKvMap)
 	}
 }
