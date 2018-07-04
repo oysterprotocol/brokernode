@@ -189,7 +189,7 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
 	/*TODO add tests for this method*/
 
-	if len(treasureChunks) == 0 {
+	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
 		return
 	}
 	treasureIdxMapArray, err := session.GetTreasureMap()
@@ -221,9 +221,9 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 		if _, ok := treasureIdxMap[treasureChunk.ChunkIdx]; ok {
 			decryptedKey, err := treasureChunk.DecryptEthKey(treasureIdxMap[treasureChunk.ChunkIdx].Key)
 			if err != nil {
-				fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + err.Error())
+				fmt.Println("Cannot stage treasure to bury in process_unassigned_chunks: " + err.Error())
 				// already captured error in upstream function
-				return
+				continue
 			}
 			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
