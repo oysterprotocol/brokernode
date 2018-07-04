@@ -276,16 +276,16 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 	var dms []models.DataMap
 	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
 
-	suite.Equal(len(dms), 2)
+	suite.Equal(2, len(dms))
 
 	for _, dm := range dms {
-		suite.Equal(dm.MsgStatus, models.MsgStatusUploaded)
-		suite.Equal(dm.Message, "")
+		suite.Equal(models.MsgStatusUploaded, dm.MsgStatus)
+		suite.Equal("", dm.Message)
 
 		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
 		suite.Nil(err)
-		suite.Equal(len(*values), 1)
-		suite.Equal((*values)[dm.MsgID], strconv.Itoa(dm.ChunkIdx))
+		suite.Equal(1, len(*values))
+		suite.Equal(strconv.Itoa(dm.ChunkIdx), (*values)[dm.MsgID])
 	}
 }
 
@@ -311,25 +311,25 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 	var dms []models.DataMap
 	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
 
-	suite.Equal(len(dms), 2)
+	suite.Equal(2, len(dms))
 
 	for _, dm := range dms {
 		isProccessed := dm.ChunkIdx == 3
 
 		if isProccessed {
-			suite.Equal(dm.MsgStatus, models.MsgStatusUploaded)
+			suite.Equal(models.MsgStatusUploaded, dm.MsgStatus)
 		} else {
-			suite.Equal(dm.MsgStatus, models.MsgStatusNotUploaded)
+			suite.Equal(models.MsgStatusNotUploaded, dm.MsgStatus)
 		}
 
 		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
 		suite.Nil(err)
 
 		if isProccessed {
-			suite.Equal(len(*values), 1)
-			suite.Equal((*values)[dm.MsgID], strconv.Itoa(dm.ChunkIdx))
+			suite.Equal(1, len(*values))
+			suite.Equal(strconv.Itoa(dm.ChunkIdx), (*values)[dm.MsgID])
 		} else {
-			suite.Equal(len(*values), 0)
+			suite.Equal(0, len(*values))
 		}
 	}
 }

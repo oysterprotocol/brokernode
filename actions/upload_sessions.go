@@ -381,7 +381,7 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 
 /*ProcessAndStoreChunkData process the request chunks and store them into data map. Public for unit test.*/
 func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
-	chunksMap, minChunkIdx, maxChunkIdx := convertToSqlKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
+	chunksMap, minChunkIdx, maxChunkIdx := convertToSQLKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
 
 	// Query data_maps to get models.DataMap based on require chunk.
 	var dms []models.DataMap
@@ -391,7 +391,7 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 		genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
 	oyster_utils.LogIfError(err, nil)
 
-	dmsMap := convertToSqlKeyedMapForDataMap(dms)
+	dmsMap := convertToSQLKeyedMapForDataMap(dms)
 
 	// Create Update operation for data_maps table.
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
@@ -441,8 +441,8 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 	}
 }
 
-// convertToSqlKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
-func convertToSqlKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
+// convertToSQLKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
+func convertToSQLKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
 	chunksMap := make(map[string]chunkReq)
 	minChunkIdx := 0
 	maxChunkIdx := 0
@@ -463,8 +463,8 @@ func convertToSqlKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasu
 	return chunksMap, minChunkIdx, maxChunkIdx
 }
 
-// convertToSqlKeyedMapForDataMap converts dataMaps into sql keyed maps. Remove any duplicate keyed.
-func convertToSqlKeyedMapForDataMap(dataMaps []models.DataMap) map[string]models.DataMap {
+// convertToSQLKeyedMapForDataMap converts dataMaps into sql keyed maps. Remove any duplicate keyed.
+func convertToSQLKeyedMapForDataMap(dataMaps []models.DataMap) map[string]models.DataMap {
 	dmsMap := make(map[string]models.DataMap)
 	for _, dm := range dataMaps {
 		key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)

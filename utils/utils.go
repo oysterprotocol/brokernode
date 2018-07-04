@@ -355,6 +355,7 @@ func LogIfValidationError(msg string, err *validate.Errors, extraInfo map[string
 }
 
 // Don't use math.Min()/math.Max() for int. See blog post here: https://mrekucci.blogspot.com/2015/07/dont-abuse-mathmax-mathmin.html
+
 /*IntMin is util method to sub math.Min() for float value.*/
 func IntMin(x, y int) int {
 	if x < y {
