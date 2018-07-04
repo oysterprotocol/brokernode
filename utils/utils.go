@@ -353,3 +353,21 @@ func LogIfValidationError(msg string, err *validate.Errors, extraInfo map[string
 		raven.CaptureError(raven.WrapWithExtra(errors.New(msg), info), logErrorTags)
 	}
 }
+
+// Don't use math.Min()/math.Max() for int. See blog post here: https://mrekucci.blogspot.com/2015/07/dont-abuse-mathmax-mathmin.html
+
+/*IntMin is util method to sub math.Min() for float value.*/
+func IntMin(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+/*IntMax is util method to sub math.Max() for float value.*/
+func IntMax(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}

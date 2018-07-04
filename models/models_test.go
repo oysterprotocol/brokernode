@@ -1,9 +1,10 @@
 package models_test
 
 import (
+	"testing"
+
 	"github.com/gobuffalo/suite"
 	"github.com/oysterprotocol/brokernode/utils"
-	"testing"
 )
 
 type ModelSuite struct {

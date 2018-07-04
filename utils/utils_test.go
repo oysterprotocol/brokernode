@@ -296,6 +296,18 @@ func Test_ConvertWeiToGwei(t *testing.T) {
 	oyster_utils.AssertTrue(expectedGwei.String() == gweiResult.String(), t, "")
 }
 
+func Test_IntMin(t *testing.T) {
+	v := oyster_utils.IntMin(1, 2)
+
+	oyster_utils.AssertTrue(v == 1, t, "")
+}
+
+func Test_IntMax(t *testing.T) {
+	v := oyster_utils.IntMax(1, 2)
+
+	oyster_utils.AssertTrue(v == 2, t, "")
+}
+
 // Private helper methods
 func compareIntsArray(t *testing.T, a []int, b []int) {
 
