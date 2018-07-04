@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type mockWaitForTransfer struct {
@@ -177,7 +179,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 	suite.Equal("confirmed", resParsed.PaymentStatus)
 
 	/* checkPRLBalance has been called once just for alpha.  Sending
-	 to beta now occurs in a job. */
+	to beta now occurs in a job. */
 	suite.True(mockCheckPRLBalance.hasCalled)
 	suite.False(mockSendPrl.hasCalled)
 	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
@@ -248,6 +250,91 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
 	//res := suite.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
 
 	//TODO: Return better error response when ID does not exist
+}
+
+func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
+	vErr, err := suite.DB.ValidateAndCreate(&models.DataMap{
+		GenesisHash: "123",
+		ChunkIdx:    1,
+		Hash:        "1",
+	})
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+	vErr, err = suite.DB.ValidateAndCreate(&models.DataMap{
+		GenesisHash: "123",
+		ChunkIdx:    2,
+		Hash:        "2",
+	})
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	ProcessAndStoreChunkData([]chunkReq{
+		chunkReq{Idx: 1, Data: strconv.Itoa(1), Hash: "123"},
+		chunkReq{Idx: 2, Data: strconv.Itoa(2), Hash: "123"}},
+		"123",
+		[]int{})
+
+	var dms []models.DataMap
+	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
+
+	suite.Equal(2, len(dms))
+
+	for _, dm := range dms {
+		suite.Equal(models.MsgStatusUploaded, dm.MsgStatus)
+		suite.Equal("", dm.Message)
+
+		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
+		suite.Nil(err)
+		suite.Equal(1, len(*values))
+		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
+		suite.Equal(string(message), (*values)[dm.MsgID])
+	}
+}
+
+func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
+	vErr, err := suite.DB.ValidateAndCreate(&models.DataMap{
+		GenesisHash: "123",
+		ChunkIdx:    3,
+		Hash:        "3",
+	})
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+	vErr, err = suite.DB.ValidateAndCreate(&models.DataMap{
+		GenesisHash: "123",
+		ChunkIdx:    4,
+		Hash:        "4",
+	})
+
+	ProcessAndStoreChunkData([]chunkReq{
+		chunkReq{Idx: 3, Data: strconv.Itoa(3), Hash: "123"}},
+		"123",
+		[]int{})
+
+	var dms []models.DataMap
+	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
+
+	suite.Equal(2, len(dms))
+
+	for _, dm := range dms {
+		isProccessed := dm.ChunkIdx == 3
+
+		if isProccessed {
+			suite.Equal(models.MsgStatusUploaded, dm.MsgStatus)
+		} else {
+			suite.Equal(models.MsgStatusNotUploaded, dm.MsgStatus)
+		}
+
+		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
+		suite.Nil(err)
+
+		if isProccessed {
+			suite.Equal(1, len(*values))
+			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
+			suite.Equal(string(message), (*values)[dm.MsgID])
+		} else {
+			suite.Equal(0, len(*values))
+		}
+	}
 }
 
 func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateRes {

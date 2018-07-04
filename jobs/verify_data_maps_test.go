@@ -42,7 +42,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
 
 	// verify the mock methods were called
-	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_verify)
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 
 	// verify that the data maps that didn't match the tangle were set to an error state
 	allDataMaps = []models.DataMap{}

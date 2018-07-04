@@ -99,7 +99,7 @@ func (suite *ModelSuite) Test_CreateTreasurePayload() {
 			currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
 			result := oyster_utils.Decrypt(currentHash, hex.EncodeToString(payloadInBytes), tc.sha256Hash)
 			if result != nil {
-				suite.Equal(true, strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
+				suite.True(strings.Contains(hex.EncodeToString(result), fmt.Sprint(models.TreasurePrefix)))
 				suite.Equal(hex.EncodeToString(result)[len(models.TreasurePrefix):], tc.ethPrivateSeed)
 				matchesFound++
 			}
@@ -132,13 +132,13 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 	genHash3 := []models.DataMap{} // all unassigned
 	genHash4 := []models.DataMap{} // all error
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 
 	genHash1[1].Status = models.Unassigned
 	suite.DB.ValidateAndSave(&genHash1[1])
@@ -157,7 +157,7 @@ func (suite *ModelSuite) Test_GetUnassignedGenesisHashes() {
 	}
 
 	genHashes, err := models.GetUnassignedGenesisHashes()
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	suite.Equal(4, len(genHashes))
 
 	for _, genHash := range genHashes {
@@ -191,13 +191,13 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 	genHash3 := []models.DataMap{} // all unassigned
 	genHash4 := []models.DataMap{} // all error
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
-	suite.Equal(err, nil)
+	suite.Nil(err)
 
 	genHash1[1].Status = models.Unassigned
 	suite.DB.ValidateAndSave(&genHash1[1])
@@ -216,7 +216,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunks() {
 	}
 
 	unassignedChunks, err := models.GetUnassignedChunks()
-	suite.Equal(err, nil)
+	suite.Nil(err)
 
 	for _, unassignedChunk := range unassignedChunks {
 		if unassignedChunk.GenesisHash == "abcdeff5" {
@@ -429,13 +429,13 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 	//genHash3 := []models.DataMap{}
 	//genHash4 := []models.DataMap{}
 	//err := suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1)
-	//suite.Equal(err, nil)
+	//suite.Nil(err)
 	//err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&genHash2)
-	//suite.Equal(err, nil)
+	//suite.Nil(err)
 	//err = suite.DB.Where("genesis_hash = ?", "abcdeff3").All(&genHash3)
-	//suite.Equal(err, nil)
+	//suite.Nil(err)
 	//err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&genHash4)
-	//suite.Equal(err, nil)
+	//suite.Nil(err)
 	//
 	//genHash1[0].Status = models.Unassigned
 	//genHash1[1].Status = models.Unassigned
@@ -458,7 +458,7 @@ func (suite *ModelSuite) Test_AttachUnassignedChunksToGenHashMap() {
 	//}
 	//
 	//genHashes, err := models.GetUnassignedGenesisHashes()
-	//suite.Equal(err, nil)
+	//suite.Nil(err)
 	//suite.Equal(4, len(genHashes))
 	//
 	//hashAndTypeMap, err := models.AttachUnassignedChunksToGenHashMap(genHashes)

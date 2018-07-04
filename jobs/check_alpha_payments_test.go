@@ -374,7 +374,7 @@ func generateBrokerBrokerTransactions(suite *JobsSuite,
 
 		vErr, err := suite.DB.ValidateAndCreate(&brokerTx)
 		suite.Nil(err)
-		suite.Equal(0, len(vErr.Errors))
+		suite.False(vErr.HasAny())
 	}
 }
 

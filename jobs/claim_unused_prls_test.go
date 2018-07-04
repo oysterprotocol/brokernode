@@ -61,97 +61,97 @@ func testResendTimedOutGasTransfers(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 
 	jobs.ResendTimedOutGasTransfers(time.Now().Add(30 * time.Minute))
 	// should be one timed out
 	suite.Equal(1, SentToSendETH)
-	suite.Equal(true, hasCalledSendETH)
+	suite.True(hasCalledSendETH)
 
 	resetTestVariables()
 
 	jobs.ResendTimedOutGasTransfers(time.Now().Add(-20 * time.Minute))
 	// should be none, nothing timed out yet
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 }
 
 func testResendTimedOutPRLTransfers(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendPRLFromOyster)
-	suite.Equal(false, hasCalledSendPRLFromOyster)
+	suite.False(hasCalledSendPRLFromOyster)
 
 	jobs.ResendTimedOutPRLTransfers(time.Now().Add(30 * time.Minute))
 	// should be one timed out
 	suite.Equal(1, SentToSendPRLFromOyster)
-	suite.Equal(true, hasCalledSendPRLFromOyster)
+	suite.True(hasCalledSendPRLFromOyster)
 
 	resetTestVariables()
 
 	jobs.ResendTimedOutPRLTransfers(time.Now().Add(-20 * time.Minute))
 	// should be none, nothing timed out yet
 	suite.Equal(0, SentToSendPRLFromOyster)
-	suite.Equal(false, hasCalledSendPRLFromOyster)
+	suite.False(hasCalledSendPRLFromOyster)
 }
 
 func testResendErroredGasTransfers(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 
 	jobs.ResendErroredGasTransfers()
 
 	// should be one error'd gas transfer that gets resent
 	suite.Equal(1, SentToSendETH)
-	suite.Equal(true, hasCalledSendETH)
+	suite.True(hasCalledSendETH)
 }
 
 func testResendErroredPRLTransfers(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendPRLFromOyster)
-	suite.Equal(false, hasCalledSendPRLFromOyster)
+	suite.False(hasCalledSendPRLFromOyster)
 
 	jobs.ResendErroredPRLTransfers()
 
 	// should be one error'd prl transfer that gets resent
 	suite.Equal(1, SentToSendPRLFromOyster)
-	suite.Equal(true, hasCalledSendPRLFromOyster)
+	suite.True(hasCalledSendPRLFromOyster)
 }
 
 func testSendGasForNewClaims(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 
 	jobs.SendGasForNewClaims()
 
 	// should be one new gas transfer that gets sent
 	suite.Equal(1, SentToSendETH)
-	suite.Equal(true, hasCalledSendETH)
+	suite.True(hasCalledSendETH)
 }
 
 func testStartNewClaims(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendPRLFromOyster)
-	suite.Equal(false, hasCalledSendPRLFromOyster)
+	suite.False(hasCalledSendPRLFromOyster)
 
 	jobs.StartNewClaims()
 
 	// should be one new prl claim that gets sent
 	suite.Equal(1, SentToSendPRLFromOyster)
-	suite.Equal(true, hasCalledSendPRLFromOyster)
+	suite.True(hasCalledSendPRLFromOyster)
 }
 
 func testRetrieveLeftoverETH(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
@@ -162,15 +162,15 @@ func testRetrieveLeftoverETH(suite *JobsSuite) {
 
 	// should be 1 call to retrieve leftover gas
 	suite.Equal(1, SentToSendETH)
-	suite.Equal(true, hasCalledSendETH)
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledSendETH)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testInitiateGasTransfer(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendETH)
-	suite.Equal(false, hasCalledSendETH)
+	suite.False(hasCalledSendETH)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.RawQuery("SELECT * from completed_uploads WHERE gas_status != ?",
@@ -181,14 +181,14 @@ func testInitiateGasTransfer(suite *JobsSuite) {
 	jobs.InitiateGasTransfer(completedUploads)
 
 	suite.Equal(len(completedUploads), SentToSendETH)
-	suite.Equal(true, hasCalledSendETH)
+	suite.True(hasCalledSendETH)
 }
 
 func testInitiatePRLClaim(suite *JobsSuite) {
 	testSetup(suite)
 
 	suite.Equal(0, SentToSendPRLFromOyster)
-	suite.Equal(false, hasCalledSendPRLFromOyster)
+	suite.False(hasCalledSendPRLFromOyster)
 
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
@@ -198,8 +198,8 @@ func testInitiatePRLClaim(suite *JobsSuite) {
 	jobs.InitiatePRLClaim(completedUploads)
 
 	suite.Equal(len(completedUploads), SentToSendPRLFromOyster)
-	suite.Equal(true, hasCalledSendPRLFromOyster)
-	suite.Equal(true, hasCalledCheckPRLBalance)
+	suite.True(hasCalledSendPRLFromOyster)
+	suite.True(hasCalledCheckPRLBalance)
 }
 
 func testPurgeCompletedClaims(suite *JobsSuite) {
@@ -240,7 +240,7 @@ func testCheckProcessingGasTransactions_transaction_succeeded(suite *JobsSuite) 
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(gasTransfersProcessing))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testCheckProcessingGasTransactions_still_pending(suite *JobsSuite) {
@@ -269,7 +269,7 @@ func testCheckProcessingGasTransactions_still_pending(suite *JobsSuite) {
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(gasTransfersProcessing))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testCheckProcessingPRLTransactions_transaction_succeeded(suite *JobsSuite) {
@@ -298,7 +298,7 @@ func testCheckProcessingPRLTransactions_transaction_succeeded(suite *JobsSuite) 
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
-	suite.Equal(true, hasCalledCheckPRLBalance)
+	suite.True(hasCalledCheckPRLBalance)
 }
 
 func testCheckProcessingPRLTransactions_still_pending(suite *JobsSuite) {
@@ -321,7 +321,7 @@ func testCheckProcessingPRLTransactions_still_pending(suite *JobsSuite) {
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
-	suite.Equal(true, hasCalledCheckPRLBalance)
+	suite.True(hasCalledCheckPRLBalance)
 }
 
 func testCheckProcessingGasReclaims_reclaim_complete(suite *JobsSuite) {
@@ -351,7 +351,7 @@ func testCheckProcessingGasReclaims_reclaim_complete(suite *JobsSuite) {
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testCheckProcessingGasReclaims_not_enough_to_reclaim(suite *JobsSuite) {
@@ -384,7 +384,7 @@ func testCheckProcessingGasReclaims_not_enough_to_reclaim(suite *JobsSuite) {
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testCheckProcessingGasReclaims_still_pending(suite *JobsSuite) {
@@ -421,7 +421,7 @@ func testCheckProcessingGasReclaims_still_pending(suite *JobsSuite) {
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func testResendTimedOutGasReclaims(suite *JobsSuite) {

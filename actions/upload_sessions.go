@@ -168,7 +168,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	models.NewBrokerBrokerTransaction(&alphaSession)
 
-	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		// not doing error handling here, relying on beta to throw the error since returning
 		// an error here breaks the unit tests
@@ -250,118 +250,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			Set("num_chunks", uploadSession.NumChunks).
 			Set("storage_years", uploadSession.StorageLengthInYears))
 
-		var sqlWhereClosures []string
-		chunksMap := make(map[string]chunkReq)
-		minChunkIdx := float64(0)
-		maxChunkIdx := float64(0)
-		for _, chunk := range req.Chunks {
-			var chunkIdx int
-			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-				chunkIdx = chunk.Idx
-			} else {
-				chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
-			}
-
-			key := sqlWhereForGenesisHashAndChunkIdx(uploadSession.GenesisHash, chunkIdx)
-			sqlWhereClosures = append(sqlWhereClosures, key)
-			chunksMap[key] = chunk
-			minChunkIdx = math.Min(minChunkIdx, float64(chunkIdx))
-			maxChunkIdx = math.Max(maxChunkIdx, float64(chunkIdx))
-		}
-
-		// Query data_maps to get models.DataMap based on require chunk.
-		var dms []models.DataMap
-		//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
-		err := models.DB.RawQuery(
-			"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
-			uploadSession.GenesisHash, minChunkIdx, maxChunkIdx).All(&dms)
-		oyster_utils.LogIfError(err, nil)
-
-		// Convert []DataMaps to map[key]DatMap
-		dmsMap := make(map[string]models.DataMap)
-		for _, dm := range dms {
-			key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
-			// Only use the first one
-			if _, hasKey := dmsMap[key]; !hasKey {
-				dmsMap[key] = dm
-			}
-		}
-
-		// Create Update operation for data_maps table.
-		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
-		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-		var updatedDms []string
-		for key, chunk := range chunksMap {
-			dm, hasKey := dmsMap[key]
-			if !hasKey {
-				continue
-			}
-
-			if dm.MsgID == "" {
-				oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
-				break
-			}
-
-			if chunk.Hash == dm.GenesisHash {
-				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
-				if err != nil {
-					panic(err.Error())
-				}
-				msg := string(message)
-				if services.IsKvStoreEnabled() {
-					batchSetKvMap[dm.MsgID] = msg
-					dm.Message = "" // Remove previous Message data.
-				} else {
-					// TODO:pzhao, remove this and this should not be called.
-					dm.Message = msg
-				}
-				dm.MsgStatus = models.MsgStatusUploaded
-
-				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-					dm.Status = models.Unassigned
-				}
-				vErr, _ := dm.Validate(nil)
-				oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
-				if len(vErr.Errors) == 0 {
-					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
-				}
-			}
-		}
-
-		numOfBatchRequest := int(math.Ceil(float64(len(updatedDms)) / float64(SQL_BATCH_SIZE)))
-
-		// Batch Update data_maps table.
-		remainder := len(updatedDms)
-		for i := 0; i < numOfBatchRequest; i++ {
-			lower := i * SQL_BATCH_SIZE
-			upper := i*SQL_BATCH_SIZE + int(math.Min(float64(remainder), SQL_BATCH_SIZE))
-
-			sectionUpdatedDms := updatedDms[lower:upper]
-
-			// Do an insert operation and dup by primary key.
-
-			rawQuery := fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY UPDATE "+
-				"message = VALUES(message), msg_status = VALUES(msg_status), status = VALUES(status), updated_at = VALUES(updated_at)",
-				dbOperation.GetColumns(), strings.Join(sectionUpdatedDms, ","))
-
-			err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
-			for err != nil {
-				time.Sleep(300 * time.Millisecond)
-				err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
-			}
-
-			remainder = remainder - SQL_BATCH_SIZE
-
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				break
-			}
-		}
-
-		// Save Message field into KVStore
-		if services.IsKvStoreEnabled() {
-			services.BatchSet(&batchSetKvMap)
-		}
+		ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
@@ -414,8 +303,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	models.NewBrokerBrokerTransaction(&u)
-
-	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes)
+	
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -488,6 +377,135 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
+}
+
+/*ProcessAndStoreChunkData process the request chunks and store them into data map. Public for unit test.*/
+func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
+	chunksMap, minChunkIdx, maxChunkIdx := convertToSQLKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
+
+	// Query data_maps to get models.DataMap based on require chunk.
+	var dms []models.DataMap
+	//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
+	err := models.DB.RawQuery(
+		"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
+		genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
+	oyster_utils.LogIfError(err, nil)
+
+	dmsMap := convertToSQLKeyedMapForDataMap(dms)
+
+	// Create Update operation for data_maps table.
+	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
+	var updatedDms []string
+	for key, chunk := range chunksMap {
+		dm, hasKey := dmsMap[key]
+		if !hasKey {
+			continue
+		}
+
+		if dm.MsgID == "" {
+			oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
+			break
+		}
+
+		if chunk.Hash == dm.GenesisHash {
+			message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
+			if err != nil {
+				panic(err.Error())
+			}
+			msg := string(message)
+			if services.IsKvStoreEnabled() {
+				batchSetKvMap[dm.MsgID] = msg
+				dm.Message = "" // Remove previous Message data.
+			} else {
+				// TODO:pzhao, remove this and this should not be called.
+				dm.Message = msg
+			}
+			dm.MsgStatus = models.MsgStatusUploaded
+
+			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+				dm.Status = models.Unassigned
+			}
+			vErr, _ := dm.Validate(nil)
+			oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
+			if !vErr.HasAny() {
+				updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
+			}
+		}
+	}
+
+	err = batchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
+	// Save Message field into KVStore
+	if err == nil && services.IsKvStoreEnabled() {
+		services.BatchSet(&batchSetKvMap)
+	}
+}
+
+// convertToSQLKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
+func convertToSQLKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
+	chunksMap := make(map[string]chunkReq)
+	minChunkIdx := 0
+	maxChunkIdx := 0
+
+	for _, chunk := range chunks {
+		var chunkIdx int
+		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+			chunkIdx = chunk.Idx
+		} else {
+			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
+		}
+
+		key := sqlWhereForGenesisHashAndChunkIdx(genesisHash, chunkIdx)
+		chunksMap[key] = chunk
+		minChunkIdx = oyster_utils.IntMin(minChunkIdx, chunkIdx)
+		maxChunkIdx = oyster_utils.IntMax(maxChunkIdx, chunkIdx)
+	}
+	return chunksMap, minChunkIdx, maxChunkIdx
+}
+
+// convertToSQLKeyedMapForDataMap converts dataMaps into sql keyed maps. Remove any duplicate keyed.
+func convertToSQLKeyedMapForDataMap(dataMaps []models.DataMap) map[string]models.DataMap {
+	dmsMap := make(map[string]models.DataMap)
+	for _, dm := range dataMaps {
+		key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
+		// Only use the first one
+		if _, hasKey := dmsMap[key]; !hasKey {
+			dmsMap[key] = dm
+		}
+	}
+	return dmsMap
+}
+
+// batchUpsertDataMaps update data_maps table to override the values of column: message, status, updated_at, msg_status.
+func batchUpsertDataMaps(serializedDataMapValue []string, serializedColumnNames string) error {
+	numOfBatchRequest := int(math.Ceil(float64(len(serializedDataMapValue)) / float64(SQL_BATCH_SIZE)))
+
+	// Batch Update data_maps table.
+	remainder := len(serializedDataMapValue)
+	for i := 0; i < numOfBatchRequest; i++ {
+		lower := i * SQL_BATCH_SIZE
+		upper := i*SQL_BATCH_SIZE + int(math.Min(float64(remainder), SQL_BATCH_SIZE))
+
+		sectionUpdatedDms := serializedDataMapValue[lower:upper]
+
+		// Do an insert operation and dup by primary key.
+		rawQuery := fmt.Sprintf(`INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY 
+		 	UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at), msg_status = VALUES(msg_status)`,
+			serializedColumnNames, strings.Join(sectionUpdatedDms, ","))
+
+		err := models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+		for err != nil {
+			time.Sleep(300 * time.Millisecond)
+			err = models.DB.RawQuery(rawQuery).All(&[]models.DataMap{})
+		}
+
+		remainder = remainder - SQL_BATCH_SIZE
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+	}
+	return nil
 }
 
 func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {

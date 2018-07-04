@@ -141,10 +141,10 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 
 	for _, entry := range treasureIdxMap {
 		_, ok := t[entry.Idx]
-		suite.Equal(true, ok)
-		suite.Equal(t[entry.Idx].Sector, entry.Sector)
-		suite.Equal(t[entry.Idx].Key, entry.Key)
-		suite.Equal(t[entry.Idx].Idx, entry.Idx)
+		suite.True(ok)
+		suite.Equal(entry.Sector, t[entry.Idx].Sector)
+		suite.Equal(entry.Key, t[entry.Idx].Key)
+		suite.Equal(entry.Idx, t[entry.Idx].Idx)
 	}
 }
 
@@ -233,6 +233,8 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
+	sectorSize := 100
+
 	genHash := "abcdef"
 	numChunks := 250
 	storageLengthInYears := 3
@@ -247,7 +249,7 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	}
 
 	vErr, err := u.StartUploadSession()
-	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 
 	suite.Nil(err)
 	privateKeys := []string{
@@ -266,16 +268,18 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	suite.Equal(1, treasureIdxMap[1].Sector)
 	suite.Equal(2, treasureIdxMap[2].Sector)
 
-	// When we update MergeIndexes to hash the indexes, this test will start failing
-	suite.Equal(5, treasureIdxMap[0].Idx)
-	suite.Equal(105, treasureIdxMap[1].Idx)
-	suite.Equal(237, treasureIdxMap[2].Idx)
+	// This will break anytime we change the hashing method.
+	suite.Equal(68, treasureIdxMap[0].Idx)
+	suite.Equal(148, treasureIdxMap[1].Idx)
+	suite.Equal(210, treasureIdxMap[2].Idx)
 }
 
 func (suite *ModelSuite) Test_GetTreasureIndexes() {
 
 	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	sectorSize := 100
 
 	genHash := "abcdef"
 	numChunks := 250
@@ -291,22 +295,22 @@ func (suite *ModelSuite) Test_GetTreasureIndexes() {
 	}
 
 	expectedIndexes := make([]int, 0)
-	expectedIndexes = append(expectedIndexes, 5)
-	expectedIndexes = append(expectedIndexes, 105)
-	expectedIndexes = append(expectedIndexes, 237)
+	expectedIndexes = append(expectedIndexes, 68)
+	expectedIndexes = append(expectedIndexes, 148)
+	expectedIndexes = append(expectedIndexes, 210)
 
 	vErr, err := u.StartUploadSession()
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
 
-	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes)
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 	suite.Nil(err)
 	privateKeys, err := services.EthWrapper.GenerateKeys(len(mergedIndexes))
 	suite.Nil(err)
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	actualIndexes, err := u.GetTreasureIndexes()
 
-	// When we update MergeIndexes to hash the indexes, this test will start failing
+	// This will break anytime we change the hashing method.
 	suite.Equal(expectedIndexes, actualIndexes)
 }
 
@@ -497,19 +501,19 @@ func (suite *ModelSuite) Test_PaymentStatus() {
 	u := models.UploadSession{}
 
 	u.PaymentStatus = models.PaymentStatusConfirmed
-	suite.Equal(u.GetPaymentStatus(), "confirmed")
+	suite.Equal("confirmed", u.GetPaymentStatus())
 
 	u.PaymentStatus = models.PaymentStatusInvoiced
-	suite.Equal(u.GetPaymentStatus(), "invoiced")
+	suite.Equal("invoiced", u.GetPaymentStatus())
 
 	u.PaymentStatus = models.PaymentStatusPending
-	suite.Equal(u.GetPaymentStatus(), "pending")
+	suite.Equal("pending", u.GetPaymentStatus())
 
 	u.PaymentStatus = 100
-	suite.Equal(u.GetPaymentStatus(), "error")
+	suite.Equal("error", u.GetPaymentStatus())
 
 	u.PaymentStatus = models.PaymentStatusError
-	suite.Equal(u.GetPaymentStatus(), "error")
+	suite.Equal("error", u.GetPaymentStatus())
 }
 
 func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
