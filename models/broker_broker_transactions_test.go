@@ -34,7 +34,7 @@ func (suite *ModelSuite) Test_InitialBrokerBrokerTransactionCreation() {
 
 	vErr, err := suite.DB.ValidateAndCreate(&brokerTx)
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	brokerTxs := returnAllBrokerBrokerTxs(suite)
 	suite.Equal(1, len(brokerTxs))
@@ -75,7 +75,7 @@ func (suite *ModelSuite) Test_NewBrokerBrokerTransaction() {
 
 	vErr, err := u.StartUploadSession()
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	uSession := models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", genHash).First(&uSession)
@@ -284,7 +284,7 @@ func (suite *ModelSuite) Test_SetUploadSessionToPaid() {
 
 	vErr, err := u.StartUploadSession()
 	suite.Nil(err)
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 
 	uSession := models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", genHash).First(&uSession)
@@ -344,7 +344,7 @@ func generateBrokerBrokerTransactions(suite *ModelSuite,
 
 		vErr, err := suite.DB.ValidateAndCreate(&brokerTx)
 		suite.Nil(err)
-		suite.Equal(0, len(vErr.Errors))
+		suite.False(vErr.HasAny())
 	}
 }
 
