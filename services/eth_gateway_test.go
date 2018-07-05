@@ -171,6 +171,23 @@ func Test_checkIfWorthReclaimingGas(t *testing.T) {
 	}
 }
 
+// reclaim leftover gas
+func Test_reclaimGas(t *testing.T) {
+
+	gasToReclaim := big.NewInt(5000)
+	prlWallet := getWallet(prl2File)
+
+	success := services.EthWrapper.ReclaimGas(prlWallet.Address, prlWallet.PrivateKey, gasToReclaim)
+
+	// This isn't a very good test because it succeeds regardless of the outcome?
+
+	if success {
+		t.Logf("Reclaim gas success: %v\n", "true")
+	} else {
+		t.Logf("Reclaim gas success: %v\n", "false")
+	}
+}
+
 // get gas price from network test
 func Test_calculateGasNeeded(t *testing.T) {
 

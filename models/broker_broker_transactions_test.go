@@ -308,8 +308,14 @@ func (suite *ModelSuite) Test_DeleteCompletedBrokerTransactions() {
 	generateBrokerBrokerTransactions(
 		suite,
 		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimConfirmed,
-		3)
+		models.BrokerTxBetaPaymentConfirmed,
+		2)
+
+	generateBrokerBrokerTransactions(
+		suite,
+		models.SessionTypeBeta,
+		models.BrokerTxBetaPaymentConfirmed,
+		1)
 
 	allBrokerTxs := returnAllBrokerBrokerTxs(suite)
 	suite.Equal(3, len(allBrokerTxs))

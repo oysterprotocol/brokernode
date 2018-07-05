@@ -7,7 +7,6 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math/big"
 	"time"
 )
 
@@ -31,7 +30,11 @@ func ClaimUnusedPRLs(thresholdTime time.Time, PrometheusWrapper services.Prometh
 
 		SendGasForNewClaims()
 		StartNewClaims()
-		RetrieveLeftoverETH()
+
+		RetrieveLeftoverETH(thresholdTime.Add(-1 * time.Since(thresholdTime)))
+		/* The network could be extremely congested and if we wait a while, it may be worth reclaiming gas later.
+		So passing in a time for us to wait before we give up on attempting to reclaim gas if we have not already
+		started the reclaim attempt*/
 
 		PurgeCompletedClaims()
 	}
@@ -224,7 +227,7 @@ func ResendErroredPRLTransfers() {
 
 // for new claims with no gas
 func SendGasForNewClaims() {
-	needGas, err := models.GetRowsByGasStatus(models.GasTransferNotStarted)
+	needGas, err := models.GetUnusedPRLsThatAreReadyForClaiming()
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error getting completed uploads whose addresses need gas: %v", err), nil)
 		return
@@ -237,6 +240,9 @@ func SendGasForNewClaims() {
 			fmt.Println("No balance at address " + completedUpload.ETHAddr)
 			// this is most likely a beta treasure address
 			// it will get skipped until there is a balance at the address
+			continue
+		} else if err != nil {
+			fmt.Println("Error getting balance of address " + completedUpload.ETHAddr)
 			continue
 		} else {
 			needGasHavePRLs = append(needGasHavePRLs, completedUpload)
@@ -273,55 +279,51 @@ func StartNewClaims() {
 	}
 }
 
-// for claims whose gas transfers succeeded but there is still unclaimed PRL
-func RetrieveLeftoverETH() {
+/* RetrieveLeftoverETH is for claims whose gas transfers and PRL retrievals succeeded but there is some leftover ETH*/
+func RetrieveLeftoverETH(thresholdTime time.Time) {
 	completedClaims, err := models.GetRowsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimSuccess)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error getting completed claims: %v", err), nil)
 		return
 	}
 	for _, completedClaim := range completedClaims {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(completedClaim.ETHAddr))
-		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
-			if err != nil {
-				fmt.Println("Could not calculate gas needed to retrieve ETH from " + completedClaim.ETHAddr +
-					" in RetrieveLeftoverETH() in claim_unused_prls")
-				continue
-			}
-			if gasNeededToReclaimETH.Int64() > ethBalance.Int64() {
+		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
+			services.StringToAddress(completedClaim.ETHAddr), services.GasLimitETHSend)
+		if err != nil {
+			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
+				completedClaim.ETHAddr +
+				" in RetrieveLeftoverETH() in claim_unused_prl.")
+			continue
+		} else if !worthReclaimingGas && completedClaim.GasStatus == models.GasTransferSuccess {
+			if completedClaim.UpdatedAt.Before(thresholdTime) {
 				fmt.Println("Not enough ETH to retrieve leftover ETH from " + completedClaim.ETHAddr +
-					" in RetrieveLeftoverETH() in claim_unused_prls, setting to success")
-				// won't be able to reclaim whatever is left, just set to success
+					" in RetrieveLeftoverETH() in claim_unused_prl, setting to success")
+				/* won't be able to reclaim whatever is left, just set to success */
 				completedClaim.GasStatus = models.GasTransferLeftoversReclaimSuccess
 				models.DB.ValidateAndUpdate(&completedClaim)
-				continue
-			}
-
-			gasToReclaim := new(big.Int).Sub(ethBalance, gasNeededToReclaimETH)
-
-			privateKey, err := services.StringToPrivateKey(completedClaim.DecryptSessionEthKey())
-
-			_, _, _, err = EthWrapper.SendETH(
-				services.StringToAddress(completedClaim.ETHAddr),
-				privateKey,
-				services.MainWalletAddress,
-				gasToReclaim)
-			if err != nil {
-				fmt.Println("Could not reclaim leftover ETH from " + completedClaim.ETHAddr +
-					" in RetrieveLeftoverETH in claim_unused_prls")
 			} else {
-				fmt.Println("Reclaiming leftover ETH from " + completedClaim.ETHAddr + " in RetrieveLeftoverETH " +
-					"in claim_unused_prls")
-				completedClaim.GasStatus = models.GasTransferLeftoversReclaimProcessing
-				models.DB.ValidateAndUpdate(&completedClaim)
+				fmt.Println("Not enough ETH to retrieve leftover ETH from " + completedClaim.ETHAddr +
+					" in RetrieveLeftoverETH() in claim_unused_prl, wait for network congestion to decrease")
 			}
-		} else {
-			fmt.Println("No extra gas to reclaim from " + completedClaim.ETHAddr + " in RetrieveLeftoverETH " +
-				"in claim_unused_prls")
-			completedClaim.GasStatus = models.GasTransferLeftoversReclaimSuccess
-			models.DB.ValidateAndUpdate(&completedClaim)
+			continue
 		}
+
+		if completedClaim.GasStatus == models.GasTransferLeftoversReclaimProcessing {
+			/* gas reclaim is still in progress, do not send again */
+			continue
+		}
+
+		privateKey, err := services.StringToPrivateKey(completedClaim.DecryptSessionEthKey())
+
+		reclaimingSuccess := EthWrapper.ReclaimGas(services.StringToAddress(completedClaim.ETHAddr),
+			privateKey, gasToReclaim)
+
+		if reclaimingSuccess {
+			completedClaim.GasStatus = models.GasTransferLeftoversReclaimProcessing
+		} else {
+			completedClaim.GasStatus = models.GasTransferLeftoversReclaimError
+		}
+		models.DB.ValidateAndUpdate(&completedClaim)
 	}
 }
 
@@ -354,6 +356,10 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 	for _, upload := range uploadsWithUnclaimedPRLs {
 		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(upload.ETHAddr))
+		if balance.Int64() == -1 {
+			fmt.Println("Error getting balance of address " + upload.ETHAddr)
+			continue
+		}
 
 		privateKey := upload.DecryptSessionEthKey()
 

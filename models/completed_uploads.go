@@ -49,6 +49,8 @@ const (
 	GasTransferLeftoversReclaimError = -2
 )
 
+const StartingClaimUnusedPRLStatus = GasTransferNotStarted
+
 var PRLClaimStatusMap = make(map[PRLClaimStatus]string)
 var GasTransferStatusMap = make(map[GasTransferStatus]string)
 
@@ -184,6 +186,41 @@ func NewCompletedUpload(session UploadSession) error {
 	completedUpload.EncryptSessionEthKey()
 
 	return nil
+}
+
+/* GetUnusedPRLsThatAreReadyForClaiming verifies that there are not any broker_broker_transactions still at work
+on a particular transaction address, and returns the transaction addresses that are eligible to be claimed
+*/
+func GetUnusedPRLsThatAreReadyForClaiming() (eligibleUploads []CompletedUpload, err error) {
+
+	var brokerTxs = []BrokerBrokerTransaction{}
+
+	/* When a broker_broker_transaction is completed it will be deleted.  Any broker_broker_transaction
+	still present is still processing.  We only want to try claiming unused PRLs from an address when the
+	broker_broker_transaction associated with that address is done, so we grab all the genesis hashes
+	still in the broker_broker_transaction table and only start new claims of unused PRL if the genesis
+	hash is no longer in the broker_broker_transaction table.  */
+	err = DB.RawQuery("SELECT distinct genesis_hash FROM broker_broker_transactions").All(&brokerTxs)
+	oyster_utils.LogIfError(err, nil)
+
+	brokerTxGenHashesStillProcessing := map[string]bool{}
+
+	for _, genesisHash := range brokerTxs {
+		brokerTxGenHashesStillProcessing[genesisHash.GenesisHash] = true
+	}
+
+	uploads := []CompletedUpload{}
+
+	err = DB.Where("gas_status = ?", StartingClaimUnusedPRLStatus).All(&uploads)
+	oyster_utils.LogIfError(err, nil)
+
+	for _, upload := range uploads {
+		if _, ok := brokerTxGenHashesStillProcessing[upload.GenesisHash]; !ok {
+			eligibleUploads = append(eligibleUploads, upload)
+		}
+	}
+
+	return eligibleUploads, err
 }
 
 func GetRowsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (uploads []CompletedUpload, err error) {

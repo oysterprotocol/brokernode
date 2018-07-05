@@ -10,7 +10,7 @@ import (
 /*UnpaidExpirationInHour means number of hours before it should remove unpaid upload session. */
 const UnpaidExpirationInHour = 24
 
-/*RemoveUnpaidUploadSession cleans up unpload_sessions and data_maps talbe for expired/unpaid session. */
+/*RemoveUnpaidUploadSession cleans up upload_sessions and data_maps table for expired/unpaid session. */
 func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 
 	start := PrometheusWrapper.TimeNow()

@@ -33,6 +33,7 @@ import (
 type Eth struct {
 	CalculateGasNeeded
 	CheckIfWorthReclaimingGas
+	ReclaimGas
 	ClaimPRL
 	GenerateEthAddr
 	GenerateKeys
@@ -108,6 +109,9 @@ type CalculateGasNeeded func(desiredGasLimit uint64) (*big.Int, error)
 
 // CheckIfWorthReclaimingGas Accept an address and desired gas limit and decide if it is worth reclaiming the leftover ETH
 type CheckIfWorthReclaimingGas func(address common.Address, desiredGasLimit uint64) (bool, *big.Int, error)
+
+// ReclaimGas is called by various jobs methods to reclaim gas from a transaction address or treasure address
+type ReclaimGas func(address common.Address, privateKey *ecdsa.PrivateKey, gasToReclaim *big.Int) bool
 
 // CalculateGasToSend Gas Calculation for Sending Ether
 type CalculateGasToSend func(desiredGasLimit uint64) (*big.Int, error)
@@ -215,6 +219,7 @@ func init() {
 	EthWrapper = Eth{
 		CalculateGasNeeded:              calculateGasNeeded,
 		CheckIfWorthReclaimingGas:       checkIfWorthReclaimingGas,
+		ReclaimGas:                      reclaimGas,
 		CreateSendPRLMessage:            createSendPRLMessage,
 		SendPRL:                         sendPRL,
 		SendPRLFromOyster:               sendPRLFromOyster,
@@ -414,7 +419,7 @@ func StringToTxHash(txHash string) common.Hash {
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
 	// if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
-	//return oyster_utils.ConvertGweiToWei(big.NewInt(3)), nil
+	// return oyster_utils.ConvertGweiToWei(big.NewInt(70)), nil
 
 	// connect ethereum client
 	client, err := sharedClient()
@@ -481,6 +486,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not initialize shared client")
+		return big.NewInt(-1)
 	}
 
 	// instance of the oyster pearl contract
@@ -488,12 +494,13 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
 		fmt.Printf("unable to access contract instance at :%v", err)
+		return big.NewInt(-1)
 	}
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
-		return big.NewInt(0)
+		return big.NewInt(-1)
 	}
 	return balance
 }
@@ -765,6 +772,24 @@ func checkIfWorthReclaimingGas(address common.Address, desiredGasLimit uint64) (
 				"reclaiming gas because could not get ethBalance")
 		}
 		return false, big.NewInt(0), balErr
+	}
+}
+
+/* reclaimGas attempts to take any leftover ETH from the address */
+func reclaimGas(address common.Address, privateKey *ecdsa.PrivateKey, gasToReclaim *big.Int) bool {
+
+	_, _, _, err := EthWrapper.SendETH(
+		address,
+		privateKey,
+		MainWalletAddress,
+		gasToReclaim)
+
+	if err != nil {
+		fmt.Println("Could not reclaim leftover ETH from " + address.Hex())
+		return false
+	} else {
+		fmt.Println("Reclaiming leftover ETH from " + address.Hex())
+		return true
 	}
 }
 

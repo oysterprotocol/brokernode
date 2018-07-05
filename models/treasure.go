@@ -51,10 +51,13 @@ const (
 	GasReclaimConfirmed
 
 	// error states
-	PRLError  = -1
-	GasError  = -3
-	BuryError = -5
+	PRLError        = -1
+	GasError        = -3
+	BuryError       = -5
+	GasReclaimError = -7
 )
+
+const MaxNumSimultaneousTreasureTxs = 15
 
 var PRLStatusMap = make(map[PRLStatus]string)
 
@@ -144,7 +147,9 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ? LIMIT ?",
+			prlStatus,
+			MaxNumSimultaneousTreasureTxs).All(&treasureToBury)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
@@ -162,9 +167,11 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
 
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND "+
+			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
 			prlStatus,
-			int(timeSinceThreshold.Hours())).All(&treasureToBury)
+			int(timeSinceThreshold.Hours()),
+			MaxNumSimultaneousTreasureTxs).All(&treasureToBury)
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
