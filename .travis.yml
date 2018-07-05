@@ -43,8 +43,14 @@ before_script:
   #       sleep 0.5;
   #     done;
   #   "
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter # Set up Code Climate
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
 
-script: docker-compose exec app buffalo test
+script: docker-compose exec app buffalo test -coverprofile=cover.out
+
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT  # Publishes Unit test report to Code Climate
 
 deploy:
   provider: script
