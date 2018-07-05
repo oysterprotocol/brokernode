@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 
 	"github.com/dgraph-io/badger"
@@ -11,18 +12,20 @@ import (
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
 const badgerDir = "/var/lib/badger/prod"
-const badgerDirTest = "/var/lib/badger/test"
 
 // Singleton DB
 var badgerDB *badger.DB
 var dbNoInitError error
 var isKvStoreEnable bool
+var badgerDirTest string
 
 type KVPairs map[string]string
 type KVKeys []string
 
 func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
+
+	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
 
 	// Currently enable it.
 	isKvStoreEnable = true
@@ -55,23 +58,31 @@ func InitKvStore() (err error) {
 }
 
 /*CloseKvStore closes the db.*/
-func CloseKvStore() {
+func CloseKvStore() error {
+	if badgerDB == nil {
+		return nil
+	}
 	err := badgerDB.Close()
 	oyster_utils.LogIfError(err, nil)
 	badgerDB = nil
+	return err
 }
 
 /*RemoveAllKvStoreData removes all the data. Caller should call InitKvStore() again to create a new one.*/
-func RemoveAllKvStoreData() {
-	CloseKvStore()
-
-	var err error
-	if os.Getenv("GO_ENV") == "test" {
-		err = os.RemoveAll(badgerDirTest)
-	} else {
-		err = os.RemoveAll(badgerDir)
+func RemoveAllKvStoreData() error {
+	if err := CloseKvStore(); err != nil {
+		return err
 	}
-	oyster_utils.LogIfError(err, nil)
+
+	var dir string
+	if os.Getenv("GO_ENV") == "test" {
+		dir = badgerDirTest
+	} else {
+		dir = badgerDir
+	}
+	err := os.RemoveAll(dir)
+	oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
+	return err
 }
 
 /*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/

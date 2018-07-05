@@ -84,10 +84,10 @@ func (suite *ModelSuite) Test_EncryptAndDecryptEthPrivateKey() {
 	}
 
 	suite.DB.ValidateAndCreate(&treasureToBury)
-	suite.False(ethKey == treasureToBury.ETHKey)
+	suite.NotEqual(ethKey, treasureToBury.ETHKey)
 
 	decryptedKey := treasureToBury.DecryptTreasureEthKey()
-	suite.True(ethKey == decryptedKey)
+	suite.Equal(ethKey, decryptedKey)
 }
 
 func generateTreasuresToBuryOfEachStatus(suite *ModelSuite, numToCreateOfEachStatus int) {
@@ -126,6 +126,8 @@ func generateTreasuresToBury(suite *ModelSuite, numToCreateOfEachStatus int, sta
 
 		treasureToBury.SetPRLAmount(prlAmount)
 
-		suite.DB.ValidateAndCreate(&treasureToBury)
+		vErr, err := suite.DB.ValidateAndCreate(&treasureToBury)
+		suite.Nil(err)
+		suite.False(vErr.HasAny())
 	}
 }
