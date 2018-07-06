@@ -27,8 +27,8 @@ func init() {
 
 	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
 
-	// Currently enable it.
-	isKvStoreEnable = true
+	// enable unless explicitly disabled in .env file
+	isKvStoreEnable = os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
 	if IsKvStoreEnabled() {
 		InitKvStore()

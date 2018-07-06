@@ -13,12 +13,15 @@ import (
 )
 
 var (
-	hasCalledCheckPRLBalance   = false
-	hasCalledCheckETHBalance   = false
-	hasCalledSendPRLFromOyster = false
-	hasCalledSendETH           = false
-	SentToSendPRLFromOyster    = 0
-	SentToSendETH              = 0
+	hasCalledCheckPRLBalance           = false
+	hasCalledCheckETHBalance           = false
+	hasCalledSendPRLFromOyster         = false
+	hasCalledSendETH                   = false
+	hasCalledCheckIfWorthReclaimingGas = false
+	hasCalledReclaimGas                = false
+	SentToSendPRLFromOyster            = 0
+	SentToSendETH                      = 0
+	SentToReclaimGas                   = 0
 )
 
 var (
@@ -158,12 +161,12 @@ func testRetrieveLeftoverETH(suite *JobsSuite) {
 	suite.Nil(err)
 	suite.NotEqual(0, len(completedUploads))
 
-	jobs.RetrieveLeftoverETH()
+	jobs.RetrieveLeftoverETH(time.Now())
 
-	// should be 1 call to retrieve leftover gas
-	suite.Equal(1, SentToSendETH)
-	suite.True(hasCalledSendETH)
-	suite.True(hasCalledCheckETHBalance)
+	// should be 1 call to reclaim leftover gas
+	suite.Equal(1, SentToReclaimGas)
+	suite.True(hasCalledCheckIfWorthReclaimingGas)
+	suite.True(hasCalledReclaimGas)
 }
 
 func testInitiateGasTransfer(suite *JobsSuite) {
@@ -580,13 +583,15 @@ func testSetup(suite *JobsSuite) {
 
 func resetTestVariables() {
 	SentToSendPRLFromOyster = 0
-
 	SentToSendETH = 0
+	SentToReclaimGas = 0
 
 	hasCalledCheckPRLBalance = false
 	hasCalledCheckETHBalance = false
 	hasCalledSendPRLFromOyster = false
 	hasCalledSendETH = false
+	hasCalledReclaimGas = false
+	hasCalledCheckIfWorthReclaimingGas = false
 
 	jobs.EthWrapper = services.Eth{
 		GenerateEthAddr:      services.EthWrapper.GenerateEthAddr,
@@ -615,6 +620,17 @@ func resetTestVariables() {
 			hasCalledSendETH = true
 			// make one of the transfers unsuccessful
 			return types.Transactions{}, "111111", 1, nil
+		},
+		CheckIfWorthReclaimingGas: func(address common.Address,
+			desiredGasLimit uint64) (bool, *big.Int, error) {
+			hasCalledCheckIfWorthReclaimingGas = true
+			return true, big.NewInt(5000), nil
+		},
+		ReclaimGas: func(address common.Address, privateKey *ecdsa.PrivateKey,
+			gasToReclaim *big.Int) bool {
+			SentToReclaimGas++
+			hasCalledReclaimGas = true
+			return true
 		},
 	}
 }
