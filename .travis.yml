@@ -51,6 +51,7 @@ script:
   - git clone https://github.com/oysterprotocol/webinterface.git
   - cd webinterface
   - yarn
+  - yarn start -- --silent &
   - yarn cypress:record
 
 deploy:
