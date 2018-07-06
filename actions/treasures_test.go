@@ -22,7 +22,7 @@ var ethAddressCalledWithCheckClaimClock common.Address
 
 func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	checkClaimClockCalled = false
-  
+
 	mockVerifyTreasure := mockVerifyTreasure{
 		output_bool:  true,
 		output_error: nil,
@@ -39,7 +39,7 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 		},
 	}
 
-	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -81,7 +81,7 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 		VerifyTreasure: m.verifyTreasure,
 	}
 
-	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -124,7 +124,7 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 		},
 	}
 
-	ethKey := "9999999999999999999999999999999999999999999999999999999999999999"
+	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
 	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{

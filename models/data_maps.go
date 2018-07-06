@@ -71,18 +71,30 @@ type TypeAndChunkMap struct {
 	Chunks []DataMap `json:"chunks"`
 }
 
-var SortOrder map[int]string
-
 var (
-	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
+	/*MsgStatusMap is for pretty printing in the grifts and elsewhere*/
+	MsgStatusMap = make(map[int]string)
+	/*StatusMap is for pretty printing in the grifts and elsewhere*/
+	StatusMap = make(map[int]string)
+	/*TreasurePrefix will be used by the webnode in checking for treasure*/
+	TreasurePrefix = hex.EncodeToString([]byte("Treasure: "))
+	/*TreasurePayloadLength - the length of the actual payload*/
 	TreasurePayloadLength = len(TreasurePrefix) + 96
-	TreasureChunkPadding  = int(FileBytesChunkSize) - TreasurePayloadLength
+	/*TreasureChunkPadding - the length of padding to add after the payload*/
+	TreasureChunkPadding = int(FileBytesChunkSize) - TreasurePayloadLength
 )
 
 func init() {
-	SortOrder = make(map[int]string, 2)
-	SortOrder[SessionTypeAlpha] = "asc"
-	SortOrder[SessionTypeBeta] = "desc"
+	StatusMap[Pending] = "Pending"
+	StatusMap[Unassigned] = "Unassigned"
+	StatusMap[Unverified] = "Unverified"
+	StatusMap[Complete] = "Complete"
+	StatusMap[Confirmed] = "Confirmed"
+	StatusMap[Error] = "Error"
+
+	MsgStatusMap[MsgStatusUnmigrated] = "MsgStatusUnmigrated"
+	MsgStatusMap[MsgStatusNotUploaded] = "MsgStatusNotUploaded"
+	MsgStatusMap[MsgStatusUploaded] = "MsgStatusUploaded"
 }
 
 // String is not required by pop and may be deleted

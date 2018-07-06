@@ -398,7 +398,7 @@ func verifyChunkMessagesMatchRecord(chunks []models.DataMap) (filteredChunks Fil
 	return filteredChunks, err
 }
 
-func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) (filteredChunks FilteredChunk, err error) {
+func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) (filteredChunks FilteredChunk, err error) {
 
 	filteredChunks = FilteredChunk{}
 	addresses := make([]giota.Address, 0, len(chunks))
@@ -460,7 +460,7 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkChunkAndBranch bool) 
 			if _, ok := transactionObjects[chunkAddress]; ok {
 				matchFound := false
 				for _, txObject := range transactionObjects[chunkAddress] {
-					if chunksMatch(txObject, chunk, checkChunkAndBranch) {
+					if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
 						matchFound = true
 						break
 					}

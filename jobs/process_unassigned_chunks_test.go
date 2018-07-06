@@ -6,6 +6,7 @@ import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 )
 
@@ -18,6 +19,9 @@ var (
 )
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
+
+	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
+	defer oyster_utils.ResetPoWMode()
 
 	numChunks := 31
 
