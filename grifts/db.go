@@ -173,12 +173,37 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
-	grift.Desc("print_treasure", "Prints the treasure you are testing with")
-	grift.Add("print_treasure", func(c *grift.Context) error {
+	grift.Desc("print_qa_treasure", "Prints the qa treasure you are testing with")
+	grift.Add("print_qa_treasure", func(c *grift.Context) error {
 
 		treasuresToBury := []models.Treasure{}
 
 		err := models.DB.RawQuery("SELECT * from treasures where address = ?", qaTrytes).All(&treasuresToBury)
+
+		if err == nil {
+			for _, treasureToBury := range treasuresToBury {
+				fmt.Println("________________________________________________________")
+				fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
+				fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
+				fmt.Println("Iota Address: " + treasureToBury.Address)
+				fmt.Println("Iota Message: " + treasureToBury.Message)
+				fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
+				fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+				fmt.Println("________________________________________________________")
+			}
+		} else {
+			fmt.Println(err)
+		}
+
+		return nil
+	})
+
+	grift.Desc("print_treasure", "Prints all the treasures")
+	grift.Add("print_treasure", func(c *grift.Context) error {
+
+		treasuresToBury := []models.Treasure{}
+
+		err := models.DB.RawQuery("SELECT * from treasures").All(&treasuresToBury)
 
 		if err == nil {
 			for _, treasureToBury := range treasuresToBury {
@@ -218,24 +243,68 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("delete_genesis_hash", "Delete a specific genesis hash")
+	grift.Add("delete_genesis_hash", func(c *grift.Context) error {
+
+		models.DB.RawQuery("DELETE from stored_genesis_hashes WHERE genesis_hash = ?", c.Args[0]).All(&[]models.StoredGenesisHash{})
+
+		return nil
+	})
+
 	grift.Desc("reset_genesis_hashes", "Resets all stored genesis hashes to webnode count 0 and status unassigned")
 	grift.Add("reset_genesis_hashes", func(c *grift.Context) error {
 
-		storedGenHashCount := models.StoredGenesisHash{}
-
-		count, err := models.DB.RawQuery("SELECT COUNT(*) from stored_genesis_hashes").Count(&storedGenHashCount)
-
-		if count == 0 {
-			fmt.Println("No stored genesis hashes available!")
-			return nil
-		}
-
-		err = models.DB.RawQuery("UPDATE stored_genesis_hashes SET webnode_count = ? AND status = ?",
+		err := models.DB.RawQuery("UPDATE stored_genesis_hashes SET webnode_count = ? AND status = ?",
 			0, models.StoredGenesisHashUnassigned).All(&[]models.StoredGenesisHash{})
 
 		if err == nil {
 			fmt.Println("Successfully reset all stored genesis hashes!")
 		} else {
+			fmt.Println(err)
+			return err
+		}
+
+		return nil
+	})
+
+	grift.Desc("print_genesis_hashes", "Prints the stored genesis hashes")
+	grift.Add("print_genesis_hashes", func(c *grift.Context) error {
+
+		storedGenHashes := []models.StoredGenesisHash{}
+
+		models.DB.RawQuery("SELECT * from stored_genesis_hashes").All(&storedGenHashes)
+
+		for _, genHash := range storedGenHashes {
+
+			treasureStatus := "TreasureBuried"
+
+			if genHash.TreasureStatus == 1 {
+				treasureStatus = "TreasurePending"
+			}
+
+			assignedStatus := "StoredGenesisHashAssigned"
+			if genHash.Status == 1 {
+				assignedStatus = "StoredGenesisHashUnassigned"
+			}
+
+			fmt.Println("____________________________________________")
+			fmt.Println("Genesis hash:       " + genHash.GenesisHash)
+			fmt.Println("Treasure status:    " + treasureStatus)
+			fmt.Println("Assigned status:    " + assignedStatus)
+			fmt.Println("Webnode count:      " + strconv.Itoa(genHash.WebnodeCount))
+			fmt.Println("____________________________________________")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_gen_hashes_to_buried", "set all genesis hashes to TreasureBuried")
+	grift.Add("set_gen_hashes_to_buried", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("UPDATE stored_genesis_hashes SET treasure_status = ?",
+			models.TreasureBuried).All(&[]models.StoredGenesisHash{})
+
+		if err != nil {
 			fmt.Println(err)
 			return err
 		}
@@ -582,11 +651,23 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
-	grift.Desc("delete_webnode_treasure_claims", "Deletes webnode treasure claims")
-	grift.Add("delete_webnode_treasure_claims", func(c *grift.Context) error {
+	grift.Desc("delete_qa_webnode_treasure_claims", "Deletes QA webnode treasure claims")
+	grift.Add("delete_qa_webnode_treasure_claims", func(c *grift.Context) error {
 
 		err := models.DB.RawQuery("DELETE from webnode_treasure_claims WHERE genesis_hash " +
 			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
+
+		if err == nil {
+			fmt.Println("Treasure claims deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("delete_all_webnode_treasure_claims", "Deletes all webnode treasure claims")
+	grift.Add("delete_all_webnode_treasure_claims", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("DELETE from webnode_treasure_claims").All(&[]models.CompletedUpload{})
 
 		if err == nil {
 			fmt.Println("Treasure claims deleted")
@@ -605,16 +686,23 @@ var _ = grift.Namespace("db", func() {
 		if err == nil {
 			fmt.Println("Printing treasure claims")
 			for _, treasureClaim := range treasureClaims {
+
 				fmt.Println("________________________________________________________")
-				fmt.Println("Genesis hash:          " + treasureClaim.GenesisHash)
-				fmt.Println("Receiver ETH Address:  " + treasureClaim.ReceiverETHAddr)
-				fmt.Println("Treasure ETH Address:  " + treasureClaim.TreasureETHAddr)
-				fmt.Println("Treasure ETH Key:      " + treasureClaim.TreasureETHPrivateKey)
+				fmt.Println("Genesis hash:           " + treasureClaim.GenesisHash)
+				fmt.Println("Receiver ETH Address:   " + treasureClaim.ReceiverETHAddr)
+				fmt.Println("Treasure ETH Address:   " + treasureClaim.TreasureETHAddr)
 				decrypted := treasureClaim.DecryptTreasureEthKey()
-				fmt.Println("decrypted ETH Key:     " + decrypted)
-				fmt.Println("PRL Status:            " + models.PRLClaimStatusMap[treasureClaim.ClaimPRLStatus])
-				fmt.Println("Gas Status:            " + models.GasTransferStatusMap[treasureClaim.GasStatus])
+				fmt.Println("decrypted ETH Key:      " + decrypted)
+				fmt.Println("PRL Status:             " + models.PRLClaimStatusMap[treasureClaim.ClaimPRLStatus])
+				fmt.Println("Gas Status:             " + models.GasTransferStatusMap[treasureClaim.GasStatus])
+				fmt.Println("Starting Claim Clock:   " + big.NewInt(treasureClaim.StartingClaimClock).String())
+
+				claimClock, _ := services.EthWrapper.CheckClaimClock(
+					services.StringToAddress(treasureClaim.TreasureETHAddr))
+
+				fmt.Println("Current Claim Clock:    " + claimClock.String())
 				fmt.Println("________________________________________________________")
+
 			}
 		} else {
 			fmt.Println(err)

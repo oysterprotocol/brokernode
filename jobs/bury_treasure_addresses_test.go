@@ -65,6 +65,53 @@ func (suite *JobsSuite) Test_CheckGasTransactions() {
 	suite.True(hasCalledCheckETHBalance)
 }
 
+func (suite *JobsSuite) Test_CheckBuryTransactions() {
+
+	hasCalledCheckBuriedState := false
+
+	jobs.EthWrapper = services.Eth{
+		CheckBuriedState: func(addr common.Address) (bool, error) {
+			hasCalledCheckBuriedState = true
+			return true, nil
+		},
+	}
+
+	generateTreasuresToBury(suite, 1, models.BuryPending)
+	pending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryPending})
+	suite.Nil(err)
+	suite.Equal(1, len(pending))
+	suite.False(hasCalledCheckBuriedState)
+
+	suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
+		GenesisHash:    pending[0].GenesisHash,
+		FileSizeBytes:  10000,
+		NumChunks:      10,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasurePending,
+	})
+
+	genHashesWithTreasureBurialPending := []models.StoredGenesisHash{}
+	// verify there is 1 genesis hash with treasure status TreasurePending
+	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureBurialPending)
+	suite.Nil(err)
+	suite.Equal(1, len(genHashesWithTreasureBurialPending))
+
+	jobs.CheckBuryTransactions()
+
+	pending, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryPending})
+	suite.Nil(err)
+	suite.Equal(0, len(pending))
+	suite.True(hasCalledCheckBuriedState)
+
+	genHashesWithTreasureBurialPending = []models.StoredGenesisHash{}
+	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureBurialPending)
+	suite.Nil(err)
+	suite.Equal(0, len(genHashesWithTreasureBurialPending))
+}
+
 func (suite *JobsSuite) Test_SetTimedOutTransactionsToError() {
 
 	generateTreasuresToBury(suite, 2, models.GasPending)
@@ -531,25 +578,6 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
 	suite.Nil(err)
 	suite.Equal(3, len(allTreasures))
 
-	for _, treasure := range allTreasures {
-		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
-			GenesisHash:    treasure.GenesisHash,
-			FileSizeBytes:  10000,
-			NumChunks:      10,
-			WebnodeCount:   0,
-			Status:         models.StoredGenesisHashUnassigned,
-			TreasureStatus: models.TreasurePending,
-		})
-	}
-
-	genHashesWithTreasureStatusPending := []models.StoredGenesisHash{}
-
-	// verify there are 3 genesisHashes with treasure status TreasurePending
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
-		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
-	suite.Nil(err)
-	suite.Equal(3, len(genHashesWithTreasureStatusPending))
-
 	jobs.PurgeFinishedTreasure()
 
 	//enable this part of the test when we are confident we don't need to
@@ -557,15 +585,6 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
 	//allTreasures, err = models.GetAllTreasuresToBury()
 	//suite.Nil(err)
 	//suite.Equal(0, len(allTreasures))
-
-	genHashesWithTreasureStatusPending = []models.StoredGenesisHash{}
-
-	// verify that PurgeFinishedTreasure set these genesis hashes to treasure
-	// status TreasureBuried
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
-		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
-	suite.Nil(err)
-	suite.Equal(0, len(genHashesWithTreasureStatusPending))
 }
 
 func generateTreasuresToBury(suite *JobsSuite, numToCreateOfEachStatus int, status models.PRLStatus) {

@@ -147,6 +147,10 @@ func (b *BrokerBrokerTransaction) DecryptEthKey() string {
 /*NewBrokerBrokerTransaction creates a new broker_broker_transaction that corresponds to a session */
 func NewBrokerBrokerTransaction(session *UploadSession) bool {
 
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		return false
+	}
+
 	var paymentStatus PaymentStatus
 
 	switch session.PaymentStatus {
@@ -155,12 +159,8 @@ func NewBrokerBrokerTransaction(session *UploadSession) bool {
 	case PaymentStatusPending:
 		paymentStatus = BrokerTxAlphaPaymentPending
 	case PaymentStatusConfirmed:
-		if oyster_utils.BrokerMode == oyster_utils.ProdMode {
-			if os.Getenv("OYSTER_PAYS") == "" {
-				paymentStatus = BrokerTxAlphaPaymentConfirmed
-			} else {
-				paymentStatus = BrokerTxBetaPaymentConfirmed
-			}
+		if os.Getenv("OYSTER_PAYS") == "" {
+			paymentStatus = BrokerTxAlphaPaymentConfirmed
 		} else {
 			paymentStatus = BrokerTxBetaPaymentConfirmed
 		}

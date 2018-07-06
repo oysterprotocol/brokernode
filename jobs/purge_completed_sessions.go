@@ -66,6 +66,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 				}
 
 				if len(session) > 0 {
+					//if oyster_utils.BrokerMode == oyster_utils.ProdMode {
 					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
 						GenesisHash:   session[0].GenesisHash,
 						NumChunks:     session[0].NumChunks,
@@ -79,7 +80,9 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 						oyster_utils.LogIfError(err, nil)
 						return err
 					}
+					//}
 					if err := models.NewCompletedUpload(session[0]); err != nil {
+						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}

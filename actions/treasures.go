@@ -6,6 +6,7 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
+	"os"
 )
 
 type TreasuresResource struct {
@@ -31,6 +32,13 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 
 	req := treasureReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
+
+	if req.EthKey == os.Getenv("TEST_MODE_WALLET_KEY") {
+		res := treasureRes{
+			Success: true,
+		}
+		return c.Render(200, r.JSON(res))
+	}
 
 	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)

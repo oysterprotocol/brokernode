@@ -117,6 +117,11 @@ func CheckBuryTransactions() {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		} else if buried {
+			err := models.SetToTreasureBuriedByGenesisHash(pending.GenesisHash)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 			fmt.Println("Bury transaction confirmed in CheckBuryTransactions()")
 			pending.PRLStatus = models.BuryConfirmed
 			vErr, err := models.DB.ValidateAndUpdate(&pending)
@@ -303,17 +308,8 @@ func PurgeFinishedTreasure() {
 		return
 	}
 
-	if len(completeTreasures) == 0 {
-		return
-	}
-
 	for _, completeTreasure := range completeTreasures {
 		ethAddr := completeTreasure.ETHAddr
-		err := models.SetToTreasureBuriedByGenesisHash(completeTreasure.GenesisHash)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			continue
-		}
 
 		// TODO:  Don't want to enable this for now
 		// since we don't want to lose access to the

@@ -106,6 +106,7 @@ func (t *Treasure) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) 
  */
 
 func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
+
 	// Defaults to PRLWaiting.
 	if t.PRLStatus == 0 {
 		t.PRLStatus = PRLWaiting

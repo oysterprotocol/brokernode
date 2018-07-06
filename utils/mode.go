@@ -5,25 +5,51 @@ import (
 	"os"
 )
 
-type ModeStatus int
+type BrokerModeStatus int
+type PoWModeStatus int
 
 const (
-	ProdMode ModeStatus = iota + 1
+	ProdMode BrokerModeStatus = iota + 1
 	TestModeDummyTreasure
 	TestModeNoTreasure
 )
 
-var BrokerMode ModeStatus
+const (
+	PoWEnabled PoWModeStatus = iota + 1
+	PoWDisabled
+)
+
+var BrokerMode BrokerModeStatus
+var PoWMode PoWModeStatus
 
 func init() {
 
+	ResetPoWMode()
 	ResetBrokerMode()
+}
+
+func ResetPoWMode() {
+	powMode := os.Getenv("DISABLE_POW")
+
+	var mode PoWModeStatus
+
+	switch powMode {
+	case "true":
+		mode = PoWDisabled
+	case "false":
+		mode = PoWEnabled
+	case "":
+		mode = PoWEnabled
+	default:
+		mode = PoWEnabled
+	}
+	SetPoWMode(mode)
 }
 
 func ResetBrokerMode() {
 	brokerMode := os.Getenv("MODE")
 
-	var mode ModeStatus
+	var mode BrokerModeStatus
 
 	switch brokerMode {
 	case "PROD_MODE":
@@ -38,7 +64,11 @@ func ResetBrokerMode() {
 	SetBrokerMode(mode)
 }
 
-func SetBrokerMode(brokerMode ModeStatus) {
+func SetPoWMode(powMode PoWModeStatus) {
+	PoWMode = powMode
+}
+
+func SetBrokerMode(brokerMode BrokerModeStatus) {
 	BrokerMode = brokerMode
 
 	switch brokerMode {

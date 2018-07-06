@@ -1015,6 +1015,10 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	ethBalance := checkETHBalance(auth.From)
 
+	if ethBalance.Int64() == -1 {
+		return false
+	}
+
 	// determine the gas price we are willing to pay by the gas price we settled
 	// upon when we sent the eth earlier in the sequence
 	gasPrice := new(big.Int).Quo(ethBalance, big.NewInt(int64(GasLimitPRLClaim)))
@@ -1040,21 +1044,21 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	storeTransaction(tx)
 	printTx(tx)
 
-	var status = false
+	//var status = false
+	//
+	//// confirm status of transaction
+	//txStatus := waitForConfirmation(tx.Hash(), SecondsDelayForETHPolling)
+	//
+	//if txStatus == 0 {
+	//	fmt.Printf("transaction failure")
+	//	status = false
+	//} else if txStatus == 1 {
+	//	fmt.Printf("confirmation completed")
+	//	flushTransaction(tx.Hash())
+	//	status = true
+	//}
 
-	// confirm status of transaction
-	txStatus := waitForConfirmation(tx.Hash(), SecondsDelayForETHPolling)
-
-	if txStatus == 0 {
-		fmt.Printf("transaction failure")
-		status = false
-	} else if txStatus == 1 {
-		fmt.Printf("confirmation completed")
-		flushTransaction(tx.Hash())
-		status = true
-	}
-
-	return status
+	return true
 }
 
 func createSendPRLMessage(from common.Address, privateKey *ecdsa.PrivateKey, to common.Address, prlAmount big.Int) (OysterCallMsg, error) {

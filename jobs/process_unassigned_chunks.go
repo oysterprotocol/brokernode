@@ -121,7 +121,7 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		StageTreasures(treasureChunksNeedAttaching, session)
 
-		if os.Getenv("DISABLE_POW") == "" {
+		if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
 	}
@@ -189,7 +189,7 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
 	/*TODO add tests for this method*/
 
-	if len(treasureChunks) == 0 || oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
 		return
 	}
 	treasureIdxMapArray, err := session.GetTreasureMap()
@@ -225,12 +225,18 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				// already captured error in upstream function
 				continue
 			}
+
+			if decryptedKey == os.Getenv("TEST_MODE_WALLET_KEY") {
+				continue
+			}
+
 			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
-				ETHAddr: ethAddress.Hex(),
-				ETHKey:  decryptedKey,
-				Address: treasureChunk.Address,
-				Message: services.GetMessageFromDataMap(treasureChunk),
+				GenesisHash: treasureChunk.GenesisHash,
+				ETHAddr:     ethAddress.Hex(),
+				ETHKey:      decryptedKey,
+				Address:     treasureChunk.Address,
+				Message:     services.GetMessageFromDataMap(treasureChunk),
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)
