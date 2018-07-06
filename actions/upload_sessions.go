@@ -303,7 +303,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	models.NewBrokerBrokerTransaction(&u)
-	
+
 	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		fmt.Println(err)

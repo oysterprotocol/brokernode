@@ -62,14 +62,11 @@ There are 5 "types" of chunks that we care about and we have to handle them diff
 		but the message is wrong
 	4.  A treasure chunk which is not yet attached
 	5.  A treasure chunk which is already attached
-
 We check for the first 3 and filter them in the iotaWrapper.VerifyChunkMessagesMatchRecord method.
-
 For the treasure chunks it's different because the two brokers will have different messages for
 the treasures, so we don't expect the messages to match.  It is sufficient only that a transaction
 already exists at that address, and if so, we will not attempt to attach the treasure chunk because
 the other broker has already done so.
-
 We separate out the treasure chunks from the regular chunks and keep the ones we need to attach,
 then we filter the other types of chunks, then we insert the treasure chunks that need attaching
 back into the array based on their chunk_idx, then we send to the channels.
