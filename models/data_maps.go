@@ -72,6 +72,9 @@ type TypeAndChunkMap struct {
 }
 
 var (
+	/*
+		MsgStatusMap is for pretty printing in the grifts and elsewhere
+	*/
 	MsgStatusMap          = make(map[int]string)
 	StatusMap             = make(map[int]string)
 	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
