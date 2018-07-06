@@ -112,7 +112,7 @@ func testSetup(suite *ModelSuite) {
 		GasStatus:     models.GasTransferLeftoversReclaimSuccess,
 	}
 
-	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+	err := suite.DB.RawQuery("DELETE FROM completed_uploads").All(&[]models.CompletedUpload{})
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferNotStarted)

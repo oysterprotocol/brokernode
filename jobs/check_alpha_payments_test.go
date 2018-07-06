@@ -23,7 +23,7 @@ var (
 
 func resetTestVariables_checkAlphaPayments(suite *JobsSuite) {
 
-	suite.DB.RawQuery("DELETE from broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
+	suite.DB.RawQuery("DELETE FROM broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
 
 	hasCalledCheckPRLBalance_checkAlphaPayments = false
 	hasCalledCheckETHBalance_checkAlphaPayments = false
@@ -380,6 +380,6 @@ func generateBrokerBrokerTransactions(suite *JobsSuite,
 
 func returnAllBrokerBrokerTxs(suite *JobsSuite) []models.BrokerBrokerTransaction {
 	brokerTxs := []models.BrokerBrokerTransaction{}
-	suite.DB.RawQuery("SELECT * from broker_broker_transactions").All(&brokerTxs)
+	suite.DB.RawQuery("SELECT * FROM broker_broker_transactions").All(&brokerTxs)
 	return brokerTxs
 }

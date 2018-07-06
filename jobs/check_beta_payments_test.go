@@ -21,7 +21,7 @@ var (
 
 func resetTestVariables_checkBetaPayments(suite *JobsSuite) {
 
-	suite.DB.RawQuery("DELETE from broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
+	suite.DB.RawQuery("DELETE FROM broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
 
 	hasCalledCheckPRLBalance_checkBetaPayments = false
 	hasCalledCheckETHBalance_checkBetaPayments = false

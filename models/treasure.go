@@ -140,7 +140,7 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
+		err := DB.RawQuery("SELECT * FROM treasures where prl_status = ?", prlStatus).All(&treasureToBury)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
@@ -158,7 +158,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
 
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
+		err := DB.RawQuery("SELECT * FROM treasures where prl_status = ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
 			prlStatus,
 			int(timeSinceThreshold.Hours())).All(&treasureToBury)
 
@@ -173,7 +173,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 
 func GetAllTreasuresToBury() ([]Treasure, error) {
 	allTreasures := []Treasure{}
-	err := DB.RawQuery("SELECT * from treasures").All(&allTreasures)
+	err := DB.RawQuery("SELECT * FROM treasures").All(&allTreasures)
 	return allTreasures, err
 }
 

@@ -390,7 +390,7 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
 	genHashesWithTreasureStatusPending := []models.StoredGenesisHash{}
 
 	// verify there are 3 genesisHashes with treasure status TreasurePending
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+	err = suite.DB.RawQuery("SELECT * FROM stored_genesis_hashes "+
 		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
 	suite.Nil(err)
 	suite.Equal(3, len(genHashesWithTreasureStatusPending))
@@ -405,7 +405,7 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
 
 	// verify that PurgeFinishedTreasure set these genesis hashes to treasure
 	// status TreasureBuried
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+	err = suite.DB.RawQuery("SELECT * FROM stored_genesis_hashes "+
 		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
 	suite.Nil(err)
 	suite.Equal(0, len(genHashesWithTreasureStatusPending))

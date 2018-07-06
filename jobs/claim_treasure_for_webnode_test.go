@@ -26,7 +26,7 @@ var (
 )
 
 func resetTestVariables_claimTreasureForWebnode(suite *JobsSuite) {
-	suite.DB.RawQuery("DELETE from webnode_treasure_claims").All(
+	suite.DB.RawQuery("DELETE FROM webnode_treasure_claims").All(
 		&[]models.WebnodeTreasureClaim{})
 
 	hasCalledCheckPRLBalance_claimTreasureForWebnode = false

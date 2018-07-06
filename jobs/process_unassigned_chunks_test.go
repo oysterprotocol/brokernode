@@ -183,7 +183,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	suite.Nil(err)
 
 	treasureChunk := models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * from data_maps WHERE chunk_idx = ?", 20).First(&treasureChunk)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps WHERE chunk_idx = ?", 20).First(&treasureChunk)
 	suite.Nil(err)
 
 	// setting the address to something that the findTransactions mock can check for
@@ -191,7 +191,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	suite.DB.ValidateAndSave(&treasureChunk)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks, len(dataMaps))
 
@@ -325,7 +325,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 	uploadSession.StartUploadSession()
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 
@@ -376,7 +376,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
 	uploadSession.StartUploadSession()
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * from data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 

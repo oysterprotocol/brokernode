@@ -370,7 +370,7 @@ func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
 	_, err := u.StartUploadSession()
 
 	dataMap := models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * from data_maps where genesis_hash = ?", u.GenesisHash).First(&dataMap)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ?", u.GenesisHash).First(&dataMap)
 	suite.Nil(err)
 
 	ethKey = hex.EncodeToString([]byte("SOME_OTHER_PRIVATE_KEY"))
