@@ -47,12 +47,17 @@ const (
 	GasConfirmed
 	BuryPending
 	BuryConfirmed
+	GasReclaimPending
+	GasReclaimConfirmed
 
 	// error states
-	PRLError  = -1
-	GasError  = -3
-	BuryError = -5
+	PRLError        = -1
+	GasError        = -3
+	BuryError       = -5
+	GasReclaimError = -7
 )
+
+const maxNumSimultaneousTreasureTxs = 15
 
 var PRLStatusMap = make(map[PRLStatus]string)
 
@@ -64,6 +69,8 @@ func init() {
 	PRLStatusMap[GasConfirmed] = "GasConfirmed"
 	PRLStatusMap[BuryPending] = "BuryPending"
 	PRLStatusMap[BuryConfirmed] = "BuryConfirmed"
+	PRLStatusMap[GasReclaimPending] = "GasReclaimPending"
+	PRLStatusMap[GasReclaimConfirmed] = "GasReclaimConfirmed"
 
 	PRLStatusMap[PRLError] = "PRLError"
 	PRLStatusMap[GasError] = "GasError"
@@ -99,6 +106,7 @@ func (t *Treasure) ValidateUpdate(tx *pop.Connection) (*validate.Errors, error) 
  */
 
 func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
+
 	// Defaults to PRLWaiting.
 	if t.PRLStatus == 0 {
 		t.PRLStatus = PRLWaiting
@@ -140,7 +148,9 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ?", prlStatus).All(&treasureToBury)
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ? LIMIT ?",
+			prlStatus,
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
@@ -158,9 +168,11 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
 
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
+		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND "+
+			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
 			prlStatus,
-			int(timeSinceThreshold.Hours())).All(&treasureToBury)
+			int(timeSinceThreshold.Hours()),
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
