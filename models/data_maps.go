@@ -72,14 +72,16 @@ type TypeAndChunkMap struct {
 }
 
 var (
-	/*
-		MsgStatusMap is for pretty printing in the grifts and elsewhere
-	*/
-	MsgStatusMap          = make(map[int]string)
-	StatusMap             = make(map[int]string)
-	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
+	/*MsgStatusMap is for pretty printing in the grifts and elsewhere*/
+	MsgStatusMap = make(map[int]string)
+	/*StatusMap is for pretty printing in the grifts and elsewhere*/
+	StatusMap = make(map[int]string)
+	/*TreasurePrefix will be used by the webnode in checking for treasure*/
+	TreasurePrefix = hex.EncodeToString([]byte("Treasure: "))
+	/*TreasurePayloadLength - the length of the actual payload*/
 	TreasurePayloadLength = len(TreasurePrefix) + 96
-	TreasureChunkPadding  = int(FileBytesChunkSize) - TreasurePayloadLength
+	/*TreasureChunkPadding - the length of padding to add after the payload*/
+	TreasureChunkPadding = int(FileBytesChunkSize) - TreasurePayloadLength
 )
 
 func init() {

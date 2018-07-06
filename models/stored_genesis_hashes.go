@@ -26,11 +26,9 @@ const (
 )
 
 const (
-	/*
-		HoursToAssumeTreasureHasBeenBuried is the number of hours after which we can safely assume the treasure
-		has been buried.  This is needed in case the webnode is transacting with the beta broker but the alpha
-		did the treasure burying, or vice versa.
-	*/
+	/*HoursToAssumeTreasureHasBeenBuried is the number of hours after which we can safely assume the treasure
+	has been buried.  This is needed in case the webnode is transacting with the beta broker but the alpha
+	did the treasure burying, or vice versa.*/
 	HoursToAssumeTreasureHasBeenBuried = 8
 )
 
