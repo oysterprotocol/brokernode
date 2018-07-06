@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"fmt"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
@@ -179,6 +180,8 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 			GenesisHash: "abcdeff1",
 			Hash:        "SOMEHASH",
 			Address:     "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+			MsgID:       fmt.Sprintf("msg_id_%d", i),
+			MsgStatus:   MsgStatusNotUploaded,
 		})
 	}
 

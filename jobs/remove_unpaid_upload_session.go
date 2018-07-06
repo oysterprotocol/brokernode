@@ -36,10 +36,7 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			if err := tx.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&dataMaps); err != nil {
 				return err
 			}
-			if err := tx.RawQuery("DELETE FROM upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{}); err != nil {
-				return err
-			}
-			return nil
+			return tx.RawQuery("DELETE FROM upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{})
 		})
 		oyster_utils.LogIfError(err, nil)
 		if err == nil {
