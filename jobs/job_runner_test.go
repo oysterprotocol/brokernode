@@ -22,6 +22,11 @@ var Suite JobsSuite
 func (suite *JobsSuite) SetupTest() {
 	suite.Model.SetupTest()
 
+	if services.IsKvStoreEnabled() {
+		suite.Nil(services.RemoveAllKvStoreData())
+		suite.Nil(services.InitKvStore())
+	}
+
 	// Reset the jobs's IotaWrapper, EthWrapper before each test.
 	// Some tests may override this value.
 	jobs.IotaWrapper = services.IotaWrapper

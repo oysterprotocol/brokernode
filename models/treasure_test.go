@@ -23,7 +23,7 @@ func (suite *ModelSuite) Test_GetTreasuresToBuryByPRLStatus() {
 	allTreasures, err := models.GetAllTreasuresToBury()
 	suite.Nil(err)
 
-	suite.Equal(true, len(allTreasures) > len(waitingForPRL))
+	suite.True(len(allTreasures) > len(waitingForPRL))
 }
 
 func (suite *ModelSuite) Test_GetTreasuresToBuryByPRLStatusAndUpdateTime() {
@@ -84,10 +84,10 @@ func (suite *ModelSuite) Test_EncryptAndDecryptEthPrivateKey() {
 	}
 
 	suite.DB.ValidateAndCreate(&treasureToBury)
-	suite.Equal(false, ethKey == treasureToBury.ETHKey)
+	suite.NotEqual(ethKey, treasureToBury.ETHKey)
 
 	decryptedKey := treasureToBury.DecryptTreasureEthKey()
-	suite.Equal(true, ethKey == decryptedKey)
+	suite.Equal(ethKey, decryptedKey)
 }
 
 func generateTreasuresToBuryOfEachStatus(suite *ModelSuite, numToCreateOfEachStatus int) {
@@ -126,6 +126,8 @@ func generateTreasuresToBury(suite *ModelSuite, numToCreateOfEachStatus int, sta
 
 		treasureToBury.SetPRLAmount(prlAmount)
 
-		suite.DB.ValidateAndCreate(&treasureToBury)
+		vErr, err := suite.DB.ValidateAndCreate(&treasureToBury)
+		suite.Nil(err)
+		suite.False(vErr.HasAny())
 	}
 }

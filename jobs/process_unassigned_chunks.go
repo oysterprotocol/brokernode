@@ -62,14 +62,11 @@ There are 5 "types" of chunks that we care about and we have to handle them diff
 		but the message is wrong
 	4.  A treasure chunk which is not yet attached
 	5.  A treasure chunk which is already attached
-
 We check for the first 3 and filter them in the iotaWrapper.VerifyChunkMessagesMatchRecord method.
-
 For the treasure chunks it's different because the two brokers will have different messages for
 the treasures, so we don't expect the messages to match.  It is sufficient only that a transaction
 already exists at that address, and if so, we will not attempt to attach the treasure chunk because
 the other broker has already done so.
-
 We separate out the treasure chunks from the regular chunks and keep the ones we need to attach,
 then we filter the other types of chunks, then we insert the treasure chunks that need attaching
 back into the array based on their chunk_idx, then we send to the channels.
@@ -121,7 +118,7 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		StageTreasures(treasureChunksNeedAttaching, session)
 
-		if os.Getenv("DISABLE_POW") == "" {
+		if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
 	}
@@ -189,7 +186,7 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
 	/*TODO add tests for this method*/
 
-	if len(treasureChunks) == 0 {
+	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
 		return
 	}
 	treasureIdxMapArray, err := session.GetTreasureMap()
@@ -221,16 +218,22 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 		if _, ok := treasureIdxMap[treasureChunk.ChunkIdx]; ok {
 			decryptedKey, err := treasureChunk.DecryptEthKey(treasureIdxMap[treasureChunk.ChunkIdx].Key)
 			if err != nil {
-				fmt.Println("Cannot stage treasures to bury in process_unassigned_chunks: " + err.Error())
+				fmt.Println("Cannot stage treasure to bury in process_unassigned_chunks: " + err.Error())
 				// already captured error in upstream function
-				return
+				continue
 			}
+
+			if decryptedKey == os.Getenv("TEST_MODE_WALLET_KEY") {
+				continue
+			}
+
 			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
 			treasureToBury := models.Treasure{
-				ETHAddr: ethAddress.Hex(),
-				ETHKey:  decryptedKey,
-				Address: treasureChunk.Address,
-				Message: services.GetMessageFromDataMap(treasureChunk),
+				GenesisHash: treasureChunk.GenesisHash,
+				ETHAddr:     ethAddress.Hex(),
+				ETHKey:      decryptedKey,
+				Address:     treasureChunk.Address,
+				Message:     services.GetMessageFromDataMap(treasureChunk),
 			}
 
 			treasureToBury.SetPRLAmount(prlInWei)

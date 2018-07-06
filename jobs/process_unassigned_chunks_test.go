@@ -6,6 +6,7 @@ import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 )
 
@@ -18,6 +19,9 @@ var (
 )
 
 func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
+
+	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
+	defer oyster_utils.ResetPoWMode()
 
 	numChunks := 31
 
@@ -95,8 +99,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	// call method under test
 	jobs.ProcessUnassignedChunks(IotaMock, jobs.PrometheusWrapper)
 
-	suite.Equal(true, sendChunksToChannelMockCalled_process_unassigned_chunks)
-	suite.Equal(true, verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
+	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks)
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
 	suite.Equal(4*(numChunks+1), len(AllChunksCalled)) // 4 data maps so 4 chunks have been added
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
@@ -124,10 +128,10 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		}
 	}
 
-	suite.Equal(true, genHashMapIdx["abcdeff4"][0] > genHashMapIdx["abcdeff4"][len(genHashMapIdx["abcdeff4"])-1])
-	suite.Equal(true, genHashMapIdx["abcdeff2"][0] > genHashMapIdx["abcdeff2"][len(genHashMapIdx["abcdeff2"])-1])
-	suite.Equal(true, genHashMapIdx["abcdeff1"][0] < genHashMapIdx["abcdeff1"][len(genHashMapIdx["abcdeff1"])-1])
-	suite.Equal(true, genHashMapIdx["abcdeff3"][0] < genHashMapIdx["abcdeff3"][len(genHashMapIdx["abcdeff3"])-1])
+	suite.True(genHashMapIdx["abcdeff4"][0] > genHashMapIdx["abcdeff4"][len(genHashMapIdx["abcdeff4"])-1])
+	suite.True(genHashMapIdx["abcdeff2"][0] > genHashMapIdx["abcdeff2"][len(genHashMapIdx["abcdeff2"])-1])
+	suite.True(genHashMapIdx["abcdeff1"][0] < genHashMapIdx["abcdeff1"][len(genHashMapIdx["abcdeff1"])-1])
+	suite.True(genHashMapIdx["abcdeff3"][0] < genHashMapIdx["abcdeff3"][len(genHashMapIdx["abcdeff3"])-1])
 
 	suite.Equal(0, genHashMapOrder["abcdeff4"])
 	suite.Equal(1, genHashMapOrder["abcdeff2"])
@@ -202,7 +206,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 		suite.NotEqual(20, chunk.ChunkIdx)
 	}
 
-	suite.Equal(true, findTransactionsMockCalled_process_unassigned_chunks)
+	suite.True(findTransactionsMockCalled_process_unassigned_chunks)
 	suite.Equal(len(dataMaps)-2, len(chunksToAttach))
 	suite.Equal(1, len(treasureChunks))
 	suite.Equal(15, treasureChunks[0].ChunkIdx)
@@ -354,11 +358,11 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 	restMaxIdx = lenOfRestOfChunks - 1
 
 	for _, chunk := range skipVerifyChunks {
-		suite.Equal(true, chunk.ChunkIdx >= skipVerifyMinIdx &&
+		suite.True(chunk.ChunkIdx >= skipVerifyMinIdx &&
 			chunk.ChunkIdx <= skipVerifyMaxIdx)
 	}
 	for _, chunk := range restOfChunks {
-		suite.Equal(true, chunk.ChunkIdx >= restMinIdx &&
+		suite.True(chunk.ChunkIdx >= restMinIdx &&
 			chunk.ChunkIdx <= restMaxIdx)
 	}
 }
@@ -402,11 +406,11 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 	restMaxIdx = numChunks
 
 	for _, chunk := range skipVerifyChunks {
-		suite.Equal(true, chunk.ChunkIdx >= skipVerifyMinIdx &&
+		suite.True(chunk.ChunkIdx >= skipVerifyMinIdx &&
 			chunk.ChunkIdx <= skipVerifyMaxIdx)
 	}
 	for _, chunk := range restOfChunks {
-		suite.Equal(true, chunk.ChunkIdx >= restMinIdx &&
+		suite.True(chunk.ChunkIdx >= restMinIdx &&
 			chunk.ChunkIdx <= restMaxIdx)
 	}
 }

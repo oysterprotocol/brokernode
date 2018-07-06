@@ -5,9 +5,14 @@ import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	fileBytesCount := uint64(2500)
 	numChunks := 3
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"

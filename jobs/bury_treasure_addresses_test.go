@@ -29,14 +29,14 @@ func (suite *JobsSuite) Test_CheckPRLTransactions() {
 	suite.Nil(err)
 	suite.Equal(1, len(pendingPRL))
 
-	suite.Equal(false, hasCalledCheckPRLBalance)
+	suite.False(hasCalledCheckPRLBalance)
 
 	jobs.CheckPRLTransactions()
 
 	pendingPRL, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.PRLPending})
 	suite.Nil(err)
 	suite.Equal(0, len(pendingPRL))
-	suite.Equal(true, hasCalledCheckPRLBalance)
+	suite.True(hasCalledCheckPRLBalance)
 }
 
 func (suite *JobsSuite) Test_CheckGasTransactions() {
@@ -55,14 +55,14 @@ func (suite *JobsSuite) Test_CheckGasTransactions() {
 	suite.Nil(err)
 	suite.Equal(1, len(pendingGas))
 
-	suite.Equal(false, hasCalledCheckETHBalance)
+	suite.False(hasCalledCheckETHBalance)
 
 	jobs.CheckGasTransactions()
 
 	pendingGas, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasPending})
 	suite.Nil(err)
 	suite.Equal(0, len(pendingGas))
-	suite.Equal(true, hasCalledCheckETHBalance)
+	suite.True(hasCalledCheckETHBalance)
 }
 
 func (suite *JobsSuite) Test_SetTimedOutTransactionsToError() {
@@ -221,8 +221,8 @@ func (suite *JobsSuite) Test_SendPRLsToWaitingTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(1, len(errored))
 
-	suite.Equal(true, hasCalledCheckPRLBalance)
-	suite.Equal(true, hasCalledSendPRL)
+	suite.True(hasCalledCheckPRLBalance)
+	suite.True(hasCalledSendPRL)
 }
 
 func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
@@ -289,9 +289,9 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 	suite.Nil(err)
 	suite.Equal(1, len(errored))
 
-	suite.Equal(true, hasCalledCalculateGasNeeded)
-	suite.Equal(true, hasCalledCheckETHBalance)
-	suite.Equal(true, hasCalledSendGas)
+	suite.True(hasCalledCalculateGasNeeded)
+	suite.True(hasCalledCheckETHBalance)
+	suite.True(hasCalledSendGas)
 }
 
 func (suite *JobsSuite) Test_InvokeBury() {
@@ -363,10 +363,10 @@ func (suite *JobsSuite) Test_InvokeBury() {
 	suite.Nil(err)
 	suite.Equal(1, len(errored))
 
-	suite.Equal(true, hasCalledCheckPRLBalance)
-	suite.Equal(true, hasCalledCheckETHBalance)
-	suite.Equal(true, hasCalledBuryPRL)
-	suite.Equal(true, hasCalledCheckBuryStatus)
+	suite.True(hasCalledCheckPRLBalance)
+	suite.True(hasCalledCheckETHBalance)
+	suite.True(hasCalledBuryPRL)
+	suite.True(hasCalledCheckBuryStatus)
 }
 
 func (suite *JobsSuite) Test_PurgeFinishedTreasure() {

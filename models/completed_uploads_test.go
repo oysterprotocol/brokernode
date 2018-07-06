@@ -223,12 +223,12 @@ func testNewCompletedUpload(suite *ModelSuite) {
 
 	completedUploads := []models.CompletedUpload{}
 	err = suite.DB.All(&completedUploads)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 
 	suite.Equal(2, len(completedUploads))
 
 	for _, completedUpload := range completedUploads {
-		suite.Equal(true, completedUpload.GenesisHash == "abcdeff1" ||
+		suite.True(completedUpload.GenesisHash == "abcdeff1" ||
 			completedUpload.GenesisHash == "abcdeff2")
 		if completedUpload.GenesisHash == "abcdeff1" {
 			suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUpload.ETHAddr)
@@ -393,7 +393,7 @@ func testDeleteCompletedClaims(suite *ModelSuite) {
 	//should be 10 of these
 	completedUploads := []models.CompletedUpload{}
 	err := suite.DB.All(&completedUploads)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(10, len(completedUploads))
 
 	models.DeleteCompletedClaims()
@@ -401,6 +401,6 @@ func testDeleteCompletedClaims(suite *ModelSuite) {
 	//should be 9 now
 	completedUploads = []models.CompletedUpload{}
 	err = suite.DB.All(&completedUploads)
-	suite.Equal(nil, err)
+	suite.Nil(err)
 	suite.Equal(9, len(completedUploads))
 }
