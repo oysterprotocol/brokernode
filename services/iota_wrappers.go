@@ -198,7 +198,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		channelToChange := Channel[channelID]
 
 		channelInDB := models.ChunkChannel{}
-		models.DB.RawQuery("SELECT * FROM chunk_channels where channel_id = ?", channelID).First(&channelInDB)
+		models.DB.RawQuery("SELECT * FROM chunk_channels WHERE channel_id = ?", channelID).First(&channelInDB)
 		channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
 		models.DB.ValidateAndSave(&channelInDB)
 
