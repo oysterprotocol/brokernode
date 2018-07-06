@@ -66,20 +66,23 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 				}
 
 				if len(session) > 0 {
-					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
-						GenesisHash:   session[0].GenesisHash,
-						NumChunks:     session[0].NumChunks,
-						FileSizeBytes: session[0].FileSizeBytes,
-					})
-					if vErr.HasAny() {
-						oyster_utils.LogIfValidationError("StoredGenesisHash validation failed.", vErr, nil)
-						return errors.New("Unable to validate StoredGenesisHash")
-					}
-					if err != nil {
-						oyster_utils.LogIfError(err, nil)
-						return err
+					if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+						vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
+							GenesisHash:   session[0].GenesisHash,
+							NumChunks:     session[0].NumChunks,
+							FileSizeBytes: session[0].FileSizeBytes,
+						})
+						if vErr.HasAny() {
+							oyster_utils.LogIfValidationError("StoredGenesisHash validation failed.", vErr, nil)
+							return errors.New("Unable to validate StoredGenesisHash")
+						}
+						if err != nil {
+							oyster_utils.LogIfError(err, nil)
+							return err
+						}
 					}
 					if err := models.NewCompletedUpload(session[0]); err != nil {
+						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}

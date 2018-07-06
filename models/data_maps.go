@@ -71,18 +71,25 @@ type TypeAndChunkMap struct {
 	Chunks []DataMap `json:"chunks"`
 }
 
-var SortOrder map[int]string
-
 var (
+	MsgStatusMap          = make(map[int]string)
+	StatusMap             = make(map[int]string)
 	TreasurePrefix        = hex.EncodeToString([]byte("Treasure: "))
 	TreasurePayloadLength = len(TreasurePrefix) + 96
 	TreasureChunkPadding  = int(FileBytesChunkSize) - TreasurePayloadLength
 )
 
 func init() {
-	SortOrder = make(map[int]string, 2)
-	SortOrder[SessionTypeAlpha] = "asc"
-	SortOrder[SessionTypeBeta] = "desc"
+	StatusMap[Pending] = "Pending"
+	StatusMap[Unassigned] = "Unassigned"
+	StatusMap[Unverified] = "Unverified"
+	StatusMap[Complete] = "Complete"
+	StatusMap[Confirmed] = "Confirmed"
+	StatusMap[Error] = "Error"
+
+	MsgStatusMap[MsgStatusUnmigrated] = "MsgStatusUnmigrated"
+	MsgStatusMap[MsgStatusNotUploaded] = "MsgStatusNotUploaded"
+	MsgStatusMap[MsgStatusUploaded] = "MsgStatusUploaded"
 }
 
 // String is not required by pop and may be deleted
