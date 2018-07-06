@@ -97,7 +97,8 @@ func Test_KVStore_RemoveAllKvStoreData(t *testing.T) {
 	defer services.CloseKvStore()
 
 	services.BatchSet(getKvPairs(2))
-	services.RemoveAllKvStoreData()
+	err := services.RemoveAllKvStoreData()
+	oyster_utils.AssertNoError(err, t, "")
 
 	services.InitKvStore()
 	kvs, _ := services.BatchGet(getKeys(2))
