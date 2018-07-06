@@ -106,7 +106,9 @@ func (d *DataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
 	return validate.Validate(
 		&validators.StringIsPresent{Field: d.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsGreaterThan{Field: d.ChunkIdx, Name: "ChunkIdx", Compared: -1},
-		&validators.StringIsPresent{Field: d.Hash, Name: "Hash"},
+		&validators.StringIsPresent{Field: d.Hash, Name: "Hash"}
+		&validators.StringIsPresent{Field: d.MsgID, Name: "MsgID"}
+		&validators.IntIsGreaterThan{Field: d.MsgStatus, Name: "MsgStatus", Compared: MsgStatusUnmigrated},
 	), nil
 }
 
