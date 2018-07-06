@@ -50,7 +50,8 @@ script:
   # Run the webinterface e2e tests on the newly deployed brokernode
   - git clone https://github.com/oysterprotocol/webinterface.git
   - cd webinterface
-  - yarn
+  - yarn install
+  - yarn install webpack-dev-server # webpack dev server is missing
   - NODE_ENV=development webpack-dev-server --config='config/webpack.config.js' --port=3001
   - yarn cypress:record
 
