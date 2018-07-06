@@ -32,6 +32,10 @@ func BuryTreasureAddresses(thresholdTime time.Time, PrometheusWrapper services.P
 		SendPRLsToWaitingTreasureAddresses()
 		SendGasToTreasureAddresses()
 		InvokeBury()
+		CheckForReclaimableGas(thresholdTime.Add(-1 * time.Since(thresholdTime)))
+		/* The network could be extremely congested and if we wait a while, it may be worth reclaiming gas later.
+		So passing in a time for us to wait before we give up on attempting to reclaim gas if we have not already
+		started the reclaim attempt*/
 
 		PurgeFinishedTreasure()
 	}
@@ -113,6 +117,11 @@ func CheckBuryTransactions() {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		} else if buried {
+			err := models.SetToTreasureBuriedByGenesisHash(pending.GenesisHash)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 			fmt.Println("Bury transaction confirmed in CheckBuryTransactions()")
 			pending.PRLStatus = models.BuryConfirmed
 			vErr, err := models.DB.ValidateAndUpdate(&pending)
@@ -132,11 +141,69 @@ func CheckBuryTransactions() {
 	}
 }
 
+/*CheckForReclaimableGas - after the treasure has been buried, this method will check if there is
+leftover eth at the treasure address and if it's enough to try to reclaim it.  If so it will
+start the reclaim.  This method will also check existing gas reclaims--if the gas is no longer worth
+reclaiming (because it has succeeded, or network congestion makes it impractical) it will set it
+to success.*/
+func CheckForReclaimableGas(thresholdTime time.Time) {
+	reclaimableAddresses, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
+		models.GasReclaimPending,
+		models.BuryConfirmed})
+	if err != nil {
+		fmt.Println("Cannot get treasures with gas reclaim pending or burials confirmed " +
+			"in bury_treasure_addresses: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	for _, reclaimable := range reclaimableAddresses {
+		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
+			services.StringToAddress(reclaimable.ETHAddr), services.GasLimitETHSend)
+		if err != nil {
+			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
+				reclaimable.ETHAddr +
+				" in CheckForReclaimableGas() in bury_treasure_addresses.")
+			continue
+		} else if !worthReclaimingGas {
+			if reclaimable.UpdatedAt.Before(thresholdTime) {
+				fmt.Println("Not enough ETH to retrieve leftover ETH from " + reclaimable.ETHAddr +
+					" in CheckForReclaimableGas() in bury_treasure_addresses, setting to success")
+				/* won't be able to reclaim whatever is left, just set to success */
+				reclaimable.PRLStatus = models.GasReclaimConfirmed
+				models.DB.ValidateAndUpdate(&reclaimable)
+			} else {
+				fmt.Println("Not enough ETH to retrieve leftover ETH from " + reclaimable.ETHAddr +
+					" in CheckForReclaimableGas() in bury_treasure_addresses, wait for network congestion to decrease")
+			}
+			continue
+		}
+
+		if reclaimable.PRLStatus == models.GasReclaimPending {
+			/* gas reclaim is still in progress, do not send again */
+			continue
+		}
+
+		privateKey, err := services.StringToPrivateKey(reclaimable.DecryptTreasureEthKey())
+
+		reclaimingSuccess := EthWrapper.ReclaimGas(services.StringToAddress(reclaimable.ETHAddr),
+			privateKey, gasToReclaim)
+
+		if reclaimingSuccess {
+			reclaimable.PRLStatus = models.GasReclaimPending
+		} else {
+			reclaimable.PRLStatus = models.GasReclaimError
+		}
+		models.DB.ValidateAndUpdate(&reclaimable)
+	}
+}
+
 func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 	timedOutTransactions, err := models.GetTreasuresToBuryByPRLStatusAndUpdateTime([]models.PRLStatus{
 		models.PRLPending,
 		models.GasPending,
 		models.BuryPending,
+		models.GasReclaimPending,
 	}, thresholdTime)
 
 	if err != nil {
@@ -166,35 +233,20 @@ func SetTimedOutTransactionsToError(thresholdTime time.Time) {
 }
 
 func StageTransactionsWithErrorsForRetry() {
-	errorPRLTransactions, errPRL := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
+	erroredTransactions, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.PRLError,
-	})
-	if errPRL != nil {
-		fmt.Println("Cannot get error'd treasures (for prl transactions) in bury_treasure_addresses: " + errPRL.Error())
-		// already captured error in upstream function
-	}
-	errorGasTransactions, errGas := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
-	})
-	if errGas != nil {
-		fmt.Println("Cannot get error'd treasures (for gas transactions) in bury_treasure_addresses: " + errGas.Error())
-		// already captured error in upstream function
-	}
-	errorBuryTransactions, errBury := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.BuryError,
+		models.GasReclaimError,
 	})
-	if errBury != nil {
-		fmt.Println("Cannot get error'd treasures (for bury transactions) in bury_treasure_addresses: " + errBury.Error())
+	if err != nil {
+		fmt.Println("Cannot get error'd treasures in bury_treasure_addresses: " + err.Error())
 		// already captured error in upstream function
-	}
-
-	if (len(errorPRLTransactions) == 0 && len(errorGasTransactions) == 0 && len(errorBuryTransactions) == 0) ||
-		(errBury != nil && errGas != nil && errPRL != nil) {
 		return
 	}
 
-	for _, errorTransaction := range errorPRLTransactions {
-		errorTransaction.PRLStatus = models.PRLWaiting
+	for _, errorTransaction := range erroredTransactions {
+		errorTransaction.PRLStatus = models.PRLStatus(int(errorTransaction.PRLStatus) * -1)
 		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -206,36 +258,11 @@ func StageTransactionsWithErrorsForRetry() {
 			continue
 		}
 	}
-	for _, errorTransaction := range errorGasTransactions {
-		errorTransaction.PRLStatus = models.PRLConfirmed
-		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			continue
-		}
-		if len(vErr.Errors) > 0 {
-			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
-			continue
-		}
+
+	if len(erroredTransactions) > 0 {
+		oyster_utils.LogToSegment("bury_treasure_addresses: StageTransactionsWithErrorsForRetry", analytics.NewProperties().
+			Set("num_error'd_transactions", fmt.Sprint(len(erroredTransactions))))
 	}
-	for _, errorTransaction := range errorBuryTransactions {
-		errorTransaction.PRLStatus = models.GasConfirmed
-		vErr, err := models.DB.ValidateAndUpdate(&errorTransaction)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			continue
-		}
-		if len(vErr.Errors) > 0 {
-			oyster_utils.LogIfValidationError(
-				"validation errors in bury_treasure_addresses in StageTransactionsWithErrorsForRetry.", vErr, nil)
-			continue
-		}
-	}
-	oyster_utils.LogToSegment("bury_treasure_addresses: StageTransactionsWithErrorsForRetry", analytics.NewProperties().
-		Set("prl_num_error'd_transactions", fmt.Sprint(len(errorPRLTransactions))).
-		Set("gas_num_error'd_transactions", fmt.Sprint(len(errorGasTransactions))).
-		Set("bury_num_error'd_transactions", fmt.Sprint(len(errorBuryTransactions))))
 }
 
 func SendPRLsToWaitingTreasureAddresses() {
@@ -279,24 +306,15 @@ func InvokeBury() {
 }
 
 func PurgeFinishedTreasure() {
-	completeTreasures, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed})
+	completeTreasures, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimConfirmed})
 	if err != nil {
 		fmt.Println("Cannot get completed treasures in bury_treasure_addresses: " + err.Error())
 		// already captured error in upstream function
 		return
 	}
 
-	if len(completeTreasures) == 0 {
-		return
-	}
-
 	for _, completeTreasure := range completeTreasures {
 		ethAddr := completeTreasure.ETHAddr
-		err := models.SetToTreasureBuriedByGenesisHash(completeTreasure.GenesisHash)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			continue
-		}
 
 		// TODO:  Don't want to enable this for now
 		// since we don't want to lose access to the
@@ -554,7 +572,7 @@ func logInvalidTxType(txType services.TxType, status models.PRLStatus) {
 }
 
 // txToString Utility to return the transaction type
-func txToString(value services.TxType) (string) {
+func txToString(value services.TxType) string {
 	status := "Not Found"
 	switch value {
 	case services.PRLTransfer:
