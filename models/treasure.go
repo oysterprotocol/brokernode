@@ -57,7 +57,7 @@ const (
 	GasReclaimError = -7
 )
 
-const MaxNumSimultaneousTreasureTxs = 15
+const maxNumSimultaneousTreasureTxs = 15
 
 var PRLStatusMap = make(map[PRLStatus]string)
 
@@ -150,7 +150,7 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 		treasureToBury := []Treasure{}
 		err := DB.RawQuery("SELECT * from treasures where prl_status = ? LIMIT ?",
 			prlStatus,
-			MaxNumSimultaneousTreasureTxs).All(&treasureToBury)
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
@@ -172,7 +172,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
 			prlStatus,
 			int(timeSinceThreshold.Hours()),
-			MaxNumSimultaneousTreasureTxs).All(&treasureToBury)
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)

@@ -49,7 +49,7 @@ const (
 	GasTransferLeftoversReclaimError = -2
 )
 
-const StartingClaimUnusedPRLStatus = GasTransferNotStarted
+const startingClaimUnusedPRLStatus = GasTransferNotStarted
 
 var PRLClaimStatusMap = make(map[PRLClaimStatus]string)
 var GasTransferStatusMap = make(map[GasTransferStatus]string)
@@ -188,7 +188,7 @@ func NewCompletedUpload(session UploadSession) error {
 	return nil
 }
 
-/* GetUnusedPRLsThatAreReadyForClaiming verifies that there are not any broker_broker_transactions still at work
+/*GetUnusedPRLsThatAreReadyForClaiming verifies that there are not any broker_broker_transactions still at work
 on a particular transaction address, and returns the transaction addresses that are eligible to be claimed
 */
 func GetUnusedPRLsThatAreReadyForClaiming() (eligibleUploads []CompletedUpload, err error) {
@@ -211,7 +211,7 @@ func GetUnusedPRLsThatAreReadyForClaiming() (eligibleUploads []CompletedUpload, 
 
 	uploads := []CompletedUpload{}
 
-	err = DB.Where("gas_status = ?", StartingClaimUnusedPRLStatus).All(&uploads)
+	err = DB.Where("gas_status = ?", startingClaimUnusedPRLStatus).All(&uploads)
 	oyster_utils.LogIfError(err, nil)
 
 	for _, upload := range uploads {

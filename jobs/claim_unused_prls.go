@@ -279,7 +279,7 @@ func StartNewClaims() {
 	}
 }
 
-/* RetrieveLeftoverETH is for claims whose gas transfers and PRL retrievals succeeded but there is some leftover ETH*/
+/*RetrieveLeftoverETH is for claims whose gas transfers and PRL retrievals succeeded but there is some leftover ETH*/
 func RetrieveLeftoverETH(thresholdTime time.Time) {
 	completedClaims, err := models.GetRowsByGasAndPRLStatus(models.GasTransferSuccess, models.PRLClaimSuccess)
 	if err != nil {

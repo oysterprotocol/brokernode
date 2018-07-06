@@ -141,6 +141,11 @@ func CheckBuryTransactions() {
 	}
 }
 
+/*CheckForReclaimableGas - after the treasure has been buried, this method will check if there is
+leftover eth at the treasure address and if it's enough to try to reclaim it.  If so it will
+start the reclaim.  This method will also check existing gas reclaims--if the gas is no longer worth
+reclaiming (because it has succeeded, or network congestion makes it impractical) it will set it
+to success.*/
 func CheckForReclaimableGas(thresholdTime time.Time) {
 	reclaimableAddresses, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasReclaimPending,
