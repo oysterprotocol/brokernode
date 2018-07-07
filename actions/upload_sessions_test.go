@@ -258,7 +258,7 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 		ChunkIdx:    1,
 		Hash:        "1",
 		MsgID:       "msg_id_1",
-		MsgStatus:   MsgStatusNotUploaded,
+		MsgStatus:   models.MsgStatusNotUploaded,
 	})
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
@@ -267,7 +267,7 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 		ChunkIdx:    2,
 		Hash:        "2",
 		MsgID:       "msg_id_2",
-		MsgStatus:   MsgStatusNotUploaded,
+		MsgStatus:   models.MsgStatusNotUploaded,
 	})
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
@@ -301,7 +301,7 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 		ChunkIdx:    3,
 		Hash:        "3",
 		MsgID:       "msg_id_3",
-		MsgStatus:   MsgStatusNotUploaded,
+		MsgStatus:   models.MsgStatusNotUploaded,
 	})
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
@@ -310,7 +310,7 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 		ChunkIdx:    4,
 		Hash:        "4",
 		MsgID:       "msg_id_4",
-		MsgStatus:   MsgStatusNotUploaded,
+		MsgStatus:   models.MsgStatusNotUploaded,
 	})
 
 	ProcessAndStoreChunkData([]chunkReq{

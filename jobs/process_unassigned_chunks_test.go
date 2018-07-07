@@ -181,7 +181,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 			Hash:        "SOMEHASH",
 			Address:     "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 			MsgID:       fmt.Sprintf("msg_id_%d", i),
-			MsgStatus:   MsgStatusNotUploaded,
+			MsgStatus:   models.MsgStatusNotUploaded,
 		})
 	}
 
