@@ -52,7 +52,7 @@ script:
   - cd webinterface
   - yarn install
   - echo Y | yarn start
-  - yarn cypress:record
+  - yarn cypress:record -- --port=3001
 
 deploy:
   provider: script
