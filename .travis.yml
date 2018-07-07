@@ -51,8 +51,7 @@ script:
   - git clone https://github.com/oysterprotocol/webinterface.git
   - cd webinterface
   - yarn install
-  - yarn global add webpack-dev-server webpack # webpack dev server is missing
-  - NODE_ENV=development webpack-dev-server --config='config/webpack.config.js' --port=3001
+  - echo Y | yarn start
   - yarn cypress:record
 
 deploy:
