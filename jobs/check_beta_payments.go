@@ -87,7 +87,7 @@ func ReportBadAlphaToDRS(brokerTx models.BrokerBrokerTransaction) {
 			Set("beta_address", brokerTx.ETHAddrBeta).
 			Set("alpha_address", brokerTx.ETHAddrAlpha))
 
-	models.DB.RawQuery("DELETE from broker_broker_transactions WHERE eth_addr_alpha = ? AND "+
+	models.DB.RawQuery("DELETE FROM broker_broker_transactions WHERE eth_addr_alpha = ? AND "+
 		"eth_addr_beta = ?", brokerTx.ETHAddrAlpha, brokerTx.ETHAddrBeta).All(&[]models.BrokerBrokerTransaction{})
 }
 

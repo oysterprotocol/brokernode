@@ -385,9 +385,9 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 
 	// Query data_maps to get models.DataMap based on require chunk.
 	var dms []models.DataMap
-	//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
+	//rawQuery := fmt.Sprintf("SELECT * FROM data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
 	err := models.DB.RawQuery(
-		"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
+		"SELECT * FROM data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
 		genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
 	oyster_utils.LogIfError(err, nil)
 

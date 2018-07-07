@@ -313,7 +313,7 @@ func SetPRLStatusByAddress(transactionAddress string, newPRLStatus PRLClaimStatu
 }
 
 func DeleteCompletedClaims() error {
-	err := DB.RawQuery("DELETE from completed_uploads WHERE gas_status = ?",
+	err := DB.RawQuery("DELETE FROM completed_uploads WHERE gas_status = ?",
 		GasTransferLeftoversReclaimSuccess).All(&[]CompletedUpload{})
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)

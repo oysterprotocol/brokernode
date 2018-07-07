@@ -148,7 +148,7 @@ func GetTreasuresToBuryByPRLStatus(prlStatuses []PRLStatus) ([]Treasure, error) 
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ? LIMIT ?",
+		err := DB.RawQuery("SELECT * FROM treasures WHERE prl_status = ? LIMIT ?",
 			prlStatus,
 			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 		if err != nil {
@@ -168,7 +168,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	for _, prlStatus := range prlStatuses {
 		treasureToBury := []Treasure{}
 
-		err := DB.RawQuery("SELECT * from treasures where prl_status = ? AND "+
+		err := DB.RawQuery("SELECT * FROM treasures WHERE prl_status = ? AND "+
 			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
 			prlStatus,
 			int(timeSinceThreshold.Hours()),
@@ -185,7 +185,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 
 func GetAllTreasuresToBury() ([]Treasure, error) {
 	allTreasures := []Treasure{}
-	err := DB.RawQuery("SELECT * from treasures").All(&allTreasures)
+	err := DB.RawQuery("SELECT * FROM treasures").All(&allTreasures)
 	return allTreasures, err
 }
 

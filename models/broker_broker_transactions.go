@@ -205,7 +205,7 @@ func GetTransactionsBySessionTypesAndPaymentStatuses(sessionTypes []int, payment
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE payment_status = ?",
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE payment_status = ?",
 				paymentStatus).All(&brokerTxs)
 
 			if err != nil {
@@ -218,7 +218,7 @@ func GetTransactionsBySessionTypesAndPaymentStatuses(sessionTypes []int, payment
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE type = ? AND "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE type = ? AND "+
 				"payment_status = ?",
 				sessionTypes[0],
 				paymentStatus).All(&brokerTxs)
@@ -244,7 +244,7 @@ func GetTransactionsBySessionTypesPaymentStatusesAndTime(sessionTypes []int, pay
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE payment_status = ? "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE payment_status = ? "+
 				"AND updated_at <= ?",
 				paymentStatus,
 				thresholdTime).All(&brokerTxs)
@@ -259,7 +259,7 @@ func GetTransactionsBySessionTypesPaymentStatusesAndTime(sessionTypes []int, pay
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE type = ? AND "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE type = ? AND "+
 				"payment_status = ? AND updated_at <= ?",
 				sessionTypes[0],
 				paymentStatus,
@@ -290,7 +290,7 @@ func SetUploadSessionToPaid(brokerTx BrokerBrokerTransaction) error {
 
 /* DeleteCompletedBrokerTransactions deletes any brokerTxs for which both alpha and beta are paid */
 func DeleteCompletedBrokerTransactions() {
-	err := DB.RawQuery("DELETE from broker_broker_transactions WHERE "+
+	err := DB.RawQuery("DELETE FROM broker_broker_transactions WHERE "+
 		"payment_status = ?",
 		BrokerTxBetaPaymentConfirmed,
 	).All(&[]BrokerBrokerTransaction{})

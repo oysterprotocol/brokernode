@@ -154,7 +154,7 @@ func GetTreasureClaimsWithTimedOutGasReclaims(thresholdTime time.Time) (treasure
 }
 
 func DeleteCompletedTreasureClaims() error {
-	err := DB.RawQuery("DELETE from webnode_treasure_claims WHERE gas_status = ?",
+	err := DB.RawQuery("DELETE FROM webnode_treasure_claims WHERE gas_status = ?",
 		GasTransferLeftoversReclaimSuccess).All(&[]WebnodeTreasureClaim{})
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)

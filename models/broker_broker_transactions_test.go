@@ -356,6 +356,6 @@ func generateBrokerBrokerTransactions(suite *ModelSuite,
 
 func returnAllBrokerBrokerTxs(suite *ModelSuite) []models.BrokerBrokerTransaction {
 	brokerTxs := []models.BrokerBrokerTransaction{}
-	suite.DB.RawQuery("SELECT * from broker_broker_transactions").All(&brokerTxs)
+	suite.DB.RawQuery("SELECT * FROM broker_broker_transactions").All(&brokerTxs)
 	return brokerTxs
 }

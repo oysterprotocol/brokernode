@@ -83,7 +83,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("send_prl_remove", "Removes the 'treasure' that needs PRL")
 	grift.Add("send_prl_remove", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("DELETE from treasures WHERE address = ?", qaTrytes).All(&[]models.Treasure{})
+		err := models.DB.RawQuery("DELETE FROM treasures WHERE address = ?", qaTrytes).All(&[]models.Treasure{})
 
 		if err == nil {
 			fmt.Println("Treasure row deleted")
@@ -103,7 +103,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasureToBury := models.Treasure{}
 
-		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+		err = models.DB.RawQuery("SELECT * FROM treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
 
 		if err == nil {
 			fmt.Println("Found transaction!")
@@ -130,7 +130,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasureToBury := models.Treasure{}
 
-		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+		err = models.DB.RawQuery("SELECT * FROM treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
 
 		if err == nil {
 			fmt.Println("Found transaction!")
@@ -157,7 +157,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasureToBury := models.Treasure{}
 
-		err = models.DB.RawQuery("SELECT * from treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
+		err = models.DB.RawQuery("SELECT * FROM treasures where eth_addr = ?", address.Hex()).First(&treasureToBury)
 
 		if err == nil {
 			fmt.Println("Found transaction!")
@@ -178,7 +178,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasuresToBury := []models.Treasure{}
 
-		err := models.DB.RawQuery("SELECT * from treasures where address = ?", qaTrytes).All(&treasuresToBury)
+		err := models.DB.RawQuery("SELECT * FROM treasures where address = ?", qaTrytes).All(&treasuresToBury)
 
 		if err == nil {
 			for _, treasureToBury := range treasuresToBury {
@@ -226,8 +226,8 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_uploads", "Removes any sessions or data_maps in the db")
 	grift.Add("delete_uploads", func(c *grift.Context) error {
 
-		models.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
-		models.DB.RawQuery("DELETE from data_maps").All(&[]models.DataMap{})
+		models.DB.RawQuery("DELETE FROM upload_sessions").All(&[]models.UploadSession{})
+		models.DB.RawQuery("DELETE FROM data_maps").All(&[]models.DataMap{})
 
 		// Clean up KvStore
 		services.RemoveAllKvStoreData()
@@ -238,7 +238,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_genesis_hashes", "Delete all stored genesis hashes")
 	grift.Add("delete_genesis_hashes", func(c *grift.Context) error {
 
-		models.DB.RawQuery("DELETE from stored_genesis_hashes").All(&[]models.StoredGenesisHash{})
+		models.DB.RawQuery("DELETE FROM stored_genesis_hashes").All(&[]models.StoredGenesisHash{})
 
 		return nil
 	})
@@ -342,7 +342,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_brokernodes", "delete all brokernode addresses from the db")
 	grift.Add("delete_brokernodes", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("DELETE from brokernodes").All(&[]models.Brokernode{})
+		err := models.DB.RawQuery("DELETE FROM brokernodes").All(&[]models.Brokernode{})
 
 		if err != nil {
 			fmt.Println(err)
@@ -541,7 +541,7 @@ var _ = grift.Namespace("db", func() {
 
 		completedUploads := []models.CompletedUpload{}
 
-		err := models.DB.RawQuery("SELECT * from completed_uploads").All(&completedUploads)
+		err := models.DB.RawQuery("SELECT * FROM completed_uploads").All(&completedUploads)
 
 		if err == nil {
 			for _, completedUpload := range completedUploads {
@@ -565,7 +565,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_completed_uploads", "Deletes the completed uploads")
 	grift.Add("delete_completed_uploads", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("DELETE from completed_uploads WHERE genesis_hash " +
+		err := models.DB.RawQuery("DELETE FROM completed_uploads WHERE genesis_hash " +
 			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
 
 		if err == nil {
@@ -654,7 +654,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_qa_webnode_treasure_claims", "Deletes QA webnode treasure claims")
 	grift.Add("delete_qa_webnode_treasure_claims", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("DELETE from webnode_treasure_claims WHERE genesis_hash " +
+		err := models.DB.RawQuery("DELETE FROM webnode_treasure_claims WHERE genesis_hash " +
 			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.CompletedUpload{})
 
 		if err == nil {
@@ -681,7 +681,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasureClaims := []models.WebnodeTreasureClaim{}
 
-		err := models.DB.RawQuery("SELECT * from webnode_treasure_claims").All(&treasureClaims)
+		err := models.DB.RawQuery("SELECT * FROM webnode_treasure_claims").All(&treasureClaims)
 
 		if err == nil {
 			fmt.Println("Printing treasure claims")
@@ -825,7 +825,7 @@ var _ = grift.Namespace("db", func() {
 
 		brokerTxs := []models.BrokerBrokerTransaction{}
 
-		err := models.DB.RawQuery("SELECT * from broker_broker_transactions").All(&brokerTxs)
+		err := models.DB.RawQuery("SELECT * FROM broker_broker_transactions").All(&brokerTxs)
 
 		if err == nil {
 			fmt.Println("Printing broker transactions")
@@ -857,7 +857,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_qa_broker_txs", "Deletes the qa broker_txs")
 	grift.Add("delete_qa_broker_txs", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("DELETE from broker_broker_transactions WHERE genesis_hash " +
+		err := models.DB.RawQuery("DELETE FROM broker_broker_transactions WHERE genesis_hash " +
 			"LIKE " + "'" + qaGenHashStartingChars + "%';").All(&[]models.BrokerBrokerTransaction{})
 
 		if err == nil {

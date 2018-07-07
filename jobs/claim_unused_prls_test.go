@@ -176,7 +176,7 @@ func testInitiateGasTransfer(suite *JobsSuite) {
 	suite.False(hasCalledSendETH)
 
 	completedUploads := []models.CompletedUpload{}
-	err := suite.DB.RawQuery("SELECT * from completed_uploads WHERE gas_status != ?",
+	err := suite.DB.RawQuery("SELECT * FROM completed_uploads WHERE gas_status != ?",
 		models.GasTransferLeftoversReclaimSuccess).All(&completedUploads)
 	suite.Nil(err)
 	suite.NotEqual(0, len(completedUploads))
@@ -228,7 +228,7 @@ func testCheckProcessingGasTransactions_transaction_succeeded(suite *JobsSuite) 
 
 	gasTransfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(gasTransfersProcessing))
@@ -239,7 +239,7 @@ func testCheckProcessingGasTransactions_transaction_succeeded(suite *JobsSuite) 
 
 	gasTransfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(gasTransfersProcessing))
@@ -257,7 +257,7 @@ func testCheckProcessingGasTransactions_still_pending(suite *JobsSuite) {
 
 	gasTransfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(gasTransfersProcessing))
@@ -268,7 +268,7 @@ func testCheckProcessingGasTransactions_still_pending(suite *JobsSuite) {
 
 	gasTransfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferProcessing).All(&gasTransfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(gasTransfersProcessing))
@@ -286,7 +286,7 @@ func testCheckProcessingPRLTransactions_transaction_succeeded(suite *JobsSuite) 
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
@@ -297,7 +297,7 @@ func testCheckProcessingPRLTransactions_transaction_succeeded(suite *JobsSuite) 
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
@@ -309,7 +309,7 @@ func testCheckProcessingPRLTransactions_still_pending(suite *JobsSuite) {
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
@@ -320,7 +320,7 @@ func testCheckProcessingPRLTransactions_still_pending(suite *JobsSuite) {
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE prl_status = ?", models.PRLClaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
@@ -338,7 +338,7 @@ func testCheckProcessingGasReclaims_reclaim_complete(suite *JobsSuite) {
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?",
 		models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
@@ -350,7 +350,7 @@ func testCheckProcessingGasReclaims_reclaim_complete(suite *JobsSuite) {
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
@@ -369,7 +369,7 @@ func testCheckProcessingGasReclaims_not_enough_to_reclaim(suite *JobsSuite) {
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?",
 		models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
@@ -383,7 +383,7 @@ func testCheckProcessingGasReclaims_not_enough_to_reclaim(suite *JobsSuite) {
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(0, len(transfersProcessing))
@@ -408,7 +408,7 @@ func testCheckProcessingGasReclaims_still_pending(suite *JobsSuite) {
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?",
 		models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
@@ -420,7 +420,7 @@ func testCheckProcessingGasReclaims_still_pending(suite *JobsSuite) {
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?", models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
 	suite.Equal(1, len(transfersProcessing))
@@ -432,7 +432,7 @@ func testResendTimedOutGasReclaims(suite *JobsSuite) {
 
 	transfersProcessing := []models.CompletedUpload{}
 
-	err := suite.DB.RawQuery("SELECT * from "+
+	err := suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?",
 		models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
@@ -445,7 +445,7 @@ func testResendTimedOutGasReclaims(suite *JobsSuite) {
 
 	transfersProcessing = []models.CompletedUpload{}
 
-	err = suite.DB.RawQuery("SELECT * from "+
+	err = suite.DB.RawQuery("SELECT * FROM "+
 		"completed_uploads WHERE gas_status = ?",
 		models.GasTransferLeftoversReclaimProcessing).All(&transfersProcessing)
 	suite.Nil(err)
@@ -539,7 +539,7 @@ func testSetup(suite *JobsSuite) {
 		GasStatus:     models.GasTransferLeftoversReclaimSuccess,
 	}
 
-	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+	err := suite.DB.RawQuery("DELETE FROM completed_uploads").All(&[]models.CompletedUpload{})
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferNotStarted)

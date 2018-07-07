@@ -119,6 +119,8 @@ func (d *DataMap) Validate(tx *pop.Connection) (*validate.Errors, error) {
 		&validators.StringIsPresent{Field: d.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsGreaterThan{Field: d.ChunkIdx, Name: "ChunkIdx", Compared: -1},
 		&validators.StringIsPresent{Field: d.Hash, Name: "Hash"},
+		&validators.StringIsPresent{Field: d.MsgID, Name: "MsgID"},
+		&validators.IntIsGreaterThan{Field: d.MsgStatus, Name: "MsgStatus", Compared: MsgStatusUnmigrated},
 	), nil
 }
 
@@ -153,7 +155,7 @@ func (d *DataMap) EncryptEthKey(unencryptedKey string) (string, error) {
 
 	session := UploadSession{}
 
-	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
+	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return "", err
@@ -170,7 +172,7 @@ func (d *DataMap) DecryptEthKey(encryptedKey string) (string, error) {
 
 	session := UploadSession{}
 
-	err := DB.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
+	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", d.GenesisHash).First(&session)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return "", err
@@ -365,12 +367,12 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 		hashAndTypeMap := map[string]TypeAndChunkMap{}
 		for _, session := range incompleteSessions {
 			if session.Type == SessionTypeAlpha {
-				err = DB.RawQuery("SELECT * from data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
+				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
 					session.GenesisHash,
 					Unassigned,
 					Error).All(&dataMaps)
 			} else {
-				err = DB.RawQuery("SELECT * from data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
+				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
 					session.GenesisHash,
 					Unassigned,
 					Error).All(&dataMaps)
