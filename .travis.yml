@@ -53,6 +53,7 @@ script:
   - yarn install
   - echo Y | yarn start --silent &
   - yarn cypress:record
+  - cd ../
 
 deploy:
   provider: script
