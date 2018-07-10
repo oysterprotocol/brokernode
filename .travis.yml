@@ -47,7 +47,16 @@ before_script:
   - chmod +x ./cc-test-reporter
   - ./cc-test-reporter before-build
 
-script: docker-compose exec app buffalo test -coverprofile=cover.out
+script:
+  - docker-compose exec app buffalo test -coverprofile=cover.out
+
+  # Run the webinterface e2e tests on the newly deployed brokernode
+  - git clone https://github.com/oysterprotocol/webinterface.git
+  - cd webinterface
+  - yarn install
+  - echo Y | yarn start --silent &
+  - yarn cypress:record
+  - cd ../
 
 after_script:
   - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT  # Publishes Unit test report to Code Climate

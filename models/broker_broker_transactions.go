@@ -38,8 +38,6 @@ const (
 	BrokerTxGasPaymentConfirmed
 	BrokerTxBetaPaymentPending
 	BrokerTxBetaPaymentConfirmed
-	BrokerTxGasReclaimPending
-	BrokerTxGasReclaimConfirmed
 
 	/* These error statuses assigned these ints so we can multiply by -1 to
 	set back to the previous state in the sequence, for retrying
@@ -47,7 +45,6 @@ const (
 	BrokerTxAlphaPaymentError PaymentStatus = -1
 	BrokerTxGasPaymentError   PaymentStatus = -2
 	BrokerTxBetaPaymentError  PaymentStatus = -4
-	BrokerTxGasReclaimError   PaymentStatus = -6
 )
 
 /* PaymentStatusMap is used for pretty printing the payment statuses */
@@ -61,13 +58,10 @@ func init() {
 	PaymentStatusMap[BrokerTxGasPaymentError] = "BrokerTxGasPaymentError"
 	PaymentStatusMap[BrokerTxBetaPaymentPending] = "BrokerTxBetaPaymentPending"
 	PaymentStatusMap[BrokerTxBetaPaymentConfirmed] = "BrokerTxBetaPaymentConfirmed"
-	PaymentStatusMap[BrokerTxGasReclaimPending] = "BrokerTxGasReclaimPending"
-	PaymentStatusMap[BrokerTxGasReclaimConfirmed] = "BrokerTxGasReclaimConfirmed"
 
 	PaymentStatusMap[BrokerTxAlphaPaymentError] = "BrokerTxAlphaPaymentError"
 	PaymentStatusMap[BrokerTxGasPaymentError] = "BrokerTxGasPaymentError"
 	PaymentStatusMap[BrokerTxBetaPaymentError] = "BrokerTxBetaPaymentError"
-	PaymentStatusMap[BrokerTxGasReclaimError] = "BrokerTxGasReclaimError"
 }
 
 // String is not required by pop and may be deleted
@@ -114,13 +108,13 @@ func (b *BrokerBrokerTransaction) BeforeCreate(tx *pop.Connection) error {
 			if os.Getenv("OYSTER_PAYS") == "" {
 				b.PaymentStatus = BrokerTxAlphaPaymentPending
 			} else {
-				b.PaymentStatus = BrokerTxGasReclaimConfirmed
+				b.PaymentStatus = BrokerTxBetaPaymentConfirmed
 			}
 		}
 	default:
 		// Defaults to BrokerTxGasReclaimConfirmed
 		if b.PaymentStatus == 0 {
-			b.PaymentStatus = BrokerTxGasReclaimConfirmed
+			b.PaymentStatus = BrokerTxBetaPaymentConfirmed
 		}
 	}
 
@@ -153,6 +147,10 @@ func (b *BrokerBrokerTransaction) DecryptEthKey() string {
 /*NewBrokerBrokerTransaction creates a new broker_broker_transaction that corresponds to a session */
 func NewBrokerBrokerTransaction(session *UploadSession) bool {
 
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		return false
+	}
+
 	var paymentStatus PaymentStatus
 
 	switch session.PaymentStatus {
@@ -161,14 +159,10 @@ func NewBrokerBrokerTransaction(session *UploadSession) bool {
 	case PaymentStatusPending:
 		paymentStatus = BrokerTxAlphaPaymentPending
 	case PaymentStatusConfirmed:
-		if oyster_utils.BrokerMode == oyster_utils.ProdMode {
-			if os.Getenv("OYSTER_PAYS") == "" {
-				paymentStatus = BrokerTxAlphaPaymentConfirmed
-			} else {
-				paymentStatus = BrokerTxGasReclaimConfirmed
-			}
+		if os.Getenv("OYSTER_PAYS") == "" {
+			paymentStatus = BrokerTxAlphaPaymentConfirmed
 		} else {
-			paymentStatus = BrokerTxGasReclaimConfirmed
+			paymentStatus = BrokerTxBetaPaymentConfirmed
 		}
 	case PaymentStatusError:
 		paymentStatus = BrokerTxAlphaPaymentError
@@ -211,7 +205,7 @@ func GetTransactionsBySessionTypesAndPaymentStatuses(sessionTypes []int, payment
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE payment_status = ?",
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE payment_status = ?",
 				paymentStatus).All(&brokerTxs)
 
 			if err != nil {
@@ -224,7 +218,7 @@ func GetTransactionsBySessionTypesAndPaymentStatuses(sessionTypes []int, payment
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE type = ? AND "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE type = ? AND "+
 				"payment_status = ?",
 				sessionTypes[0],
 				paymentStatus).All(&brokerTxs)
@@ -250,7 +244,7 @@ func GetTransactionsBySessionTypesPaymentStatusesAndTime(sessionTypes []int, pay
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE payment_status = ? "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE payment_status = ? "+
 				"AND updated_at <= ?",
 				paymentStatus,
 				thresholdTime).All(&brokerTxs)
@@ -265,7 +259,7 @@ func GetTransactionsBySessionTypesPaymentStatusesAndTime(sessionTypes []int, pay
 		for _, paymentStatus := range paymentStatuses {
 			brokerTxs := []BrokerBrokerTransaction{}
 
-			err := DB.RawQuery("SELECT * from broker_broker_transactions WHERE type = ? AND "+
+			err := DB.RawQuery("SELECT * FROM broker_broker_transactions WHERE type = ? AND "+
 				"payment_status = ? AND updated_at <= ?",
 				sessionTypes[0],
 				paymentStatus,
@@ -296,12 +290,10 @@ func SetUploadSessionToPaid(brokerTx BrokerBrokerTransaction) error {
 
 /* DeleteCompletedBrokerTransactions deletes any brokerTxs for which both alpha and beta are paid */
 func DeleteCompletedBrokerTransactions() {
-	err := DB.RawQuery("DELETE from broker_broker_transactions WHERE payment_status = ? AND type = ? OR "+
-		"payment_status = ? AND type = ?",
-		BrokerTxGasReclaimConfirmed,
-		SessionTypeAlpha,
+	err := DB.RawQuery("DELETE FROM broker_broker_transactions WHERE "+
+		"payment_status = ?",
 		BrokerTxBetaPaymentConfirmed,
-		SessionTypeBeta).All(&[]BrokerBrokerTransaction{})
+	).All(&[]BrokerBrokerTransaction{})
 
 	oyster_utils.LogIfError(err, nil)
 }

@@ -24,8 +24,6 @@ func CheckBetaPayments(thresholdDuration time.Duration, PrometheusWrapper servic
 	/* make beta wait 3x as long as alpha so alpha has some chances to retry */
 	HandleTimedOutBetaPaymentIfBeta(thresholdDuration * time.Duration(3))
 
-	StartAndCheckGasReclaims()
-
 	PurgeCompletedTransactions()
 }
 
@@ -89,7 +87,7 @@ func ReportBadAlphaToDRS(brokerTx models.BrokerBrokerTransaction) {
 			Set("beta_address", brokerTx.ETHAddrBeta).
 			Set("alpha_address", brokerTx.ETHAddrAlpha))
 
-	models.DB.RawQuery("DELETE from broker_broker_transactions WHERE eth_addr_alpha = ? AND "+
+	models.DB.RawQuery("DELETE FROM broker_broker_transactions WHERE eth_addr_alpha = ? AND "+
 		"eth_addr_beta = ?", brokerTx.ETHAddrAlpha, brokerTx.ETHAddrBeta).All(&[]models.BrokerBrokerTransaction{})
 }
 
@@ -110,75 +108,13 @@ func ReportGoodAlphaToDRS(brokerTx models.BrokerBrokerTransaction) {
 			Set("alpha_address", brokerTx.ETHAddrAlpha))
 }
 
-/*StartAndCheckGasReclaims checks current gas reclaims and starts new ones*/
-func StartAndCheckGasReclaims() {
-	brokerTxs, _ := models.GetTransactionsBySessionTypesAndPaymentStatuses([]int{models.SessionTypeAlpha},
-		[]models.PaymentStatus{models.BrokerTxBetaPaymentConfirmed, models.BrokerTxGasReclaimPending})
-
-	for _, brokerTx := range brokerTxs {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(brokerTx.ETHAddrAlpha))
-
-		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
-			if err != nil {
-				fmt.Println("Could not calculate gas needed to retrieve ETH from " + brokerTx.ETHAddrAlpha +
-					" in StartGasReclaims() in check_beta_payments")
-				continue
-			}
-			if gasNeededToReclaimETH.Int64() > ethBalance.Int64() {
-				fmt.Println("Not enough ETH to retrieve leftover ETH from " + brokerTx.ETHAddrAlpha +
-					" in StartGasReclaims() in check_beta_payments, setting to success")
-				/* won't be able to reclaim whatever is left, just set to confirmed so it will get purged*/
-				brokerTx.PaymentStatus = models.BrokerTxGasReclaimConfirmed
-				models.DB.ValidateAndUpdate(&brokerTx)
-				continue
-			}
-			if brokerTx.PaymentStatus == models.BrokerTxGasReclaimPending {
-				/* Gas payment still in progress, no need to send again */
-				continue
-			}
-
-			reclaimGas(&brokerTx, ethBalance, gasNeededToReclaimETH)
-		} else {
-			fmt.Println("No extra gas to reclaim from " + brokerTx.ETHAddrAlpha + " in StartGasReclaims " +
-				"in check_beta_payments")
-			brokerTx.PaymentStatus = models.BrokerTxGasReclaimConfirmed
-			models.DB.ValidateAndUpdate(&brokerTx)
-		}
-	}
-}
-
-/* reclaimGas attempts to take any leftover ETH from the alpha transaction address */
-func reclaimGas(brokerTx *models.BrokerBrokerTransaction, ethBalance *big.Int, gasNeededToReclaimETH *big.Int) {
-	gasToReclaim := new(big.Int).Sub(ethBalance, gasNeededToReclaimETH)
-
-	privateKey, err := services.StringToPrivateKey(brokerTx.DecryptEthKey())
-
-	_, _, _, err = EthWrapper.SendETH(
-		services.StringToAddress(brokerTx.ETHAddrAlpha),
-		privateKey,
-		services.MainWalletAddress,
-		gasToReclaim)
-
-	if err != nil {
-		fmt.Println("Could not reclaim leftover ETH from " + brokerTx.ETHAddrAlpha +
-			" in StartGasReclaims in check_beta_payments")
-	} else {
-		fmt.Println("Reclaiming leftover ETH from " + brokerTx.ETHAddrAlpha + " in StartGasReclaims in " +
-			"check_beta_payments")
-		brokerTx.PaymentStatus = models.BrokerTxGasReclaimPending
-		models.DB.ValidateAndUpdate(brokerTx)
-	}
-}
-
 /* HandleTimedOutTransactionsIfAlpha simply stages old transactions to be tried again */
 func HandleTimedOutTransactionsIfAlpha(thresholdDuration time.Duration) {
 	thresholdTime := time.Now().Add(thresholdDuration)
 	brokerTxs, _ := models.GetTransactionsBySessionTypesPaymentStatusesAndTime([]int{models.SessionTypeAlpha},
 		[]models.PaymentStatus{
 			models.BrokerTxGasPaymentPending,
-			models.BrokerTxBetaPaymentPending,
-			models.BrokerTxGasReclaimPending}, thresholdTime)
+			models.BrokerTxBetaPaymentPending}, thresholdTime)
 
 	for _, brokerTx := range brokerTxs {
 		currentStatus := brokerTx.PaymentStatus
@@ -193,8 +129,7 @@ func HandleErrorTransactionsIfAlpha() {
 	brokerTxs, _ := models.GetTransactionsBySessionTypesAndPaymentStatuses([]int{models.SessionTypeAlpha},
 		[]models.PaymentStatus{
 			models.BrokerTxGasPaymentError,
-			models.BrokerTxBetaPaymentError,
-			models.BrokerTxGasReclaimError})
+			models.BrokerTxBetaPaymentError})
 
 	for _, brokerTx := range brokerTxs {
 		currentStatus := brokerTx.PaymentStatus

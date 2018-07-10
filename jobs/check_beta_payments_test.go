@@ -1,9 +1,7 @@
 package jobs_test
 
 import (
-	"crypto/ecdsa"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -21,7 +19,7 @@ var (
 
 func resetTestVariables_checkBetaPayments(suite *JobsSuite) {
 
-	suite.DB.RawQuery("DELETE from broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
+	suite.DB.RawQuery("DELETE FROM broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
 
 	hasCalledCheckPRLBalance_checkBetaPayments = false
 	hasCalledCheckETHBalance_checkBetaPayments = false
@@ -111,138 +109,6 @@ func (suite *JobsSuite) Test_HandleTimedOutBetaPaymentIfBeta() {
 	suite.Equal(0, len(brokerTxs))
 }
 
-func (suite *JobsSuite) Test_StartAndCheckGasReclaims_no_gas_to_reclaim() {
-	resetTestVariables_checkBetaPayments(suite)
-
-	jobs.EthWrapper.CheckETHBalance = func(addr common.Address) *big.Int {
-		hasCalledCheckETHBalance_checkBetaPayments = true
-		// give a 0 balance so it will not try to reclaim gas
-		return big.NewInt(0)
-	}
-	jobs.EthWrapper.CalculateGasNeeded = func(desiredGasLimit uint64) (*big.Int, error) {
-		hasCalledCalculateGas_checkBetaPayments = true
-		gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
-		gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
-		return gasToSend, nil
-	}
-	jobs.EthWrapper.SendETH = func(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddress common.Address,
-		gas *big.Int) (types.Transactions, string, int64, error) {
-		hasCalledSendETH_checkBetaPayments = true
-		return types.Transactions{}, "111111", 1, nil
-	}
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxBetaPaymentConfirmed,
-		1)
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimPending,
-		1)
-
-	jobs.StartAndCheckGasReclaims()
-
-	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(2, len(brokerTxs))
-
-	for _, brokerTx := range brokerTxs {
-		suite.Equal(models.BrokerTxGasReclaimConfirmed, brokerTx.PaymentStatus)
-	}
-
-	suite.True(hasCalledCheckETHBalance_checkBetaPayments)
-	suite.False(hasCalledCalculateGas_checkBetaPayments)
-	suite.False(hasCalledSendETH_checkBetaPayments)
-}
-
-func (suite *JobsSuite) Test_StartAndCheckGasReclaims_not_enough_gas_to_reclaim() {
-	resetTestVariables_checkBetaPayments(suite)
-
-	jobs.EthWrapper.CheckETHBalance = func(addr common.Address) *big.Int {
-		hasCalledCheckETHBalance_checkBetaPayments = true
-		// give a small balance so it will not try to reclaim gas
-		return big.NewInt(1)
-	}
-	jobs.EthWrapper.CalculateGasNeeded = func(desiredGasLimit uint64) (*big.Int, error) {
-		hasCalledCalculateGas_checkBetaPayments = true
-		gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
-		gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
-		return gasToSend, nil
-	}
-	jobs.EthWrapper.SendETH = func(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddress common.Address,
-		gas *big.Int) (types.Transactions, string, int64, error) {
-		hasCalledSendETH_checkBetaPayments = true
-		return types.Transactions{}, "111111", 1, nil
-	}
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxBetaPaymentConfirmed,
-		1)
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimPending,
-		1)
-
-	jobs.StartAndCheckGasReclaims()
-
-	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(2, len(brokerTxs))
-
-	for _, brokerTx := range brokerTxs {
-		suite.Equal(models.BrokerTxGasReclaimConfirmed, brokerTx.PaymentStatus)
-	}
-
-	suite.True(hasCalledCheckETHBalance_checkBetaPayments)
-	suite.True(hasCalledCalculateGas_checkBetaPayments)
-	suite.False(hasCalledSendETH_checkBetaPayments)
-}
-
-func (suite *JobsSuite) Test_StartAndCheckGasReclaims_enough_gas_to_reclaim() {
-	resetTestVariables_checkBetaPayments(suite)
-
-	jobs.EthWrapper.CheckETHBalance = func(addr common.Address) *big.Int {
-		hasCalledCheckETHBalance_checkBetaPayments = true
-		// give a large balance so it will try to reclaim the gas
-		return big.NewInt(999999999)
-	}
-	jobs.EthWrapper.CalculateGasNeeded = func(desiredGasLimit uint64) (*big.Int, error) {
-		// return a tiny amount of gas needed for the transaction so it will try to
-		// reclaim the gas
-		hasCalledCalculateGas_checkBetaPayments = true
-		return big.NewInt(1), nil
-	}
-	jobs.EthWrapper.SendETH = func(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddress common.Address,
-		gas *big.Int) (types.Transactions, string, int64, error) {
-		hasCalledSendETH_checkBetaPayments = true
-		return types.Transactions{}, "111111", 1, nil
-	}
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxBetaPaymentConfirmed,
-		1)
-
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimPending,
-		1)
-
-	jobs.StartAndCheckGasReclaims()
-
-	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(2, len(brokerTxs))
-
-	for _, brokerTx := range brokerTxs {
-		suite.Equal(models.BrokerTxGasReclaimPending, brokerTx.PaymentStatus)
-	}
-
-	suite.True(hasCalledCheckETHBalance_checkBetaPayments)
-	suite.True(hasCalledCalculateGas_checkBetaPayments)
-	suite.True(hasCalledSendETH_checkBetaPayments)
-}
-
 func (suite *JobsSuite) HandleTimedOutTransactionsIfAlpha() {
 	resetTestVariables_checkBetaPayments(suite)
 
@@ -256,19 +122,13 @@ func (suite *JobsSuite) HandleTimedOutTransactionsIfAlpha() {
 		models.BrokerTxBetaPaymentPending,
 		1)
 
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimPending,
-		1)
-
 	jobs.HandleTimedOutTransactionsIfAlpha(time.Duration(6 * time.Hour))
 
 	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(3, len(brokerTxs))
+	suite.Equal(2, len(brokerTxs))
 
 	oneEqualToAlphaConfirmed := false
 	oneEqualToGasConfirmed := false
-	oneEqualToBetaConfirmed := false
 
 	for _, brokerTx := range brokerTxs {
 		if brokerTx.PaymentStatus == models.BrokerTxAlphaPaymentConfirmed {
@@ -277,14 +137,10 @@ func (suite *JobsSuite) HandleTimedOutTransactionsIfAlpha() {
 		if brokerTx.PaymentStatus == models.BrokerTxGasPaymentConfirmed {
 			oneEqualToGasConfirmed = true
 		}
-		if brokerTx.PaymentStatus == models.BrokerTxBetaPaymentConfirmed {
-			oneEqualToBetaConfirmed = true
-		}
 	}
 
 	suite.True(oneEqualToAlphaConfirmed)
 	suite.True(oneEqualToGasConfirmed)
-	suite.True(oneEqualToBetaConfirmed)
 }
 
 func (suite *JobsSuite) HandleErrorTransactionsIfAlpha() {
@@ -300,19 +156,13 @@ func (suite *JobsSuite) HandleErrorTransactionsIfAlpha() {
 		models.BrokerTxBetaPaymentError,
 		1)
 
-	generateBrokerBrokerTransactions(suite,
-		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimError,
-		1)
-
 	jobs.HandleErrorTransactionsIfAlpha()
 
 	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(3, len(brokerTxs))
+	suite.Equal(2, len(brokerTxs))
 
 	oneEqualToAlphaConfirmed := false
 	oneEqualToGasConfirmed := false
-	oneEqualToBetaConfirmed := false
 
 	for _, brokerTx := range brokerTxs {
 		if brokerTx.PaymentStatus == models.BrokerTxAlphaPaymentConfirmed {
@@ -321,14 +171,10 @@ func (suite *JobsSuite) HandleErrorTransactionsIfAlpha() {
 		if brokerTx.PaymentStatus == models.BrokerTxGasPaymentConfirmed {
 			oneEqualToGasConfirmed = true
 		}
-		if brokerTx.PaymentStatus == models.BrokerTxBetaPaymentConfirmed {
-			oneEqualToBetaConfirmed = true
-		}
 	}
 
 	suite.True(oneEqualToAlphaConfirmed)
 	suite.True(oneEqualToGasConfirmed)
-	suite.True(oneEqualToBetaConfirmed)
 }
 
 func (suite *JobsSuite) PurgeCompletedTransactions() {
@@ -336,7 +182,12 @@ func (suite *JobsSuite) PurgeCompletedTransactions() {
 
 	generateBrokerBrokerTransactions(suite,
 		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimConfirmed,
+		models.BrokerTxBetaPaymentConfirmed,
+		1)
+
+	generateBrokerBrokerTransactions(suite,
+		models.SessionTypeBeta,
+		models.BrokerTxBetaPaymentConfirmed,
 		1)
 
 	jobs.PurgeCompletedTransactions()

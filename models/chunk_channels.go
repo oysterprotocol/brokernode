@@ -67,7 +67,7 @@ func GetReadyChannels() ([]ChunkChannel, error) {
 
 	channels := []ChunkChannel{}
 
-	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
+	err := DB.RawQuery("SELECT * FROM chunk_channels WHERE "+
 		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).All(&channels)
 
 	oyster_utils.LogIfError(err, nil)
@@ -80,7 +80,7 @@ func GetOneReadyChannel() (ChunkChannel, error) {
 
 	channel := ChunkChannel{}
 
-	err := DB.RawQuery("SELECT * from chunk_channels WHERE "+
+	err := DB.RawQuery("SELECT * FROM chunk_channels WHERE "+
 		"est_ready_time <= ? ORDER BY est_ready_time;", time.Now()).First(&channel)
 	oyster_utils.LogIfError(err, nil)
 	return channel, err
@@ -94,7 +94,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 	go func(err *error) {
 		defer wg.Done()
 		*err = DB.Transaction(func(DB *pop.Connection) error {
-			err := DB.RawQuery("DELETE from chunk_channels;").All(&[]ChunkChannel{})
+			err := DB.RawQuery("DELETE FROM chunk_channels;").All(&[]ChunkChannel{})
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				return err
@@ -125,7 +125,7 @@ func MakeChannels(powProcs int) ([]ChunkChannel, error) {
 
 	channels := []ChunkChannel{}
 
-	err = DB.RawQuery("SELECT * from chunk_channels;").All(&channels)
+	err = DB.RawQuery("SELECT * FROM chunk_channels;").All(&channels)
 	oyster_utils.LogIfError(err, nil)
 
 	return channels, err

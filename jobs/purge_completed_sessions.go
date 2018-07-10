@@ -42,7 +42,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 		if _, hasKey := notComplete[genesisHash]; !hasKey {
 			var moveToCompleteDm = []models.DataMap{}
 
-			err := models.DB.RawQuery("SELECT * from data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToCompleteDm)
+			err := models.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToCompleteDm)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				continue
@@ -54,37 +54,40 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 					return err
 				}
 
-				if err := tx.RawQuery("DELETE from data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{}); err != nil {
+				if err := tx.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{}); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
 				session := []models.UploadSession{}
-				if err := tx.RawQuery("SELECT * from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
+				if err := tx.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}
 
 				if len(session) > 0 {
-					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
-						GenesisHash:   session[0].GenesisHash,
-						NumChunks:     session[0].NumChunks,
-						FileSizeBytes: session[0].FileSizeBytes,
-					})
-					if vErr.HasAny() {
-						oyster_utils.LogIfValidationError("StoredGenesisHash validation failed.", vErr, nil)
-						return errors.New("Unable to validate StoredGenesisHash")
-					}
-					if err != nil {
-						oyster_utils.LogIfError(err, nil)
-						return err
+					if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+						vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
+							GenesisHash:   session[0].GenesisHash,
+							NumChunks:     session[0].NumChunks,
+							FileSizeBytes: session[0].FileSizeBytes,
+						})
+						if vErr.HasAny() {
+							oyster_utils.LogIfValidationError("StoredGenesisHash validation failed.", vErr, nil)
+							return errors.New("Unable to validate StoredGenesisHash")
+						}
+						if err != nil {
+							oyster_utils.LogIfError(err, nil)
+							return err
+						}
 					}
 					if err := models.NewCompletedUpload(session[0]); err != nil {
+						oyster_utils.LogIfError(err, nil)
 						return err
 					}
 				}
 
-				if err := tx.RawQuery("DELETE from upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{}); err != nil {
+				if err := tx.RawQuery("DELETE FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{}); err != nil {
 					oyster_utils.LogIfError(err, nil)
 					return err
 				}

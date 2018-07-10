@@ -65,23 +65,73 @@ func (suite *JobsSuite) Test_CheckGasTransactions() {
 	suite.True(hasCalledCheckETHBalance)
 }
 
+func (suite *JobsSuite) Test_CheckBuryTransactions() {
+
+	hasCalledCheckBuriedState := false
+
+	jobs.EthWrapper = services.Eth{
+		CheckBuriedState: func(addr common.Address) (bool, error) {
+			hasCalledCheckBuriedState = true
+			return true, nil
+		},
+	}
+
+	generateTreasuresToBury(suite, 1, models.BuryPending)
+	pending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryPending})
+	suite.Nil(err)
+	suite.Equal(1, len(pending))
+	suite.False(hasCalledCheckBuriedState)
+
+	suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
+		GenesisHash:    pending[0].GenesisHash,
+		FileSizeBytes:  10000,
+		NumChunks:      10,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashUnassigned,
+		TreasureStatus: models.TreasurePending,
+	})
+
+	genHashesWithTreasureBurialPending := []models.StoredGenesisHash{}
+	// verify there is 1 genesis hash with treasure status TreasurePending
+	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureBurialPending)
+	suite.Nil(err)
+	suite.Equal(1, len(genHashesWithTreasureBurialPending))
+
+	jobs.CheckBuryTransactions()
+
+	pending, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryPending})
+	suite.Nil(err)
+	suite.Equal(0, len(pending))
+	suite.True(hasCalledCheckBuriedState)
+
+	genHashesWithTreasureBurialPending = []models.StoredGenesisHash{}
+	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
+		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureBurialPending)
+	suite.Nil(err)
+	suite.Equal(0, len(genHashesWithTreasureBurialPending))
+}
+
 func (suite *JobsSuite) Test_SetTimedOutTransactionsToError() {
 
 	generateTreasuresToBury(suite, 2, models.GasPending)
 	generateTreasuresToBury(suite, 2, models.PRLPending)
 	generateTreasuresToBury(suite, 2, models.BuryPending)
+	generateTreasuresToBury(suite, 2, models.GasReclaimPending)
 
 	pending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasPending,
 		models.PRLPending,
-		models.BuryPending})
+		models.BuryPending,
+		models.GasReclaimPending})
 	suite.Nil(err)
-	suite.Equal(6, len(pending))
+	suite.Equal(8, len(pending))
 
 	errord, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
 		models.PRLError,
-		models.BuryError})
+		models.BuryError,
+		models.GasReclaimError})
 	suite.Nil(err)
 	suite.Equal(0, len(errord))
 
@@ -98,55 +148,66 @@ func (suite *JobsSuite) Test_SetTimedOutTransactionsToError() {
 		time.Now().Add(-24*time.Hour), pending[4].ETHAddr).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
+	err = suite.DB.RawQuery("UPDATE treasures SET updated_at = ? WHERE eth_addr = ?",
+		time.Now().Add(-24*time.Hour), pending[6].ETHAddr).All(&[]models.UploadSession{})
+	suite.Nil(err)
+
 	jobs.SetTimedOutTransactionsToError(time.Now().Add(-1 * time.Hour))
 
 	pending, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasPending,
 		models.PRLPending,
-		models.BuryPending})
+		models.BuryPending,
+		models.GasReclaimPending})
 	suite.Nil(err)
-	suite.Equal(3, len(pending))
+	suite.Equal(4, len(pending))
 
 	errord, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
 		models.PRLError,
-		models.BuryError})
+		models.BuryError,
+		models.GasReclaimError})
 	suite.Nil(err)
-	suite.Equal(3, len(errord))
+	suite.Equal(4, len(errord))
 }
 
 func (suite *JobsSuite) Test_StageTransactionsWithErrorsForRetry() {
 	generateTreasuresToBury(suite, 1, models.GasError)
 	generateTreasuresToBury(suite, 1, models.PRLError)
 	generateTreasuresToBury(suite, 1, models.BuryError)
+	generateTreasuresToBury(suite, 1, models.GasReclaimError)
 
 	waiting, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.PRLWaiting,
 		models.PRLConfirmed,
-		models.GasConfirmed})
+		models.GasConfirmed,
+		models.BuryConfirmed})
 	suite.Nil(err)
 	suite.Equal(0, len(waiting))
 
 	errord, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
 		models.PRLError,
-		models.BuryError})
+		models.BuryError,
+		models.GasReclaimError})
 	suite.Nil(err)
-	suite.Equal(3, len(errord))
+	suite.Equal(4, len(errord))
 
 	jobs.StageTransactionsWithErrorsForRetry()
 
 	waiting, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.PRLWaiting,
 		models.PRLConfirmed,
-		models.GasConfirmed})
+		models.GasConfirmed,
+		models.BuryConfirmed})
 	suite.Nil(err)
-	suite.Equal(3, len(waiting))
+	suite.Equal(4, len(waiting))
 
 	errord, err = models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{
 		models.GasError,
 		models.PRLError,
-		models.BuryError})
+		models.BuryError,
+		models.GasReclaimError})
 	suite.Nil(err)
 	suite.Equal(0, len(errord))
 }
@@ -369,46 +430,161 @@ func (suite *JobsSuite) Test_InvokeBury() {
 	suite.True(hasCalledCheckBuryStatus)
 }
 
+func (suite *JobsSuite) Test_CheckForReclaimableGas_not_worth_it_keep_waiting() {
+	generateTreasuresToBury(suite, 1, models.BuryConfirmed)
+	generateTreasuresToBury(suite, 1, models.GasReclaimPending)
+	treasures, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending,
+		models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(2, len(treasures))
+
+	hasCalledCheckIfWorthReclaimingGas := false
+	hasCalledReclaimGas := false
+
+	jobs.EthWrapper = services.Eth{
+		CheckIfWorthReclaimingGas: func(address common.Address,
+			desiredGasLimit uint64) (bool, *big.Int, error) {
+			hasCalledCheckIfWorthReclaimingGas = true
+			return false, big.NewInt(5000), nil
+		},
+		ReclaimGas: func(address common.Address, privateKey *ecdsa.PrivateKey,
+			gasToReclaim *big.Int) bool {
+			SentToReclaimGas++
+			hasCalledReclaimGas = true
+			return true
+		},
+	}
+
+	// we are setting it to not be worth it to reclaim gas, but we will still wait
+	// in case network congestion dies down
+
+	// call method under test
+	jobs.CheckForReclaimableGas(time.Now().Add(-5 * time.Minute))
+
+	waitingForGasReclaim, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(1, len(waitingForGasReclaim))
+
+	pendingGasReclaim, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending})
+	suite.Nil(err)
+	suite.Equal(1, len(pendingGasReclaim))
+
+	gasReclaimSuccess, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimConfirmed})
+	suite.Nil(err)
+	suite.Equal(0, len(gasReclaimSuccess))
+
+	suite.True(hasCalledCheckIfWorthReclaimingGas)
+	suite.False(hasCalledReclaimGas)
+}
+
+func (suite *JobsSuite) Test_CheckForReclaimableGas_not_worth_it_stop_waiting() {
+	generateTreasuresToBury(suite, 1, models.BuryConfirmed)
+	generateTreasuresToBury(suite, 1, models.GasReclaimPending)
+	treasures, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending,
+		models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(2, len(treasures))
+
+	hasCalledCheckIfWorthReclaimingGas := false
+	hasCalledReclaimGas := false
+
+	jobs.EthWrapper = services.Eth{
+		CheckIfWorthReclaimingGas: func(address common.Address,
+			desiredGasLimit uint64) (bool, *big.Int, error) {
+			hasCalledCheckIfWorthReclaimingGas = true
+			return false, big.NewInt(5000), nil
+		},
+		ReclaimGas: func(address common.Address, privateKey *ecdsa.PrivateKey,
+			gasToReclaim *big.Int) bool {
+			SentToReclaimGas++
+			hasCalledReclaimGas = true
+			return true
+		},
+	}
+
+	// we are setting it to not be worth it to reclaim gas, and we have waited long enough for
+	// network congestion to die down so we will just give up and set to success
+
+	// call method under test
+	jobs.CheckForReclaimableGas(time.Now().Add(5 * time.Minute))
+
+	waitingForGasReclaim, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(0, len(waitingForGasReclaim))
+
+	reclaimPending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending})
+	suite.Nil(err)
+	suite.Equal(0, len(reclaimPending))
+
+	gasReclaimSuccess, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimConfirmed})
+	suite.Nil(err)
+	suite.Equal(2, len(gasReclaimSuccess))
+
+	suite.True(hasCalledCheckIfWorthReclaimingGas)
+	suite.False(hasCalledReclaimGas)
+}
+
+func (suite *JobsSuite) Test_CheckForReclaimableGas_worth_it() {
+	generateTreasuresToBury(suite, 1, models.BuryConfirmed)
+	generateTreasuresToBury(suite, 1, models.GasReclaimPending)
+	treasures, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending,
+		models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(2, len(treasures))
+
+	hasCalledCheckIfWorthReclaimingGas := false
+	hasCalledReclaimGas := false
+
+	jobs.EthWrapper = services.Eth{
+		CheckIfWorthReclaimingGas: func(address common.Address,
+			desiredGasLimit uint64) (bool, *big.Int, error) {
+			hasCalledCheckIfWorthReclaimingGas = true
+			return true, big.NewInt(5000), nil
+		},
+		ReclaimGas: func(address common.Address, privateKey *ecdsa.PrivateKey,
+			gasToReclaim *big.Int) bool {
+			SentToReclaimGas++
+			hasCalledReclaimGas = true
+			return true
+		},
+	}
+
+	// we are setting it to be worth it to reclaim gas.  One treasure still needs a reclaim started, so we will
+	// start the reclaim on that one, and on the other one we won't do anything because it's still pending
+
+	// call method under test
+	jobs.CheckForReclaimableGas(time.Now().Add(-5 * time.Minute))
+
+	waitingForGasReclaim, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.BuryConfirmed})
+	suite.Nil(err)
+	suite.Equal(0, len(waitingForGasReclaim))
+
+	reclaimPending, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimPending})
+	suite.Nil(err)
+	suite.Equal(2, len(reclaimPending))
+
+	gasReclaimSuccess, err := models.GetTreasuresToBuryByPRLStatus([]models.PRLStatus{models.GasReclaimConfirmed})
+	suite.Nil(err)
+	suite.Equal(0, len(gasReclaimSuccess))
+
+	suite.True(hasCalledCheckIfWorthReclaimingGas)
+	suite.True(hasCalledReclaimGas)
+}
+
 func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
-	generateTreasuresToBury(suite, 3, models.BuryConfirmed)
+	generateTreasuresToBury(suite, 3, models.GasReclaimConfirmed)
 
 	allTreasures, err := models.GetAllTreasuresToBury()
 	suite.Nil(err)
 	suite.Equal(3, len(allTreasures))
 
-	for _, treasure := range allTreasures {
-		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
-			GenesisHash:    treasure.GenesisHash,
-			FileSizeBytes:  10000,
-			NumChunks:      10,
-			WebnodeCount:   0,
-			Status:         models.StoredGenesisHashUnassigned,
-			TreasureStatus: models.TreasurePending,
-		})
-	}
-
-	genHashesWithTreasureStatusPending := []models.StoredGenesisHash{}
-
-	// verify there are 3 genesisHashes with treasure status TreasurePending
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
-		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
-	suite.Nil(err)
-	suite.Equal(3, len(genHashesWithTreasureStatusPending))
-
 	jobs.PurgeFinishedTreasure()
 
+	//enable this part of the test when we are confident we don't need to
+	//hold on to the treasures anymore
 	//allTreasures, err = models.GetAllTreasuresToBury()
 	//suite.Nil(err)
 	//suite.Equal(0, len(allTreasures))
-
-	genHashesWithTreasureStatusPending = []models.StoredGenesisHash{}
-
-	// verify that PurgeFinishedTreasure set these genesis hashes to treasure
-	// status TreasureBuried
-	err = suite.DB.RawQuery("SELECT * from stored_genesis_hashes "+
-		"WHERE treasure_status = ?", models.TreasurePending).All(&genHashesWithTreasureStatusPending)
-	suite.Nil(err)
-	suite.Equal(0, len(genHashesWithTreasureStatusPending))
 }
 
 func generateTreasuresToBury(suite *JobsSuite, numToCreateOfEachStatus int, status models.PRLStatus) {

@@ -21,7 +21,7 @@ func Test_Init(t *testing.T) {
 
 	channels := []models.ChunkChannel{}
 
-	models.DB.RawQuery("Select * from chunk_channels").All(&channels)
+	models.DB.RawQuery("SELECT * FROM chunk_channels").All(&channels)
 
 	for _, channel := range channels {
 		if _, ok := services.Channel[channel.ChannelID]; !ok {
@@ -41,7 +41,7 @@ func Test_SetEstimatedReadyTime(t *testing.T) {
 	//this will yield an average time of 11 seconds per chunk
 
 	channels := []models.ChunkChannel{}
-	models.DB.RawQuery("Select * from chunk_channels").All(&channels)
+	models.DB.RawQuery("SELECT * FROM chunk_channels").All(&channels)
 
 	*(services.Channel[channels[0].ChannelID].ChunkTrackers) = chunkTracker
 
@@ -74,7 +74,7 @@ func Test_TrackProcessingTime(t *testing.T) {
 
 	channels := []models.ChunkChannel{}
 
-	models.DB.RawQuery("Select * from chunk_channels").All(&channels)
+	models.DB.RawQuery("SELECT * FROM chunk_channels").All(&channels)
 
 	powChannel := services.Channel[channels[0].ChannelID]
 

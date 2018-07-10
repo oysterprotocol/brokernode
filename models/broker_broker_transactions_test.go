@@ -308,8 +308,14 @@ func (suite *ModelSuite) Test_DeleteCompletedBrokerTransactions() {
 	generateBrokerBrokerTransactions(
 		suite,
 		models.SessionTypeAlpha,
-		models.BrokerTxGasReclaimConfirmed,
-		3)
+		models.BrokerTxBetaPaymentConfirmed,
+		2)
+
+	generateBrokerBrokerTransactions(
+		suite,
+		models.SessionTypeBeta,
+		models.BrokerTxBetaPaymentConfirmed,
+		1)
 
 	allBrokerTxs := returnAllBrokerBrokerTxs(suite)
 	suite.Equal(3, len(allBrokerTxs))
@@ -350,6 +356,6 @@ func generateBrokerBrokerTransactions(suite *ModelSuite,
 
 func returnAllBrokerBrokerTxs(suite *ModelSuite) []models.BrokerBrokerTransaction {
 	brokerTxs := []models.BrokerBrokerTransaction{}
-	suite.DB.RawQuery("SELECT * from broker_broker_transactions").All(&brokerTxs)
+	suite.DB.RawQuery("SELECT * FROM broker_broker_transactions").All(&brokerTxs)
 	return brokerTxs
 }

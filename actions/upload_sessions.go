@@ -122,8 +122,6 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		return err
 	}
 
-	models.NewBrokerBrokerTransaction(&alphaSession)
-
 	invoice := alphaSession.GetInvoice()
 
 	// Mutates this because copying in golang sucks...
@@ -167,6 +165,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 		return err
 	}
+
+	models.NewBrokerBrokerTransaction(&alphaSession)
 
 	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
@@ -303,8 +303,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	models.NewBrokerBrokerTransaction(&u)
-	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -385,9 +385,9 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 
 	// Query data_maps to get models.DataMap based on require chunk.
 	var dms []models.DataMap
-	//rawQuery := fmt.Sprintf("SELECT * from data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
+	//rawQuery := fmt.Sprintf("SELECT * FROM data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
 	err := models.DB.RawQuery(
-		"SELECT * from data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
+		"SELECT * FROM data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
 		genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
 	oyster_utils.LogIfError(err, nil)
 

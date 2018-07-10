@@ -25,6 +25,13 @@ const (
 	NoGenHashesMessage = "no genesis hashes to sell, or none that this webnode needs"
 )
 
+const (
+	/*HoursToAssumeTreasureHasBeenBuried is the number of hours after which we can safely assume the treasure
+	has been buried.  This is needed in case the webnode is transacting with the beta broker but the alpha
+	did the treasure burying, or vice versa.*/
+	HoursToAssumeTreasureHasBeenBuried = 8
+)
+
 type StoredGenesisHash struct {
 	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"created_at" db:"created_at"`
@@ -86,7 +93,8 @@ func (s *StoredGenesisHash) BeforeCreate(tx *pop.Connection) error {
 
 func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash, error) {
 	//existingGenesisHashes are genesis hashes that the webnode already has
-	storedGenesisHashes := []StoredGenesisHash{}
+	treasureBuriedGenesisHashes := []StoredGenesisHash{}
+	treasureLikelyBuriedGenesisHashes := []StoredGenesisHash{}
 
 	existingGenHashMap := make(map[string]bool)
 	for _, genHash := range existingGenesisHashes {
@@ -94,14 +102,24 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 	}
 
 	err := DB.Where("webnode_count < ? AND status = ? AND treasure_status = ? ORDER BY created_at asc",
-		WebnodeCountLimit, StoredGenesisHashUnassigned, TreasureBuried).All(&storedGenesisHashes)
-
+		WebnodeCountLimit, StoredGenesisHashUnassigned, TreasureBuried).All(&treasureBuriedGenesisHashes)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return StoredGenesisHash{}, err
 	}
 
-	for _, storedGenHash := range storedGenesisHashes {
+	err = DB.Where("webnode_count < ? AND status = ?  AND TIMESTAMPDIFF(hour, created_at, NOW()) >= ? "+
+		"ORDER BY created_at asc",
+		WebnodeCountLimit, StoredGenesisHashUnassigned,
+		HoursToAssumeTreasureHasBeenBuried).All(&treasureLikelyBuriedGenesisHashes)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return StoredGenesisHash{}, err
+	}
+
+	treasureBuriedGenesisHashes = append(treasureBuriedGenesisHashes, treasureLikelyBuriedGenesisHashes...)
+
+	for _, storedGenHash := range treasureBuriedGenesisHashes {
 		if _, ok := existingGenHashMap[storedGenHash.GenesisHash]; !ok {
 			return storedGenHash, nil
 		}

@@ -113,13 +113,13 @@ func addOnlySession(suite *JobsSuite, genesisHash string, paymentStatus int, isE
 
 func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMap bool) {
 	var sessions []models.UploadSession
-	suite.Nil(suite.DB.RawQuery("SELECT * from upload_sessions").All(&sessions))
+	suite.Nil(suite.DB.RawQuery("SELECT * FROM upload_sessions").All(&sessions))
 	suite.Equal(1, len(sessions))
 	suite.Equal(expectedGenesisHash, sessions[0].GenesisHash)
 
 	if expectToHaveDataMap {
 		var dataMaps []models.DataMap
-		suite.Nil(suite.DB.RawQuery("SELECT * from data_maps").All(&dataMaps))
+		suite.Nil(suite.DB.RawQuery("SELECT * FROM data_maps").All(&dataMaps))
 		suite.True(len(dataMaps) > 0)
 		for _, dataMap := range dataMaps {
 			suite.Equal(expectedGenesisHash, dataMap.GenesisHash)

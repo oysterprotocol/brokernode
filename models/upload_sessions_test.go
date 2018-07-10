@@ -150,7 +150,7 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 
 func (suite *ModelSuite) Test_GetSessionsByAge() {
 
-	err := suite.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
+	err := suite.DB.RawQuery("DELETE FROM upload_sessions").All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	uploadSession1 := models.UploadSession{

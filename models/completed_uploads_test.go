@@ -112,7 +112,7 @@ func testSetup(suite *ModelSuite) {
 		GasStatus:     models.GasTransferLeftoversReclaimSuccess,
 	}
 
-	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+	err := suite.DB.RawQuery("DELETE FROM completed_uploads").All(&[]models.CompletedUpload{})
 	suite.Nil(err)
 
 	_, err = suite.DB.ValidateAndSave(&RowWithGasTransferNotStarted)
@@ -159,8 +159,9 @@ func testSetup(suite *ModelSuite) {
 func (suite *ModelSuite) Test_CompletedUploads() {
 
 	testNewCompletedUpload(suite)
+	testGetUnusedPRLsThatAreReadyForClaiming(suite)
 
-	// don't need this for the first test
+	// don't need this for the first two tests
 	testSetup(suite)
 
 	testGetRowsByGasAndPRLStatus(suite)
@@ -186,6 +187,8 @@ func (suite *ModelSuite) Test_CompletedUploads() {
 }
 
 func testNewCompletedUpload(suite *ModelSuite) {
+
+	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
 
 	fileBytesCount := uint64(2500)
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
@@ -237,6 +240,65 @@ func testNewCompletedUpload(suite *ModelSuite) {
 			suite.Equal("SOME_ALPHA_ETH_ADDRESS2", completedUpload.ETHAddr)
 		}
 	}
+}
+
+func testGetUnusedPRLsThatAreReadyForClaiming(suite *ModelSuite) {
+
+	err := suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+
+	addr, key, _ := jobs.EthWrapper.GenerateEthAddr()
+	RowThatDoesNotMatchBrokerBrokerTx := models.CompletedUpload{
+		GenesisHash:   "RowThatDoesNotMatchBrokerBrokerTx",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
+		PRLStatus:     models.PRLClaimNotStarted,
+		GasStatus:     models.GasTransferNotStarted,
+	}
+
+	addr, key, _ = jobs.EthWrapper.GenerateEthAddr()
+	RowThatMatchesBrokerBrokerTx := models.CompletedUpload{
+		GenesisHash:   "RowThatMatchesBrokerBrokerTx",
+		ETHAddr:       addr.Hex(),
+		ETHPrivateKey: key,
+		PRLStatus:     models.PRLClaimNotStarted,
+		GasStatus:     models.GasTransferNotStarted,
+	}
+
+	betaAddr, _, _ := jobs.EthWrapper.GenerateEthAddr()
+
+	brokerTx := models.BrokerBrokerTransaction{
+		GenesisHash:   "RowThatMatchesBrokerBrokerTx",
+		Type:          models.SessionTypeBeta,
+		ETHAddrAlpha:  addr.Hex(),
+		ETHAddrBeta:   betaAddr.Hex(),
+		ETHPrivateKey: key,
+		TotalCost:     totalCost,
+		PaymentStatus: models.BrokerTxAlphaPaymentPending,
+	}
+	_, err = suite.DB.ValidateAndCreate(&RowThatDoesNotMatchBrokerBrokerTx)
+	RowThatDoesNotMatchBrokerBrokerTx.EncryptSessionEthKey()
+	suite.Nil(err)
+
+	_, err = suite.DB.ValidateAndCreate(&RowThatMatchesBrokerBrokerTx)
+	RowThatMatchesBrokerBrokerTx.EncryptSessionEthKey()
+	suite.Nil(err)
+
+	vErr, err := suite.DB.ValidateAndCreate(&brokerTx)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	completedUploads := []models.CompletedUpload{}
+
+	err = suite.DB.All(&completedUploads)
+	suite.Nil(err)
+	suite.Equal(2, len(completedUploads))
+
+	readyForClaiming, err := models.GetUnusedPRLsThatAreReadyForClaiming()
+	suite.Nil(err)
+
+	suite.Equal(1, len(readyForClaiming))
+
+	suite.Equal("RowThatDoesNotMatchBrokerBrokerTx", readyForClaiming[0].GenesisHash)
 }
 
 func testGetRowsByGasAndPRLStatus(suite *ModelSuite) {
