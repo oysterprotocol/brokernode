@@ -4,8 +4,9 @@ services:
   - docker
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.18.0
-  - CC_TEST_REPORTER_ID=e9cd03eea95890398c3aaecd872e91b9732cbd6f7f13673be9a41233b6697c85
+    global:
+      - CC_TEST_REPORTER_ID=e9cd03eea95890398c3aaecd872e91b9732cbd6f7f13673be9a41233b6697c85
+      - DOCKER_COMPOSE_VERSION=1.18.0
 
 addons:
   apt:
