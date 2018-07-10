@@ -250,7 +250,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 		} else {
 			dm.Message = "NOTEMPETY"
 		}
-		dm.MsgStatus = models.MsgStatusUploaded
+		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}
 
@@ -288,7 +288,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 		} else {
 			dm.Message = "NOTEMPETY"
 		}
-		dm.MsgStatus = models.MsgStatusUploaded
+		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}
 
@@ -328,7 +328,7 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 		} else {
 			dm.Message = "NOTEMPETY"
 		}
-		dm.MsgStatus = models.MsgStatusUploaded
+		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}
 
