@@ -417,7 +417,6 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 				// TODO:pzhao, remove this and this should not be called.
 				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
 				if err != nil {
-					oyster_utils.LogIfError(err, nil)
 					panic(err.Error())
 				}
 				dm.Message = string(message)

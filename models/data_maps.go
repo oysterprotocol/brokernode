@@ -97,7 +97,6 @@ func init() {
 	MsgStatusMap[MsgStatusUnmigrated] = "MsgStatusUnmigrated"
 	MsgStatusMap[MsgStatusNotUploaded] = "MsgStatusNotUploaded"
 	MsgStatusMap[MsgStatusUploadedHaveNotEncoded] = "MsgStatusUploadedHaveNotEncoded"
-	MsgStatusMap[MsgStatusUploadedEncoded] = "MsgStatusUploadedEncoded"
 	MsgStatusMap[MsgStatusUploadedNoNeedEncode] = "MsgStatusUploadedNoNeedEncode"
 }
 
