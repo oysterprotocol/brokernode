@@ -287,11 +287,8 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 		suite.Equal(models.MsgStatusUploadedHaveNotEncoded, dm.MsgStatus)
 		suite.Equal("", dm.Message)
 
-		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
-		suite.Nil(err)
-		suite.Equal(1, len(*values))
 		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
-		suite.Equal(string(message), (*values)[dm.MsgID])
+		suite.Equal(string(message), services.GetMessageFromDataMap(dm))
 	}
 }
 
@@ -332,15 +329,11 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 			suite.Equal(models.MsgStatusNotUploaded, dm.MsgStatus)
 		}
 
-		values, err := services.BatchGet(&services.KVKeys{dm.MsgID})
-		suite.Nil(err)
-
 		if isProccessed {
-			suite.Equal(1, len(*values))
 			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
-			suite.Equal(string(message), (*values)[dm.MsgID])
+			suite.Equal(string(message), services.GetMessageFromDataMap(dm)))
 		} else {
-			suite.Equal(0, len(*values))
+			suite.Equal("", services.GetMessageFromDataMap(dm))
 		}
 	}
 }
