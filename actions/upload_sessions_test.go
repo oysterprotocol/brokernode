@@ -331,7 +331,7 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 
 		if isProccessed {
 			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
-			suite.Equal(string(message), services.GetMessageFromDataMap(dm)))
+			suite.Equal(string(message), services.GetMessageFromDataMap(dm))
 		} else {
 			suite.Equal("", services.GetMessageFromDataMap(dm))
 		}
