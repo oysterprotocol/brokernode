@@ -437,41 +437,55 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 	}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := api.GetTrytes(response.Hashes)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			return filteredChunks, err
-		}
 
-		transactionObjects := map[giota.Address][]giota.Transaction{}
+		for i := 0; i < len(response.Hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
+			end := i + MaxNumberOfAddressPerFindTransactionRequest
 
-		for _, txObject := range trytesArray.Trytes {
-			transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
-		}
+			if end > len(response.Hashes) {
+				end = len(response.Hashes)
+			}
 
-		for _, chunk := range chunks {
+			if i >= end {
+				break
+			}
 
-			chunkAddress, err := giota.ToAddress(chunk.Address)
+			trytesArray, err := api.GetTrytes(response.Hashes[i:end])
+
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
-				// trytes were not valid, skip this iteration
-				continue
+				return filteredChunks, err
 			}
-			if _, ok := transactionObjects[chunkAddress]; ok {
-				matchFound := false
-				for _, txObject := range transactionObjects[chunkAddress] {
-					if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
-						matchFound = true
-						break
+
+			transactionObjects := map[giota.Address][]giota.Transaction{}
+
+			for _, txObject := range trytesArray.Trytes {
+				transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
+			}
+
+			for _, chunk := range chunks {
+
+				chunkAddress, err := giota.ToAddress(chunk.Address)
+				if err != nil {
+					oyster_utils.LogIfError(err, nil)
+					// trytes were not valid, skip this iteration
+					continue
+				}
+				if _, ok := transactionObjects[chunkAddress]; ok {
+					matchFound := false
+					for _, txObject := range transactionObjects[chunkAddress] {
+						if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
+							matchFound = true
+							break
+						}
 					}
-				}
-				if matchFound {
-					filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, chunk)
+					if matchFound {
+						filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, chunk)
+					} else {
+						filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, chunk)
+					}
 				} else {
-					filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, chunk)
+					filteredChunks.NotAttached = append(filteredChunks.NotAttached, chunk)
 				}
-			} else {
-				filteredChunks.NotAttached = append(filteredChunks.NotAttached, chunk)
 			}
 		}
 	} else if len(response.Hashes) == 0 {
