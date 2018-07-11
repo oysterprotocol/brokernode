@@ -438,56 +438,12 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 
 	if response != nil && len(response.Hashes) > 0 {
 
-		for i := 0; i < len(response.Hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
-			end := i + MaxNumberOfAddressPerFindTransactionRequest
+		matchesTangle, notAttached, doesNotMatch := filterChunks(response.Hashes, chunks, checkTrunkAndBranch)
 
-			if end > len(response.Hashes) {
-				end = len(response.Hashes)
-			}
+		filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, matchesTangle...)
+		filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, doesNotMatch...)
+		filteredChunks.NotAttached = append(filteredChunks.NotAttached, notAttached...)
 
-			if i >= end {
-				break
-			}
-
-			trytesArray, err := api.GetTrytes(response.Hashes[i:end])
-
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				return filteredChunks, err
-			}
-
-			transactionObjects := map[giota.Address][]giota.Transaction{}
-
-			for _, txObject := range trytesArray.Trytes {
-				transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
-			}
-
-			for _, chunk := range chunks {
-
-				chunkAddress, err := giota.ToAddress(chunk.Address)
-				if err != nil {
-					oyster_utils.LogIfError(err, nil)
-					// trytes were not valid, skip this iteration
-					continue
-				}
-				if _, ok := transactionObjects[chunkAddress]; ok {
-					matchFound := false
-					for _, txObject := range transactionObjects[chunkAddress] {
-						if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
-							matchFound = true
-							break
-						}
-					}
-					if matchFound {
-						filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, chunk)
-					} else {
-						filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, chunk)
-					}
-				} else {
-					filteredChunks.NotAttached = append(filteredChunks.NotAttached, chunk)
-				}
-			}
-		}
 	} else if len(response.Hashes) == 0 {
 		filteredChunks.NotAttached = chunks
 	}
@@ -501,6 +457,62 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 			Set("num_chunks", len(filteredChunks.NotAttached)))
 	}
 	return filteredChunks, err
+}
+
+func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndBranch bool) (matchesTangle []models.DataMap,
+	notAttached []models.DataMap, doesNotMatch []models.DataMap) {
+
+	for i := 0; i < len(hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
+		end := i + MaxNumberOfAddressPerFindTransactionRequest
+
+		if end > len(hashes) {
+			end = len(hashes)
+		}
+
+		if i >= end {
+			break
+		}
+
+		trytesArray, err := api.GetTrytes(hashes[i:end])
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return matchesTangle, notAttached, doesNotMatch
+		}
+
+		transactionObjects := map[giota.Address][]giota.Transaction{}
+
+		for _, txObject := range trytesArray.Trytes {
+			transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
+		}
+
+		for _, chunk := range chunks {
+
+			chunkAddress, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				// trytes were not valid, skip this iteration
+				continue
+			}
+			if _, ok := transactionObjects[chunkAddress]; ok {
+				matchFound := false
+				for _, txObject := range transactionObjects[chunkAddress] {
+					if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
+						matchFound = true
+						break
+					}
+				}
+				if matchFound {
+					matchesTangle = append(matchesTangle, chunk)
+				} else {
+					doesNotMatch = append(doesNotMatch, chunk)
+				}
+			} else {
+				notAttached = append(notAttached, chunk)
+			}
+		}
+	}
+	return matchesTangle, notAttached, doesNotMatch
 }
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
