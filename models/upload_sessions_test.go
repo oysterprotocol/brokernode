@@ -31,6 +31,10 @@ func (suite *ModelSuite) Test_BigFileSize() {
 }
 
 func (suite *ModelSuite) Test_StartUploadSession() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	genHash := "abcdef"
 	fileSizeBytes := uint64(123)
 	numChunks := 2
@@ -517,6 +521,10 @@ func (suite *ModelSuite) Test_PaymentStatus() {
 }
 
 func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2

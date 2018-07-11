@@ -305,7 +305,7 @@ func initializeSubscription() {
 			}
 		}
 		// store the transaction with block number
-		fmt.Printf("lastest block: %v", block.Number())
+		//fmt.Printf("lastest block: %v", block.Number())
 	}
 
 }
@@ -329,7 +329,7 @@ func subscribeToNewBlocks(client *ethclient.Client, subscriptionChannel chan typ
 	// Update the channel with the current block.
 	lastBlock, err := getCurrentBlock()
 	if err != nil {
-		fmt.Println("can't get latest block:", err)
+		//fmt.Println("can't get latest block:", err)
 		return
 	}
 	subscriptionChannel <- *lastBlock
@@ -493,7 +493,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
-		fmt.Printf("unable to access contract instance at :%v", err)
+		//fmt.Printf("unable to access contract instance at :%v", err)
 		return big.NewInt(-1)
 	}
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
@@ -522,7 +522,7 @@ func getCurrentBlock() (*types.Block, error) {
 	}
 
 	// latest block event
-	fmt.Printf("latest block: %v\n", currentBlock.Number())
+	//fmt.Printf("latest block: %v\n", currentBlock.Number())
 	return currentBlock, nil
 }
 
@@ -543,13 +543,13 @@ func isPending(txHash common.Hash) bool {
 	// get transaction
 	_, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
-		fmt.Printf("Could not get transaction by hash\n")
+		//fmt.Printf("Could not get transaction by hash\n")
 		return false
 	}
 	if isPending {
-		fmt.Printf("transaction is pending\n")
+		//fmt.Printf("transaction is pending\n")
 	} else {
-		fmt.Printf("transaction is not pending. Confirmed\n")
+		//fmt.Printf("transaction is not pending. Confirmed\n")
 	}
 	return isPending
 }
@@ -605,15 +605,15 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	//// get transaction
 	tx, isPending, err := client.TransactionByHash(context.Background(), txHash)
 	if err != nil {
-		fmt.Printf("isPending : %v", err)
-		fmt.Println("Could not get transaction by hash")
+		//fmt.Printf("isPending : %v", err)
+		//fmt.Println("Could not get transaction by hash")
 		return big.NewInt(0), err
 	}
 	printTx(tx)
 	if isPending {
-		fmt.Println("transaction is pending...")
+		//fmt.Println("transaction is pending...")
 	} else {
-		fmt.Println("transaction is no longer pending. confirmed!")
+		//fmt.Println("transaction is no longer pending. confirmed!")
 		// flush to db
 		flushTransaction(txHash)
 		return big.NewInt(1), nil
@@ -622,10 +622,10 @@ func getConfirmationStatus(txHash common.Hash) (*big.Int, error) {
 	// get transaction receipt
 	receipt, err := getTransactionReceipt(txHash)
 	if err != nil {
-		fmt.Printf("unable to get transaction receipt : %v\n", err)
+		//fmt.Printf("unable to get transaction receipt : %v\n", err)
 		return big.NewInt(0), err
 	}
-	fmt.Printf("receipt status: %v\n", receipt.Status)
+	//fmt.Printf("receipt status: %v\n", receipt.Status)
 	return big.NewInt(int64(receipt.Status)), nil
 }
 
@@ -646,7 +646,7 @@ func waitForConfirmation(txHash common.Hash, pollingDelayInSeconds int) uint {
 				status = 0
 				break
 			} else if txStatus.Uint64() == 1 {
-				fmt.Println("confirmation completed")
+				//fmt.Println("confirmation completed")
 				status = 1
 				break
 			}
@@ -732,8 +732,8 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 			//	return big.NewInt(0), errors.New("subscription timed out")
 		case log := <-logs:
 			fmt.Print(log)
-			fmt.Printf("Log Data:%v", string(log.Data))
-			fmt.Println("Confirmed Address:", log.Address.Hex())
+			//fmt.Printf("Log Data:%v", string(log.Data))
+			//fmt.Println("Confirmed Address:", log.Address.Hex())
 
 			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 			// ensure confirmation type from "sendGas" or "sendPRL"
@@ -785,10 +785,10 @@ func reclaimGas(address common.Address, privateKey *ecdsa.PrivateKey, gasToRecla
 		gasToReclaim)
 
 	if err != nil {
-		fmt.Println("Could not reclaim leftover ETH from " + address.Hex())
+		//fmt.Println("Could not reclaim leftover ETH from " + address.Hex())
 		return false
 	} else {
-		fmt.Println("Reclaiming leftover ETH from " + address.Hex())
+		//fmt.Println("Reclaiming leftover ETH from " + address.Hex())
 		return true
 	}
 }
@@ -824,14 +824,14 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	// estimation
 	estimate, failedEstimate := getEstimatedGasPrice(toAddr, fromAddress, GasLimitETHSend, *gasPrice, *amount)
 	if failedEstimate != nil {
-		fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
+		//fmt.Printf("failed to get estimated network price : %v\n", failedEstimate)
 		return types.Transactions{}, "", -1, failedEstimate
 	}
 	estimatedGas := new(big.Int).SetUint64(estimate)
 	fmt.Printf("estimatedGas : %v\n", estimatedGas)
 
 	balance := checkETHBalance(fromAddress)
-	fmt.Printf("balance : %v\n", balance)
+	//fmt.Printf("balance : %v\n", balance)
 
 	// amount is greater than balance, return error
 	if amount.Uint64() > balance.Uint64() {
@@ -880,14 +880,14 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 	// Create an authorized transactor
 	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
 	if auth == nil {
-		fmt.Printf("unable to create a new transactor")
+		//fmt.Printf("unable to create a new transactor")
 	}
-	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	//fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
 
 	// transact
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 	if err != nil {
-		fmt.Print("Unable to instantiate OysterPearl")
+		//fmt.Print("Unable to instantiate OysterPearl")
 	}
 
 	ethBalance := checkETHBalance(auth.From)
@@ -921,7 +921,7 @@ func checkBuriedState(address common.Address) (bool, error) {
 	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
-		fmt.Printf("unable to access contract instance at :%v", err)
+		//fmt.Printf("unable to access contract instance at :%v", err)
 		return false, err
 	}
 
@@ -951,7 +951,7 @@ func checkClaimClock(address common.Address) (*big.Int, error) {
 	OysterPearlAddress := common.HexToAddress(OysterPearlContract)
 	oysterPearl, err := NewOysterPearl(OysterPearlAddress, client)
 	if err != nil {
-		fmt.Printf("unable to access contract instance at :%v", err)
+		//fmt.Printf("unable to access contract instance at :%v", err)
 		return big.NewInt(-1), err
 	}
 
@@ -977,7 +977,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	// shared client
 	client, _ := sharedClient()
 	treasureBalance := checkPRLBalance(treasureAddress)
-	fmt.Printf("treasure balance : %v\n", treasureBalance)
+	//fmt.Printf("treasure balance : %v\n", treasureBalance)
 
 	if treasureBalance.Uint64() <= 0 {
 		err := errors.New("treasure balance insufficient")
@@ -987,7 +987,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	buried, err := checkBuriedState(treasureAddress)
 	if err != nil {
-		fmt.Println("cannot claim PRLs in claimPRL due to: " + err.Error())
+		//fmt.Println("cannot claim PRLs in claimPRL due to: " + err.Error())
 		return false
 	}
 	if !buried {
@@ -1003,7 +1003,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		oyster_utils.LogIfError(err, nil)
 	}
 
-	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
+	//fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
 
 	// transact with oyster pearl instance
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
@@ -1036,7 +1036,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, MainWalletAddress)
 
 	if err != nil {
-		fmt.Printf("unable to call claim with transactor : %v", err)
+		//fmt.Printf("unable to call claim with transactor : %v", err)
 		return false
 	}
 
@@ -1050,10 +1050,10 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	//txStatus := waitForConfirmation(tx.Hash(), SecondsDelayForETHPolling)
 	//
 	//if txStatus == 0 {
-	//	fmt.Printf("transaction failure")
+	//	//fmt.Printf("transaction failure")
 	//	status = false
 	//} else if txStatus == 1 {
-	//	fmt.Printf("confirmation completed")
+	//	//fmt.Printf("confirmation completed")
 	//	flushTransaction(tx.Hash())
 	//	status = true
 	//}
@@ -1098,14 +1098,14 @@ func sendPRL(msg OysterCallMsg) bool {
 	nonce, _ := client.PendingNonceAt(ctx, msg.From)
 
 	balance := checkPRLBalance(msg.From)
-	fmt.Printf("balance : %v\n", balance)
+	//fmt.Printf("balance : %v\n", balance)
 
 	// amount is greater than balance, return error
 	if msg.Amount.Uint64() > balance.Uint64() {
-		fmt.Println("balance too low to proceed")
+		//fmt.Println("balance too low to proceed")
 		return false
 	}
-	fmt.Printf("sending prl to : %v\n", msg.To.Hex())
+	//fmt.Printf("sending prl to : %v\n", msg.To.Hex())
 
 	// default gasLimit on oysterby 4294967295
 	gasPrice, _ := getGasPrice()
@@ -1197,10 +1197,10 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 func processTxStatus(txStatus uint) bool {
 	status := false
 	if txStatus == 0 {
-		fmt.Println("transaction failure")
+		//fmt.Println("transaction failure")
 		status = false
 	} else if txStatus == 1 {
-		fmt.Println("confirmation completed")
+		//fmt.Println("confirmation completed")
 		status = true
 	}
 	return status
@@ -1213,12 +1213,12 @@ func getTestWallet() *keystore.Key {
 	walletKeyJSON, err := ioutil.ReadFile("testdata/key.prv")
 
 	if err != nil {
-		fmt.Printf("error loading the walletKey : %v", err)
+		//fmt.Printf("error loading the walletKey : %v", err)
 	}
 	// decrypt wallet
 	walletKey, err := keystore.DecryptKey(walletKeyJSON, os.Getenv("MAIN_WALLET_PW"))
 	if err != nil {
-		fmt.Printf("walletKey err : %v", err)
+		//fmt.Printf("walletKey err : %v", err)
 	}
 	return walletKey
 }
@@ -1300,21 +1300,21 @@ func RunOnTestNet() {
 
 // utility to print
 func printTx(tx *types.Transaction) {
-	fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
-	fmt.Printf("tx hash   : %v\n", tx.Hash().String())
-	fmt.Printf("tx amount : %v\n", tx.Value())
-	fmt.Printf("tx cost   : %v\n", tx.Cost())
+	//fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
+	//fmt.Printf("tx hash   : %v\n", tx.Hash().String())
+	//fmt.Printf("tx amount : %v\n", tx.Value())
+	//fmt.Printf("tx cost   : %v\n", tx.Cost())
 }
 
 // utility to print gateway configuration
 func printConfig() {
-	fmt.Println("Using main wallet address: ")
-	fmt.Println(MainWalletAddress.Hex())
-	fmt.Println("Using main wallet private key: ")
+	//fmt.Println("Using main wallet address: ")
+	//fmt.Println(MainWalletAddress.Hex())
+	//fmt.Println("Using main wallet private key: ")
 	privateKeyString := hex.EncodeToString(crypto.FromECDSA(MainWalletPrivateKey))
 	fmt.Println(privateKeyString)
-	fmt.Println("Using eth node url: ")
-	fmt.Println(EthUrl)
-	fmt.Println("Using oyster pearl contract: ")
-	fmt.Println(OysterPearlContract)
+	//fmt.Println("Using eth node url: ")
+	//fmt.Println(EthUrl)
+	//fmt.Println("Using oyster pearl contract: ")
+	//fmt.Println(OysterPearlContract)
 }

@@ -321,6 +321,9 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
@@ -371,6 +374,9 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 }
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 
 	numChunks := 29
 
