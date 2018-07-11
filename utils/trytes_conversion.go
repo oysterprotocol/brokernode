@@ -98,9 +98,7 @@ func ChunkMessageToTrytesWithStopper(messageString string) (giota.Trytes, error)
 		return trytes, nil
 	}
 	trytes, err = giota.ToTrytes(RunesToTrytes([]rune(messageString)) + StopperTryte)
-	if err != nil {
-		LogIfError(err, nil)
-	}
+	LogIfError(err, nil)
 	return trytes, err
 }
 

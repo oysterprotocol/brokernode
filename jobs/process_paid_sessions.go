@@ -76,7 +76,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 		} else {
 			treasureChunk.Message = message
 		}
-		treasureChunk.MsgStatus = models.MsgStatusUploaded
+		treasureChunk.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		models.DB.ValidateAndSave(&treasureChunk)
 
 		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().

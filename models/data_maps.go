@@ -43,8 +43,10 @@ const (
 	MsgStatusUnmigrated int = iota
 	// When client does not upload any data to brokernode.
 	MsgStatusNotUploaded
-	// When client has upload the data chunk to the brokernode.
-	MsgStatusUploaded
+	// When client has upload the data chunk to the brokernode without encoding it.
+	MsgStatusUploadedHaveNotEncoded
+	// When client does not need to encode upload data chunk.
+	MsgStatusUploadedNoNeedEncode
 )
 
 type DataMap struct {
@@ -94,7 +96,8 @@ func init() {
 
 	MsgStatusMap[MsgStatusUnmigrated] = "MsgStatusUnmigrated"
 	MsgStatusMap[MsgStatusNotUploaded] = "MsgStatusNotUploaded"
-	MsgStatusMap[MsgStatusUploaded] = "MsgStatusUploaded"
+	MsgStatusMap[MsgStatusUploadedHaveNotEncoded] = "MsgStatusUploadedHaveNotEncoded"
+	MsgStatusMap[MsgStatusUploadedNoNeedEncode] = "MsgStatusUploadedNoNeedEncode"
 }
 
 // String is not required by pop and may be deleted

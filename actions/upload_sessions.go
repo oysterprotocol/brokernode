@@ -409,19 +409,19 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 		}
 
 		if chunk.Hash == dm.GenesisHash {
-			message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
-			if err != nil {
-				panic(err.Error())
-			}
-			msg := string(message)
 			if services.IsKvStoreEnabled() {
-				batchSetKvMap[dm.MsgID] = msg
+				batchSetKvMap[dm.MsgID] = chunk.Data
 				dm.Message = "" // Remove previous Message data.
+				dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
 			} else {
 				// TODO:pzhao, remove this and this should not be called.
-				dm.Message = msg
+				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
+				if err != nil {
+					panic(err.Error())
+				}
+				dm.Message = string(message)
+				dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 			}
-			dm.MsgStatus = models.MsgStatusUploaded
 
 			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
 				dm.Status = models.Unassigned

@@ -97,18 +97,20 @@ func IsKvStoreEnabled() bool {
 
 /*DataMapGet returns the message reference by dataMap.*/
 func GetMessageFromDataMap(dataMap models.DataMap) string {
-	if !IsKvStoreEnabled() {
-		return dataMap.Message
+	value := dataMap.Message
+	if IsKvStoreEnabled() {
+		values, _ := BatchGet(&KVKeys{dataMap.MsgID})
+		if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
+			value = v
+		}
 	}
 
-	values, _ := BatchGet(&KVKeys{dataMap.MsgID})
-	if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
-		return v
+	if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
+		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(value)
+		value = string(message)
 	}
 
-	// Can't find any Message data from BadgerDB, default back to Message field.
-	// This could happen before the migration.
-	return dataMap.Message
+	return value
 }
 
 /*BatchGet returns KVPairs for a set of keys. It won't treat Key missing as error.*/

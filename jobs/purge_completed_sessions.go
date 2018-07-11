@@ -126,6 +126,7 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 
 		vErr, err := tx.ValidateAndSave(&completedDataMap)
 		if err == nil && !vErr.HasAny() {
+			// TODO(pzhao): Sync on CompletedDataMap and DataMap schema
 			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
 		} else {
 			if vErr.HasAny() {

@@ -83,7 +83,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}
-		dMap.MsgStatus = models.MsgStatusUploaded
+		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
@@ -95,7 +95,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}
-		dMap.MsgStatus = models.MsgStatusUploaded
+		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dMap)
 	}
 
