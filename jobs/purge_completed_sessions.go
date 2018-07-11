@@ -119,6 +119,7 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 			ChunkIdx:    dataMap.ChunkIdx,
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
+			MsgStatus:   dataMap.MsgStatus,
 		}
 		if !services.IsKvStoreEnabled() {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
@@ -126,8 +127,13 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 
 		vErr, err := tx.ValidateAndSave(&completedDataMap)
 		if err == nil && !vErr.HasAny() {
-			// TODO(pzhao): Sync on CompletedDataMap and DataMap schema
+			// Force GetMessageFromDataMap to return un-encoded msg.
+			msgStatus := dataMap.MsgStatus
+			if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
+				dataMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
+			}
 			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
+			dataMap.MsgStatus = msgStatus
 		} else {
 			if vErr.HasAny() {
 				oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, map[string]interface{}{
