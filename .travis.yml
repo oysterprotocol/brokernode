@@ -35,7 +35,7 @@ install:
   - docker-compose up --build -d
 
 before_script:
-  - sleep 30
+  - sleep 40
   # - "
   #     echo waiting for docker...;
   #     while ! nc -z localhost 3000;
