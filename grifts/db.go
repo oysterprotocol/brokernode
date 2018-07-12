@@ -203,7 +203,7 @@ var _ = grift.Namespace("db", func() {
 
 		treasuresToBury := []models.Treasure{}
 
-		err := models.DB.RawQuery("SELECT * from treasures ORDER BY created_at asc").All(&treasuresToBury)
+		err := models.DB.RawQuery("SELECT * from treasures ORDER BY created_at ASC").All(&treasuresToBury)
 
 		if err == nil {
 			for _, treasureToBury := range treasuresToBury {

@@ -311,10 +311,10 @@ func GetAllUnassignedChunksBySession(session UploadSession) (dataMaps []DataMap,
 	dataMaps = []DataMap{}
 
 	if session.Type == SessionTypeAlpha {
-		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx ASC",
 			session.GenesisHash, Unassigned, Error).All(&dataMaps)
 	} else {
-		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx DESC",
 			session.GenesisHash, Unassigned, Error).All(&dataMaps)
 	}
 	oyster_utils.LogIfError(err, nil)
@@ -325,10 +325,10 @@ func GetUnassignedChunksBySession(session UploadSession, limit int) (dataMaps []
 	dataMaps = []DataMap{}
 
 	if session.Type == SessionTypeAlpha {
-		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc LIMIT ?",
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx ASC LIMIT ?",
 			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
 	} else {
-		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc LIMIT ?",
+		err = DB.Where("genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx DESC LIMIT ?",
 			session.GenesisHash, Unassigned, Error, limit).All(&dataMaps)
 	}
 
@@ -370,12 +370,12 @@ func AttachUnassignedChunksToGenHashMap(genesisHashes []interface{}) (map[string
 		hashAndTypeMap := map[string]TypeAndChunkMap{}
 		for _, session := range incompleteSessions {
 			if session.Type == SessionTypeAlpha {
-				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx asc",
+				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx ASC",
 					session.GenesisHash,
 					Unassigned,
 					Error).All(&dataMaps)
 			} else {
-				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx desc",
+				err = DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ? AND status = ? OR status = ? ORDER BY chunk_idx DESC",
 					session.GenesisHash,
 					Unassigned,
 					Error).All(&dataMaps)
