@@ -480,56 +480,49 @@ func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndB
 			return matchesTangle, notAttached, doesNotMatch
 		}
 
-		transactionObjects := map[giota.Address][]giota.Transaction{}
-
-		for _, txObject := range trytesArray.Trytes {
-			transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
-		}
+		transactionObjects := makeTransactionObjects(trytesArray.Trytes)
 
 		for _, chunk := range chunks {
 
-			filterIndividualChunk(
-				chunk,
-				transactionObjects,
-				checkTrunkAndBranch,
-				&matchesTangle,
-				&notAttached,
-				&doesNotMatch)
+			chunkAddress, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				// trytes were not valid, skip this iteration
+				continue
+			}
+			if _, ok := transactionObjects[chunkAddress]; ok {
+
+				matchFound := checkTxObjectsForMatch(transactionObjects[chunkAddress], chunk, checkTrunkAndBranch)
+
+				if matchFound {
+					matchesTangle = append(matchesTangle, chunk)
+				} else {
+					doesNotMatch = append(doesNotMatch, chunk)
+				}
+			} else {
+				notAttached = append(notAttached, chunk)
+			}
 		}
 	}
 	return matchesTangle, notAttached, doesNotMatch
 }
 
-func filterIndividualChunk(
-	chunk models.DataMap,
-	transactionObjects map[giota.Address][]giota.Transaction,
-	checkTrunkAndBranch bool,
-	matchesTangle *[]models.DataMap,
-	notAttached *[]models.DataMap,
-	doesNotMatch *[]models.DataMap) {
-
-	chunkAddress, err := giota.ToAddress(chunk.Address)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return
-	}
-	if _, ok := transactionObjects[chunkAddress]; ok {
-		matchFound := false
-		for _, txObject := range transactionObjects[chunkAddress] {
-			if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
-				matchFound = true
-				break
-			}
+func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk models.DataMap, checkTrunkAndBranch bool) (matchFound bool) {
+	matchFound = false
+	for _, txObject := range transactionObjectsArray {
+		if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
+			matchFound = true
+			break
 		}
-		if matchFound {
-			*matchesTangle = append(*matchesTangle, chunk)
-		} else {
-			*doesNotMatch = append(*doesNotMatch, chunk)
-		}
-	} else {
-		*notAttached = append(*notAttached, chunk)
 	}
+	return matchFound
+}
 
+func makeTransactionObjects(transactionObjects []giota.Transaction) (transactionObjectsMap map[giota.Address][]giota.Transaction) {
+	for _, txObject := range transactionObjects {
+		transactionObjectsMap[txObject.Address] = append(transactionObjectsMap[txObject.Address], txObject)
+	}
+	return transactionObjectsMap
 }
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
