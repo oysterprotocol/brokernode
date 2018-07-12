@@ -69,7 +69,7 @@ func (suite *ModelSuite) Test_BuildDataMaps() {
 	}
 
 	dMaps := []models.DataMap{}
-	suite.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx asc").All(&dMaps)
+	suite.DB.Where("genesis_hash = ?", genHash).Order("chunk_idx ASC").All(&dMaps)
 
 	suite.Equal(numChunks, len(dMaps))
 

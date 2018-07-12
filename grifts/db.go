@@ -203,17 +203,18 @@ var _ = grift.Namespace("db", func() {
 
 		treasuresToBury := []models.Treasure{}
 
-		err := models.DB.RawQuery("SELECT * from treasures").All(&treasuresToBury)
+		err := models.DB.RawQuery("SELECT * from treasures ORDER BY created_at ASC").All(&treasuresToBury)
 
 		if err == nil {
 			for _, treasureToBury := range treasuresToBury {
 				fmt.Println("________________________________________________________")
-				fmt.Println("ETH Address:  " + treasureToBury.ETHAddr)
-				fmt.Println("ETH Key:      " + treasureToBury.ETHKey)
-				fmt.Println("Iota Address: " + treasureToBury.Address)
-				fmt.Println("Iota Message: " + treasureToBury.Message)
-				fmt.Println("PRL Status:   " + models.PRLStatusMap[treasureToBury.PRLStatus])
-				fmt.Println("PRL Amount:   " + treasureToBury.PRLAmount)
+				fmt.Println("Genesis Hash:  " + treasureToBury.GenesisHash)
+				fmt.Println("ETH Address:   " + treasureToBury.ETHAddr)
+				fmt.Println("ETH Key:       " + treasureToBury.ETHKey)
+				fmt.Println("Iota Address:  " + treasureToBury.Address)
+				fmt.Println("Iota Message:  " + treasureToBury.Message)
+				fmt.Println("PRL Status:    " + models.PRLStatusMap[treasureToBury.PRLStatus])
+				fmt.Println("PRL Amount:    " + treasureToBury.PRLAmount)
 				fmt.Println("________________________________________________________")
 			}
 		} else {
@@ -239,6 +240,15 @@ var _ = grift.Namespace("db", func() {
 	grift.Add("delete_genesis_hashes", func(c *grift.Context) error {
 
 		models.DB.RawQuery("DELETE FROM stored_genesis_hashes").All(&[]models.StoredGenesisHash{})
+
+		return nil
+	})
+
+	grift.Desc("delete_old_genesis_hashes", "Delete all old stored genesis hashes")
+	grift.Add("delete_old_genesis_hashes", func(c *grift.Context) error {
+
+		models.DB.RawQuery("DELETE FROM stored_genesis_hashes WHERE "+
+			"TIMESTAMPDIFF(hour, create_at, NOW()) >= ?", 5).All(&[]models.StoredGenesisHash{})
 
 		return nil
 	})

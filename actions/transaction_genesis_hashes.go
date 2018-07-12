@@ -61,7 +61,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 
 	dataMap := models.DataMap{}
 	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
-	dataMapNotFound := models.DB.Limit(1).Where("status = ? ORDER BY updated_at asc",
+	dataMapNotFound := models.DB.Limit(1).Where("status = ? ORDER BY updated_at ASC",
 		models.Unassigned).First(&dataMap)
 
 	if dataMapNotFound != nil {

@@ -196,7 +196,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 // DataMapsForSession fetches the datamaps associated with the session.
 func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
 	dMaps = &[]DataMap{}
-	err = DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ? ORDER BY chunk_idx asc", u.GenesisHash).All(dMaps)
+	err = DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ? ORDER BY chunk_idx ASC", u.GenesisHash).All(dMaps)
 	oyster_utils.LogIfError(err, nil)
 
 	return
@@ -406,7 +406,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? ORDER BY created_at asc", PaymentStatusConfirmed, TreasureInDataMapComplete).All(&sessionsByAge)
+		"treasure_status = ? ORDER BY created_at ASC", PaymentStatusConfirmed, TreasureInDataMapComplete).All(&sessionsByAge)
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)

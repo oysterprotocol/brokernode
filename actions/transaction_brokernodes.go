@@ -57,7 +57,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	t := models.Transaction{}
 
 	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
-	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at asc",
+	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at ASC",
 		models.Unassigned).First(&dataMap)
 
 	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)

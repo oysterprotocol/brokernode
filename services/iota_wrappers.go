@@ -437,43 +437,13 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 	}
 
 	if response != nil && len(response.Hashes) > 0 {
-		trytesArray, err := api.GetTrytes(response.Hashes)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			return filteredChunks, err
-		}
 
-		transactionObjects := map[giota.Address][]giota.Transaction{}
+		matchesTangle, notAttached, doesNotMatch := filterChunks(response.Hashes, chunks, checkTrunkAndBranch)
 
-		for _, txObject := range trytesArray.Trytes {
-			transactionObjects[txObject.Address] = append(transactionObjects[txObject.Address], txObject)
-		}
+		filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, matchesTangle...)
+		filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, doesNotMatch...)
+		filteredChunks.NotAttached = append(filteredChunks.NotAttached, notAttached...)
 
-		for _, chunk := range chunks {
-
-			chunkAddress, err := giota.ToAddress(chunk.Address)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				// trytes were not valid, skip this iteration
-				continue
-			}
-			if _, ok := transactionObjects[chunkAddress]; ok {
-				matchFound := false
-				for _, txObject := range transactionObjects[chunkAddress] {
-					if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
-						matchFound = true
-						break
-					}
-				}
-				if matchFound {
-					filteredChunks.MatchesTangle = append(filteredChunks.MatchesTangle, chunk)
-				} else {
-					filteredChunks.DoesNotMatchTangle = append(filteredChunks.DoesNotMatchTangle, chunk)
-				}
-			} else {
-				filteredChunks.NotAttached = append(filteredChunks.NotAttached, chunk)
-			}
-		}
 	} else if len(response.Hashes) == 0 {
 		filteredChunks.NotAttached = chunks
 	}
@@ -487,6 +457,75 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 			Set("num_chunks", len(filteredChunks.NotAttached)))
 	}
 	return filteredChunks, err
+}
+
+func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndBranch bool) (matchesTangle []models.DataMap,
+	notAttached []models.DataMap, doesNotMatch []models.DataMap) {
+
+	for i := 0; i < len(hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
+		end := i + MaxNumberOfAddressPerFindTransactionRequest
+
+		if end > len(hashes) {
+			end = len(hashes)
+		}
+
+		if i >= end {
+			break
+		}
+
+		trytesArray, err := api.GetTrytes(hashes[i:end])
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+
+		if len(trytesArray.Trytes) == 0 {
+			return matchesTangle, notAttached, doesNotMatch
+		}
+
+		transactionObjects := makeTransactionObjects(trytesArray.Trytes)
+
+		for _, chunk := range chunks {
+
+			chunkAddress, err := giota.ToAddress(chunk.Address)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				// trytes were not valid, skip this iteration
+				continue
+			}
+			if _, ok := transactionObjects[chunkAddress]; ok {
+
+				matchFound := checkTxObjectsForMatch(transactionObjects[chunkAddress], chunk, checkTrunkAndBranch)
+				if matchFound {
+					matchesTangle = append(matchesTangle, chunk)
+				} else {
+					doesNotMatch = append(doesNotMatch, chunk)
+				}
+			} else {
+				notAttached = append(notAttached, chunk)
+			}
+		}
+	}
+	return matchesTangle, notAttached, doesNotMatch
+}
+
+func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk models.DataMap, checkTrunkAndBranch bool) (matchFound bool) {
+	matchFound = false
+	for _, txObject := range transactionObjectsArray {
+		if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
+			matchFound = true
+			break
+		}
+	}
+	return matchFound
+}
+
+func makeTransactionObjects(transactionObjects []giota.Transaction) (transactionObjectsMap map[giota.Address][]giota.Transaction) {
+	transactionObjectsMap = make(map[giota.Address][]giota.Transaction)
+	for _, txObject := range transactionObjects {
+		transactionObjectsMap[txObject.Address] = append(transactionObjectsMap[txObject.Address], txObject)
+	}
+	return transactionObjectsMap
 }
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {

@@ -198,7 +198,7 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	suite.DB.ValidateAndSave(&treasureChunk)
 
 	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks, len(dataMaps))
 
@@ -321,6 +321,9 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
@@ -332,7 +335,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 	uploadSession.StartUploadSession()
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 
@@ -372,6 +375,9 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
@@ -383,7 +389,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
 	uploadSession.StartUploadSession()
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER by chunk_idx asc").All(&dataMaps)
+	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 
