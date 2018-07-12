@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -115,15 +116,29 @@ func (c *CompletedUpload) ValidateUpdate(tx *pop.Connection) (*validate.Errors, 
 
 func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 
-	// Defaults to ClaimNotBegun
-	if c.PRLStatus == 0 {
-		c.PRLStatus = PRLClaimNotStarted
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode &&
+		os.Getenv("OYSTER_PAYS") == "" {
+		// Defaults to PRLClaimNotStarted
+		if c.PRLStatus == 0 {
+			c.PRLStatus = PRLClaimNotStarted
+		}
+
+		// Defaults to GasTransferNotStarted
+		if c.GasStatus == 0 {
+			c.GasStatus = GasTransferNotStarted
+		}
+	} else {
+		// Defaults to PRLClaimSuccess
+		if c.PRLStatus == 0 {
+			c.PRLStatus = PRLClaimSuccess
+		}
+
+		// Defaults to GasTransferLeftoversReclaimSuccess
+		if c.GasStatus == 0 {
+			c.GasStatus = GasTransferLeftoversReclaimSuccess
+		}
 	}
 
-	// Defaults to GasTransferNotStarted
-	if c.GasStatus == 0 {
-		c.GasStatus = GasTransferNotStarted
-	}
 	return nil
 }
 
