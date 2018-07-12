@@ -493,18 +493,21 @@ func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndB
 			if _, ok := transactionObjects[chunkAddress]; ok {
 
 				matchFound := checkTxObjectsForMatch(transactionObjects[chunkAddress], chunk, checkTrunkAndBranch)
-
-				if matchFound {
-					matchesTangle = append(matchesTangle, chunk)
-				} else {
-					doesNotMatch = append(doesNotMatch, chunk)
-				}
+				assignToChunksArray(matchFound, chunk, &matchesTangle, &doesNotMatch)
 			} else {
 				notAttached = append(notAttached, chunk)
 			}
 		}
 	}
 	return matchesTangle, notAttached, doesNotMatch
+}
+
+func assignToChunksArray(matchFound bool, chunk models.DataMap, matchesTangle *[]models.DataMap, doesNotMatch *[]models.DataMap) {
+	if matchFound {
+		*(matchesTangle) = append(*(matchesTangle), chunk)
+	} else {
+		*(doesNotMatch) = append(*(doesNotMatch), chunk)
+	}
 }
 
 func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk models.DataMap, checkTrunkAndBranch bool) (matchFound bool) {
