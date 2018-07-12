@@ -247,10 +247,8 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_old_genesis_hashes", "Delete all old stored genesis hashes")
 	grift.Add("delete_old_genesis_hashes", func(c *grift.Context) error {
 
-		duration := -5 * time.Hour
-
-		models.DB.RawQuery("DELETE FROM stored_genesis_hashes WHERE created_at <= ?",
-			time.Now().Add(duration)).All(&[]models.StoredGenesisHash{})
+		models.DB.RawQuery("DELETE FROM stored_genesis_hashes WHERE "+
+			"TIMESTAMPDIFF(hour, create_at, NOW()) >= ?", 5).All(&[]models.StoredGenesisHash{})
 
 		return nil
 	})

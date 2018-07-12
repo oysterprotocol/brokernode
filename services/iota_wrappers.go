@@ -477,6 +477,9 @@ func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndB
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
+		}
+
+		if len(trytesArray.Trytes) == 0 {
 			return matchesTangle, notAttached, doesNotMatch
 		}
 
@@ -493,21 +496,17 @@ func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndB
 			if _, ok := transactionObjects[chunkAddress]; ok {
 
 				matchFound := checkTxObjectsForMatch(transactionObjects[chunkAddress], chunk, checkTrunkAndBranch)
-				assignToChunksArray(matchFound, chunk, &matchesTangle, &doesNotMatch)
+				if matchFound {
+					matchesTangle = append(matchesTangle, chunk)
+				} else {
+					doesNotMatch = append(doesNotMatch, chunk)
+				}
 			} else {
 				notAttached = append(notAttached, chunk)
 			}
 		}
 	}
 	return matchesTangle, notAttached, doesNotMatch
-}
-
-func assignToChunksArray(matchFound bool, chunk models.DataMap, matchesTangle *[]models.DataMap, doesNotMatch *[]models.DataMap) {
-	if matchFound {
-		*(matchesTangle) = append(*(matchesTangle), chunk)
-	} else {
-		*(doesNotMatch) = append(*(doesNotMatch), chunk)
-	}
 }
 
 func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk models.DataMap, checkTrunkAndBranch bool) (matchFound bool) {
@@ -522,6 +521,7 @@ func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk m
 }
 
 func makeTransactionObjects(transactionObjects []giota.Transaction) (transactionObjectsMap map[giota.Address][]giota.Transaction) {
+	transactionObjectsMap = make(map[giota.Address][]giota.Transaction)
 	for _, txObject := range transactionObjects {
 		transactionObjectsMap[txObject.Address] = append(transactionObjectsMap[txObject.Address], txObject)
 	}
