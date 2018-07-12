@@ -112,7 +112,7 @@ func (b *BrokerBrokerTransaction) BeforeCreate(tx *pop.Connection) error {
 			}
 		}
 	default:
-		// Defaults to BrokerTxGasReclaimConfirmed
+		// Defaults to BrokerTxBetaPaymentConfirmed
 		if b.PaymentStatus == 0 {
 			b.PaymentStatus = BrokerTxBetaPaymentConfirmed
 		}
