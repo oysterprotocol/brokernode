@@ -44,12 +44,10 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(claimTreasureForWebnodeHandler), claimTreasureForWebnodeHandler)
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
 
-	if oyster_utils.BrokerMode == oyster_utils.ProdMode && os.Getenv("OYSTER_PAYS") == "" {
-		oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
-		oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
-		oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
-		oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
-	}
+	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
+	oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
+	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
+	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 
 	if services.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
@@ -75,26 +73,28 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{Duration: 20 * time.Second})
 
-	oysterWorkerPerformIn(buryTreasureAddressesHandler,
-		worker.Args{Duration: 2 * time.Minute})
-
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
 		worker.Args{Duration: 2 * time.Minute})
-
-	oysterWorkerPerformIn(claimUnusedPRLsHandler,
-		worker.Args{Duration: 10 * time.Minute})
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
 		worker.Args{Duration: 24 * time.Hour})
 
-	oysterWorkerPerformIn(checkAlphaPaymentsHandler,
-		worker.Args{Duration: 10 * time.Second})
-
-	oysterWorkerPerformIn(checkBetaPaymentsHandler,
-		worker.Args{Duration: 100 * time.Second})
-
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
+
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode && os.Getenv("OYSTER_PAYS") == "" {
+		oysterWorkerPerformIn(buryTreasureAddressesHandler,
+			worker.Args{Duration: 2 * time.Minute})
+
+		oysterWorkerPerformIn(claimUnusedPRLsHandler,
+			worker.Args{Duration: 10 * time.Minute})
+
+		oysterWorkerPerformIn(checkAlphaPaymentsHandler,
+			worker.Args{Duration: 10 * time.Second})
+
+		oysterWorkerPerformIn(checkBetaPaymentsHandler,
+			worker.Args{Duration: 70 * time.Second})
+	}
 }
 
 func flushOldWebnodesHandler(args worker.Args) error {

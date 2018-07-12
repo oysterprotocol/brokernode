@@ -227,18 +227,20 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 				continue
 			}
 
-			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
-			treasureToBury := models.Treasure{
-				GenesisHash: treasureChunk.GenesisHash,
-				ETHAddr:     ethAddress.Hex(),
-				ETHKey:      decryptedKey,
-				Address:     treasureChunk.Address,
-				Message:     services.GetMessageFromDataMap(treasureChunk),
+			if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+				ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+				treasureToBury := models.Treasure{
+					GenesisHash: treasureChunk.GenesisHash,
+					ETHAddr:     ethAddress.Hex(),
+					ETHKey:      decryptedKey,
+					Address:     treasureChunk.Address,
+					Message:     services.GetMessageFromDataMap(treasureChunk),
+				}
+
+				treasureToBury.SetPRLAmount(prlInWei)
+
+				models.DB.ValidateAndCreate(&treasureToBury)
 			}
-
-			treasureToBury.SetPRLAmount(prlInWei)
-
-			models.DB.ValidateAndCreate(&treasureToBury)
 		}
 	}
 }

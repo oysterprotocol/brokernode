@@ -328,18 +328,36 @@ var _ = grift.Namespace("db", func() {
 		qaBrokerIPs := []string{
 			"52.14.218.135", "18.217.133.146",
 		}
+		rebelBrokerIPs := []string{
+			"18.188.230.212", "18.188.64.13",
+		}
 
 		hostIP := os.Getenv("HOST_IP")
 
-		for _, qaBrokerIP := range qaBrokerIPs {
-			if qaBrokerIP != hostIP {
-				vErr, err := models.DB.ValidateAndCreate(&models.Brokernode{
-					Address: "http://" + qaBrokerIP + ":3000",
-				})
-				if err != nil || len(vErr.Errors) != 0 {
-					fmt.Println(err)
-					fmt.Println(vErr)
-					return err
+		if hostIP == "52.14.218.135" || hostIP == "18.217.133.146" {
+			for _, brokerIP := range qaBrokerIPs {
+				if brokerIP != hostIP {
+					vErr, err := models.DB.ValidateAndCreate(&models.Brokernode{
+						Address: "http://" + brokerIP + ":3000",
+					})
+					if err != nil || len(vErr.Errors) != 0 {
+						fmt.Println(err)
+						fmt.Println(vErr)
+						return err
+					}
+				}
+			}
+		} else {
+			for _, brokerIP := range rebelBrokerIPs {
+				if brokerIP != hostIP {
+					vErr, err := models.DB.ValidateAndCreate(&models.Brokernode{
+						Address: "http://" + brokerIP + ":3000",
+					})
+					if err != nil || len(vErr.Errors) != 0 {
+						fmt.Println(err)
+						fmt.Println(vErr)
+						return err
+					}
 				}
 			}
 		}
@@ -884,6 +902,49 @@ var _ = grift.Namespace("db", func() {
 
 		if err == nil {
 			fmt.Println("Broker_txs deleted")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_data_maps_to_unassigned", "Sets all data maps to unassigned")
+	grift.Add("set_data_maps_to_unassigned", func(c *grift.Context) error {
+
+		err := models.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
+
+		if err == nil {
+			fmt.Println("Statuses changed")
+		}
+
+		return nil
+	})
+
+	grift.Desc("add_genesis_hashes_to_treasure", "Add gen hashes to treasures that need them")
+	grift.Add("add_genesis_hashes_to_treasure", func(c *grift.Context) error {
+
+		// the old treasures don't have genesis hashes.  This updates them.
+
+		err := models.DB.RawQuery("UPDATE treasures SET treasures.genesis_hash = " +
+			"completed_data_maps.genesis_hash WHERE " +
+			"treasures.address = completed_data_maps.address").All(&[]models.Treasure{})
+
+		if err == nil {
+			fmt.Println("genesish_hash set for all treasures")
+		}
+
+		return nil
+	})
+
+	grift.Desc("set_completed_uploads_for_deploy", "Set status of all completed uploads")
+	grift.Add("set_completed_uploads_for_deploy", func(c *grift.Context) error {
+
+		// the old completed_uploads will be missing these statuses.  This updates them.
+
+		err := models.DB.RawQuery("UPDATE completed_uploads SET prl_status = ? AND gas_status = ?",
+			models.PRLClaimSuccess, models.GasTransferLeftoversReclaimSuccess).All(&[]models.CompletedUpload{})
+
+		if err == nil {
+			fmt.Println("statuses set for all completed_uploads")
 		}
 
 		return nil

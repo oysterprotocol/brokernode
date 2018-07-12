@@ -65,7 +65,8 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		models.Unassigned).First(&dataMap)
 
 	if dataMapNotFound != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "No proof of work available"}))
+		return c.Render(403, r.JSON(map[string]string{"error": "Cannot give proof of work because: " +
+			dataMapNotFound.Error()}))
 	}
 
 	tips, err := IotaWrapper.GetTransactionsToApprove()
