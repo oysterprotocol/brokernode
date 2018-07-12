@@ -33,14 +33,12 @@ services:
         if [ -z ${DEBUG} ]; then
           echo \"Starting Buffalo PROD mode\";
           buffalo db migrate;
-          sleep 5;
           buffalo build -o ./bin/brokernode && chmod +x ./bin/brokernode;
           ./bin/brokernode;
 
         else
           echo \"Starting Buffalo DEV mode\";
           buffalo db migrate;
-          sleep 5;
           buffalo dev;
         fi
       "
