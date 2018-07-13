@@ -923,13 +923,38 @@ var _ = grift.Namespace("db", func() {
 	grift.Add("add_genesis_hashes_to_treasure", func(c *grift.Context) error {
 
 		// the old treasures don't have genesis hashes.  This updates them.
-
-		err := models.DB.RawQuery("UPDATE treasures SET treasures.genesis_hash = " +
-			"completed_data_maps.genesis_hash WHERE " +
-			"treasures.address = completed_data_maps.address").All(&[]models.Treasure{})
+		err := models.DB.RawQuery("UPDATE treasures, completed_data_maps "+
+			"SET treasures.genesis_hash = completed_data_maps.genesis_hash "+
+			"WHERE treasures.genesis_hash = ? "+
+			"AND treasures.address = completed_data_maps.address", "").All(&[]models.Treasure{})
 
 		if err == nil {
 			fmt.Println("genesish_hash set for all treasures")
+		} else {
+			return err
+		}
+
+		return nil
+	})
+
+	grift.Desc("count_treasures_that_need_genesis_hash", "Counts the treasures that need a genesis hash")
+	grift.Add("count_treasures_that_need_genesis_hash", func(c *grift.Context) error {
+
+		treasuresWithGenesisHash := []models.Treasure{}
+		treasuresWithoutGenesisHash := []models.Treasure{}
+
+		// the old treasures don't have genesis hashes.  This updates them.
+		errWith := models.DB.RawQuery("SELECT address from treasures WHERE genesis_hash = ?",
+			"").All(&treasuresWithGenesisHash)
+
+		errWithout := models.DB.RawQuery("SELECT address from treasures WHERE genesis_hash != ?",
+			"").All(&treasuresWithoutGenesisHash)
+
+		if errWith == nil && errWithout == nil {
+			fmt.Println("With genesis hashes:     " + strconv.Itoa(len(treasuresWithGenesisHash)))
+			fmt.Println("Without genesis hashes:  " + strconv.Itoa(len(treasuresWithoutGenesisHash)))
+		} else {
+			return errors.New(errWith.Error() + errWithout.Error())
 		}
 
 		return nil
@@ -940,11 +965,133 @@ var _ = grift.Namespace("db", func() {
 
 		// the old completed_uploads will be missing these statuses.  This updates them.
 
-		err := models.DB.RawQuery("UPDATE completed_uploads SET prl_status = ? AND gas_status = ?",
+		err := models.DB.RawQuery("UPDATE completed_uploads SET prl_status = ?, gas_status = ?",
 			models.PRLClaimSuccess, models.GasTransferLeftoversReclaimSuccess).All(&[]models.CompletedUpload{})
 
 		if err == nil {
 			fmt.Println("statuses set for all completed_uploads")
+		} else {
+			return err
+		}
+
+		return nil
+	})
+
+	grift.Desc("create_completed_upload", "create a completed upload")
+	grift.Add("create_completed_upload", func(c *grift.Context) error {
+
+		address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+		fmt.Println("PRIVATE KEY IS:")
+		fmt.Println(privateKey)
+
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		validChars := []rune("abcde123456789")
+		genesisHashEndingChars := oyster_utils.RandSeq(10, validChars)
+
+		completedUpload := models.CompletedUpload{
+			GenesisHash:   qaGenHashStartingChars + genesisHashEndingChars,
+			ETHAddr:       address.String(),
+			ETHPrivateKey: privateKey,
+		}
+
+		vErr, err := models.DB.ValidateAndSave(&completedUpload)
+		completedUpload.EncryptSessionEthKey()
+
+		if len(vErr.Errors) > 0 {
+			err := errors.New("validation errors making completed upload!")
+			fmt.Println(err)
+			return err
+		}
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+
+		return nil
+	})
+
+	grift.Desc("make_treasures_and_data_maps", "Set status of all completed uploads")
+	grift.Add("make_treasures_and_data_maps", func(c *grift.Context) error {
+
+		// TODO: Delete after successful prod deploy.  This was just for testing.
+
+		vErr, err := models.DB.ValidateAndCreate(&models.CompletedDataMap{
+			GenesisHash: "aaaaaaaaaaaaaaaaaa",
+			Address:     "AAAAAAAAA",
+			ChunkIdx:    1,
+			Hash:        "someHash1",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&models.CompletedDataMap{
+			GenesisHash: "bbbbbbbbbbbbbbbbbb",
+			Address:     "BBBBBBBBB",
+			ChunkIdx:    2,
+			Hash:        "someHash2",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&models.CompletedDataMap{
+			GenesisHash: "cccccccccccccccccc",
+			Address:     "CCCCCCCCC",
+			ChunkIdx:    3,
+			Hash:        "someHash3",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
+			GenesisHash: "",
+			ETHAddr:     "a",
+			Address:     "AAAAAAAAA",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
+			GenesisHash: "",
+			ETHAddr:     "b",
+			Address:     "BBBBBBBBB",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
+		}
+
+		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
+			GenesisHash: "",
+			ETHAddr:     "c",
+			Address:     "CCCCCCCCC",
+		})
+		if err != nil {
+			return err
+		}
+		if len(vErr.Errors) != 0 {
+			return errors.New(vErr.Error())
 		}
 
 		return nil
