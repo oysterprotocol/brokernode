@@ -8,8 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/gobuffalo/uuid"
 	"golang.org/x/crypto/sha3"
 	"io/ioutil"
 	"log"
@@ -22,8 +20,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/getsentry/raven-go"
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/gobuffalo/uuid"
 	"github.com/gobuffalo/validate"
 )
 
@@ -62,13 +62,15 @@ func init() {
 	if v := os.Getenv("DISPLAY_NAME"); v != "" {
 		displayName = v
 	}
+	kvStoreEnabled := os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
 	logErrorTags = map[string]string{
-		"mode":        os.Getenv("MODE"),
-		"hostIp":      os.Getenv("HOST_IP"),
-		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
-		"osyterPay":   isOysterPay,
-		"displayName": displayName,
+		"mode":           os.Getenv("MODE"),
+		"hostIp":         os.Getenv("HOST_IP"),
+		"ethNodeUrl":     os.Getenv("ETH_NODE_URL"),
+		"osyterPay":      isOysterPay,
+		"displayName":    displayName,
+		"kvStoreEnabled": strconv.FormatBool(kvStoreEnabled),
 	}
 }
 
