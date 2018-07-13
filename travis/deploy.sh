@@ -20,9 +20,9 @@ read -r -d '' DEPLOY_SCRIPT << EOM
   DEBUG=1 docker-compose up --build -d;
 EOM
 
-TEST_BROKERS=("52.14.218.135" "18.217.133.146")
+TRAVIS_BROKERS=("18.222.56.121" "18.191.77.193")
 
-for ip_address in "${TEST_BROKERS[@]}"
+for ip_address in "${TRAVIS_BROKERS[@]}"
 do
   ssh -o StrictHostKeyChecking=no ubuntu@$ip_address -i ./travis/id_rsa << END
     $DEPLOY_SCRIPT
