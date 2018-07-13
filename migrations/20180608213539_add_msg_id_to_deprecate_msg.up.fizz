@@ -1,3 +1,0 @@
-add_column("data_maps", "msg_id", "string", {})
-add_column("completed_data_maps", "msg_id", "string", {"null": true})
-add_column("treasures", "msg_id", "string", {"null": true})
