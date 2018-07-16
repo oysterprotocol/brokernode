@@ -82,6 +82,14 @@ func init() {
 
 // Create creates an upload session.
 func (usr *UploadSessionResource) Create(c buffalo.Context) error {
+
+	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
+		err := errors.New("Deployment in progress.  Try again later")
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreate, start)
 
