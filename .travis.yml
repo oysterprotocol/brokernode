@@ -3,6 +3,10 @@ sudo: required
 services:
   - docker
 
+language: node_js
+node_js:
+  - '9'
+
 env:
   - DOCKER_COMPOSE_VERSION=1.18.0
 
