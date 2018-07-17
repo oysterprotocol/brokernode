@@ -1,8 +1,0 @@
-create_table("chunk_channels", func(t) {
-	t.Column("id", "uuid", {"primary": true})
-	t.Column("channel_id", "string", {})
-	t.Column("chunks_processed", "int", {})
-	t.Column("est_ready_time", "timestamp", {"null": true})
-})
-
-add_index("chunk_channels", "channel_id", {"unique": true})
