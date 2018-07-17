@@ -24,6 +24,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 
 	"errors"
+	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/joho/godotenv"
 	"io/ioutil"
@@ -132,7 +133,7 @@ type GeneratePublicKeyFromPrivateKey func(c elliptic.Curve, k *big.Int) *ecdsa.P
 type GetGasPrice func() (*big.Int, error)
 
 // WaitForTransfer Wait For Transaction to Complete
-type WaitForTransfer func(brokerAddr common.Address, transferType string) (*big.Int, error)
+type WaitForTransfer func(brokerAddr common.Address, transferType string, sink chan<- *OysterPearlTransactionType) (event.Subscription, error)
 
 // CheckETHBalance Check Ethereum Balance
 type CheckETHBalance func(common.Address) /*In Wei Unit*/ *big.Int
@@ -458,7 +459,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 	// estimated gas price
 	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
 	if err != nil {
-		log.Fatal("Client could not get gas price estimate from network")
+		log.Fatal("client could not get gas price estimate from network")
 		oyster_utils.LogIfError(err, nil)
 	}
 	return estimatedGasPrice, nil
@@ -474,7 +475,7 @@ func checkETHBalance(addr common.Address) *big.Int {
 
 	balance, err := client.BalanceAt(context.Background(), addr, nil)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
+		oyster_utils.LogIfError(fmt.Errorf("client could not retrieve balance: %v", err), nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -499,7 +500,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
+		oyster_utils.LogIfError(fmt.Errorf("client could not retrieve balance: %v", err), nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -517,7 +518,7 @@ func getCurrentBlock() (*types.Block, error) {
 	// latest block number is nil to get the latest block
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Could not get last block: %v", err), nil)
+		oyster_utils.LogIfError(fmt.Errorf("could not get last block: %v", err), nil)
 		return nil, err
 	}
 
@@ -686,17 +687,14 @@ func getTransactionReceipt(txHash common.Hash) (*types.Receipt, error) {
 }
 
 // WaitForTransfer is blocking call that will observe on brokerAddr on transfer of PRL or ETH
-func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
+func waitForTransfer(brokerAddr common.Address, transferType string, sink chan<- *OysterPearlTransactionType) (event.Subscription, error) {
 	balance := checkPRLBalance(brokerAddr)
 	if balance.Int64() > 0 {
 		// Has balance already, don't need to wait for it.
-		return balance, nil
+		return nil, nil
 	}
 
-	client, err := sharedClient()
-	if err != nil {
-		return big.NewInt(0), err
-	}
+	client, _ := sharedClient()
 
 	query := ethereum.FilterQuery{
 		FromBlock: nil, // beginning of the queried range, nil means genesis block
@@ -710,46 +708,66 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 	ctx, cancel := context.WithDeadline(context.Background(), deadline)
 	defer cancel()
 
-	// setup logs channel
-	//var wg sync.WaitGroup
-
 	logs := make(chan types.Log)
 	sub, subErr := client.SubscribeFilterLogs(ctx, query, logs)
 	if subErr != nil {
 		oyster_utils.LogIfError(fmt.Errorf("error subscribing to logs: %v", subErr), nil)
-		return big.NewInt(-1), subErr
+		return nil, subErr
 	}
-	defer sub.Unsubscribe()
-	for {
-		select {
-		case err := <-sub.Err():
-			log.Fatal(err)
-			oyster_utils.LogIfError(err, nil)
-			return big.NewInt(0), err
-			//case <-time.After(1 * time.Minute):
-			//	log.Print("Timeout to wait for brokerAddr\n")
-			//	// Wait for 1 hr to receive payment before timeout
-			//	return big.NewInt(0), errors.New("subscription timed out")
-		case log := <-logs:
-			fmt.Print(log)
-			fmt.Printf("Log Data:%v", string(log.Data))
-			fmt.Println("Confirmed Address:", log.Address.Hex())
+	
+	// create new subscription to listen for our broker address filter query
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				fmt.Print(log)
+				fmt.Printf("Log Data:%v", string(log.Data))
+				fmt.Println("Confirmed Address:", log.Address.Hex())
+			  
+			  // balance check based on transfer type
+				bal := big.NewInt(0)
+				if transferType == "eth" {
+					bal = checkETHBalance(brokerAddr)
+					// record transaction
+					recordTransaction(log.Address, "sendGas")
+				} else if transferType == "prl" {
+					bal = checkPRLBalance(brokerAddr)
+					// record transaction
+					recordTransaction(log.Address, "sendPRL")
+				} else if transferType == "bury" {
+					// TODO Bury works, but we do it from the buryPRL method which calls a smart contract method
+					// TODO Bury has a contract event watcher to monitor for when bury() has been invoked in error/success
+				}
+				
+				// TODO Unpack log data into this OysterPearlTransactionType, manually set
+				event := new(OysterPearlTransactionType)
+				event.From = brokerAddr
+				event.Type = transferType
+				event.Value = bal
+				event.Raw = log
+				
+				// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
+				// ensure confirmation type from "sendGas" or "sendPRL"
+				recordTransaction(log.Address, "")
 
-			// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
-			// ensure confirmation type from "sendGas" or "sendPRL"
-			// recordTransaction(log.Address, "")
-
-			if transferType == "eth" {
-				return checkETHBalance(brokerAddr), nil
-			} else if transferType == "prl" {
-				return checkPRLBalance(brokerAddr), nil
-			} else if transferType == "bury" {
-				// TODO do something for this, or remove it
-				// If removing it, how will we monitor for when bury() has been invoked?
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					// log.Fatal(err)
+					oyster_utils.LogIfError(err, nil)
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
 			}
-
 		}
-	}
+	}), nil
 
 }
 
@@ -812,8 +830,9 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	}
 
 	// initialize the context
-	ctx, cancel := createContext()
-	defer cancel()
+	//ctx, cancel := createContext()
+	//defer cancel()
+	ctx := context.Background()
 
 	// generate nonce
 	nonce, _ := client.PendingNonceAt(ctx, fromAddress)
@@ -842,7 +861,7 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	tx := types.NewTransaction(nonce, toAddr, amount, GasLimitETHSend, gasPrice, nil)
 
 	// signer
-	signer := types.NewEIP155Signer(chainId)
+	signer := types.NewEIP155Signer(big.NewInt(559966))
 
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, fromPrivKey)
@@ -904,7 +923,13 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 		Nonce:    auth.Nonce,
 		GasPrice: gasPrice,
 		Context:  auth.Context,
+		Value:    &msg.Amount,
 	})
+	
+	if err != nil {
+		fmt.Printf("bury prl error : %v\n", err)
+		return false, "", 0
+	}
 
 	printTx(tx)
 
@@ -1114,7 +1139,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, msg.Gas, gasPrice, nil)
 
 	// signer
-	signer := types.NewEIP155Signer(chainId)
+	signer := types.NewEIP155Signer(big.NewInt(559966))
 
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
@@ -1178,6 +1203,7 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 		GasPrice: gasPrice,
 		Nonce:    auth.Nonce,
 		Context:  auth.Context,
+		Value: 		&msg.Amount,
 	}
 
 	tx, err := oysterPearl.Transfer(&opts, msg.To, &msg.Amount)
@@ -1300,10 +1326,14 @@ func RunOnTestNet() {
 
 // utility to print
 func printTx(tx *types.Transaction) {
-	fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
-	fmt.Printf("tx hash   : %v\n", tx.Hash().String())
-	fmt.Printf("tx amount : %v\n", tx.Value())
-	fmt.Printf("tx cost   : %v\n", tx.Cost())
+	if tx != nil {
+		fmt.Printf("tx to     : %v\n", tx.To().Hash().String())
+		fmt.Printf("tx hash   : %v\n", tx.Hash().String())
+		fmt.Printf("tx amount : %v\n", tx.Value())
+		fmt.Printf("tx cost   : %v\n", tx.Cost())
+	} else {
+		fmt.Println("tx error : transaction nil")
+	}
 }
 
 // utility to print gateway configuration
