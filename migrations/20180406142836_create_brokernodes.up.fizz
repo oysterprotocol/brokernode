@@ -1,4 +1,0 @@
-create_table("brokernodes", func(t) {
-	t.Column("id", "uuid", {"primary": true})
-	t.Column("address", "string", {})
-})

@@ -1,1 +1,0 @@
-add_column("completed_data_maps", "msg_status", "integer", {"null": true, "default": 0})

@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"os"
 	"reflect"
 	"runtime"
 	"time"
@@ -82,7 +81,7 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
 
-	if oyster_utils.BrokerMode == oyster_utils.ProdMode && os.Getenv("OYSTER_PAYS") == "" {
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode && oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 		oysterWorkerPerformIn(buryTreasureAddressesHandler,
 			worker.Args{Duration: 2 * time.Minute})
 

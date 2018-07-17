@@ -1,1 +1,0 @@
-drop_column("completed_data_maps", "msg_status")

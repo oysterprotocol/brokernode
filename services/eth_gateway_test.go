@@ -140,7 +140,7 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
 	//services.RunOnTestNet()
-	//t.Skip(nil)
+	t.Skip(nil)
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -190,6 +190,7 @@ func Test_reclaimGas(t *testing.T) {
 
 // get gas price from network test
 func Test_calculateGasNeeded(t *testing.T) {
+	t.Skip(nil)
 
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	gasLimitToUse := services.GasLimitETHSend

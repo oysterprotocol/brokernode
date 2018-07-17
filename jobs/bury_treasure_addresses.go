@@ -7,7 +7,6 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"os"
 	"time"
 )
 
@@ -17,7 +16,7 @@ func BuryTreasureAddresses(thresholdTime time.Time, PrometheusWrapper services.P
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramBuryTreasureAddresses, start)
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode &&
-		os.Getenv("OYSTER_PAYS") == "" {
+		oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 
 		CheckPRLTransactions()
 		CheckGasTransactions()

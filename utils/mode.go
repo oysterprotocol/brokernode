@@ -14,6 +14,9 @@ type BrokerModeStatus int
 /*PoWModeStatus reflects whether the PoW on the broker is enabled or not*/
 type PoWModeStatus int
 
+/*OysterPaysStatus reflects whether uploads are free--this is mostly needed for unit tests*/
+type OysterPaysStatus int
+
 const (
 	/*ProdMode - the broker is requiring real PRL for uploads*/
 	ProdMode BrokerModeStatus = iota + 1
@@ -30,16 +33,27 @@ const (
 	PoWDisabled
 )
 
+const (
+	/*UserIsPaying is when the user is paying for their own uploads*/
+	UserIsPaying OysterPaysStatus = iota + 1
+	/*OysterIsPaying is when Oyster is paying for the uploads*/
+	OysterIsPaying
+)
+
 /*BrokerMode - the mode the broker is in (prod, dummy treasure, etc.)*/
 var BrokerMode BrokerModeStatus
 
 /*PoWMode - whether PoW is enabled or disabled*/
 var PoWMode PoWModeStatus
 
+/*PaymentMode - whether Oyster is paying or not*/
+var PaymentMode OysterPaysStatus
+
 func init() {
 
 	ResetPoWMode()
 	ResetBrokerMode()
+	ResetPaymentMode()
 }
 
 /*ResetPoWMode - resets the PoWMode to whatever is in the .env file*/
@@ -80,6 +94,21 @@ func ResetBrokerMode() {
 	SetBrokerMode(mode)
 }
 
+/*ResetPaymentMode - resets the payment mode to whatever is in the .env file*/
+func ResetPaymentMode() {
+	paymentMode := os.Getenv("OYSTER_PAYS")
+
+	var mode OysterPaysStatus
+
+	switch paymentMode {
+	case "true":
+		mode = OysterIsPaying
+	default:
+		mode = UserIsPaying
+	}
+	SetPaymentMode(mode)
+}
+
 /*SetPoWMode - allow to change the mode within the code (such as for unit tests)*/
 func SetPoWMode(powMode PoWModeStatus) {
 	PoWMode = powMode
@@ -99,4 +128,9 @@ func SetBrokerMode(brokerMode BrokerModeStatus) {
 	default:
 		log.Println("No MODE given, defaulting to PROD_MODE")
 	}
+}
+
+/*SetPaymentMode - allow to change the mode within the code (such as for unit tests)*/
+func SetPaymentMode(paymentMode OysterPaysStatus) {
+	PaymentMode = paymentMode
 }

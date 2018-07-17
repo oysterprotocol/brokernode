@@ -225,7 +225,7 @@ func testNewCompletedUpload(suite *ModelSuite) {
 	suite.Nil(err)
 
 	completedUploads := []models.CompletedUpload{}
-	err = suite.DB.All(&completedUploads)
+	err = suite.DB.RawQuery("SELECT * from completed_uploads").All(&completedUploads)
 	suite.Nil(err)
 
 	suite.Equal(2, len(completedUploads))
