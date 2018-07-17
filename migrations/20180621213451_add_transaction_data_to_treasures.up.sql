@@ -1,0 +1,20 @@
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `genesis_hash` VARCHAR (255) NOT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `prl_tx_hash` VARCHAR (255) DEFAULT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `prl_tx_nonce` decimal (28, 18) DEFAULT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `gas_tx_hash` VARCHAR (255) DEFAULT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `gas_tx_nonce` decimal (28, 18) DEFAULT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `bury_tx_hash` VARCHAR (255) DEFAULT NULL;
+
+ALTER TABLE `treasures`
+  ADD COLUMN IF NOT EXISTS `bury_tx_nonce` decimal (28, 18) DEFAULT NULL;

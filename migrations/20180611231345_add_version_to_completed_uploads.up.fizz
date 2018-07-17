@@ -1,1 +1,0 @@
-add_column("completed_uploads", "version", "INT UNSIGNED", {"null": true, "default": 1})

@@ -1,2 +1,0 @@
-change_column("stored_genesis_hashes", "file_size_bytes", "integer", {})
-change_column("upload_sessions", "file_size_bytes", "integer", {})
