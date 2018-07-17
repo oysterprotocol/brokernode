@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"os"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -129,7 +128,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.ProdMode:
 		// Defaults to paymentStatusPending
 		if u.PaymentStatus == 0 {
-			if os.Getenv("OYSTER_PAYS") == "" {
+			if oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 				u.PaymentStatus = PaymentStatusInvoiced
 			} else {
 				u.PaymentStatus = PaymentStatusConfirmed

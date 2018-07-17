@@ -55,7 +55,7 @@ func init() {
 	isRavenEnabled = os.Getenv("RAVEN_ENABLED") != "false"
 
 	isOysterPay := "enabled"
-	if os.Getenv("OYSTER_PAYS") == "" {
+	if PaymentMode == UserIsPaying {
 		isOysterPay = "disabled"
 	}
 	displayName := "Unknown"

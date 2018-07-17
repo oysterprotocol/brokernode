@@ -3,7 +3,6 @@ package models
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -117,7 +116,7 @@ func (c *CompletedUpload) ValidateUpdate(tx *pop.Connection) (*validate.Errors, 
 func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode &&
-		os.Getenv("OYSTER_PAYS") == "" {
+		oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 		// Defaults to PRLClaimNotStarted
 		if c.PRLStatus == 0 {
 			c.PRLStatus = PRLClaimNotStarted

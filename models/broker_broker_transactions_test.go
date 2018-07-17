@@ -266,6 +266,11 @@ func (suite *ModelSuite) Test_SetUploadSessionToPaid() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
+	oyster_utils.SetPaymentMode(oyster_utils.UserIsPaying)
+	defer oyster_utils.ResetPaymentMode()
+
+	suite.DB.RawQuery("DELETE from broker_broker_transactions").All(&[]models.BrokerBrokerTransaction{})
+
 	genHash := "abcdef"
 	fileSizeBytes := 123
 	numChunks := 2
@@ -291,6 +296,9 @@ func (suite *ModelSuite) Test_SetUploadSessionToPaid() {
 
 	uSession := models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", genHash).First(&uSession)
+
+	brokerTxs2 := returnAllBrokerBrokerTxs(suite)
+	suite.Equal(0, len(brokerTxs2))
 
 	models.NewBrokerBrokerTransaction(&uSession)
 

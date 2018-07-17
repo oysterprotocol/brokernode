@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
-	"os"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -105,7 +104,7 @@ func (b *BrokerBrokerTransaction) BeforeCreate(tx *pop.Connection) error {
 	case oyster_utils.ProdMode:
 		// Defaults to BrokerTxAlphaPaymentPending unless oyster is paying
 		if b.PaymentStatus == 0 {
-			if os.Getenv("OYSTER_PAYS") == "" {
+			if oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 				b.PaymentStatus = BrokerTxAlphaPaymentPending
 			} else {
 				b.PaymentStatus = BrokerTxBetaPaymentConfirmed
@@ -159,7 +158,7 @@ func NewBrokerBrokerTransaction(session *UploadSession) bool {
 	case PaymentStatusPending:
 		paymentStatus = BrokerTxAlphaPaymentPending
 	case PaymentStatusConfirmed:
-		if os.Getenv("OYSTER_PAYS") == "" {
+		if oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 			paymentStatus = BrokerTxAlphaPaymentConfirmed
 		} else {
 			paymentStatus = BrokerTxBetaPaymentConfirmed
