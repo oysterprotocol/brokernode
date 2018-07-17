@@ -1,7 +1,0 @@
-create_table("transactions", func(t) {
-	t.Column("id", "uuid", {"primary": true})
-	t.Column("status", "integer", {})
-	t.Column("type", "integer", {})
-	t.Column("data_map_id", "uuid", {})
-	t.Column("purchase", "string", {})
-})
