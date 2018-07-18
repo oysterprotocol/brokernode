@@ -1,2 +1,1 @@
-ALTER TABLE `data_maps`
-  ADD COLUMN IF NOT EXISTS `msg_status` int (10) DEFAULT 0;
+call AddColumnUnlessExists(Database(), 'data_maps', 'msg_status', 'int (10) DEFAULT 0');

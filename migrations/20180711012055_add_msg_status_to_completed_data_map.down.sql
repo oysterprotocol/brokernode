@@ -1,2 +1,1 @@
-ALTER TABLE `completed_data_maps`
-  DROP COLUMN IF EXISTS `msg_status`;
+call DropColumnIfExists(Database(), 'completed_data_maps', 'msg_status');

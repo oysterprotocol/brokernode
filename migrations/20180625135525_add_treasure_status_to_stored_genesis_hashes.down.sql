@@ -1,2 +1,1 @@
-ALTER TABLE `stored_genesis_hashes`
-  DROP COLUMN IF EXISTS `treasure_status`;
+call DropColumnIfExists(Database(), 'stored_genesis_hashes', 'treasure_status');

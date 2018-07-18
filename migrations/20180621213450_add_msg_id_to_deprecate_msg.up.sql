@@ -1,8 +1,3 @@
-ALTER TABLE `treasures`
-  ADD COLUMN IF NOT EXISTS `msg_id` VARCHAR (255) DEFAULT NULL;
-
-ALTER TABLE `completed_data_maps`
-  ADD COLUMN IF NOT EXISTS `msg_id` VARCHAR (255) DEFAULT NULL;
-
-ALTER TABLE `data_maps`
-  ADD COLUMN IF NOT EXISTS `msg_id` VARCHAR (255) NOT NULL;
+call AddColumnUnlessExists(Database(), 'treasures', 'msg_id', 'VARCHAR (255) DEFAULT NULL');
+call AddColumnUnlessExists(Database(), 'completed_data_maps', 'msg_id', 'VARCHAR (255) DEFAULT NULL');
+call AddColumnUnlessExists(Database(), 'data_maps', 'msg_id', 'VARCHAR (255) NOT NULL');
