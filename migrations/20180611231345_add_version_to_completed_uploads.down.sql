@@ -1,2 +1,1 @@
-ALTER TABLE `completed_uploads`
-  DROP COLUMN IF EXISTS `version`;
+call DropColumnIfExists(Database(), 'upload_sessions', 'version');

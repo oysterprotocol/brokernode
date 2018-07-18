@@ -1,8 +1,3 @@
-ALTER TABLE `data_maps`
-  DROP COLUMN IF EXISTS `msg_id`;
-
-ALTER TABLE `completed_data_maps`
-  DROP COLUMN IF EXISTS `msg_id`;
-
-ALTER TABLE `treasures`
-  DROP COLUMN IF EXISTS `msg_id`;
+call DropColumnIfExists(Database(), 'data_maps', 'msg_id');
+call DropColumnIfExists(Database(), 'completed_data_maps', 'msg_id');
+call DropColumnIfExists(Database(), 'treasures', 'msg_id');

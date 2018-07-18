@@ -1,2 +1,1 @@
-ALTER TABLE `upload_sessions`
-  ADD COLUMN IF NOT EXISTS `version` int (10) unsigned DEFAULT 1;
+call AddColumnUnlessExists(Database(), 'upload_sessions', 'version', 'int (10) unsigned DEFAULT 1');

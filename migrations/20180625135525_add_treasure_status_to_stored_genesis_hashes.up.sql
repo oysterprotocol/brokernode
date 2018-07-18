@@ -1,2 +1,1 @@
-ALTER TABLE `stored_genesis_hashes`
-  ADD COLUMN IF NOT EXISTS `treasure_status` int (10) DEFAULT 1;
+call AddColumnUnlessExists(Database(), 'stored_genesis_hashes', 'treasure_status', 'int (10) DEFAULT 0');
