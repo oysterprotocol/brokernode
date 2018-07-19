@@ -99,9 +99,9 @@ func App() *buffalo.App {
 		treasures := TreasuresResource{}
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
 
-		// Availability
+		// Status
 		statusResource := StatusResource{}
-		apiV2.GET("check-availability", statusResource.CheckAvailability)
+		apiV2.GET("status", statusResource.CheckStatus)
 	}
 
 	return app
