@@ -12,9 +12,9 @@ import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
 	"github.com/unrolled/secure"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // ENV is used to help switch settings based on where the
@@ -98,6 +98,10 @@ func App() *buffalo.App {
 		// Treasures
 		treasures := TreasuresResource{}
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
+
+		// Status
+		statusResource := StatusResource{}
+		apiV2.GET("status", statusResource.CheckStatus)
 	}
 
 	return app
