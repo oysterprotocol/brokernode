@@ -31,7 +31,11 @@ func init() {
 	isKvStoreEnable = os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
 	if IsKvStoreEnabled() {
-		InitKvStore()
+		err := InitKvStore()
+		// If error in init the KV store. Just crash and fail the entirely process and wait for restart.
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 }
 
