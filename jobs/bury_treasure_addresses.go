@@ -36,7 +36,10 @@ func BuryTreasureAddresses(thresholdTime time.Time, PrometheusWrapper services.P
 		So passing in a time for us to wait before we give up on attempting to reclaim gas if we have not already
 		started the reclaim attempt*/
 
+		/* TODO:  Enable this method after we have sent
+		the PRLs to all the treasure addresses.  For now keep disabled so we don't lose them.
 		PurgeFinishedTreasure()
+		*/
 	}
 }
 
@@ -315,17 +318,28 @@ func PurgeFinishedTreasure() {
 	for _, completeTreasure := range completeTreasures {
 		ethAddr := completeTreasure.ETHAddr
 
-		// TODO:  Don't want to enable this for now
-		// since we don't want to lose access to the
-		// treasure addresses
+		genesisHashExists, genesisHashIsBuried, err :=
+			models.CheckIfGenesisHashExistsAndIsBuried(completeTreasure.GenesisHash)
+		oyster_utils.LogIfError(err, nil)
+		if genesisHashExists && !genesisHashIsBuried {
+			err := models.SetToTreasureBuriedByGenesisHash(completeTreasure.GenesisHash)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
+		} else if !genesisHashExists {
+			// skip until another process creates the genesis hash row
+			continue
+		}
 
-		//err = models.DB.Destroy(&completeTreasure)
-		//if err != nil {
-		//	oyster_utils.LogIfError(err, nil)
-		//	continue
-		//}
-		oyster_utils.LogToSegment("bury_treasure_addresses: PurgeFinishedTreasure", analytics.NewProperties().
-			Set("eth_address", ethAddr))
+		err = models.DB.Destroy(&completeTreasure)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			continue
+		}
+		oyster_utils.LogToSegment("bury_treasure_addresses: PurgeFinishedTreasure",
+			analytics.NewProperties().
+				Set("eth_address", ethAddr))
 	}
 }
 

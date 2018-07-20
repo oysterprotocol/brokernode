@@ -4,11 +4,10 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func (suite *JobsSuite) Test_PurgeCompletedSessions() {
+func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
@@ -16,6 +15,10 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	fileBytesCount := uint64(2500)
 	numChunks := 3
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
+
+	suite.DB.ValidateAndSave(&models.StoredGenesisHash{
+		GenesisHash: "abcdeff4",
+	})
 
 	uploadSession1 := models.UploadSession{
 		GenesisHash:   "abcdeff1",
@@ -59,27 +62,27 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
-	allDataMaps := []models.DataMap{}
-	err = suite.DB.All(&allDataMaps)
+	uploadSession4 := models.UploadSession{
+		GenesisHash:   "abcdeff4",
+		FileSizeBytes: fileBytesCount,
+		NumChunks:     numChunks,
+		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS4"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS4"), true},
+		ETHPrivateKey: privateKey,
+	}
+
+	vErr, err = uploadSession4.StartUploadSession()
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
-	completedDataMaps := []models.CompletedDataMap{}
-	err = suite.DB.All(&completedDataMaps)
-	suite.Nil(err)
-
-	uploadSessions := []models.UploadSession{}
-	err = suite.DB.All(&uploadSessions)
-	suite.Nil(err)
-
-	completedUploads := []models.CompletedUpload{}
-	err = suite.DB.All(&completedUploads)
+	storedGenHashes := []models.StoredGenesisHash{}
+	err = suite.DB.All(&storedGenHashes)
 	suite.Nil(err)
 
 	// verify initial lengths are what we expected
-	suite.Equal(3*(numChunks+1), len(allDataMaps)) // 3 data maps so 3 extra chunks have been added
-	suite.Equal(0, len(completedDataMaps))
-	suite.Equal(3, len(uploadSessions))
-	suite.Equal(0, len(completedUploads))
+	// we created one to start with
+	suite.Equal(1, len(storedGenHashes))
 
 	// set all chunks of first data map to complete or confirmed
 	allDone := []models.DataMap{}
@@ -103,53 +106,25 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	someDone[0].Status = models.Complete
 	suite.DB.ValidateAndSave(&someDone[0])
 
-	//call method under test
-	jobs.PurgeCompletedSessions(jobs.PrometheusWrapper)
-
-	allDataMaps = []models.DataMap{}
-	err = suite.DB.All(&allDataMaps)
+	// set all chunks of fourth data map to complete or confirmed
+	// this entry will already be in the stored genesis hashes table but it should not add it again
+	allDoneButAlreadyInStoredGenesisHashesTable := []models.DataMap{}
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&allDoneButAlreadyInStoredGenesisHashesTable)
 	suite.Nil(err)
 
-	completedDataMaps = []models.CompletedDataMap{}
-	err = suite.DB.All(&completedDataMaps)
-	suite.Nil(err)
-
-	if services.IsKvStoreEnabled() {
-		var keys services.KVKeys
-		for _, cDataMap := range completedDataMaps {
-			keys = append(keys, cDataMap.MsgID)
-		}
-		kvPairs, err := services.BatchGet(&keys)
-		suite.Nil(err)
-		suite.Equal(len(completedDataMaps), len(*kvPairs))
+	for _, dataMap := range allDoneButAlreadyInStoredGenesisHashesTable {
+		dataMap.Status = models.Complete
+		suite.DB.ValidateAndSave(&dataMap)
 	}
 
-	uploadSessions = []models.UploadSession{}
-	err = suite.DB.All(&uploadSessions)
+	//call method under test
+	jobs.StoreCompletedGenesisHashes(jobs.PrometheusWrapper)
+
+	storedGenHashes = []models.StoredGenesisHash{}
+	err = suite.DB.All(&storedGenHashes)
 	suite.Nil(err)
 
-	completedUploads = []models.CompletedUpload{}
-	err = suite.DB.All(&completedUploads)
-	suite.Nil(err)
-
-	// verify final lengths are what we expected
-	suite.Equal(2*(numChunks+1), len(allDataMaps))   // 2 data maps so 2 extra chunks
-	suite.Equal(numChunks+1, len(completedDataMaps)) // 1 data map so 1 extra chunk
-	suite.Equal(2, len(uploadSessions))
-	suite.Equal(1, len(completedUploads))
-
-	// for good measure, verify that it's only "abcdeff1" in completed_data_maps
-	// and that "abcdeff1" is not in data_maps at all
-	genHash1InDataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1InDataMaps)
-	suite.Equal(0, len(genHash1InDataMaps))
-	suite.Nil(err)
-
-	genHash1Completed := []models.CompletedDataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1Completed)
-	suite.Equal(numChunks+1, len(genHash1Completed))
-	suite.Nil(err)
-
-	suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUploads[0].ETHAddr)
-	suite.Equal("abcdeff1", completedUploads[0].GenesisHash)
+	// verify final lengths is what we expected
+	// one new entry has been added
+	suite.Equal(2, len(storedGenHashes))
 }
