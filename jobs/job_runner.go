@@ -61,7 +61,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
-		worker.Args{Duration: 60 * time.Second})
+		worker.Args{Duration: 2 * time.Minute})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
 		worker.Args{Duration: 30 * time.Second})

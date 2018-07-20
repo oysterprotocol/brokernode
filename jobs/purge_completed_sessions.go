@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
@@ -10,7 +11,11 @@ import (
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
+var purgeMutex = &sync.Mutex{}
+
 func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
+
+	purgeMutex.Lock()
 
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramPurgeCompletedSessions, start)
@@ -103,6 +108,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 			}
 		}
 	}
+	purgeMutex.Unlock()
 }
 
 func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
@@ -123,6 +129,14 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 		}
 		if !services.IsKvStoreEnabled() {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
+		}
+
+		dupeCheck := []models.CompletedDataMap{}
+		err := tx.RawQuery("SELECT * from completed_data_maps WHERE address = ? AND genesis_hash =?",
+			dataMap.Address, dataMap.GenesisHash).All(&dupeCheck)
+
+		if len(dupeCheck) > 0 {
+			continue
 		}
 
 		vErr, err := tx.ValidateAndSave(&completedDataMap)

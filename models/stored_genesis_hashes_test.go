@@ -23,7 +23,7 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_no_new_genesis_hashes() {
 	}
 
 	storedGenesisHash2 := models.StoredGenesisHash{
-		GenesisHash:    "abcdef11",
+		GenesisHash:    "abcdef12",
 		FileSizeBytes:  5000,
 		NumChunks:      5,
 		WebnodeCount:   0,
