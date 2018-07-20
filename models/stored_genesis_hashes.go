@@ -142,7 +142,7 @@ func CheckIfGenesisHashExists(genesisHash string) (bool, error) {
 	return true, err
 }
 
-/*CheckIfGenesisHashExists checks if a genesis hash exists in stored_genesis_hashes and if it is
+/*CheckIfGenesisHashExistsAndIsBuried checks if a genesis hash exists in stored_genesis_hashes and if it is
 already buried*/
 func CheckIfGenesisHashExistsAndIsBuried(genesisHash string) (bool, bool, error) {
 	match := []StoredGenesisHash{}
