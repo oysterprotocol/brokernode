@@ -47,6 +47,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
+	oysterWorker.Register(getHandlerName(storeCompletedGenesisHashesHandler), storeCompletedGenesisHashesHandler)
 
 	if services.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
@@ -61,7 +62,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
-		worker.Args{Duration: 2 * time.Minute})
+		worker.Args{Duration: 10 * time.Minute})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
 		worker.Args{Duration: 30 * time.Second})
@@ -80,6 +81,11 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
+
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		oysterWorkerPerformIn(storeCompletedGenesisHashesHandler,
+			worker.Args{Duration: 1 * time.Minute})
+	}
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode && oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
 		oysterWorkerPerformIn(buryTreasureAddressesHandler,
@@ -184,6 +190,13 @@ func checkBetaPaymentsHandler(args worker.Args) error {
 	CheckBetaPayments(durationToWaitBeforeTimingOut, PrometheusWrapper)
 
 	oysterWorkerPerformIn(checkBetaPaymentsHandler, args)
+	return nil
+}
+
+func storeCompletedGenesisHashesHandler(args worker.Args) error {
+	StoreCompletedGenesisHashes(PrometheusWrapper)
+
+	oysterWorkerPerformIn(storeCompletedGenesisHashesHandler, args)
 	return nil
 }
 

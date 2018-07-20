@@ -128,6 +128,37 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 	return StoredGenesisHash{}, errors.New(NoGenHashesMessage)
 }
 
+/*CheckIfGenesisHashExists checks if a genesis hash exists in stored_genesis_hashes*/
+func CheckIfGenesisHashExists(genesisHash string) (bool, error) {
+	match := []StoredGenesisHash{}
+
+	err := DB.RawQuery("SELECT genesis_hash from stored_genesis_hashes "+
+		"WHERE genesis_hash = ?", genesisHash).All(&match)
+
+	oyster_utils.LogIfError(err, nil)
+	if len(match) == 0 && err == nil {
+		return false, err
+	}
+	return true, err
+}
+
+/*CheckIfGenesisHashExists checks if a genesis hash exists in stored_genesis_hashes and if it is
+already buried*/
+func CheckIfGenesisHashExistsAndIsBuried(genesisHash string) (bool, bool, error) {
+	match := []StoredGenesisHash{}
+
+	err := DB.RawQuery("SELECT * from stored_genesis_hashes "+
+		"WHERE genesis_hash = ?", genesisHash).All(&match)
+
+	oyster_utils.LogIfError(err, nil)
+	if len(match) == 0 {
+		return false, false, err
+	} else if len(match) > 0 && match[0].TreasureStatus != TreasureBuried {
+		return true, false, err
+	}
+	return true, true, err
+}
+
 func SetToTreasureBuriedByGenesisHash(genesisHash string) error {
 	err := DB.RawQuery("UPDATE stored_genesis_hashes SET treasure_status = ? WHERE genesis_hash = ?",
 		TreasureBuried, genesisHash).All(&[]StoredGenesisHash{})

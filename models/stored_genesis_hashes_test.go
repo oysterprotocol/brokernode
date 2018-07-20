@@ -176,3 +176,93 @@ func (suite *ModelSuite) Test_GetGenesisHashForWebnode_success_return_oldest() {
 	suite.Equal(olderGenesisHash, storedGenesisHash.GenesisHash)
 	suite.Nil(err)
 }
+
+func (suite *ModelSuite) Test_CheckIfGenesisHashExists_exists() {
+
+	storedGenesisHash1 := models.StoredGenesisHash{
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashAssigned, // assigned already
+		TreasureStatus: models.TreasureBuried,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	genesisHashExists, err := models.CheckIfGenesisHashExists("aaaaaa")
+	suite.Nil(err)
+	suite.Equal(true, genesisHashExists)
+}
+
+func (suite *ModelSuite) Test_CheckIfGenesisHashExists_does_not_exist() {
+
+	storedGenesisHash1 := models.StoredGenesisHash{
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashAssigned, // assigned already
+		TreasureStatus: models.TreasureBuried,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	genesisHashExists, err := models.CheckIfGenesisHashExists("ffffff")
+	suite.Nil(err)
+	suite.Equal(false, genesisHashExists)
+}
+
+func (suite *ModelSuite) Test_CheckIfGenesisHashExistsAndIsBuried_not_exists() {
+
+	genesisHashExists, buried, err := models.CheckIfGenesisHashExistsAndIsBuried("bbbbbb")
+	suite.Nil(err)
+	suite.Equal(false, genesisHashExists)
+	suite.Equal(false, buried)
+}
+
+func (suite *ModelSuite) Test_CheckIfGenesisHashExistsAndIsBuried_exists_not_buried() {
+
+	storedGenesisHash1 := models.StoredGenesisHash{
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashAssigned, // assigned already
+		TreasureStatus: models.TreasurePending,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	genesisHashExists, buried, err := models.CheckIfGenesisHashExistsAndIsBuried("aaaaaa")
+	suite.Nil(err)
+	suite.Equal(true, genesisHashExists)
+	suite.Equal(false, buried)
+}
+
+func (suite *ModelSuite) Test_CheckIfGenesisHashExistsAndIsBuried_exists_and_buried() {
+
+	storedGenesisHash1 := models.StoredGenesisHash{
+		GenesisHash:    "aaaaaa",
+		FileSizeBytes:  5000,
+		NumChunks:      5,
+		WebnodeCount:   0,
+		Status:         models.StoredGenesisHashAssigned, // assigned already
+		TreasureStatus: models.TreasureBuried,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&storedGenesisHash1)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	genesisHashExists, buried, err := models.CheckIfGenesisHashExistsAndIsBuried("aaaaaa")
+	suite.Nil(err)
+	suite.Equal(true, genesisHashExists)
+	suite.Equal(true, buried)
+}

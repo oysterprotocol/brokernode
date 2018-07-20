@@ -571,7 +571,55 @@ func (suite *JobsSuite) Test_CheckForReclaimableGas_worth_it() {
 	suite.True(hasCalledReclaimGas)
 }
 
-func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
+func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_ready() {
+	generateTreasuresToBury(suite, 3, models.GasReclaimConfirmed)
+
+	allTreasures, err := models.GetAllTreasuresToBury()
+	suite.Nil(err)
+	suite.Equal(3, len(allTreasures))
+
+	for _, treasure := range allTreasures {
+		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
+			GenesisHash:    treasure.GenesisHash,
+			TreasureStatus: models.TreasureBuried,
+		})
+	}
+
+	jobs.PurgeFinishedTreasure()
+
+	/*enable this part of the test when we are confident we don't need to
+	hold on to the treasures anymore*/
+	allTreasures, err = models.GetAllTreasuresToBury()
+	suite.Nil(err)
+	suite.Equal(0, len(allTreasures))
+}
+
+func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_not_ready() {
+	generateTreasuresToBury(suite, 3, models.GasReclaimConfirmed)
+
+	allTreasures, err := models.GetAllTreasuresToBury()
+	suite.Nil(err)
+	suite.Equal(3, len(allTreasures))
+
+	for _, treasure := range allTreasures {
+		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
+			GenesisHash:    treasure.GenesisHash,
+			TreasureStatus: models.TreasurePending,
+			/*We are setting the treasure to pending but in that case,
+			PurgeFinishedTreasure will invoke SetToTreasureBuriedByGenesisHash()*/
+		})
+	}
+
+	jobs.PurgeFinishedTreasure()
+
+	/*enable this part of the test when we are confident we don't need to
+	hold on to the treasures anymore*/
+	allTreasures, err = models.GetAllTreasuresToBury()
+	suite.Nil(err)
+	suite.Equal(0, len(allTreasures))
+}
+
+func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_does_not_exist() {
 	generateTreasuresToBury(suite, 3, models.GasReclaimConfirmed)
 
 	allTreasures, err := models.GetAllTreasuresToBury()
@@ -580,11 +628,13 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure() {
 
 	jobs.PurgeFinishedTreasure()
 
-	//enable this part of the test when we are confident we don't need to
-	//hold on to the treasures anymore
-	//allTreasures, err = models.GetAllTreasuresToBury()
-	//suite.Nil(err)
-	//suite.Equal(0, len(allTreasures))
+	/*enable this part of the test when we are confident we don't need to
+	hold on to the treasures anymore*/
+	allTreasures, err = models.GetAllTreasuresToBury()
+	suite.Nil(err)
+	/*We did not find any matching genesis hashes, so for now we will wait until
+	another process creates the genesis hashes*/
+	suite.Equal(3, len(allTreasures))
 }
 
 func generateTreasuresToBury(suite *JobsSuite, numToCreateOfEachStatus int, status models.PRLStatus) {
