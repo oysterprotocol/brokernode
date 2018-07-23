@@ -579,7 +579,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 	suite.Nil(e)
 	suite.False(v.HasAny())
 
-	suite.DB.ValidateAndCreate(&models.DataMap{
+	v, e = suite.DB.ValidateAndCreate(&models.DataMap{
 		GenesisHash: genesisHash,
 		Status:      models.Pending,
 		ChunkIdx:    1,
@@ -587,6 +587,8 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		Message:     "123",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
+	suite.Nil(e)
+	suite.False(v.HasAny())
 
 	dm := []models.DataMap{}
 	err := suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
