@@ -348,7 +348,7 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 	err = DB.RawQuery("SELECT id FROM data_maps WHERE genesis_hash = ? AND status = ? AND (msg_status = ? OR msg_status = ?)",
 		u.GenesisHash,
 		Pending,
-		MsgStatusNotUploaded,
+		MsgStatusUploadedNoNeedEncode,
 		MsgStatusUploadedHaveNotEncoded).All(&dm)
 	oyster_utils.LogIfError(err, nil)
 

@@ -20,9 +20,7 @@ func (suite *ModelSuite) Test_BigFileSize() {
 		FileSizeBytes: fileSizeBytes,
 	}
 
-	vErr, err := suite.DB.ValidateAndCreate(&u)
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
+	validateAndCreate(suite, &u)
 
 	uploadSession := models.UploadSession{}
 	suite.Nil(suite.DB.Find(&uploadSession, u.ID))
@@ -569,34 +567,31 @@ func (suite *ModelSuite) Test_SetBrokerTransactionToPaid() {
 func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 	genesisHash := "beforeMigration"
 
-	vErr, err := suite.DB.ValidateAndCreate(&models.DataMap{
+	validateAndCreate(suite, &models.DataMap{
 		GenesisHash: genesisHash,
 		Status:      models.Pending,
 		ChunkIdx:    0,
 		Hash:        "0",
-		MsgID:       "",
+		MsgID:       "msg_0",
 		Message:     "abc",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
 
-	vErr, err = suite.DB.ValidateAndCreate(&models.DataMap{
+	validateAndCreate(suite, &models.DataMap{
 		GenesisHash: genesisHash,
 		Status:      models.Pending,
 		ChunkIdx:    1,
 		Hash:        "1",
-		MsgID:       "",
+		MsgID:       "msg_1",
 		Message:     "123",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
 
 	dm := []models.DataMap{}
-	suite.Nil(suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
-		models.Pending,
-		genesisHash).All(&dm))
+	suite.Nil(
+		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
+			models.Pending,
+			genesisHash).All(&dm))
 	suite.Equal(2, len(dm))
 
 	u := models.UploadSession{
@@ -606,16 +601,17 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 	suite.Nil(u.BulkMarkDataMapsAsUnassigned())
 
 	dm = []models.DataMap{}
-	suite.DB.RawQuery("SELECT * FROM data_maps  WHERE status = ? AND genesis_hash = ?",
-		models.Unassigned,
-		genesisHash).All(&dm)
+	suite.Nil(
+		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
+			models.Unassigned,
+			genesisHash).All(&dm))
 	suite.Equal(2, len(dm))
 }
 
 func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
 	genesisHash := "afterMigration"
 
-	suite.DB.ValidateAndCreate(&models.DataMap{
+	validateAndCreate(suite, &models.DataMap{
 		GenesisHash: genesisHash,
 		ChunkIdx:    0,
 		Hash:        "0",
@@ -624,7 +620,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
 		MsgStatus:   models.MsgStatusUploadedNoNeedEncode,
 	})
 
-	suite.DB.ValidateAndCreate(&models.DataMap{
+	validateAndCreate(suite, &models.DataMap{
 		GenesisHash: genesisHash,
 		ChunkIdx:    1,
 		Hash:        "1",
@@ -634,9 +630,10 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
 	})
 
 	dm := []models.DataMap{}
-	suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
-		models.Pending,
-		genesisHash).All(&dm)
+	suite.Nil(
+		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
+			models.Pending,
+			genesisHash).All(&dm))
 	suite.Equal(2, len(dm))
 
 	u := models.UploadSession{
@@ -646,8 +643,15 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
 	suite.Nil(u.BulkMarkDataMapsAsUnassigned())
 
 	dm = []models.DataMap{}
-	suite.DB.RawQuery("SELECT * FROM data_maps  WHERE status = ? AND genesis_hash = ?",
-		models.Unassigned,
-		genesisHash).All(&dm)
+	suite.Nil(
+		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
+			models.Unassigned,
+			genesisHash).All(&dm))
 	suite.Equal(2, len(dm))
+}
+
+func validateAndCreate(suite *ModelSuite, model interface{}) {
+	vErr, err := suite.DB.ValidateAndCreate(model)
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
 }
