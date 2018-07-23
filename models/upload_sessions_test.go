@@ -577,6 +577,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
 	suite.Nil(e)
+	suite.Nil(v.Errors())
 	suite.False(v.HasAny())
 
 	v, e = suite.DB.ValidateAndCreate(&models.DataMap{
