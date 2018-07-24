@@ -48,6 +48,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(storeCompletedGenesisHashesHandler), storeCompletedGenesisHashesHandler)
+	oysterWorker.Register(getHandlerName(cleanMySqlDBHandler), cleanMySqlDBHandler)
 
 	if services.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
@@ -55,51 +56,61 @@ func registerHandlers(oysterWorker *worker.Simple) {
 }
 
 func doWork(oysterWorker *worker.Simple) {
-	oysterWorkerPerformIn(flushOldWebnodesHandler,
-		worker.Args{Duration: 5 * time.Minute})
 
-	oysterWorkerPerformIn(processUnassignedChunksHandler,
-		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
+	oysterWorkerPerformIn(cleanMySqlDBHandler,
+		worker.Args{Duration: 5 * time.Second})
 
-	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
-		worker.Args{Duration: 10 * time.Minute})
-
-	oysterWorkerPerformIn(verifyDataMapsHandler,
-		worker.Args{Duration: 30 * time.Second})
-
-	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
-		worker.Args{Duration: 60 * time.Second})
-
-	oysterWorkerPerformIn(processPaidSessionsHandler,
-		worker.Args{Duration: 20 * time.Second})
-
-	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
-		worker.Args{Duration: 2 * time.Minute})
-
-	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
-		worker.Args{Duration: 24 * time.Hour})
-
+	//oysterWorkerPerformIn(flushOldWebnodesHandler,
+	//	worker.Args{Duration: 5 * time.Minute})
+	//
+	//oysterWorkerPerformIn(processUnassignedChunksHandler,
+	//	worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
+	//
+	//oysterWorkerPerformIn(purgeCompletedSessionsHandler,
+	//	worker.Args{Duration: 10 * time.Minute})
+	//
+	//oysterWorkerPerformIn(verifyDataMapsHandler,
+	//	worker.Args{Duration: 30 * time.Second})
+	//
+	//oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
+	//	worker.Args{Duration: 60 * time.Second})
+	//
+	//oysterWorkerPerformIn(processPaidSessionsHandler,
+	//	worker.Args{Duration: 20 * time.Second})
+	//
+	//oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
+	//	worker.Args{Duration: 2 * time.Minute})
+	//
+	//oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
+	//	worker.Args{Duration: 24 * time.Hour})
+	//
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
+	//
+	//if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+	//	oysterWorkerPerformIn(storeCompletedGenesisHashesHandler,
+	//		worker.Args{Duration: 1 * time.Minute})
+	//}
 
-	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
-		oysterWorkerPerformIn(storeCompletedGenesisHashesHandler,
-			worker.Args{Duration: 1 * time.Minute})
-	}
+	//if oyster_utils.BrokerMode == oyster_utils.ProdMode && oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
+	//	oysterWorkerPerformIn(buryTreasureAddressesHandler,
+	//		worker.Args{Duration: 2 * time.Minute})
+	//
+	//	oysterWorkerPerformIn(claimUnusedPRLsHandler,
+	//		worker.Args{Duration: 10 * time.Minute})
+	//
+	//	oysterWorkerPerformIn(checkAlphaPaymentsHandler,
+	//		worker.Args{Duration: 10 * time.Second})
+	//
+	//	oysterWorkerPerformIn(checkBetaPaymentsHandler,
+	//		worker.Args{Duration: 70 * time.Second})
+	//}
+}
 
-	if oyster_utils.BrokerMode == oyster_utils.ProdMode && oyster_utils.PaymentMode == oyster_utils.UserIsPaying {
-		oysterWorkerPerformIn(buryTreasureAddressesHandler,
-			worker.Args{Duration: 2 * time.Minute})
+func cleanMySqlDBHandler(args worker.Args) error {
+	CleanMySqlDB()
 
-		oysterWorkerPerformIn(claimUnusedPRLsHandler,
-			worker.Args{Duration: 10 * time.Minute})
-
-		oysterWorkerPerformIn(checkAlphaPaymentsHandler,
-			worker.Args{Duration: 10 * time.Second})
-
-		oysterWorkerPerformIn(checkBetaPaymentsHandler,
-			worker.Args{Duration: 70 * time.Second})
-	}
+	return nil
 }
 
 func flushOldWebnodesHandler(args worker.Args) error {

@@ -1,1 +1,0 @@
-call AddColumnUnlessExists(Database(), 'completed_data_maps', 'msg_status', 'int (10) DEFAULT 0');
