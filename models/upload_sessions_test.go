@@ -565,9 +565,13 @@ func (suite *ModelSuite) Test_SetBrokerTransactionToPaid() {
 }
 
 func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
+	// Setup
 	genesisHash := "beforeMigration"
 
-	validateAndCreate(suite, &models.DataMap{
+	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+	columnsName := dbOperation.GetColumns()
+
+	dataMap := models.DataMap{
 		GenesisHash: genesisHash,
 		Status:      models.Pending,
 		ChunkIdx:    0,
@@ -576,8 +580,11 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		Message:     "abc",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
-
-	validateAndCreate(suite, &models.DataMap{
+	suite.Nil(
+		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s", 
+			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]DataMap{}))
+	
+	dataMap = models.DataMap{
 		GenesisHash: genesisHash,
 		Status:      models.Pending,
 		ChunkIdx:    1,
@@ -586,6 +593,9 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		Message:     "123",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	})
+	suite.Nil(
+		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s", 
+			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]DataMap{}))
 
 	dm := []models.DataMap{}
 	suite.Nil(
@@ -598,8 +608,10 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		GenesisHash: genesisHash,
 	}
 
+	// Testing
 	suite.Nil(u.BulkMarkDataMapsAsUnassigned())
 
+	// Assert
 	dm = []models.DataMap{}
 	suite.Nil(
 		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
@@ -609,6 +621,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 }
 
 func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
+	// Setup
 	genesisHash := "afterMigration"
 
 	validateAndCreate(suite, &models.DataMap{
@@ -640,8 +653,10 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_AfterMigration() {
 		GenesisHash: genesisHash,
 	}
 
+	// Testing
 	suite.Nil(u.BulkMarkDataMapsAsUnassigned())
 
+	// Assert
 	dm = []models.DataMap{}
 	suite.Nil(
 		suite.DB.RawQuery("SELECT * FROM data_maps WHERE status = ? AND genesis_hash = ?",
