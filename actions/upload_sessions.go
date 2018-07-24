@@ -394,58 +394,67 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 	// Query data_maps to get models.DataMap based on require chunk.
 	var dms []models.DataMap
 	//rawQuery := fmt.Sprintf("SELECT * FROM data_maps WHERE %s", strings.Join(sqlWhereClosures, " OR "))
-	err := models.DB.RawQuery(
-		"SELECT * FROM data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
-		genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
-	oyster_utils.LogIfError(err, nil)
 
-	dmsMap := convertToSQLKeyedMapForDataMap(dms)
+	for {
+		err := models.DB.RawQuery(
+			"SELECT * FROM data_maps WHERE genesis_hash = ? AND chunk_idx >= ? AND chunk_idx <= ?",
+			genesisHash, minChunkIdx, maxChunkIdx).All(&dms)
+		oyster_utils.LogIfError(err, nil)
 
-	// Create Update operation for data_maps table.
-	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
-	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-	var updatedDms []string
-	for key, chunk := range chunksMap {
-		dm, hasKey := dmsMap[key]
-		if !hasKey {
+		if len(dms) < len(chunks) {
+			time.Sleep(3 * time.Second)
 			continue
 		}
 
-		if dm.MsgID == "" {
-			oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
-			break
-		}
+		dmsMap := convertToSQLKeyedMapForDataMap(dms)
 
-		if chunk.Hash == dm.GenesisHash {
-			if services.IsKvStoreEnabled() {
-				batchSetKvMap[dm.MsgID] = chunk.Data
-				dm.Message = "" // Remove previous Message data.
-				dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
-			} else {
-				// TODO:pzhao, remove this and this should not be called.
-				message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
-				if err != nil {
-					panic(err.Error())
+		// Create Update operation for data_maps table.
+		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
+		var updatedDms []string
+		for key, chunk := range chunksMap {
+			dm, hasKey := dmsMap[key]
+			if !hasKey {
+				continue
+			}
+
+			if dm.MsgID == "" {
+				oyster_utils.LogIfError(errors.New("DataMap was not stored into data_maps table and MsgID is empty"), nil)
+				break
+			}
+
+			if chunk.Hash == dm.GenesisHash {
+				if services.IsKvStoreEnabled() {
+					batchSetKvMap[dm.MsgID] = chunk.Data
+					dm.Message = "" // Remove previous Message data.
+					dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
+				} else {
+					// TODO:pzhao, remove this and this should not be called.
+					message, err := oyster_utils.ChunkMessageToTrytesWithStopper(chunk.Data)
+					if err != nil {
+						panic(err.Error())
+					}
+					dm.Message = string(message)
+					dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 				}
-				dm.Message = string(message)
-				dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
-			}
 
-			if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-				dm.Status = models.Unassigned
-			}
-			vErr, _ := dm.Validate(nil)
-			oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
-			if !vErr.HasAny() {
-				updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
+				if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+					dm.Status = models.Unassigned
+				}
+				vErr, _ := dm.Validate(nil)
+				oyster_utils.LogIfValidationError("Unable to create data_maps for batch insertion.", vErr, nil)
+				if !vErr.HasAny() {
+					updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(dm)))
+				}
 			}
 		}
-	}
 
-	err = batchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
-	// Save Message field into KVStore
-	if err == nil && services.IsKvStoreEnabled() {
-		services.BatchSet(&batchSetKvMap)
+		err = batchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
+		// Save Message field into KVStore
+		if err == nil && services.IsKvStoreEnabled() {
+			services.BatchSet(&batchSetKvMap)
+		}
+		break
 	}
 }
 

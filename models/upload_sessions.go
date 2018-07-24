@@ -187,7 +187,9 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		DB.ValidateAndUpdate(u)
 	}
 
-	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
+	go func() {
+		vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
+	}()
 	return
 }
 
