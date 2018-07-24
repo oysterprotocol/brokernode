@@ -580,8 +580,9 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		Message:     "abc",
 		MsgStatus:   models.MsgStatusUnmigrated,
 	}
+
 	suite.Nil(
-		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s",
+		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES (%s)",
 			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]models.DataMap{}))
 
 	dataMap = models.DataMap{
@@ -594,7 +595,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 		MsgStatus:   models.MsgStatusUnmigrated,
 	}
 	suite.Nil(
-		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s",
+		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES (%s)",
 			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]models.DataMap{}))
 
 	dm := []models.DataMap{}
