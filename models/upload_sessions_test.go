@@ -582,7 +582,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 	}
 	suite.Nil(
 		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s",
-			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]DataMap{}))
+			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]models.DataMap{}))
 
 	dataMap = models.DataMap{
 		GenesisHash: genesisHash,
@@ -595,7 +595,7 @@ func (suite *ModelSuite) Test_BulkMarkDataMapsAsUnassigned_BeforeMigration() {
 	}
 	suite.Nil(
 		suite.DB.RawQuery(fmt.Sprintf("INSERT INTO data_maps (%s) VALUES %s",
-			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]DataMap{}))
+			columnsName, dbOperation.GetNewInsertedValue(dataMap))).All(&[]models.DataMap{}))
 
 	dm := []models.DataMap{}
 	suite.Nil(
