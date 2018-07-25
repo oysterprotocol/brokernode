@@ -68,6 +68,9 @@ const (
 	TreasureInDataMapComplete
 )
 
+/*MaxTimesToCheckForAllChunks is the maximum number of times we will check for the chunks in WaitForAllChunks*/
+const MaxTimesToCheckForAllChunks = 1000
+
 var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
 
 // String is not required by pop and may be deleted
@@ -187,7 +190,13 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		DB.ValidateAndUpdate(u)
 	}
 
-	vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
+	go func() {
+		vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
+	}()
+	// TODO:  Remove this.  This is just to help make these changes in
+	// fewer PRs.  We may need to use WaitForAllChunks in some of our tests.
+	_, err = u.WaitForAllChunks(MaxTimesToCheckForAllChunks)
+	oyster_utils.LogIfError(err, nil)
 	return
 }
 
@@ -256,34 +265,60 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	return err
 }
 
+/*EncryptTreasureIdxMapKeys encrypts the keys of the treasureIdxMap*/
+func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
+
+	treasureMap, err := u.GetTreasureMap()
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+
+	for i := range treasureMap {
+		treasureChunks, err := GetDataMapByGenesisHashAndChunkIdx(u.GenesisHash, treasureMap[i].Idx)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
+			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in " +
+				"EncryptTreasureIdxMapKeys, or found duplicate chunks")
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		encryptedKey, err := treasureChunks[0].EncryptEthKey(treasureMap[i].Key)
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		treasureMap[i].Key = encryptedKey
+	}
+
+	treasureString, err := json.Marshal(treasureMap)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+
+	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	u.TreasureStatus = TreasureInDataMapPending
+
+	DB.ValidateAndSave(u)
+	return nil
+}
+
 // Sets the TreasureIdxMap with Sector, Idx, and Key
 func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []string) {
 
 	treasureIndexArray := make([]TreasureMap, 0)
 
 	for i, mergedIndex := range mergedIndexes {
-		treasureChunks, err := GetDataMapByGenesisHashAndChunkIdx(u.GenesisHash, mergedIndex)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
-			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in MakeTreasureIdxMap, or " +
-				"found duplicate chunks")
-			oyster_utils.LogIfError(err, nil)
-			return
-		}
-
-		encryptedKey, err := treasureChunks[0].EncryptEthKey(privateKeys[i])
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
 
 		treasureIndexArray = append(treasureIndexArray, TreasureMap{
 			Sector: i,
 			Idx:    mergedIndex,
-			Key:    encryptedKey,
+			Key:    privateKeys[i],
 		})
 	}
 
@@ -293,7 +328,6 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
-	u.TreasureStatus = TreasureInDataMapPending
 
 	DB.ValidateAndSave(u)
 }
@@ -401,6 +435,28 @@ func (u *UploadSession) DecryptSessionEthKey() string {
 
 }
 
+/*WaitForAllChunks is a blocking call that will wait for all chunks or false and an error if we get an
+error, or if we have checked too many times.  This is mainly intended for use in unit tests.*/
+func (u *UploadSession) WaitForAllChunks(maxTimesToCheckForAllChunks int) (bool, error) {
+	timesChecked := 0
+	for {
+		count, err := DB.Where("genesis_hash = ?", u.GenesisHash).Count(&DataMap{})
+		timesChecked++
+		if err != nil {
+			return false, err
+		}
+		if timesChecked >= maxTimesToCheckForAllChunks {
+			return false, errors.New("checked for the chunks too many times")
+		}
+		if count >= u.NumChunks {
+			break
+		} else if count <= u.NumChunks {
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+	return true, nil
+}
+
 func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
@@ -413,6 +469,18 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	}
 
 	return sessionsByAge, nil
+}
+
+// GetSessionsThatNeedKeysEncrypted checks for sessions which the user has paid their PRL but in which
+// we have not yet encrypted the keys
+func GetSessionsThatNeedKeysEncrypted() ([]UploadSession, error) {
+	needKeysEncrypted := []UploadSession{}
+
+	err := DB.Where("payment_status = ? AND treasure_status = ?",
+		PaymentStatusConfirmed, TreasureGeneratingKeys).All(&needKeysEncrypted)
+	oyster_utils.LogIfError(err, nil)
+
+	return needKeysEncrypted, err
 }
 
 // GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which

@@ -5,6 +5,7 @@ import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 func (suite *JobsSuite) Test_ProcessPaidSessions() {
@@ -50,6 +51,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
 
 	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+	uploadSession1.EncryptTreasureIdxMapKeys()
 
 	// create and start the upload session for the data maps that already have buried treasure
 	uploadSession2 := models.UploadSession{
@@ -63,6 +65,11 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	}
 
 	uploadSession2.StartUploadSession()
+	mergedIndexes = []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
+	privateKeys = []string{"0000000001", "0000000002", "0000000003"}
+
+	uploadSession2.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+	uploadSession2.EncryptTreasureIdxMapKeys()
 
 	// verify that we have successfully created all the data maps
 	paidButUnburied := []models.DataMap{}
@@ -142,5 +149,83 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	for _, entry := range treasureIndex {
 		_, ok := treasureIndexes[entry.Idx]
 		suite.True(ok)
+	}
+}
+
+func (suite *JobsSuite) Test_EncryptKeysInTreasureIdxMaps() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	fileBytesCount := uint64(500000)
+
+	// create and start the upload session for the data maps that need treasure buried
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    "abcdeff111111111111111111111111111111111111111111111",
+		NumChunks:      500,
+		FileSizeBytes:  fileBytesCount,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureGeneratingKeys,
+	}
+
+	uploadSession1.StartUploadSession()
+	mergedIndexes := []int{
+		5,
+		78,
+		199,
+	}
+
+	privateKey1 := "0000000001"
+	privateKey2 := "0000000002"
+	privateKey3 := "0000000003"
+
+	uploadSession1.MakeTreasureIdxMap(mergedIndexes, []string{
+		privateKey1,
+		privateKey2,
+		privateKey3,
+	})
+
+	treasureMap, err := uploadSession1.GetTreasureMap()
+	suite.Nil(err)
+
+	suite.Equal(3, len(treasureMap))
+
+	for _, entry := range treasureMap {
+		suite.True(entry.Key == privateKey1 ||
+			entry.Key == privateKey2 ||
+			entry.Key == privateKey3)
+	}
+
+	jobs.EncryptKeysInTreasureIdxMaps()
+
+	uploadSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?",
+		uploadSession1.GenesisHash).First(&uploadSession)
+
+	treasureMap2, err := uploadSession.GetTreasureMap()
+	suite.Nil(err)
+
+	suite.Equal(3, len(treasureMap2))
+
+	for _, entry := range treasureMap2 {
+		suite.True(entry.Key != privateKey1 &&
+			entry.Key != privateKey2 &&
+			entry.Key != privateKey3)
+	}
+
+	for _, entry := range treasureMap2 {
+		dm := models.DataMap{}
+		err := suite.DB.Where("genesis_hash = ? && chunk_idx = ?",
+			uploadSession1.GenesisHash,
+			entry.Idx).First(&dm)
+		suite.Nil(err)
+
+		decryptedKey, err := dm.DecryptEthKey(entry.Key)
+		suite.Nil(err)
+
+		suite.True(decryptedKey == privateKey1 ||
+			decryptedKey == privateKey2 ||
+			decryptedKey == privateKey3)
 	}
 }

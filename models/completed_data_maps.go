@@ -2,7 +2,7 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -76,5 +76,5 @@ func (d *CompletedDataMap) BeforeCreate(tx *pop.Connection) error {
 }
 
 func (d *CompletedDataMap) generateMsgId() string {
-	return fmt.Sprintf("completeDataMap_%v__%d", d.GenesisHash, d.ChunkIdx)
+	return oyster_utils.GenerateMsgID("completeDataMap_", d.GenesisHash, d.ChunkIdx)
 }
