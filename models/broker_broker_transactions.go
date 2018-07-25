@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
-	"strings"
 	"time"
 
 	"github.com/gobuffalo/pop"
