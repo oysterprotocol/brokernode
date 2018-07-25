@@ -68,6 +68,7 @@ const (
 	TreasureInDataMapComplete
 )
 
+/*MaxTimesToCheckForAllChunks is the maximum number of times we will check for the chunks in WaitForAllChunks*/
 const MaxTimesToCheckForAllChunks = 1000
 
 var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
@@ -194,7 +195,7 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	}()
 	// TODO:  Remove this.  This is just to help make these changes in
 	// fewer PRs.  We may need to use WaitForAllChunks in some of our tests.
-	_, err = u.WaitForAllChunks()
+	_, err = u.WaitForAllChunks(MaxTimesToCheckForAllChunks)
 	oyster_utils.LogIfError(err, nil)
 	return
 }
@@ -264,7 +265,7 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	return err
 }
 
-// EncryptTreasureIdxMapKeys encrypts the keys of the treasureIdxMap
+/*EncryptTreasureIdxMapKeys encrypts the keys of the treasureIdxMap*/
 func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 
 	treasureMap, err := u.GetTreasureMap()
@@ -297,6 +298,7 @@ func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 	treasureString, err := json.Marshal(treasureMap)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
+		return err
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
@@ -304,7 +306,6 @@ func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 
 	DB.ValidateAndSave(u)
 	return nil
-
 }
 
 // Sets the TreasureIdxMap with Sector, Idx, and Key
@@ -434,7 +435,9 @@ func (u *UploadSession) DecryptSessionEthKey() string {
 
 }
 
-func (u *UploadSession) WaitForAllChunks() (bool, error) {
+/*WaitForAllChunks is a blocking call that will wait for all chunks or false and an error if we get an
+error, or if we have checked too many times.  This is mainly intended for use in unit tests.*/
+func (u *UploadSession) WaitForAllChunks(maxTimesToCheckForAllChunks int) (bool, error) {
 	timesChecked := 0
 	for {
 		count, err := DB.Where("genesis_hash = ?", u.GenesisHash).Count(&DataMap{})
@@ -442,7 +445,7 @@ func (u *UploadSession) WaitForAllChunks() (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if timesChecked >= MaxTimesToCheckForAllChunks {
+		if timesChecked >= maxTimesToCheckForAllChunks {
 			return false, errors.New("checked for the chunks too many times")
 		}
 		if count >= u.NumChunks {

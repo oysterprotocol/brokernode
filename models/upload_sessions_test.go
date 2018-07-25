@@ -248,7 +248,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 		TreasureStatus:       models.TreasureGeneratingKeys,
 	}
 	vErr, err := u1.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	u2 := models.UploadSession{
@@ -260,7 +260,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 		TreasureStatus:       models.TreasureGeneratingKeys,
 	}
 	vErr, err = u2.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	u3 := models.UploadSession{
@@ -272,7 +272,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 		TreasureStatus:       models.TreasureInDataMapPending,
 	}
 	vErr, err = u3.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	sessions, err := models.GetSessionsThatNeedKeysEncrypted()
@@ -297,7 +297,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 		TreasureStatus:       models.TreasureGeneratingKeys,
 	}
 	vErr, err := u1.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	u2 := models.UploadSession{
@@ -309,7 +309,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 		TreasureStatus:       models.TreasureInDataMapPending,
 	}
 	vErr, err = u2.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	u3 := models.UploadSession{
@@ -321,7 +321,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 		TreasureStatus:       models.TreasureInDataMapPending,
 	}
 	vErr, err = u3.StartUploadSession()
-	suite.Equal(0, len(vErr.Errors))
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
 	sessions, err := models.GetSessionsThatNeedTreasure()
@@ -490,6 +490,35 @@ func (suite *ModelSuite) Test_EncryptAndDecryptEthKey() {
 	decryptedKey := u.DecryptSessionEthKey()
 
 	suite.Equal(ethKey, decryptedKey)
+}
+
+func (suite *ModelSuite) Test_WaitForAllChunks() {
+
+	storageLengthInYears := 3
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          "abcdef",
+		NumChunks:            200,
+		FileSizeBytes:        9000000,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	vErr, err := u.StartUploadSession()
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	allChunksExist, err := u.WaitForAllChunks(1)
+	suite.True(allChunksExist)
+	suite.Nil(err)
+
+	dm := models.DataMap{}
+
+	suite.DB.Where("genesis_has = ?").First(&dm)
+
+	allChunksExist, err = u.WaitForAllChunks(1)
+	suite.False(allChunksExist)
+	suite.NotNil(err)
 }
 
 func (suite *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
