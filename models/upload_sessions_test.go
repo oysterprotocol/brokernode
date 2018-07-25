@@ -508,7 +508,7 @@ func (suite *ModelSuite) Test_WaitForAllChunks() {
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
 
-	allChunksExist, err := u.WaitForAllChunks(1)
+	allChunksExist, err := u.WaitForAllChunks(500)
 	suite.True(allChunksExist)
 	suite.Nil(err)
 
