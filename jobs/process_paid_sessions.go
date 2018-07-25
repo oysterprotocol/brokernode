@@ -14,8 +14,21 @@ func ProcessPaidSessions(PrometheusWrapper services.PrometheusService) {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessPaidSessions, start)
 
+	EncryptKeysInTreasureIdxMaps()
 	BuryTreasureInDataMaps()
 	MarkBuriedMapsAsUnassigned()
+}
+
+func EncryptKeysInTreasureIdxMaps() {
+	needKeysEncrypted, err := models.GetSessionsThatNeedKeysEncrypted()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for _, session := range needKeysEncrypted {
+
+		session.EncryptTreasureIdxMapKeys()
+	}
 }
 
 func BuryTreasureInDataMaps() error {

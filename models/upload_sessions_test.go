@@ -232,6 +232,104 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 	suite.Equal(3, len(sessions))
 }
 
+func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
+	defer oyster_utils.ResetBrokerMode()
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+
+	numChunks := 250
+	storageLengthInYears := 3
+
+	u1 := models.UploadSession{
+		GenesisHash:          "abcdef11",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+		TreasureStatus:       models.TreasureGeneratingKeys,
+	}
+	vErr, err := u1.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	u2 := models.UploadSession{
+		GenesisHash:          "abcdef22",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusInvoiced,
+		TreasureStatus:       models.TreasureGeneratingKeys,
+	}
+	vErr, err = u2.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	u3 := models.UploadSession{
+		GenesisHash:          "abcdef33",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+		TreasureStatus:       models.TreasureInDataMapPending,
+	}
+	vErr, err = u3.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	sessions, err := models.GetSessionsThatNeedKeysEncrypted()
+	suite.Nil(err)
+	suite.Equal(1, len(sessions))
+	suite.Equal("abcdef11", sessions[0].GenesisHash)
+}
+
+func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
+	defer oyster_utils.ResetBrokerMode()
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+
+	numChunks := 250
+	storageLengthInYears := 3
+
+	u1 := models.UploadSession{
+		GenesisHash:          "abcdef11",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+		TreasureStatus:       models.TreasureGeneratingKeys,
+	}
+	vErr, err := u1.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	u2 := models.UploadSession{
+		GenesisHash:          "abcdef22",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusInvoiced,
+		TreasureStatus:       models.TreasureInDataMapPending,
+	}
+	vErr, err = u2.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	u3 := models.UploadSession{
+		GenesisHash:          "abcdef33",
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+		TreasureStatus:       models.TreasureInDataMapPending,
+	}
+	vErr, err = u3.StartUploadSession()
+	suite.Equal(0, len(vErr.Errors))
+	suite.Nil(err)
+
+	sessions, err := models.GetSessionsThatNeedTreasure()
+	suite.Nil(err)
+	suite.Equal(1, len(sessions))
+	suite.Equal("abcdef33", sessions[0].GenesisHash)
+}
+
 func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 
 	defer oyster_utils.ResetBrokerMode()
@@ -276,6 +374,58 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	suite.Equal(68, treasureIdxMap[0].Idx)
 	suite.Equal(148, treasureIdxMap[1].Idx)
 	suite.Equal(210, treasureIdxMap[2].Idx)
+
+	suite.Equal("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[0].Key)
+	suite.Equal("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[1].Key)
+	suite.Equal("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[2].Key)
+}
+
+func (suite *ModelSuite) Test_EncryptTreasureIdxMapKeys() {
+	defer oyster_utils.ResetBrokerMode()
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+
+	sectorSize := 100
+
+	genHash := "abcdef"
+	numChunks := 250
+	storageLengthInYears := 3
+	alphaIndexes := []int{2, 121, 245}
+	betaIndexes := []int{9, 89, 230}
+
+	u := models.UploadSession{
+		GenesisHash:          genHash,
+		FileSizeBytes:        123,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	vErr, err := u.StartUploadSession()
+	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
+
+	suite.Nil(err)
+	privateKeys := []string{
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+		"9999999999999999999999999999999999999999999999999999999999999999",
+	}
+
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+	u.EncryptTreasureIdxMapKeys()
+
+	treasureIdxMap, err := u.GetTreasureMap()
+	suite.Nil(err)
+	suite.False(vErr.HasAny())
+
+	// Verify the keys are not what they were originally
+	suite.NotEqual("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[0].Key)
+	suite.NotEqual("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[1].Key)
+	suite.NotEqual("9999999999999999999999999999999999999999999999999999999999999999",
+		treasureIdxMap[2].Key)
 }
 
 func (suite *ModelSuite) Test_GetTreasureIndexes() {
