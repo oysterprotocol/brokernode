@@ -373,3 +373,7 @@ func IntMax(x, y int) int {
 	}
 	return y
 }
+
+func GenerateMsgID(startingString string, genesisHash string, chunkIdx int) string {
+	return fmt.Sprintf("%v%v__%d", startingString, genesisHash, chunkIdx)
+}
