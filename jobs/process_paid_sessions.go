@@ -19,6 +19,8 @@ func ProcessPaidSessions(PrometheusWrapper services.PrometheusService) {
 	MarkBuriedMapsAsUnassigned()
 }
 
+/*EncryptKeysInTreasureIdxMaps will retrieve all paid sessions with unencrypted
+eth keys and call methods to encrypt them*/
 func EncryptKeysInTreasureIdxMaps() {
 	needKeysEncrypted, err := models.GetSessionsThatNeedKeysEncrypted()
 	if err != nil {
