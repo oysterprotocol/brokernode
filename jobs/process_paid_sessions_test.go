@@ -159,13 +159,6 @@ func (suite *JobsSuite) Test_EncryptKeysInTreasureIdxMaps() {
 
 	fileBytesCount := uint64(500000)
 
-	// This map seems pointless but it makes the testing
-	// in the for loop later on a bit simpler
-	treasureIndexes := map[int]int{}
-	treasureIndexes[5] = 5
-	treasureIndexes[78] = 78
-	treasureIndexes[199] = 199
-
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
 		GenesisHash:    "abcdeff111111111111111111111111111111111111111111111",
@@ -178,9 +171,9 @@ func (suite *JobsSuite) Test_EncryptKeysInTreasureIdxMaps() {
 
 	uploadSession1.StartUploadSession()
 	mergedIndexes := []int{
-		treasureIndexes[5],
-		treasureIndexes[78],
-		treasureIndexes[199],
+		5,
+		78,
+		199,
 	}
 
 	privateKey1 := "0000000001"
