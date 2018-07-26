@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -356,29 +357,56 @@ func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
 
 func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 	var err error
+	var ids []string
+	var dm []DataMap
+
+	err = DB.RawQuery("SELECT id FROM data_maps WHERE genesis_hash = ? AND status = ? AND message != ? AND msg_status = ?",
+		u.GenesisHash,
+		Pending,
+		DataMap{}.Message,
+		MsgStatusUnmigrated).All(&dm)
+	oyster_utils.LogIfError(err, nil)
+
+	for _, v := range dm {
+		ids = append(ids, v.ID.String())
+	}
+	err = nil
+
+	idsString := strings.Join(ids, ", ")
+
 	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
+		if len(idsString) == 0 {
+			break
+		}
 		err = DB.RawQuery("UPDATE data_maps SET status = ? "+
-			"WHERE genesis_hash = ? AND status = ? AND message != ? AND msg_status = ?",
+			"WHERE id IN(?)",
 			Unassigned,
-			u.GenesisHash,
-			Pending,
-			DataMap{}.Message,
-			MsgStatusUnmigrated).All(&[]DataMap{})
+			idsString).All(&[]DataMap{})
 		if err == nil {
 			break
 		}
 	}
 	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY})
+	err = nil
+
+	err = DB.RawQuery("SELECT id FROM data_maps WHERE genesis_hash = ? AND status = ? AND (msg_status = ? OR msg_status = ?)",
+		u.GenesisHash,
+		Pending,
+		MsgStatusUploadedNoNeedEncode,
+		MsgStatusUploadedHaveNotEncoded).All(&dm)
+	oyster_utils.LogIfError(err, nil)
+
+	for _, v := range dm {
+		ids = append(ids, v.ID.String())
+	}
+	idsString = strings.Join(ids, ", ")
 
 	err = nil
 	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
 		err = DB.RawQuery("UPDATE data_maps SET status = ? "+
-			"WHERE genesis_hash = ? AND status = ? AND (msg_status = ? OR msg_status = ?)",
+			"WHERE id IN(?)",
 			Unassigned,
-			u.GenesisHash,
-			Pending,
-			MsgStatusUploadedNoNeedEncode,
-			MsgStatusUploadedHaveNotEncoded).All(&[]DataMap{})
+			idsString).All(&[]DataMap{})
 		if err == nil {
 			break
 		}
