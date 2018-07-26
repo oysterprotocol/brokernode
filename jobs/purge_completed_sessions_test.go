@@ -27,7 +27,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err := uploadSession1.StartUploadSession()
+	chunksReady, vErr, err := uploadSession1.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
@@ -41,7 +43,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err = uploadSession2.StartUploadSession()
+	chunksReady, vErr, err = uploadSession2.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
@@ -55,7 +58,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err = uploadSession3.StartUploadSession()
+	chunksReady, vErr, err = uploadSession3.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 

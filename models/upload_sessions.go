@@ -69,7 +69,7 @@ const (
 )
 
 /*MaxTimesToCheckForAllChunks is the maximum number of times we will check for the chunks in WaitForAllChunks*/
-const MaxTimesToCheckForAllChunks = 1000
+const MaxTimesToCheckForAllChunks = 5000
 
 var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
 
@@ -193,11 +193,21 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 	go func() {
 		vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
 	}()
-	// TODO:  Remove this.  This is just to help make these changes in
-	// fewer PRs.  We may need to use WaitForAllChunks in some of our tests.
-	_, err = u.WaitForAllChunks(MaxTimesToCheckForAllChunks)
-	oyster_utils.LogIfError(err, nil)
+
 	return
+}
+
+/*StartSessionAndWaitForChunks is a substitute for StartUploadSession intended to be used in unit tests*/
+func (u *UploadSession) StartSessionAndWaitForChunks(maxTimesToCheckForAllChunks int) (bool, *validate.Errors, error) {
+	vErr, err := u.StartUploadSession()
+	if vErr.HasAny() || err != nil {
+		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfValidationError("vErr during StartUploadSession", vErr, nil)
+		return false, vErr, err
+	}
+	chunksAreFinished, err := u.WaitForAllChunks(maxTimesToCheckForAllChunks)
+	oyster_utils.LogIfError(err, nil)
+	return chunksAreFinished, vErr, err
 }
 
 // TODO: Chunk this to smaller batches?
@@ -451,7 +461,7 @@ func (u *UploadSession) WaitForAllChunks(maxTimesToCheckForAllChunks int) (bool,
 		if count >= u.NumChunks {
 			break
 		} else if count <= u.NumChunks {
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(250 * time.Millisecond)
 		}
 	}
 	return true, nil

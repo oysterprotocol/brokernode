@@ -49,6 +49,9 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 	}
 
 	vErr, err := u.StartUploadSession()
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
 	suite.Nil(err)
 	suite.False(vErr.HasAny())
 
@@ -75,9 +78,10 @@ func (suite *ModelSuite) Test_DataMapsForSession() {
 		StorageLengthInYears: storageLengthInYears,
 	}
 
-	vErr, err := u.StartUploadSession()
-	suite.Nil(err)
+	chunksReady, vErr, err := u.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	expectedHashes := []string{
 		"dd88bb5db7314227c7e6117c693ceb83bbaf587bd1b63393d7512ba68bf42973845fa1c2924be14d37ba2da1938d7228",
@@ -127,8 +131,8 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	}
 
 	vErr, err := u.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	suite.Nil(u.SetTreasureMap(treasureIndexArray))
 
@@ -199,20 +203,20 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 	}
 
 	vErr, err := uploadSession1.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 	vErr, err = uploadSession2.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 	vErr, err = uploadSession3.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 	vErr, err = uploadSession4.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 	vErr, err = uploadSession5.StartUploadSession()
-	suite.Nil(err)
 	suite.False(vErr.HasAny())
+	suite.Nil(err)
 
 	// set uploadSession3 to be the oldest
 	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
@@ -351,6 +355,8 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	}
 
 	vErr, err := u.StartUploadSession()
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
 	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 
 	suite.Nil(err)
@@ -402,7 +408,9 @@ func (suite *ModelSuite) Test_EncryptTreasureIdxMapKeys() {
 		StorageLengthInYears: storageLengthInYears,
 	}
 
-	vErr, err := u.StartUploadSession()
+	chunksReady, vErr, err := u.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+
 	mergedIndexes, err := oyster_utils.MergeIndexes(alphaIndexes, betaIndexes, sectorSize, numChunks)
 
 	suite.Nil(err)

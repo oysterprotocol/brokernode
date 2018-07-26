@@ -71,13 +71,24 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 		TreasureStatus: models.TreasureInDataMapComplete,
 	}
 
-	uploadSession1.StartUploadSession()
-	uploadSession2.StartUploadSession()
-	uploadSession3.StartUploadSession()
-	uploadSession4.StartUploadSession()
+	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
+
+	chunksReady, _, err = uploadSession2.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
+
+	chunksReady, _, err = uploadSession3.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
+
+	chunksReady, _, err = uploadSession4.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
 
 	// set uploadSession4 to be the oldest
-	err := suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-20*time.Second), "abcdeff4").All(&[]models.UploadSession{})
 	suite.Nil(err)
 
@@ -333,9 +344,12 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 		Type:          models.SessionTypeBeta,
 	}
 
-	uploadSession.StartUploadSession()
+	chunksReady, _, err := uploadSession.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
+
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 
@@ -387,9 +401,12 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 		Type:          models.SessionTypeAlpha,
 	}
 
-	uploadSession.StartUploadSession()
+	chunksReady, _, err := uploadSession.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+	suite.Nil(err)
+
 	dataMaps := []models.DataMap{}
-	err := suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
+	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
 	suite.Nil(err)
 	suite.Equal(numChunks+1, len(dataMaps))
 

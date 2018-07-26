@@ -449,6 +449,43 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 	}
 }
 
+/*ProcessAndStoreChunkData process the request chunks and store the messages into badger. Public for unit test.*/
+func ProcessAndStoreChunkData_new(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
+	// the keys in this chunks map have already transformed indexes
+	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
+
+	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
+	for key, chunk := range chunksMap {
+
+		if services.IsKvStoreEnabled() {
+			batchSetKvMap[key] = chunk.Data
+		}
+	}
+
+	if services.IsKvStoreEnabled() {
+		services.BatchSet(&batchSetKvMap)
+	}
+}
+
+// convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.
+// Return minChunkId and maxChunkId.
+func convertToBadgerKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) map[string]chunkReq {
+	chunksMap := make(map[string]chunkReq)
+
+	for _, chunk := range chunks {
+		var chunkIdx int
+		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+			chunkIdx = chunk.Idx
+		} else {
+			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
+		}
+
+		key := oyster_utils.GenerateMsgID("", genesisHash, chunkIdx)
+		chunksMap[key] = chunk
+	}
+	return chunksMap
+}
+
 // convertToSQLKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
 func convertToSQLKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
 	chunksMap := make(map[string]chunkReq)
