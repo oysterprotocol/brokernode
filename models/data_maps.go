@@ -39,6 +39,8 @@ const (
 	Error = -1
 )
 
+/*DataMapsTimeToLive will cause _data_maps
+message data to be garbage collected after two days.*/
 const DataMapsTimeToLive = 2 * 24 * time.Hour
 
 const (
