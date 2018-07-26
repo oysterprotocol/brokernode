@@ -30,7 +30,7 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err := uploadSession1.StartUploadSession()
+	_, vErr, err := uploadSession1.StartSessionAndWaitForChunks(500)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
@@ -44,7 +44,7 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err = uploadSession2.StartUploadSession()
+	_, vErr, err = uploadSession2.StartSessionAndWaitForChunks(500)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
@@ -58,7 +58,7 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err = uploadSession3.StartUploadSession()
+	_, vErr, err = uploadSession3.StartSessionAndWaitForChunks(500)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
@@ -72,7 +72,7 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	vErr, err = uploadSession4.StartUploadSession()
+	_, vErr, err = uploadSession4.StartSessionAndWaitForChunks(500)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 

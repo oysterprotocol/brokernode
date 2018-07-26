@@ -236,7 +236,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
 	}
-	uploadSession1.StartUploadSession()
+	uploadSession1.StartSessionAndWaitForChunks(500)
 	session := models.UploadSession{}
 	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
@@ -274,7 +274,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
 	}
-	uploadSession1.StartUploadSession()
+	uploadSession1.StartSessionAndWaitForChunks(500)
 	session := models.UploadSession{}
 	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
@@ -314,7 +314,7 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
 	}
-	uploadSession1.StartUploadSession()
+	uploadSession1.StartSessionAndWaitForChunks(500)
 	session := models.UploadSession{}
 	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&session)
 	suite.Nil(err)
@@ -367,7 +367,8 @@ func (suite *ModelSuite) Test_ChunkEncryptAndDecryptEthKey() {
 		ETHPrivateKey:        hex.EncodeToString([]byte("SOME_PRIVATE_KEY")),
 	}
 
-	_, err := u.StartUploadSession()
+	chunksReady, _, err := u.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
 
 	dataMap := models.DataMap{}
 	err = suite.DB.RawQuery("SELECT * FROM data_maps where genesis_hash = ?", u.GenesisHash).First(&dataMap)

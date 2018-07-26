@@ -51,7 +51,7 @@ func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
 		return nil, err
 	}
 
-	cols := columns.ColumnsForStructWithAlias(vPtr, model.TableName(), model.As)
+	cols := columns.ForStructWithAlias(vPtr, model.TableName(), model.As)
 
 	f := make(map[string]string)
 

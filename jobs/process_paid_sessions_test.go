@@ -46,7 +46,9 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
-	uploadSession1.StartUploadSession()
+	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+
 	mergedIndexes := []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
 	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
 
@@ -64,7 +66,9 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}
 
-	uploadSession2.StartUploadSession()
+	chunksReady, _, err = uploadSession2.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+
 	mergedIndexes = []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
 	privateKeys = []string{"0000000001", "0000000002", "0000000003"}
 
@@ -73,7 +77,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// verify that we have successfully created all the data maps
 	paidButUnburied := []models.DataMap{}
-	err := suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
+	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
 	suite.Nil(err)
 
 	paidAndBuried := []models.DataMap{}
@@ -169,7 +173,9 @@ func (suite *JobsSuite) Test_EncryptKeysInTreasureIdxMaps() {
 		TreasureStatus: models.TreasureGeneratingKeys,
 	}
 
-	uploadSession1.StartUploadSession()
+	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
+	suite.True(chunksReady)
+
 	mergedIndexes := []int{
 		5,
 		78,
