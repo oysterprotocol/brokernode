@@ -19,22 +19,22 @@ type PrometheusCollector struct {
 func newPrometheusCollector() *PrometheusCollector {
 	return &PrometheusCollector{
 		badgerNumReads: prometheus.NewDesc("badger_disk_reads_total",
-			"", nil, nil,
+			"Show Badger disk read", nil, nil,
 		),
 		badgerNumWrites: prometheus.NewDesc("badger_disk_writes_total",
-			"", nil, nil,
+			"Show Badger disk writes", nil, nil,
 		),
 		badgerNumBytesRead: prometheus.NewDesc("badger_read_bytes",
-			"", nil, nil,
+			"Show Badger read bytes", nil, nil,
 		),
 		badgerNumBytesWritten: prometheus.NewDesc("badger_written_bytes",
-			"", nil, nil,
+			"Show Badger written bytes", nil, nil,
 		),
 		badgerNumGet: prometheus.NewDesc("badger_gets_total",
-			"", nil, nil,
+			"Show Badger GET operation", nil, nil,
 		),
 		badgerNumPut: prometheus.NewDesc("badger_puts_total",
-			"", nil, nil,
+			"Show Badger PUT Operation", nil, nil,
 		),
 	}
 }
