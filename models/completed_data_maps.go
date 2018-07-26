@@ -29,6 +29,8 @@ type CompletedDataMap struct {
 	Address        string    `json:"address" db:"address"`
 }
 
+const CompletedDataMapsTimeToLive = 7 * 24 * time.Hour
+
 func init() {
 }
 

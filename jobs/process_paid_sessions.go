@@ -87,7 +87,7 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			return err
 		}
 		if services.IsKvStoreEnabled() {
-			services.BatchSet(&services.KVPairs{treasureChunk.MsgID: message})
+			services.BatchSet(&services.KVPairs{treasureChunk.MsgID: message}, models.DataMapsTimeToLive)
 		} else {
 			treasureChunk.Message = message
 		}

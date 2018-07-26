@@ -39,6 +39,8 @@ const (
 	Error = -1
 )
 
+const DataMapsTimeToLive = 2 * 24 * time.Hour
+
 const (
 	// Default value before adding msg_status column.
 	MsgStatusUnmigrated int = iota

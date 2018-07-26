@@ -398,7 +398,7 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 			batchSetKvMap[key] = chunk.Data
 		}
 
-		services.BatchSet(&batchSetKvMap)
+		services.BatchSet(&batchSetKvMap, models.DataMapsTimeToLive)
 	}
 }
 

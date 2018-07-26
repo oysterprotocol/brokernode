@@ -2,6 +2,7 @@ package models
 
 import (
 	"log"
+	"time"
 
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/pop"
@@ -11,6 +12,8 @@ import (
 // DB is a connection to your database to be used
 // throughout your application.
 var DB *pop.Connection
+
+const TestValueTimeToLive = 3 * time.Minute
 
 func init() {
 	var err error

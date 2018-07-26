@@ -173,7 +173,7 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 	}
 
 	if services.IsKvStoreEnabled() {
-		services.BatchSet(&messagsKvPairs)
+		services.BatchSet(&messagsKvPairs, models.CompletedDataMapsTimeToLive)
 	}
 	return nil
 }
