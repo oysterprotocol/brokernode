@@ -81,7 +81,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: 24 * time.Hour})
 
 	oysterWorkerPerformIn(updateMsgStatusHandler,
-		worker.Args{Duration: 5 * time.Second})
+		worker.Args{Duration: 15 * time.Second})
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
