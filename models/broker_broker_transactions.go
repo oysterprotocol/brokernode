@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"errors"
 	"math/big"
 	"time"
 
@@ -183,7 +182,7 @@ func NewBrokerBrokerTransaction(session *UploadSession) bool {
 
 	vErr, err := DB.ValidateAndCreate(&brokerTx)
 	oyster_utils.LogIfError(err, nil)
-	oyster_utils.LogIfError(errors.New(vErr.Error()), nil)
+	oyster_utils.LogIfValidationError("BrokerBrokerTransaction validation failed", vErr, nil)
 
 	return err == nil && len(vErr.Errors) == 0
 }
