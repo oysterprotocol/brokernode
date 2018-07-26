@@ -106,6 +106,8 @@ func init() {
 		HistogramUpdateTimeOutDataMaps:                 histogramUpdateTimeOutDataMaps,
 		HistogramVerifyDataMaps:                        histogramVerifyDataMaps,
 	}
+
+	prometheus.MustRegister(newPrometheusCollector())
 }
 
 // Utility to return duration
