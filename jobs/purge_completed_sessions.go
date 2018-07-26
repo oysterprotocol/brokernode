@@ -117,6 +117,9 @@ func getAllCompletedGenesisHashes() ([]string, error) {
 func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 	index := 0
 	messagsKvPairs := services.KVPairs{}
+
+	// TODO this is awful, do something different
+
 	for _, dataMap := range dataMaps {
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,

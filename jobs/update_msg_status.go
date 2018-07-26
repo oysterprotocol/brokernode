@@ -5,6 +5,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"sort"
 )
 
 /*MsgIdChunkMap is a map of badger message Ids to their corresponding chunks*/
@@ -19,7 +20,7 @@ func UpdateMsgStatus(PrometheusWrapper services.PrometheusService) {
 
 	activeSessions := GetActiveSessions()
 	for _, session := range activeSessions {
-		msgIdChunkMap := GetDataMapsWithToCheckForMessages(session)
+		msgIdChunkMap := GetDataMapsToCheckForMessages(session)
 		keyValuePairs, err := CheckBadgerForKVPairs(msgIdChunkMap)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -40,24 +41,29 @@ func GetActiveSessions() []models.UploadSession {
 	return activeSessions
 }
 
-func GetDataMapsWithToCheckForMessages(session models.UploadSession) MsgIdChunkMap {
+func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIdChunkMap {
 
 	dms := []models.DataMap{}
+	var err error
+
 	treasureIndexes, _ := session.GetTreasureIndexes()
-	treasureIndexInterface := make([]interface{}, len(treasureIndexes))
-	for i, treasureIdx := range treasureIndexes {
-		treasureIndexInterface[i] = treasureIdx
+
+	if len(treasureIndexes) >= 0 {
+		sort.Ints(treasureIndexes)
+		dms, err = getDataMapsWithoutTreasures(session, treasureIndexes)
+
+	} else {
+		err = models.DB.Where(
+			"genesis_hash = ? AND msg_status = ?",
+			session.GenesisHash,
+			models.MsgStatusNotUploaded).All(&dms)
 	}
-	err := models.DB.Where(
-		"chunk_idx NOT IN (?)", treasureIndexInterface...).Where(
-		"genesis_hash = ? AND msg_status = ?",
-		session.GenesisHash,
-		models.MsgStatusNotUploaded).All(&dms)
 
 	oyster_utils.LogIfError(err, nil)
 	if err != nil || len(dms) <= 0 {
 		return MsgIdChunkMap{}
 	}
+
 	return MakeMsgIdChunkMap(dms)
 }
 
@@ -71,6 +77,10 @@ func MakeMsgIdChunkMap(chunks []models.DataMap) MsgIdChunkMap {
 }
 
 func CheckBadgerForKVPairs(msgIdChunkMap MsgIdChunkMap) (kvs *services.KVPairs, err error) {
+	if len(msgIdChunkMap) <= 0 {
+		return &services.KVPairs{}, nil
+	}
+
 	var keys services.KVKeys
 
 	for key := range msgIdChunkMap {
@@ -96,5 +106,55 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIdChunkMap MsgIdCh
 	}
 
 	err := models.BatchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
+
 	oyster_utils.LogIfError(err, nil)
+}
+
+func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes []int) ([]models.DataMap, error) {
+
+	dms := []models.DataMap{}
+	tempDataMaps := []models.DataMap{}
+
+	err := models.DB.RawQuery("SELECT * FROM data_maps WHERE "+
+		"chunk_idx < ? AND genesis_hash = ? AND msg_status = ?",
+		treasureIndexes[0],
+		session.GenesisHash,
+		models.MsgStatusNotUploaded).All(&tempDataMaps)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return []models.DataMap{}, err
+	}
+	dms = append(dms, tempDataMaps...)
+
+	if len(treasureIndexes) > 1 {
+		for i := 0; i < len(treasureIndexes)-1; i++ {
+			tempDataMaps = []models.DataMap{}
+
+			err = models.DB.RawQuery("SELECT * FROM data_maps WHERE "+
+				"chunk_idx > ? AND chunk_idx < ? AND genesis_hash = ? AND msg_status = ?",
+				treasureIndexes[i],
+				treasureIndexes[i+1],
+				session.GenesisHash,
+				models.MsgStatusNotUploaded).All(&tempDataMaps)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				return []models.DataMap{}, err
+			}
+			dms = append(dms, tempDataMaps...)
+		}
+	}
+
+	tempDataMaps = []models.DataMap{}
+	err = models.DB.RawQuery("SELECT * FROM data_maps WHERE "+
+		"chunk_idx > ? AND genesis_hash = ? AND msg_status = ?",
+		treasureIndexes[len(treasureIndexes)-1],
+		session.GenesisHash,
+		models.MsgStatusNotUploaded).All(&tempDataMaps)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return []models.DataMap{}, err
+	}
+	dms = append(dms, tempDataMaps...)
+
+	return dms, nil
 }
