@@ -68,8 +68,6 @@ type paymentStatusCreateRes struct {
 	PaymentStatus string `json:"paymentStatus"`
 }
 
-const SQL_BATCH_SIZE = 10
-
 var NumChunksLimit = -1 //unlimited
 
 func init() {

@@ -415,7 +415,7 @@ func insertsIntoDataMapsTable(columnsName string, values string, valueSize int) 
 	return err
 }
 
-/*batchUpsertDataMaps update data_maps table to override the values of column:
+/*BatchUpsertDataMaps update data_maps table to override the values of column:
 message, status, updated_at, msg_status.*/
 func BatchUpsertDataMaps(serializedDataMapValue []string, serializedColumnNames string) error {
 	numOfBatchRequest := int(math.Ceil(float64(len(serializedDataMapValue)) / float64(SQL_BATCH_SIZE)))
