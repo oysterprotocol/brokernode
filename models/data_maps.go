@@ -50,6 +50,7 @@ const (
 	MsgStatusUploadedNoNeedEncode
 )
 
+/*SQL_BATCH_SIZE is the maximum number of entries to update in sql at once*/
 const SQL_BATCH_SIZE = 10
 
 type DataMap struct {

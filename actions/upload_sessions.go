@@ -385,19 +385,21 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	return c.Render(200, r.JSON(res))
 }
 
+/*ProcessAndStoreChunkData receives the genesis hash, chunk idx, and message from the client
+and adds it to the badger database*/
 func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
 	// the keys in this chunks map have already transformed indexes
 	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
 
-	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-	for key, chunk := range chunksMap {
+	// TODO: We should totally deprecate storing the message in sql and remove
+	// all of these IsKvStoreEnabled checks
+	if services.IsKvStoreEnabled() {
+		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
+		for key, chunk := range chunksMap {
 
-		if services.IsKvStoreEnabled() {
 			batchSetKvMap[key] = chunk.Data
 		}
-	}
 
-	if services.IsKvStoreEnabled() {
 		services.BatchSet(&batchSetKvMap)
 	}
 }

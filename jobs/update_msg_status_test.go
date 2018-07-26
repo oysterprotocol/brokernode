@@ -65,9 +65,9 @@ func (suite *JobsSuite) Test_GetDataMapsToCheckForMessages_no_rows() {
 	suite.Nil(err)
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
+	msgIDChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
 
-	suite.Equal(0, len(msgIdChunkMap))
+	suite.Equal(0, len(msgIDChunkMap))
 }
 
 func (suite *JobsSuite) Test_GetDataMapsToCheckForMessages_skip_treasure_chunks() {
@@ -99,12 +99,12 @@ func (suite *JobsSuite) Test_GetDataMapsToCheckForMessages_skip_treasure_chunks(
 	suite.Nil(err)
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
+	msgIDChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
 
 	// check that treasure chunks have been omitted
-	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIdChunkMap))
+	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIDChunkMap))
 
-	for _, value := range msgIdChunkMap {
+	for _, value := range msgIDChunkMap {
 		suite.NotEqual(3, value.ChunkIdx)
 		suite.NotEqual(12, value.ChunkIdx)
 		suite.NotEqual(24, value.ChunkIdx)
@@ -153,10 +153,10 @@ func (suite *JobsSuite) Test_GetDataMapsToCheckForMessages_match_session_genesis
 	u2.EncryptTreasureIdxMapKeys()
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
+	msgIDChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
 
 	// check that we only have one session's worth of data maps
-	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIdChunkMap))
+	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIDChunkMap))
 
 }
 
@@ -189,8 +189,8 @@ func (suite *JobsSuite) Test_CheckBadgerForKVPairs_no_kv_pairs() {
 	suite.Nil(err)
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
-	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIdChunkMap)
+	msgIDChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
+	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)
 	suite.Nil(err)
 
 	// check that there are no K:V pairs
@@ -226,12 +226,12 @@ func (suite *JobsSuite) Test_CheckBadgerForKVPairs_some_kv_pairs() {
 	suite.Nil(err)
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
+	msgIDChunkMap := jobs.GetDataMapsToCheckForMessages(sessions[0])
 
 	// Give message data to some of the chunks
 	countOfChunksWithMessages := 0
 	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-	for _, chunk := range msgIdChunkMap {
+	for _, chunk := range msgIDChunkMap {
 		if chunk.ChunkIdx < 15 {
 			countOfChunksWithMessages++
 			batchSetKvMap[chunk.MsgID] = "someData"
@@ -239,7 +239,7 @@ func (suite *JobsSuite) Test_CheckBadgerForKVPairs_some_kv_pairs() {
 	}
 	services.BatchSet(&batchSetKvMap)
 
-	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIdChunkMap)
+	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)
 	suite.Nil(err)
 
 	// check that there are an expected amount of K:V pairs
@@ -276,16 +276,16 @@ func (suite *JobsSuite) Test_UpdateMsgStatusForKVPairsFound() {
 	suite.Nil(err)
 
 	sessions := jobs.GetActiveSessions()
-	msgIdChunkMap := make(map[string]models.DataMap)
-	msgIdChunkMap = jobs.GetDataMapsToCheckForMessages(sessions[0])
+	msgIDChunkMap := make(map[string]models.DataMap)
+	msgIDChunkMap = jobs.GetDataMapsToCheckForMessages(sessions[0])
 	// check that treasure chunks have been omitted
-	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIdChunkMap))
+	suite.Equal(numChunks-len(mergedIndexes)+1, len(msgIDChunkMap))
 
 	// Give message data to some of the chunks
 	countOfChunksWithMessages := 0
 	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-	for key := range msgIdChunkMap {
-		if msgIdChunkMap[key].ChunkIdx < 15 {
+	for key := range msgIDChunkMap {
+		if msgIDChunkMap[key].ChunkIdx < 15 {
 			countOfChunksWithMessages++
 			batchSetKvMap[key] = oyster_utils.RandSeq(5, []rune("abcdefghijklmnopqrstuvwxyz"))
 		}
@@ -294,9 +294,9 @@ func (suite *JobsSuite) Test_UpdateMsgStatusForKVPairsFound() {
 	err = services.BatchSet(&batchSetKvMap)
 	suite.Nil(err)
 
-	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIdChunkMap)
+	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)
 	suite.Nil(err)
-	jobs.UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIdChunkMap)
+	jobs.UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIDChunkMap)
 
 	// verify that the data_maps that we added messages for now have their
 	// msg_status updated

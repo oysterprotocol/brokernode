@@ -8,8 +8,8 @@ import (
 	"sort"
 )
 
-/*MsgIdChunkMap is a map of badger message Ids to their corresponding chunks*/
-type MsgIdChunkMap map[string]models.DataMap
+/*MsgIDChunkMap is a map of badger message Ids to their corresponding chunks*/
+type MsgIDChunkMap map[string]models.DataMap
 
 /*UpdateMsgStatus checks badger to verify that message data for particular chunks has arrived, and if so,
 updates the msg_status field of those chunks*/
@@ -20,16 +20,17 @@ func UpdateMsgStatus(PrometheusWrapper services.PrometheusService) {
 
 	activeSessions := GetActiveSessions()
 	for _, session := range activeSessions {
-		msgIdChunkMap := GetDataMapsToCheckForMessages(session)
-		keyValuePairs, err := CheckBadgerForKVPairs(msgIdChunkMap)
+		msgIDChunkMap := GetDataMapsToCheckForMessages(session)
+		keyValuePairs, err := CheckBadgerForKVPairs(msgIDChunkMap)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
-		UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIdChunkMap)
+		UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIDChunkMap)
 	}
 }
 
+/*GetActiveSessions gets all the active sessions in order of creation*/
 func GetActiveSessions() []models.UploadSession {
 	activeSessions := []models.UploadSession{}
 	err := models.DB.RawQuery("SELECT * FROM upload_sessions " +
@@ -41,7 +42,9 @@ func GetActiveSessions() []models.UploadSession {
 	return activeSessions
 }
 
-func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIdChunkMap {
+/*GetDataMapsToCheckForMessages gets all the data maps that have a status of MsgStatusNotUploaded
+(excluding treasure chunks) so we can check if the message data is in badger*/
+func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIDChunkMap {
 
 	dms := []models.DataMap{}
 	var err error
@@ -61,36 +64,39 @@ func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIdChunkMap {
 
 	oyster_utils.LogIfError(err, nil)
 	if err != nil || len(dms) <= 0 {
-		return MsgIdChunkMap{}
+		return MsgIDChunkMap{}
 	}
 
-	return MakeMsgIdChunkMap(dms)
+	return MakeMsgIDChunkMap(dms)
 }
 
-func MakeMsgIdChunkMap(chunks []models.DataMap) MsgIdChunkMap {
-	msgIdChunkMap := make(map[string]models.DataMap)
+/*MakeMsgIDChunkMap makes a map with MsgIDs as the keys and chunks as the values*/
+func MakeMsgIDChunkMap(chunks []models.DataMap) MsgIDChunkMap {
+	msgIDChunkMap := make(map[string]models.DataMap)
 
 	for _, chunk := range chunks {
-		msgIdChunkMap[chunk.MsgID] = chunk
+		msgIDChunkMap[chunk.MsgID] = chunk
 	}
-	return msgIdChunkMap
+	return msgIDChunkMap
 }
 
-func CheckBadgerForKVPairs(msgIdChunkMap MsgIdChunkMap) (kvs *services.KVPairs, err error) {
-	if len(msgIdChunkMap) <= 0 {
+/*CheckBadgerForKVPairs checks badger for K:V pairs for the data_map rows*/
+func CheckBadgerForKVPairs(msgIDChunkMap MsgIDChunkMap) (kvs *services.KVPairs, err error) {
+	if len(msgIDChunkMap) <= 0 {
 		return &services.KVPairs{}, nil
 	}
 
 	var keys services.KVKeys
 
-	for key := range msgIdChunkMap {
+	for key := range msgIDChunkMap {
 		keys = append(keys, key)
 	}
 
 	return services.BatchGet(&keys)
 }
 
-func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIdChunkMap MsgIdChunkMap) {
+/*UpdateMsgStatusForKVPairsFound will update the msg_status of data_maps that we found message data for*/
+func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDChunkMap) {
 	if len(*kvs) <= 0 {
 		return
 	}
@@ -99,7 +105,7 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIdChunkMap MsgIdCh
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 	for key := range *kvs {
-		chunk := msgIdChunkMap[key]
+		chunk := msgIDChunkMap[key]
 		chunk.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
 		readyChunks = append(readyChunks, chunk)
 		updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(chunk)))

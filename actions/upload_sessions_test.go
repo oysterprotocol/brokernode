@@ -284,9 +284,9 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
 	suite.Equal(2, len(dms))
 
 	for _, dm := range dms {
-		suite.Equal(models.MsgStatusUploadedHaveNotEncoded, dm.MsgStatus)
 		suite.Equal("", dm.Message)
 
+		dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
 		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
 		suite.Equal(string(message), services.GetMessageFromDataMap(dm))
 	}
@@ -324,12 +324,14 @@ func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
 		isProccessed := dm.ChunkIdx == 3
 
 		if isProccessed {
-			suite.Equal(models.MsgStatusUploadedHaveNotEncoded, dm.MsgStatus)
+			messageValue := services.GetMessageFromDataMap(dm)
+			suite.Equal("3", messageValue)
 		} else {
 			suite.Equal(models.MsgStatusNotUploaded, dm.MsgStatus)
 		}
 
 		if isProccessed {
+			dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
 			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
 			suite.Equal(string(message), services.GetMessageFromDataMap(dm))
 		} else {
