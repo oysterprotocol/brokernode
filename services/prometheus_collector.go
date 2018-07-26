@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// PrometheusCollector collects additional metrics via its pulling fashion.
 type PrometheusCollector struct {
 	badgerNumReads        *prometheus.Desc
 	badgerNumWrites       *prometheus.Desc
@@ -39,6 +40,7 @@ func newPrometheusCollector() *PrometheusCollector {
 	}
 }
 
+// Describe implements Prometheus Collector interface.
 func (collector *PrometheusCollector) Describe(ch chan<- *prometheus.Desc) {
 	//Update this section with the each metric you create for a given collector
 	ch <- collector.badgerNumReads
@@ -49,6 +51,7 @@ func (collector *PrometheusCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- collector.badgerNumPut
 }
 
+// Collect implements Prometheus Collector interface.
 func (collector *PrometheusCollector) Collect(ch chan<- prometheus.Metric) {
 	//Write latest value for each metric in the prometheus metric channel.
 	//Note that you can pass CounterValue, GaugeValue, or UntypedValue types here.
