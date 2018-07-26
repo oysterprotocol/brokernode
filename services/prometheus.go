@@ -43,6 +43,7 @@ type PrometheusService struct {
 	HistogramCheckBetaPayments                     *prometheus.HistogramVec
 	HistogramFlushOldWebNodes                      *prometheus.HistogramVec
 	HistogramProcessPaidSessions                   *prometheus.HistogramVec
+	HistogramUpdateMsgStatus                       *prometheus.HistogramVec
 	HistogramBuryTreasureAddresses                 *prometheus.HistogramVec
 	HistogramProcessUnassignedChunks               *prometheus.HistogramVec
 	HistogramPurgeCompletedSessions                *prometheus.HistogramVec
@@ -69,6 +70,7 @@ func init() {
 	histogramCheckBetaPayments := prepareHistogram("check_beta_payments_seconds", "HistogramCheckBetaPaymentsSeconds", "code")
 	histogramFlushOldWebNodes := prepareHistogram("flush_old_web_nodes_seconds", "HistogramFlushOldWebNodes", "code")
 	histogramProcessPaidSessions := prepareHistogram("process_paid_sessions_seconds", "HistogramProcessPaidSessions", "code")
+	histogramUpdateMsgStatus := prepareHistogram("update_msg_status_seconds", "HistogramUpdateMsgStatus", "code")
 	histogramBuryTreasureAddresses := prepareHistogram("bury_treasure_addresses_seconds", "HistogramBuryTreasureAddresses", "code")
 	histogramProcessUnassignedChunks := prepareHistogram("process_unassigned_chunks_seconds", "HistogramProcessUnassignedChunks", "code")
 	histogramPurgeCompletedSessions := prepareHistogram("purge_completed_sessions_seconds", "HistogramPurgeCompletedSessions", "code")
@@ -98,6 +100,7 @@ func init() {
 		HistogramCheckBetaPayments:                     histogramCheckBetaPayments,
 		HistogramFlushOldWebNodes:                      histogramFlushOldWebNodes,
 		HistogramProcessPaidSessions:                   histogramProcessPaidSessions,
+		HistogramUpdateMsgStatus:                       histogramUpdateMsgStatus,
 		HistogramBuryTreasureAddresses:                 histogramBuryTreasureAddresses,
 		HistogramProcessUnassignedChunks:               histogramProcessUnassignedChunks,
 		HistogramPurgeCompletedSessions:                histogramPurgeCompletedSessions,
