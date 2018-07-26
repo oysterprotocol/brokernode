@@ -14,6 +14,9 @@ type MsgIdChunkMap map[string]models.DataMap
 updates the msg_status field of those chunks*/
 func UpdateMsgStatus(PrometheusWrapper services.PrometheusService) {
 
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUpdateMsgStatus, start)
+
 	activeSessions := GetActiveSessions()
 	for _, session := range activeSessions {
 		msgIdChunkMap := GetDataMapsWithToCheckForMessages(session)
@@ -47,7 +50,9 @@ func GetDataMapsWithToCheckForMessages(session models.UploadSession) MsgIdChunkM
 	}
 	err := models.DB.Where(
 		"chunk_idx NOT IN (?)", treasureIndexInterface...).Where(
-		"genesis_hash = ?", session.GenesisHash).All(&dms)
+		"genesis_hash = ? AND msg_status = ?",
+		session.GenesisHash,
+		models.MsgStatusNotUploaded).All(&dms)
 
 	oyster_utils.LogIfError(err, nil)
 	if err != nil || len(dms) <= 0 {
