@@ -90,7 +90,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// verify that the "Message" field for every chunk in paidButUnburied is ""
 	for _, dMap := range paidButUnburied {
 		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}
@@ -102,7 +102,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	for _, dMap := range paidAndBuried {
 		suite.NotEqual(models.Unassigned, dMap.Status)
 		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}))
+			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
 		} else {
 			dMap.Message = "NOTEMPTY"
 		}

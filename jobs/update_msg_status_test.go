@@ -237,7 +237,7 @@ func (suite *JobsSuite) Test_CheckBadgerForKVPairs_some_kv_pairs() {
 			batchSetKvMap[chunk.MsgID] = "someData"
 		}
 	}
-	services.BatchSet(&batchSetKvMap)
+	services.BatchSet(&batchSetKvMap, models.TestValueTimeToLive)
 
 	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)
 	suite.Nil(err)
@@ -291,7 +291,7 @@ func (suite *JobsSuite) Test_UpdateMsgStatusForKVPairsFound() {
 		}
 	}
 
-	err = services.BatchSet(&batchSetKvMap)
+	err = services.BatchSet(&batchSetKvMap, models.TestValueTimeToLive)
 	suite.Nil(err)
 
 	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)

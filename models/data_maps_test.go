@@ -246,7 +246,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		} else {
 			dm.Message = "NOTEMPETY"
 		}
@@ -284,7 +284,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		} else {
 			dm.Message = "NOTEMPETY"
 		}
@@ -324,7 +324,7 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 	suite.Nil(err)
 	for _, dm := range dataMaps {
 		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}))
+			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		} else {
 			dm.Message = "NOTEMPETY"
 		}

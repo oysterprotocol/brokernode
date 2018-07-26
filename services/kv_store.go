@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"time"
 
 	"github.com/dgraph-io/badger"
 	"github.com/oysterprotocol/brokernode/models"
@@ -161,7 +162,7 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 }
 
 /*BatchSet updates a set of KVPairs. Return error if any fails.*/
-func BatchSet(kvs *KVPairs) error {
+func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 	if badgerDB == nil {
 		return dbNoInitError
 	}
@@ -174,7 +175,7 @@ func BatchSet(kvs *KVPairs) error {
 			break
 		}
 
-		e := txn.Set([]byte(k), []byte(v))
+		e := txn.SetWithTTL([]byte(k), []byte(v), ttl)
 		if e == nil {
 			continue
 		}
@@ -185,7 +186,7 @@ func BatchSet(kvs *KVPairs) error {
 				e = commitErr
 			} else {
 				txn = badgerDB.NewTransaction(true)
-				e = txn.Set([]byte(k), []byte(v))
+				e = txn.SetWithTTL([]byte(k), []byte(v), ttl)
 			}
 		}
 

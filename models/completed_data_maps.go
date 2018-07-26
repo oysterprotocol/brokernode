@@ -29,6 +29,12 @@ type CompletedDataMap struct {
 	Address        string    `json:"address" db:"address"`
 }
 
+/*CompletedDataMapsTimeToLive will cause completed_data_maps
+message data to be garbage collected after two weeks.  This can
+be increased but for now it will give us ample time to make S3
+backups.*/
+const CompletedDataMapsTimeToLive = 7 * 24 * time.Hour
+
 func init() {
 }
 
