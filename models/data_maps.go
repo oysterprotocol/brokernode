@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 	"time"
@@ -48,6 +49,8 @@ const (
 	// When client does not need to encode upload data chunk.
 	MsgStatusUploadedNoNeedEncode
 )
+
+const SQL_BATCH_SIZE = 10
 
 type DataMap struct {
 	ID             uuid.UUID `json:"id" db:"id"`
@@ -409,6 +412,39 @@ func insertsIntoDataMapsTable(columnsName string, values string, valueSize int) 
 	}
 	oyster_utils.LogIfError(err, map[string]interface{}{"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY, "NumOfRecord": valueSize})
 	return err
+}
+
+/*batchUpsertDataMaps update data_maps table to override the values of column:
+message, status, updated_at, msg_status.*/
+func BatchUpsertDataMaps(serializedDataMapValue []string, serializedColumnNames string) error {
+	numOfBatchRequest := int(math.Ceil(float64(len(serializedDataMapValue)) / float64(SQL_BATCH_SIZE)))
+
+	// Batch Update data_maps table.
+	remainder := len(serializedDataMapValue)
+	for i := 0; i < numOfBatchRequest; i++ {
+		lower := i * SQL_BATCH_SIZE
+		upper := i*SQL_BATCH_SIZE + int(math.Min(float64(remainder), SQL_BATCH_SIZE))
+
+		sectionUpdatedDms := serializedDataMapValue[lower:upper]
+
+		// Do an insert operation and dup by primary key.
+		rawQuery := fmt.Sprintf(`INSERT INTO data_maps (%s) VALUES %s ON DUPLICATE KEY 
+		 	UPDATE message = VALUES(message), status = VALUES(status), updated_at = VALUES(updated_at), msg_status = VALUES(msg_status)`,
+			serializedColumnNames, strings.Join(sectionUpdatedDms, ","))
+
+		err := DB.RawQuery(rawQuery).All(&[]DataMap{})
+		for err != nil {
+			time.Sleep(300 * time.Millisecond)
+			err = DB.RawQuery(rawQuery).All(&[]DataMap{})
+		}
+
+		remainder = remainder - SQL_BATCH_SIZE
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+	}
+	return nil
 }
 
 // GetDataMapByGenesisHashAndChunkIdx lets you pass in genesis hash and chunk idx as
