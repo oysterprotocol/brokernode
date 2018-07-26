@@ -10,7 +10,7 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/x/sessions"
 	"github.com/oysterprotocol/brokernode/jobs"
-	//"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
@@ -66,7 +66,7 @@ func App() *buffalo.App {
 		// Wraps each request in a transaction.
 		//  c.Value("tx").(*pop.PopTransaction)
 		// Remove to disable this.
-		//app.Use(middleware.PopTransaction(models.DB))
+		app.Use(middleware.PopTransaction(models.DB))
 
 		app.GET("/", HomeHandler)
 
