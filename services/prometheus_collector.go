@@ -40,7 +40,6 @@ func newPrometheusCollector() *PrometheusCollector {
 }
 
 func (collector *PrometheusCollector) Describe(ch chan<- *prometheus.Desc) {
-
 	//Update this section with the each metric you create for a given collector
 	ch <- collector.badgerNumReads
 	ch <- collector.badgerNumWrites
