@@ -51,7 +51,7 @@ func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIDChunkMap {
 
 	treasureIndexes, _ := session.GetTreasureIndexes()
 
-	if len(treasureIndexes) >= 0 {
+	if len(treasureIndexes) > 0 {
 		sort.Ints(treasureIndexes)
 		dms, err = getDataMapsWithoutTreasures(session, treasureIndexes)
 

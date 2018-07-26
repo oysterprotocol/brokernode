@@ -150,7 +150,7 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 
 		// Defaults to treasureBurying
 		if u.TreasureStatus == 0 {
-			u.TreasureStatus = TreasureInDataMapPending
+			u.TreasureStatus = TreasureGeneratingKeys
 		}
 	case oyster_utils.TestModeNoTreasure:
 		// Defaults to paymentStatusPaid
