@@ -42,7 +42,7 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 
 		err := DB.RawQuery(rawQuery).Exec()
 		retryCount := oyster_utils.MAX_NUMBER_OF_SQL_RETRY
-		for err != nil || retryCount > 0 {
+		for err != nil && retryCount > 0 {
 			time.Sleep(300 * time.Millisecond)
 			err = DB.RawQuery(rawQuery).Exec()
 			retryCount = retryCount - 1
