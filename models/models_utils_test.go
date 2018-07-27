@@ -1,6 +1,8 @@
 package models_test
 
 import (
+	"fmt"
+
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
@@ -12,7 +14,6 @@ func (suite *ModelSuite) Test_InsertToEmptyDataMap() {
 	for i := 0; i < 2; i++ {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
-			Hash:        i,
 			GenesisHash: "Test_InsertToEmptyDataMap",
 		}
 		dms = append(dms, dbOperation.GetNewInsertedValue(dm))
@@ -35,7 +36,7 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 	for i := 0; i < 2; i++ {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
-			Hash:        i,
+			Hash:        fmt.Sprintf("%d", i),
 			GenesisHash: "Test_UpdateDataMap",
 		}
 		dms = append(dms, dbOperation.GetNewInsertedValue(dm))
