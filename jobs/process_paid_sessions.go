@@ -121,8 +121,8 @@ func MarkBuriedMapsAsUnassigned() {
 		}
 
 		if len(pendingChunks) > 0 {
-			oyster_utils.LogToSegment("process_paid_sessions: mark_data_maps_as_ready", analytics.NewProperties().
-				Set("genesis_hash", readySession.GenesisHash))
+			//oyster_utils.LogToSegment("process_paid_sessions: mark_data_maps_as_ready", analytics.NewProperties().
+			//	Set("genesis_hash", readySession.GenesisHash))
 
 			err = readySession.BulkMarkDataMapsAsUnassigned()
 		}
