@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"

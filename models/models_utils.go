@@ -15,7 +15,7 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 
 	var updatedColumns []string
 	for _, v := range onConflictColumnsNames {
-		updatedColumns = append(updatedColumns, fmt.Sprintf("%s = VALUES(%s)", v))
+		updatedColumns = append(updatedColumns, fmt.Sprintf("%s = VALUES(%s)", v, v))
 	}
 	serializedUpdatedColumnName := strings.Join(updatedColumns, oyster_utils.COLUMNS_SEPARATOR)
 
