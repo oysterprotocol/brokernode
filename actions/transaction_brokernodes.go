@@ -46,6 +46,15 @@ type transactionBrokernodeUpdateRes struct {
 // Creates a transaction.
 
 func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
+
+	if os.Getenv("TANGLE_MAINTENANCE") == "true" {
+		return c.Render(403, r.JSON(map[string]string{"error": "This broker is undergoing tangle maintenance"}))
+	}
+
+	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
+		return c.Render(403, r.JSON(map[string]string{"error": "Deployment in progress.  Try again later"}))
+	}
+
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
 
