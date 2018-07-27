@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strconv"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
@@ -15,7 +16,6 @@ import (
 	"gopkg.in/segmentio/analytics-go.v3"
 
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -71,9 +71,7 @@ type paymentStatusCreateRes struct {
 var NumChunksLimit = -1 //unlimited
 
 func init() {
-	if v, err := strconv.Atoi(os.Getenv("NUM_CHUNKS_LIMIT")); err == nil {
-		NumChunksLimit = v
-	}
+
 }
 
 // Create creates an upload session.
@@ -84,6 +82,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		fmt.Println(err)
 		c.Error(400, err)
 		return err
+	}
+
+	if v, err := strconv.Atoi(os.Getenv("NUM_CHUNKS_LIMIT")); err == nil {
+		NumChunksLimit = v
 	}
 
 	start := PrometheusWrapper.TimeNow()

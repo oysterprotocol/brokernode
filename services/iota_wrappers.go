@@ -78,7 +78,7 @@ var (
 	mutex           = &sync.Mutex{}
 	seed            giota.Trytes
 	minDepth        = int64(1)
-	minWeightMag    = int64(9)
+	minWeightMag    = int64(1)
 	bestPow         giota.PowFunc
 	powName         string
 	Channel         = map[string]PowChannel{}
@@ -530,8 +530,10 @@ func makeTransactionObjects(transactionObjects []giota.Transaction) (transaction
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
 
+	// TODO delete this line when we figure out why uploads
+	// occasionally have the wrong chunk_idx for msg_id
 	return true
-	
+
 	message := GetMessageFromDataMap(chunkOnRecord)
 	if checkBranchAndTrunk == false &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {

@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"os"
 	"reflect"
 	"runtime"
 	"time"
@@ -115,7 +116,10 @@ func flushOldWebnodesHandler(args worker.Args) error {
 }
 
 func processUnassignedChunksHandler(args worker.Args) error {
-	ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
+
+	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
+		ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
+	}
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler, args)
 	return nil
@@ -129,7 +133,9 @@ func purgeCompletedSessionsHandler(args worker.Args) error {
 }
 
 func verifyDataMapsHandler(args worker.Args) error {
-	VerifyDataMaps(IotaWrapper, PrometheusWrapper)
+	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
+		VerifyDataMaps(IotaWrapper, PrometheusWrapper)
+	}
 
 	oysterWorkerPerformIn(verifyDataMapsHandler, args)
 	return nil
