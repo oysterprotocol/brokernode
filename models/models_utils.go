@@ -9,6 +9,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
+/*BatchUpsert updates a table and overwrite its current the values of column.*/
 func BatchUpsert(tableName string, serializeValues []string, serializedColumnNames string, onConflictColumnsNames []string) error {
 	numOfBatchRequest := int(math.Ceil(float64(len(serializeValues)) / float64(oyster_utils.SQL_BATCH_SIZE)))
 

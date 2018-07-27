@@ -36,7 +36,7 @@ const (
 	// The max number of retry if there is an error on SQL.
 	MAX_NUMBER_OF_SQL_RETRY = 3
 
-	//SQL_BATCH_SIZE is the maximum number of entries to update in sql at once
+	// SQL_BATCH_SIZE is the maximum number of entries to update in sql at once
 	SQL_BATCH_SIZE = 10
 )
 
