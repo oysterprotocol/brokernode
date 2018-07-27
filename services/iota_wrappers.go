@@ -530,6 +530,8 @@ func makeTransactionObjects(transactionObjects []giota.Transaction) (transaction
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
 
+	return true
+	
 	message := GetMessageFromDataMap(chunkOnRecord)
 	if checkBranchAndTrunk == false &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
