@@ -95,9 +95,9 @@ func CheckBadgerForKVPairs(msgIDChunkMap MsgIDChunkMap) (kvs *services.KVPairs, 
 }
 
 /*UpdateMsgStatusForKVPairsFound will update the msg_status of data_maps that we found message data for*/
-func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDChunkMap) {
+func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDChunkMap) error {
 	if len(*kvs) <= 0 {
-		return
+		return nil
 	}
 	readyChunks := []models.DataMap{}
 	var updatedDms []string
@@ -117,6 +117,7 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 		[]string{"message", "status", "updated_at", "msg_status"})
 
 	oyster_utils.LogIfError(err, nil)
+	return err
 }
 
 func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes []int) ([]models.DataMap, error) {

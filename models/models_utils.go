@@ -33,7 +33,7 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 		// Do an insert operation and dup by primary key.
 		var rawQuery string
 		values := strings.Join(upsertedValues, oyster_utils.COLUMNS_SEPARATOR)
-		if len(serializedColumnNames) > 0 {
+		if len(serializedUpdatedColumnName) > 0 {
 			rawQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s ON DUPLICATE KEY UPDATE %s`,
 				tableName, serializedColumnNames, values, serializedUpdatedColumnName)
 		} else {
