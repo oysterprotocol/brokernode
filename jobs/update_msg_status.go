@@ -108,10 +108,14 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 		chunk := msgIDChunkMap[key]
 		chunk.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
 		readyChunks = append(readyChunks, chunk)
-		updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(chunk)))
+		updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(chunk))
 	}
 
-	err := models.BatchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
+	err := models.BatchUpsert(
+		"data_maps",
+		updatedDms,
+		dbOperation.GetColumns(),
+		[]string{"message", "status", "updated_at", "msg_status"})
 
 	oyster_utils.LogIfError(err, nil)
 }

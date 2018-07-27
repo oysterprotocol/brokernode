@@ -2,16 +2,17 @@ package oyster_utils
 
 import (
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop"
-	"github.com/gobuffalo/pop/columns"
-	"github.com/gobuffalo/uuid"
-	"github.com/pkg/errors"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/getsentry/raven-go"
+	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/pop/columns"
+	"github.com/gobuffalo/uuid"
+	"github.com/pkg/errors"
 )
 
 /*SqlTimeFormat is used for time.Time.Format method */
@@ -34,6 +35,9 @@ const (
 
 	// The max number of retry if there is an error on SQL.
 	MAX_NUMBER_OF_SQL_RETRY = 3
+
+	//SQL_BATCH_SIZE is the maximum number of entries to update in sql at once
+	SQL_BATCH_SIZE = 10
 )
 
 // Private data structure
