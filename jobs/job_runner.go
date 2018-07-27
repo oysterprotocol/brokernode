@@ -66,7 +66,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: 10 * time.Minute})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
-		worker.Args{Duration: 30 * time.Second})
+		worker.Args{Duration: 5 * time.Minute})
 
 	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
 		worker.Args{Duration: 60 * time.Second})
