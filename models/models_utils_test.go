@@ -1,10 +1,15 @@
 package models_test
 
+import (
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
+)
+
 func (suite *ModelSuite) Test_InsertToEmptyDataMap() {
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 	var dms []string
-	for i = 0; i < 2; i++ {
+	for i := 0; i < 2; i++ {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
 			Hash:        i,
@@ -17,9 +22,9 @@ func (suite *ModelSuite) Test_InsertToEmptyDataMap() {
 	dataMaps := []models.DataMap{}
 	suite.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ?", "Test_InsertToEmptyDataMap").All(&dataMaps)
 
-	suite.Equals(2, len(dataMaps))
-	for i = 0; i < 2; i++ {
-		suite.Equals(models.MsgStatusUploadedHaveNotEncoded, dataMaps[i].MsgStatus)
+	suite.Equal(2, len(dataMaps))
+	for i := 0; i < 2; i++ {
+		suite.Equal(models.MsgStatusUploadedHaveNotEncoded, dataMaps[i].MsgStatus)
 	}
 }
 
@@ -27,7 +32,7 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 	var dms []string
-	for i = 0; i < 2; i++ {
+	for i := 0; i < 2; i++ {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
 			Hash:        i,
