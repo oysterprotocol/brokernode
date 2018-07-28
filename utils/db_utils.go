@@ -35,8 +35,9 @@ const (
 	// The max number of retry if there is an error on SQL.
 	MAX_NUMBER_OF_SQL_RETRY = 3
 
-	// Default columns for all tables
+	// UpdatedAt is the constant for table column
 	UpdatedAt = "updated_at"
+	// CreatedAt is the constant for table column
 	CreatedAt = "created_at"
 )
 
