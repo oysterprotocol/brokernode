@@ -1,8 +1,6 @@
 package models_test
 
 import (
-	"fmt"
-
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
