@@ -50,6 +50,7 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 		ID:          dataMaps[0].ID,
 		MsgStatus:   models.MsgStatusNotUploaded,
 		GenesisHash: "Test_UpdateDataMap",
+		ChunkIdx:    dataMaps[0].ChunkIdx,
 	}
 	dms = []string{dbOperation.GetUpdatedValue(dm)}
 

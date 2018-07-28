@@ -34,10 +34,10 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 		var rawQuery string
 		values := strings.Join(upsertedValues, oyster_utils.COLUMNS_SEPARATOR)
 		if len(serializedUpdatedColumnName) > 0 {
-			rawQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s ON DUPLICATE KEY UPDATE %s`,
+			rawQuery = fmt.Sprintf(`INSERT INTO %s(%s) VALUES %s ON DUPLICATE KEY UPDATE %s`,
 				tableName, serializedColumnNames, values, serializedUpdatedColumnName)
 		} else {
-			rawQuery = fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s`, tableName, serializedColumnNames, values)
+			rawQuery = fmt.Sprintf(`INSERT INTO %s(%s) VALUES %s`, tableName, serializedColumnNames, values)
 		}
 
 		fmt.Println("hello world")
