@@ -27,6 +27,7 @@ func (suite *ModelSuite) Test_InsertToEmptyDataMap() {
 	suite.Equal(2, len(dataMaps))
 	for i := 0; i < 2; i++ {
 		suite.Equal(models.MsgStatusUploadedHaveNotEncoded, dataMaps[i].MsgStatus)
+		suite.True(dataMaps[i].ChunkIdx == 0 || dataMaps[i].ChunkIdx == 1)
 	}
 }
 
@@ -37,7 +38,6 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 	for i := 0; i < 2; i++ {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
-			Hash:        fmt.Sprintf("%d", i),
 			GenesisHash: "Test_UpdateDataMap",
 			ChunkIdx:    i,
 		}
@@ -57,7 +57,8 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 
 	suite.Nil(models.BatchUpsert("data_maps", dms, dbOperation.GetColumns(), []string{"msg_status"}))
 
-	suite.DB.RawQuery("SELECT * FROM data_maps WHERE gensis_hash = ? AND chunk_idx = ?", "Test_UpdateDataMap", dataMaps[0].ChunkIdx).All(&dataMaps)
+	updatedDataMaps := []models.DataMap{}
+	suite.DB.RawQuery("SELECT * FROM data_maps WHERE gensis_hash = ? AND chunk_idx = ?", "Test_UpdateDataMap", dataMaps[0].ChunkIdx).All(&updatedDataMaps)
 
-	suite.Equal(models.MsgStatusNotUploaded, dataMaps[0].MsgStatus)
+	suite.Equal(models.MsgStatusNotUploaded, updatedDataMaps[0].MsgStatus)
 }

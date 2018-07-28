@@ -29,7 +29,7 @@ type testingC struct {
 
 type testingD struct {
 	ID       uuid.UUID `db:"id"`
-	UpdateAt time.Time `db:"update_at"`
+	UpdateAt time.Time `db:"updated_at"`
 }
 
 func Test_GetColumns_testingA(t *testing.T) {

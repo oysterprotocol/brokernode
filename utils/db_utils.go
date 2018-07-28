@@ -116,7 +116,7 @@ func (s *dbUpdateModel) GetUpdatedValue(v ValueT) string {
 	stValue := reflect.Indirect(reflect.ValueOf(v))
 
 	for _, t := range cols {
-		if t == "update_at" {
+		if t == "updated_at" {
 			columnValues = append(columnValues, "NOW()")
 			continue
 		}
