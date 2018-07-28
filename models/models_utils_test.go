@@ -15,6 +15,7 @@ func (suite *ModelSuite) Test_InsertToEmptyDataMap() {
 		dm := models.DataMap{
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
 			GenesisHash: "Test_InsertToEmptyDataMap",
+			ChunkIdx:    i,
 		}
 		dms = append(dms, dbOperation.GetNewInsertedValue(dm))
 	}
@@ -38,6 +39,7 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 			MsgStatus:   models.MsgStatusUploadedHaveNotEncoded,
 			Hash:        fmt.Sprintf("%d", i),
 			GenesisHash: "Test_UpdateDataMap",
+			ChunkIdx:    i,
 		}
 		dms = append(dms, dbOperation.GetNewInsertedValue(dm))
 	}
@@ -47,14 +49,15 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 	suite.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ? LIMIT 1", "Test_UpdateDataMap").All(&dataMaps)
 
 	dm := models.DataMap{
-		ID:        dataMaps[0].ID,
-		MsgStatus: models.MsgStatusNotUploaded,
+		ID:          dataMaps[0].ID,
+		MsgStatus:   models.MsgStatusNotUploaded,
+		GenesisHash: "Test_UpdateDataMap",
 	}
 	dms = []string{dbOperation.GetUpdatedValue(dm)}
 
 	suite.Nil(models.BatchUpsert("data_maps", dms, dbOperation.GetColumns(), []string{"msg_status"}))
 
-	suite.DB.RawQuery("SELECT * FROM data_maps WHERE gensis_hash = ? AND hash = ?", "Test_UpdateDataMap", dataMaps[0].Hash).All(&dataMaps)
+	suite.DB.RawQuery("SELECT * FROM data_maps WHERE gensis_hash = ? AND chunk_idx = ?", "Test_UpdateDataMap", dataMaps[0].ChunkIdx).All(&dataMaps)
 
 	suite.Equal(models.MsgStatusNotUploaded, dataMaps[0].MsgStatus)
 }
