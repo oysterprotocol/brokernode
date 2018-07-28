@@ -36,9 +36,9 @@ const (
 	MAX_NUMBER_OF_SQL_RETRY = 3
 
 	// SQL_BATCH_SIZE is the maximum number of entries to update in sql at once
-	SQL_BATCH_SIZE = 1
+	SQL_BATCH_SIZE = 10
 
-  // UpdatedAt is the constant for table column
+	// UpdatedAt is the constant for table column
 	UpdatedAt = "updated_at"
 	// CreatedAt is the constant for table column
 	CreatedAt = "created_at"
@@ -59,7 +59,7 @@ func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
 		return nil, err
 	}
 
-	cols := columns.ColumnsForStructWithAlias(vPtr, model.TableName(), model.As)
+	cols := columns.ForStructWithAlias(vPtr, model.TableName(), model.As)
 
 	f := make(map[string]string)
 

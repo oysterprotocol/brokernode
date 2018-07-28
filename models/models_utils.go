@@ -13,11 +13,14 @@ import (
 func BatchUpsert(tableName string, serializeValues []string, serializedColumnNames string, onConflictColumnsNames []string) error {
 	numOfBatchRequest := int(math.Ceil(float64(len(serializeValues)) / float64(oyster_utils.SQL_BATCH_SIZE)))
 
-	fmt.Printf("BatchRequest: %v, columnSize: %v\n", numOfBatchRequest, len(serializeValues))
 	var updatedColumns []string
 	for _, v := range onConflictColumnsNames {
+		if v == oyster_utils.UpdatedAt {
+			continue
+		}
 		updatedColumns = append(updatedColumns, fmt.Sprintf("%s = VALUES(%s)", v, v))
 	}
+	updatedColumns = append(updatedColumns, fmt.Sprintf("%s = VALUES(%s)", oyster_utils.UpdatedAt, oyster_utils.UpdatedAt))
 	serializedUpdatedColumnName := strings.Join(updatedColumns, oyster_utils.COLUMNS_SEPARATOR)
 
 	// Batch Update data_maps table.
@@ -28,9 +31,7 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 
 		upsertedValues := serializeValues[lower:upper]
 		for k := 0; k < len(upsertedValues); k++ {
-			fmt.Printf("Before OutputLine : %v\n", upsertedValues[k])
 			upsertedValues[k] = fmt.Sprintf("(%s)", upsertedValues[k])
-			fmt.Printf("After OutputLine : %v\n", upsertedValues[k])
 		}
 
 		// Do an insert operation and dup by primary key.
@@ -42,9 +43,6 @@ func BatchUpsert(tableName string, serializeValues []string, serializedColumnNam
 		} else {
 			rawQuery = fmt.Sprintf(`INSERT INTO %s(%s) VALUES %s`, tableName, serializedColumnNames, values)
 		}
-
-		fmt.Println("hello world")
-		fmt.Println(rawQuery)
 
 		err := DB.RawQuery(rawQuery).Exec()
 		fmt.Println(err)
