@@ -78,7 +78,7 @@ var (
 	mutex           = &sync.Mutex{}
 	seed            giota.Trytes
 	minDepth        = int64(1)
-	minWeightMag    = int64(1)
+	minWeightMag    = int64(9)
 	bestPow         giota.PowFunc
 	powName         string
 	Channel         = map[string]PowChannel{}
@@ -186,24 +186,27 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		transactionsToApprove, err := getTransactionsToApprove()
 		oyster_utils.LogIfError(err, nil)
 
-		err = doPowAndBroadcast(
-			transactionsToApprove.BranchTransaction,
-			transactionsToApprove.TrunkTransaction,
-			minDepth,
-			transactions,
-			minWeightMag,
-			bestPow,
-			powJobRequest.BroadcastNodes)
+		if err == nil {
 
-		channelToChange := Channel[channelID]
+			err = doPowAndBroadcast(
+				transactionsToApprove.BranchTransaction,
+				transactionsToApprove.TrunkTransaction,
+				minDepth,
+				transactions,
+				minWeightMag,
+				bestPow,
+				powJobRequest.BroadcastNodes)
 
-		channelInDB := models.ChunkChannel{}
-		models.DB.RawQuery("SELECT * FROM chunk_channels WHERE channel_id = ?", channelID).First(&channelInDB)
-		channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
-		models.DB.ValidateAndSave(&channelInDB)
+			channelToChange := Channel[channelID]
 
-		fmt.Println("PowWorker: Leaving")
-		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+			channelInDB := models.ChunkChannel{}
+			models.DB.RawQuery("SELECT * FROM chunk_channels WHERE channel_id = ?", channelID).First(&channelInDB)
+			channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
+			models.DB.ValidateAndSave(&channelInDB)
+
+			fmt.Println("PowWorker: Leaving")
+			TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+		}
 	}
 }
 

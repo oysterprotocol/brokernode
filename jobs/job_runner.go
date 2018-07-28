@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BundleSize                = 300
+	BundleSize                = 100
 	Duration                  = "duration"
 	SecondsDelayForETHPolling = 1 * 60
 )
