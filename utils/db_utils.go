@@ -2,16 +2,16 @@ package oyster_utils
 
 import (
 	"fmt"
-	"github.com/getsentry/raven-go"
-	"github.com/gobuffalo/pop"
-	"github.com/gobuffalo/pop/columns"
-	"github.com/gobuffalo/uuid"
-	"github.com/pkg/errors"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/pop/columns"
+	"github.com/gobuffalo/uuid"
+	"github.com/pkg/errors"
 )
 
 /*SqlTimeFormat is used for time.Time.Format method */
@@ -34,6 +34,11 @@ const (
 
 	// The max number of retry if there is an error on SQL.
 	MAX_NUMBER_OF_SQL_RETRY = 3
+
+	// UpdatedAt is the constant for table column
+	UpdatedAt = "updated_at"
+	// CreatedAt is the constant for table column
+	CreatedAt = "created_at"
 )
 
 // Private data structure
@@ -47,7 +52,7 @@ func CreateDbUpdateOperation(vPtr ValueT) (dbUpdateOperation, error) {
 	model := pop.Model{Value: vPtr}
 	if model.PrimaryKeyType() != "UUID" {
 		err := errors.New("Primary key is not UUID, did not support to generate this type of key")
-		raven.CaptureError(err, nil)
+		LogIfError(err, nil)
 		return nil, err
 	}
 
@@ -94,7 +99,7 @@ func (s *dbUpdateModel) GetNewInsertedValue(v ValueT) string {
 			continue
 		}
 		// Use Sql NOW() method for 'updated_at' and 'created_at' column
-		if t == "updated_at" || t == "created_at" {
+		if t == UpdatedAt || t == CreatedAt {
 			columnValues = append(columnValues, "NOW()")
 			continue
 		}
@@ -112,7 +117,7 @@ func (s *dbUpdateModel) GetUpdatedValue(v ValueT) string {
 	stValue := reflect.Indirect(reflect.ValueOf(v))
 
 	for _, t := range cols {
-		if t == "update_at" {
+		if t == UpdatedAt {
 			columnValues = append(columnValues, "NOW()")
 			continue
 		}
@@ -153,6 +158,6 @@ func getStringPresentation(v reflect.Value) string {
 	}
 
 	err := errors.Errorf("No implemented type %v", v.String())
-	raven.CaptureError(err, nil)
+	LogIfError(err, nil)
 	panic(err)
 }
