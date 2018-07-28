@@ -112,7 +112,7 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 		"data_maps",
 		updatedDms,
 		dbOperation.GetColumns(),
-		[]string{"message", "status", "updated_at", "msg_status"})
+		[]string{"message", "status", "msg_status"})
 
 	oyster_utils.LogIfError(err, nil)
 	return err
