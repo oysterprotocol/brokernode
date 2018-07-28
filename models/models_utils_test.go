@@ -57,7 +57,7 @@ func (suite *ModelSuite) Test_UpdateDataMap() {
 	suite.Nil(models.BatchUpsert("data_maps", dms, dbOperation.GetColumns(), []string{"msg_status"}))
 
 	updatedDataMaps := []models.DataMap{}
-	suite.DB.RawQuery("SELECT * FROM data_maps WHERE gensis_hash = ? AND chunk_idx = ?", "Test_UpdateDataMap", dataMaps[0].ChunkIdx).All(&updatedDataMaps)
+	suite.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ? AND chunk_idx = ?", "Test_UpdateDataMap", dataMaps[0].ChunkIdx).All(&updatedDataMaps)
 
 	suite.Equal(models.MsgStatusNotUploaded, updatedDataMaps[0].MsgStatus)
 }
