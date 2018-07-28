@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS `completed_data_maps` (
-  `id`              int(11)      NOT NULL AUTO_INCREMENT,
+  `id`              char(36)     NOT NULL,
   `genesis_hash`    varchar(255) NOT NULL,
   `chunk_idx`       int(11)      NOT NULL,
   `hash`            varchar(255) NOT NULL,
@@ -17,6 +17,4 @@ CREATE TABLE IF NOT EXISTS `completed_data_maps` (
   KEY `completed_data_maps_genesis_hash_chunk_idx_idx` (`genesis_hash`, `chunk_idx`)
 )
   ENGINE = InnoDB
-  AUTO_INCREMENT = 224645205
   DEFAULT CHARSET = latin1;
-

@@ -149,7 +149,7 @@ func init() {
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
 	}
 
-	PoWFrequency.Frequency = 5
+	PoWFrequency.Frequency = 2
 }
 
 func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
