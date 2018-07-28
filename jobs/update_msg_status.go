@@ -99,14 +99,12 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 	if len(*kvs) <= 0 {
 		return nil
 	}
-	readyChunks := []models.DataMap{}
 	var updatedDms []string
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 	for key := range *kvs {
 		chunk := msgIDChunkMap[key]
 		chunk.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
-		readyChunks = append(readyChunks, chunk)
 		updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(chunk))
 	}
 
