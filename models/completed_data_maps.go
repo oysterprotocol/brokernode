@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"github.com/gobuffalo/uuid"
 	"github.com/oysterprotocol/brokernode/utils"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type CompletedDataMap struct {
-	ID             int       `json:"id" db:"id"`
+	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt      time.Time `json:"updatedAt" db:"updated_at"`
 	Status         int       `json:"status" db:"status"`
