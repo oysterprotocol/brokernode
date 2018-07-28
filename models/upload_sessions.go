@@ -293,7 +293,7 @@ func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
 			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in " +
 				"EncryptTreasureIdxMapKeys, or found duplicate chunks")
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfError(err, map[string]interface{}{"treasureChunkSize": len(treasureChunks)})
 			return err
 		}
 
