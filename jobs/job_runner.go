@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"os"
 	"reflect"
 	"runtime"
 	"time"
@@ -11,8 +12,11 @@ import (
 )
 
 const (
-	BundleSize                = 300
-	Duration                  = "duration"
+	/*BundleSize is the number of transactions per iota broadcast*/
+	BundleSize = 100
+	/*Duration is for one of our tags for error logging*/
+	Duration = "duration"
+	/*SecondsDelayForETHPolling is how long to wait between polling attempts for ethereum transactions*/
 	SecondsDelayForETHPolling = 1 * 60
 )
 
@@ -115,7 +119,10 @@ func flushOldWebnodesHandler(args worker.Args) error {
 }
 
 func processUnassignedChunksHandler(args worker.Args) error {
-	ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
+
+	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
+		ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
+	}
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler, args)
 	return nil
@@ -129,7 +136,9 @@ func purgeCompletedSessionsHandler(args worker.Args) error {
 }
 
 func verifyDataMapsHandler(args worker.Args) error {
-	VerifyDataMaps(IotaWrapper, PrometheusWrapper)
+	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
+		VerifyDataMaps(IotaWrapper, PrometheusWrapper)
+	}
 
 	oysterWorkerPerformIn(verifyDataMapsHandler, args)
 	return nil

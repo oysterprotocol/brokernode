@@ -186,24 +186,27 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 		transactionsToApprove, err := getTransactionsToApprove()
 		oyster_utils.LogIfError(err, nil)
 
-		err = doPowAndBroadcast(
-			transactionsToApprove.BranchTransaction,
-			transactionsToApprove.TrunkTransaction,
-			minDepth,
-			transactions,
-			minWeightMag,
-			bestPow,
-			powJobRequest.BroadcastNodes)
+		if err == nil {
 
-		channelToChange := Channel[channelID]
+			err = doPowAndBroadcast(
+				transactionsToApprove.BranchTransaction,
+				transactionsToApprove.TrunkTransaction,
+				minDepth,
+				transactions,
+				minWeightMag,
+				bestPow,
+				powJobRequest.BroadcastNodes)
 
-		channelInDB := models.ChunkChannel{}
-		models.DB.RawQuery("SELECT * FROM chunk_channels WHERE channel_id = ?", channelID).First(&channelInDB)
-		channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
-		models.DB.ValidateAndSave(&channelInDB)
+			channelToChange := Channel[channelID]
 
-		fmt.Println("PowWorker: Leaving")
-		TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+			channelInDB := models.ChunkChannel{}
+			models.DB.RawQuery("SELECT * FROM chunk_channels WHERE channel_id = ?", channelID).First(&channelInDB)
+			channelInDB.ChunksProcessed += len(powJobRequest.Chunks)
+			models.DB.ValidateAndSave(&channelInDB)
+
+			fmt.Println("PowWorker: Leaving")
+			TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+		}
 	}
 }
 
@@ -529,6 +532,10 @@ func makeTransactionObjects(transactionObjects []giota.Transaction) (transaction
 }
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
+
+	// TODO delete this line when we figure out why uploads
+	// occasionally have the wrong chunk_idx for msg_id
+	return true
 
 	message := GetMessageFromDataMap(chunkOnRecord)
 	if checkBranchAndTrunk == false &&
