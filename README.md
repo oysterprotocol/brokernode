@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-The broker node uses Docker to spin up a go app, mysql, and private iota instance (TODO). You must first install [Docker](https://www.docker.com/community-edition).
+The broker node uses Docker to spin up a go app, [mysql, required download](https://dev.mysql.com/downloads/file/?id=479845), and private iota instance (TODO). You must first install [Docker](https://www.docker.com/community-edition).
 
 ```bash
 # To setup this first time, you need to have .env file. By default, use .env.test for unit test.
