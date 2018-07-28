@@ -296,7 +296,7 @@ func (suite *JobsSuite) Test_UpdateMsgStatusForKVPairsFound() {
 
 	keyValuePairs, err := jobs.CheckBadgerForKVPairs(msgIDChunkMap)
 	suite.Nil(err)
-	jobs.UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIDChunkMap)
+	suite.Nil(jobs.UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIDChunkMap))
 
 	// verify that the data_maps that we added messages for now have their
 	// msg_status updated

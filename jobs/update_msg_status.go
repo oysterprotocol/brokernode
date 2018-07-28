@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"fmt"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -96,24 +95,27 @@ func CheckBadgerForKVPairs(msgIDChunkMap MsgIDChunkMap) (kvs *services.KVPairs, 
 }
 
 /*UpdateMsgStatusForKVPairsFound will update the msg_status of data_maps that we found message data for*/
-func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDChunkMap) {
+func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDChunkMap) error {
 	if len(*kvs) <= 0 {
-		return
+		return nil
 	}
-	readyChunks := []models.DataMap{}
 	var updatedDms []string
 	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 	for key := range *kvs {
 		chunk := msgIDChunkMap[key]
 		chunk.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
-		readyChunks = append(readyChunks, chunk)
-		updatedDms = append(updatedDms, fmt.Sprintf("(%s)", dbOperation.GetUpdatedValue(chunk)))
+		updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(chunk))
 	}
 
-	err := models.BatchUpsertDataMaps(updatedDms, dbOperation.GetColumns())
+	err := models.BatchUpsert(
+		"data_maps",
+		updatedDms,
+		dbOperation.GetColumns(),
+		[]string{"message", "status", "msg_status"})
 
 	oyster_utils.LogIfError(err, nil)
+	return err
 }
 
 func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes []int) ([]models.DataMap, error) {
