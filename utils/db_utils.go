@@ -37,7 +37,7 @@ const (
 	MAX_NUMBER_OF_SQL_RETRY = 3
 
 	// SQL_BATCH_SIZE is the maximum number of entries to update in sql at once
-	SQL_BATCH_SIZE = 10
+	SQL_BATCH_SIZE = 1
 )
 
 // Private data structure

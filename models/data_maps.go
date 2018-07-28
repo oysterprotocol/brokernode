@@ -53,9 +53,6 @@ const (
 	MsgStatusUploadedNoNeedEncode
 )
 
-/*SQL_BATCH_SIZE is the maximum number of entries to update in sql at once*/
-const SQL_BATCH_SIZE = 1
-
 type DataMap struct {
 	ID             uuid.UUID `json:"id" db:"id"`
 	CreatedAt      time.Time `json:"createdAt" db:"created_at"`
