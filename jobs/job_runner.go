@@ -12,8 +12,11 @@ import (
 )
 
 const (
-	BundleSize                = 300
-	Duration                  = "duration"
+	/*BundleSize is the number of transactions per iota broadcast*/
+	BundleSize = 100
+	/*Duration is for one of our tags for error logging*/
+	Duration = "duration"
+	/*SecondsDelayForETHPolling is how long to wait between polling attempts for ethereum transactions*/
 	SecondsDelayForETHPolling = 1 * 60
 )
 
