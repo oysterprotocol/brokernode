@@ -187,7 +187,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 	}
 
 	err := models.BatchUpsert("completed_data_maps", upsertedValues, dbOperation.GetColumns(), nil)
-	if err != nil && services.IsKvStoreEnabled() {
+	if services.IsKvStoreEnabled() {
 		services.BatchSet(&messagsKvPairs, models.CompletedDataMapsTimeToLive)
 	}
 	if hasValidationError {
