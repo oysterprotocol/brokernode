@@ -25,50 +25,41 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 	oyster_utils.LogIfError(err, nil)
 
 	for _, genesisHash := range completeGenesisHashes {
-		var moveToCompleteDm = []models.DataMap{}
+		if err := createCompletedDataMapIfNeeded(genesisHash); err != nil {
+			continue
+		}
 
+		var moveToCompleteDm = []models.DataMap{}
 		err := models.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToCompleteDm)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 
-		err = models.DB.Transaction(func(tx *pop.Connection) error {
-			// Passed in the connection
-			if err := moveToComplete(tx, moveToCompleteDm); err != nil {
-				return err
-			}
+		if err := moveToComplete(moveToCompleteDm); err != nil {
+			continue
+		}
 
+		err = models.DB.Transaction(func(tx *pop.Connection) error {
 			if err := tx.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", genesisHash).All(&[]models.DataMap{}); err != nil {
 				oyster_utils.LogIfError(err, nil)
 				return err
-			}
-
-			session := []models.UploadSession{}
-			if err := tx.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
-				oyster_utils.LogIfError(err, nil)
-				return err
-			}
-
-			if len(session) > 0 {
-				if err := models.NewCompletedUpload(session[0]); err != nil {
-					oyster_utils.LogIfError(err, nil)
-					return err
-				}
 			}
 
 			if err := tx.RawQuery("DELETE FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{}); err != nil {
 				oyster_utils.LogIfError(err, nil)
 				return err
 			}
-
-			oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
-				Set("genesis_hash", genesisHash).
-				Set("session_id", session[0].ID))
-
 			return nil
 		})
-		if err == nil && services.IsKvStoreEnabled() {
+		oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
+			Set("genesis_hash", genesisHash))
+
+		if err != nil {
+			continue
+		}
+
+		if services.IsKvStoreEnabled() {
 			services.DeleteMsgDatas(moveToCompleteDm)
 		}
 	}
@@ -114,13 +105,53 @@ func getAllCompletedGenesisHashes() ([]string, error) {
 	return completeGenesisHashes, nil
 }
 
-func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
-	index := 0
-	messagsKvPairs := services.KVPairs{}
+func createCompletedDataMapIfNeeded(genesisHash string) error {
+	completedUploadedSession := []models.CompletedUpload{}
+	if err := models.DB.RawQuery("SELECT * FROM completed_uploads WHERE genesis_hash = ?", genesisHash).All(&completedUploadedSession); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+	if len(completedUploadedSession) > 0 {
+		return nil
+	}
 
-	// TODO this is awful, do something different
+	session := []models.UploadSession{}
+	if err := models.DB.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+
+	if len(session) == 0 {
+		return nil
+	}
+
+	err := models.NewCompletedUpload(session[0])
+	oyster_utils.LogIfError(err, nil)
+	return err
+}
+
+func moveToComplete(dataMaps []models.DataMap) error {
+	if len(dataMaps) == 0 {
+		return nil
+	}
+
+	existedDataMaps := []models.CompletedDataMap{}
+	models.DB.RawQuery("SELECT address FROM completed_data_maps WHERE genesis_hash =?", dataMaps[0].GenesisHash).All(&existedDataMaps)
+	existedMap := make(map[string]bool)
+	for _, dm := range existedDataMaps {
+		existedMap[dm.Address] = true
+	}
+
+	messagsKvPairs := services.KVPairs{}
+	var upsertedValues []string
+	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.CompletedDataMap{})
+	hasValidationError := false
 
 	for _, dataMap := range dataMaps {
+		if _, hasKey := existedMap[dataMap.Address]; hasKey {
+			continue
+		}
+
 		completedDataMap := models.CompletedDataMap{
 			Status:      dataMap.Status,
 			NodeID:      dataMap.NodeID,
@@ -137,43 +168,30 @@ func moveToComplete(tx *pop.Connection, dataMaps []models.DataMap) error {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
 		}
 
-		dupeCheck := []models.CompletedDataMap{}
-		err := tx.RawQuery("SELECT * from completed_data_maps WHERE address = ? AND genesis_hash =?",
-			dataMap.Address, dataMap.GenesisHash).All(&dupeCheck)
-
-		if len(dupeCheck) > 0 {
+		if vErr, err := completedDataMap.Validate(nil); err != nil || vErr.HasAny() {
+			oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, nil)
+			oyster_utils.LogIfError(err, nil)
+			hasValidationError = true
 			continue
 		}
 
-		vErr, err := tx.ValidateAndSave(&completedDataMap)
-		if err == nil && !vErr.HasAny() {
-			// Force GetMessageFromDataMap to return un-encoded msg.
-			msgStatus := dataMap.MsgStatus
-			if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
-				dataMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
-			}
-			messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
-			dataMap.MsgStatus = msgStatus
-		} else {
-			if vErr.HasAny() {
-				oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, map[string]interface{}{
-					"numOfDataMaps":  len(dataMaps),
-					"proceededIndex": index,
-				})
-				return errors.New("Unable to create CompletedDataMap")
-			}
-
-			oyster_utils.LogIfError(err, map[string]interface{}{
-				"numOfDataMaps":  len(dataMaps),
-				"proceededIndex": index,
-			})
-			return err
+		// Force GetMessageFromDataMap to return un-encoded msg.
+		msgStatus := dataMap.MsgStatus
+		if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
+			dataMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		}
-		index++
+		messagsKvPairs[completedDataMap.MsgID] = services.GetMessageFromDataMap(dataMap)
+		dataMap.MsgStatus = msgStatus
+
+		upsertedValues = append(upsertedValues, dbOperation.GetNewInsertedValue(completedDataMap))
 	}
 
-	if services.IsKvStoreEnabled() {
+	err := models.BatchUpsert("completed_data_maps", upsertedValues, dbOperation.GetColumns(), nil)
+	if err != nil && services.IsKvStoreEnabled() {
 		services.BatchSet(&messagsKvPairs, models.CompletedDataMapsTimeToLive)
 	}
-	return nil
+	if hasValidationError {
+		return errors.New("Partial update failed")
+	}
+	return err
 }
