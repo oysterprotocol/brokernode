@@ -16,7 +16,10 @@ func StoreCompletedGenesisHashes(PrometheusWrapper services.PrometheusService) {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramStoreCompletedGenesisHashes, start)
 
 	completeGenesisHashes, err := getAllCompletedGenesisHashes()
-	oyster_utils.LogIfError(err, nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting completeGenesisHashes in "+
+			"store_complete_genesis_hashes"), nil)
+	}
 
 	for _, genesisHash := range completeGenesisHashes {
 
@@ -24,14 +27,18 @@ func StoreCompletedGenesisHashes(PrometheusWrapper services.PrometheusService) {
 
 			session := []models.UploadSession{}
 			if err := tx.RawQuery("SELECT * FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&session); err != nil {
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfError(errors.New(err.Error()+" finding upload_sessions that match "+
+					"genesis_hash in store_complete_genesis_hashes"), nil)
 				return err
 			}
 
 			if len(session) > 0 {
 
 				genesisHashExistsAlready, err := models.CheckIfGenesisHashExists(session[0].GenesisHash)
-				oyster_utils.LogIfError(err, nil)
+				if err != nil {
+					oyster_utils.LogIfError(errors.New(err.Error()+" error checking if genesis_hash exists in "+
+						"store_complete_genesis_hashes"), nil)
+				}
 
 				if !genesisHashExistsAlready {
 					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{
@@ -44,7 +51,8 @@ func StoreCompletedGenesisHashes(PrometheusWrapper services.PrometheusService) {
 						return errors.New("Unable to validate StoredGenesisHash")
 					}
 					if err != nil {
-						oyster_utils.LogIfError(err, nil)
+						oyster_utils.LogIfError(errors.New(err.Error()+" saving stored_genesis_hash in "+
+							"store_complete_genesis_hashes"), nil)
 						return err
 					}
 				}
