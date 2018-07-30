@@ -16,8 +16,10 @@ func StoreCompletedGenesisHashes(PrometheusWrapper services.PrometheusService) {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramStoreCompletedGenesisHashes, start)
 
 	completeGenesisHashes, err := getAllCompletedGenesisHashes()
-	oyster_utils.LogIfError(errors.New(err.Error()+" getting completeGenesisHashes in "+
-		"store_complete_genesis_hashes"), nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting completeGenesisHashes in "+
+			"store_complete_genesis_hashes"), nil)
+	}
 
 	for _, genesisHash := range completeGenesisHashes {
 
@@ -33,8 +35,10 @@ func StoreCompletedGenesisHashes(PrometheusWrapper services.PrometheusService) {
 			if len(session) > 0 {
 
 				genesisHashExistsAlready, err := models.CheckIfGenesisHashExists(session[0].GenesisHash)
-				oyster_utils.LogIfError(errors.New(err.Error()+" error checking if genesis_hash exists in "+
-					"store_complete_genesis_hashes"), nil)
+				if err != nil {
+					oyster_utils.LogIfError(errors.New(err.Error()+" error checking if genesis_hash exists in "+
+						"store_complete_genesis_hashes"), nil)
+				}
 
 				if !genesisHashExistsAlready {
 					vErr, err := tx.ValidateAndSave(&models.StoredGenesisHash{

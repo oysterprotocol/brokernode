@@ -94,12 +94,14 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
-		oyster_utils.LogIfError(errors.New(err.Error()+" in FilterAndAssignChunksToChannels() in "+
-			"process_unassigned_chunks"), map[string]interface{}{
-			"forLoopIndex":   i,
-			"totalLoopCount": len(chunksIn),
-			"numOfChunk":     len(restOfChunks),
-		})
+		if err != nil {
+			oyster_utils.LogIfError(errors.New(err.Error()+" in FilterAndAssignChunksToChannels() in "+
+				"process_unassigned_chunks"), map[string]interface{}{
+				"forLoopIndex":   i,
+				"totalLoopCount": len(chunksIn),
+				"numOfChunk":     len(restOfChunks),
+			})
+		}
 
 		if len(filteredChunks.MatchesTangle) > 0 {
 
@@ -342,9 +344,10 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
-		"process_unassigned_chunks"), nil)
-
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
+			"process_unassigned_chunks"), nil)
+	}
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
 	}

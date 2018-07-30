@@ -64,8 +64,10 @@ func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIDChunkMap {
 			models.MsgStatusNotUploaded).All(&dms)
 	}
 
-	oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps in GetDataMapsToCheckForMessages() in "+
-		"update_msg_status"), nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps in GetDataMapsToCheckForMessages() in "+
+			"update_msg_status"), nil)
+	}
 	if err != nil || len(dms) <= 0 {
 		return MsgIDChunkMap{}
 	}
@@ -118,8 +120,10 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 		dbOperation.GetColumns(),
 		[]string{"message", "status", "msg_status"})
 
-	oyster_utils.LogIfError(errors.New(err.Error()+" doing match upsert in UpdateMsgStatusForKVPairsFound() "+
-		"in update_msg_status"), nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" doing match upsert in UpdateMsgStatusForKVPairsFound() "+
+			"in update_msg_status"), nil)
+	}
 	return err
 }
 

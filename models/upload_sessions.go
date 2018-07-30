@@ -368,10 +368,12 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 			break
 		}
 	}
-	oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
-		map[string]interface{}{
-			"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
-			"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
+			map[string]interface{}{
+				"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
+				"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
+	}
 
 	err = nil
 	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
@@ -386,10 +388,12 @@ func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
 			break
 		}
 	}
-	oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
-		map[string]interface{}{
-			"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
-			"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
+			map[string]interface{}{
+				"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
+				"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
+	}
 
 	return err
 }

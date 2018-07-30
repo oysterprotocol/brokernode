@@ -18,8 +18,10 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.P
 	timedOutDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
-	oyster_utils.LogIfError(errors.New(err.Error()+" getting timed-out data_maps in UpdateTimeOutDataMaps() "+
-		"in update_timed_out_data_maps"), nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting timed-out data_maps in UpdateTimeOutDataMaps() "+
+			"in update_timed_out_data_maps"), nil)
+	}
 
 	if len(timedOutDataMaps) > 0 {
 
@@ -40,8 +42,10 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.P
 			dbOperation.GetColumns(),
 			[]string{"status"})
 
-		oyster_utils.LogIfError(errors.New(err.Error()+" updating timed-out data_maps in UpdateTimeOutDataMaps() "+
-			"in update_timed_out_data_maps"), nil)
+		if err != nil {
+			oyster_utils.LogIfError(errors.New(err.Error()+" updating timed-out data_maps in UpdateTimeOutDataMaps() "+
+				"in update_timed_out_data_maps"), nil)
+		}
 
 		oyster_utils.LogToSegment("update_timed_out_data_maps: chunks_timed_out", analytics.NewProperties().
 			//Set("address", timedOutDataMap.Address).
