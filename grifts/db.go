@@ -367,6 +367,19 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
+	grift.Desc("print_brokernodes", "print brokernodes")
+	grift.Add("print_brokernodes", func(c *grift.Context) error {
+
+		brokers := []models.Brokernode{}
+
+		models.DB.RawQuery("SELECT * FROM brokernodes").All(&brokers)
+
+		for _, broker := range brokers {
+			fmt.Println(broker.String())
+		}
+		return nil
+	})
+
 	grift.Desc("delete_brokernodes", "delete all brokernode addresses from the db")
 	grift.Add("delete_brokernodes", func(c *grift.Context) error {
 
