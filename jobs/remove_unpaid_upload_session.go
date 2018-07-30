@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"errors"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -21,7 +22,8 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 		"SELECT * FROM upload_sessions WHERE payment_status != ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
 		models.PaymentStatusConfirmed, UnpaidExpirationInHour).All(&sessions)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(errors.New(err.Error()+" while finding old unpaid sessions in "+
+			"remove_unpaid_upload_session"), nil)
 		return
 	}
 
@@ -38,7 +40,8 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			}
 			return tx.RawQuery("DELETE FROM upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{})
 		})
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(errors.New(err.Error()+" in transaction in "+
+			"remove_unpaid_upload_session"), nil)
 		if err == nil {
 			services.DeleteMsgDatas(dataMaps)
 		}

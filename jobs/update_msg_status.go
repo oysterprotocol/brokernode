@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"errors"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -22,7 +23,8 @@ func UpdateMsgStatus(PrometheusWrapper services.PrometheusService) {
 		msgIDChunkMap := GetDataMapsToCheckForMessages(session)
 		keyValuePairs, err := CheckBadgerForKVPairs(msgIDChunkMap)
 		if err != nil {
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfError(errors.New(err.Error()+" finding K:V pairs in "+
+				"update_msg_status"), nil)
 			continue
 		}
 		UpdateMsgStatusForKVPairsFound(keyValuePairs, msgIDChunkMap)
@@ -35,7 +37,8 @@ func GetActiveSessions() []models.UploadSession {
 	err := models.DB.RawQuery("SELECT * FROM upload_sessions " +
 		"ORDER BY created_at ASC").All(&activeSessions)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting active sessions in GetActiveSessions() in "+
+			"update_msg_status"), nil)
 		return []models.UploadSession{}
 	}
 	return activeSessions
@@ -61,7 +64,8 @@ func GetDataMapsToCheckForMessages(session models.UploadSession) MsgIDChunkMap {
 			models.MsgStatusNotUploaded).All(&dms)
 	}
 
-	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps in GetDataMapsToCheckForMessages() in "+
+		"update_msg_status"), nil)
 	if err != nil || len(dms) <= 0 {
 		return MsgIDChunkMap{}
 	}
@@ -114,7 +118,8 @@ func UpdateMsgStatusForKVPairsFound(kvs *services.KVPairs, msgIDChunkMap MsgIDCh
 		dbOperation.GetColumns(),
 		[]string{"message", "status", "msg_status"})
 
-	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfError(errors.New(err.Error()+" doing match upsert in UpdateMsgStatusForKVPairsFound() "+
+		"in update_msg_status"), nil)
 	return err
 }
 
@@ -129,7 +134,8 @@ func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes [
 		session.GenesisHash,
 		models.MsgStatusNotUploaded).All(&tempDataMaps)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps before first treasure index "+
+			"in getDataMapsWithoutTreasures() in update_msg_status"), nil)
 		return []models.DataMap{}, err
 	}
 	dms = append(dms, tempDataMaps...)
@@ -145,7 +151,8 @@ func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes [
 				session.GenesisHash,
 				models.MsgStatusNotUploaded).All(&tempDataMaps)
 			if err != nil {
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps between treasure indexes "+
+					"in getDataMapsWithoutTreasures() in update_msg_status"), nil)
 				return []models.DataMap{}, err
 			}
 			dms = append(dms, tempDataMaps...)
@@ -159,7 +166,8 @@ func getDataMapsWithoutTreasures(session models.UploadSession, treasureIndexes [
 		session.GenesisHash,
 		models.MsgStatusNotUploaded).All(&tempDataMaps)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting data_maps after last treasure index "+
+			"in getDataMapsWithoutTreasures() in update_msg_status"), nil)
 		return []models.DataMap{}, err
 	}
 	dms = append(dms, tempDataMaps...)

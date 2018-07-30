@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"errors"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -31,7 +32,8 @@ func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services
 
 func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.DataMap) {
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
-	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfError(errors.New(err.Error()+" verifying chunks match record in CheckChunks() "+
+		"in verify_data_maps"), nil)
 
 	if len(filteredChunks.MatchesTangle) > 0 {
 

@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"errors"
 	"fmt"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
@@ -93,7 +94,8 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
-		oyster_utils.LogIfError(err, map[string]interface{}{
+		oyster_utils.LogIfError(errors.New(err.Error()+" in FilterAndAssignChunksToChannels() in "+
+			"process_unassigned_chunks"), map[string]interface{}{
 			"forLoopIndex":   i,
 			"totalLoopCount": len(chunksIn),
 			"numOfChunk":     len(restOfChunks),
@@ -340,7 +342,8 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 	var treasureChunksToAttach []models.DataMap
 
 	treasureIndexes, err := session.GetTreasureIndexes()
-	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
+		"process_unassigned_chunks"), nil)
 
 	if len(chunks) == 0 {
 		return chunks, []models.DataMap{}
@@ -365,13 +368,15 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 			address := make([]giota.Address, 0, 1)
 			chunkAddress, err := giota.ToAddress(chunks[i].Address)
 			if err != nil {
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
+					"process_unassigned_chunks"), nil)
 				return chunks, []models.DataMap{}
 			}
 			address = append(address, chunkAddress)
 			transactionsMap, err := iotaWrapper.FindTransactions(address)
 			if err != nil {
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
+					"process_unassigned_chunks"), nil)
 				return chunks, []models.DataMap{}
 			}
 			if _, ok := transactionsMap[chunkAddress]; !ok || transactionsMap == nil {

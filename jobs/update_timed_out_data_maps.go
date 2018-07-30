@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"errors"
 	"time"
 
 	"github.com/oysterprotocol/brokernode/models"
@@ -17,7 +18,8 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.P
 	timedOutDataMaps := []models.DataMap{}
 
 	err := models.DB.Where("status = ? AND updated_at <= ?", models.Unverified, thresholdTime).All(&timedOutDataMaps)
-	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfError(errors.New(err.Error()+" getting timed-out data_maps in UpdateTimeOutDataMaps() "+
+		"in update_timed_out_data_maps"), nil)
 
 	if len(timedOutDataMaps) > 0 {
 
@@ -25,6 +27,7 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.P
 
 		for _, timedOutDataMap := range timedOutDataMaps {
 
+			// TODO batch this
 			timedOutDataMap.Status = models.Unassigned
 			models.DB.ValidateAndSave(&timedOutDataMap)
 		}
