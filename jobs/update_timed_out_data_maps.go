@@ -25,12 +25,24 @@ func UpdateTimeOutDataMaps(thresholdTime time.Time, PrometheusWrapper services.P
 
 		//when we bring back hooknodes, do decrement score somewhere in here
 
+		var updatedDms []string
+		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+
 		for _, timedOutDataMap := range timedOutDataMaps {
 
-			// TODO batch this
 			timedOutDataMap.Status = models.Unassigned
-			models.DB.ValidateAndSave(&timedOutDataMap)
+			updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(timedOutDataMap))
 		}
+
+		err := models.BatchUpsert(
+			"data_maps",
+			updatedDms,
+			dbOperation.GetColumns(),
+			[]string{"status"})
+
+		oyster_utils.LogIfError(errors.New(err.Error()+" updating timed-out data_maps in UpdateTimeOutDataMaps() "+
+			"in update_timed_out_data_maps"), nil)
+
 		oyster_utils.LogToSegment("update_timed_out_data_maps: chunks_timed_out", analytics.NewProperties().
 			//Set("address", timedOutDataMap.Address).
 			//Set("genesis_hash", timedOutDataMap.GenesisHash).

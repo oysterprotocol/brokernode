@@ -37,15 +37,30 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 
 	if len(filteredChunks.MatchesTangle) > 0 {
 
+		var updatedDms []string
+		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
+
 		for _, matchingChunk := range filteredChunks.MatchesTangle {
 			matchingChunk.Status = models.Complete
-			models.DB.ValidateAndSave(&matchingChunk)
+			updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(matchingChunk))
 		}
+
+		err := models.BatchUpsert(
+			"data_maps",
+			updatedDms,
+			dbOperation.GetColumns(),
+			[]string{"status"})
+
+		oyster_utils.LogIfError(errors.New(err.Error()+" setting status to complete in CheckChunks() "+
+			"in verify_data_maps"), nil)
 	}
 
 	if len(filteredChunks.DoesNotMatchTangle) > 0 {
 
 		// when we bring back hooknodes, decrement their reputation here
+
+		var updatedDms []string
+		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
 
 		for _, notMatchingChunk := range filteredChunks.DoesNotMatchTangle {
 
@@ -59,7 +74,16 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.D
 			notMatchingChunk.TrunkTx = ""
 			notMatchingChunk.BranchTx = ""
 			notMatchingChunk.NodeID = ""
-			models.DB.ValidateAndSave(&notMatchingChunk)
+			updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(notMatchingChunk))
 		}
+
+		err := models.BatchUpsert(
+			"data_maps",
+			updatedDms,
+			dbOperation.GetColumns(),
+			[]string{"status", "trunk_tx", "branch_tx", "node_id"})
+
+		oyster_utils.LogIfError(errors.New(err.Error()+" setting status to error in CheckChunks() "+
+			"in verify_data_maps"), nil)
 	}
 }
