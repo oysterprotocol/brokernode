@@ -102,6 +102,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	}
 
 	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		privKey = os.Getenv("TEST_MODE_WALLET_KEY")
+		alphaEthAddr = EthWrapper.GenerateEthAddrFromPrivateKey(privKey)
+	}
 
 	// Start Alpha Session.
 	alphaSession := models.UploadSession{
@@ -274,6 +278,10 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	// Generates ETH address.
 	betaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
+	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+		privKey = os.Getenv("TEST_MODE_WALLET_KEY")
+		betaEthAddr = EthWrapper.GenerateEthAddrFromPrivateKey(privKey)
+	}
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
