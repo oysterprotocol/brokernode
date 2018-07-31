@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -81,6 +82,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			Hash:           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			ObfuscatedHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 			Status:         models.Pending,
+			MsgStatus:      1,
+			MsgID: oyster_utils.GenerateMsgID("", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				0),
 		}
 	}
 
@@ -91,19 +95,29 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	}
 
 	t := models.Transaction{}
-	models.DB.Transaction(func(tx *pop.Connection) error {
+	err = models.DB.Transaction(func(tx *pop.Connection) error {
 		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
 			dataMap.Status = models.Unverified
 		}
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
-		tx.ValidateAndSave(&dataMap)
+		vErr, err := tx.ValidateAndSave(&dataMap)
+		if vErr.HasAny() || err != nil {
+			fmt.Println(vErr.Error())
+			fmt.Println(err.Error())
+			return errors.New("some error occurred while updating the data map")
+		}
 
 		storedGenesisHash.WebnodeCount++
 		if storedGenesisHash.WebnodeCount >= models.WebnodeCountLimit {
 			//storedGenesisHash.Status = models.StoredGenesisHashAssigned
 		}
-		vErr, err := tx.ValidateAndSave(&storedGenesisHash)
+		vErr, err = tx.ValidateAndSave(&storedGenesisHash)
+		if vErr.HasAny() || err != nil {
+			fmt.Println(vErr.Error())
+			fmt.Println(err.Error())
+			return errors.New("some error occurred while updating the stored genesis hash")
+		}
 		oyster_utils.LogIfError(err, nil)
 		oyster_utils.LogIfValidationError("validation errors in transaction_genesis_hashes.", vErr, nil)
 
@@ -116,6 +130,10 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		tx.ValidateAndSave(&t)
 		return nil
 	})
+
+	if err != nil {
+		return c.Render(403, r.JSON(map[string]string{"error": err.Error()}))
+	}
 
 	res := transactionGenesisHashCreateRes{
 		ID: t.ID,
@@ -156,6 +174,14 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	}
 
 	address, addError := giota.ToAddress(t.DataMap.Address)
+
+	fmt.Println(t)
+	if addError != nil {
+		fmt.Println("addErr: " + addError.Error())
+	}
+	if address != iotaTransaction.Address {
+		fmt.Println("did not match iota address")
+	}
 
 	validAddress := addError == nil && address == iotaTransaction.Address
 	if !validAddress {
