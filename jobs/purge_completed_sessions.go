@@ -22,7 +22,10 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 	defer purgeMutex.Unlock()
 
 	completeGenesisHashes, err := getAllCompletedGenesisHashes()
-	oyster_utils.LogIfError(err, nil)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting the completeGenesisHashes in "+
+			"purge_completed_sessions"), nil)
+	}
 
 	for _, genesisHash := range completeGenesisHashes {
 		if err := createCompletedDataMapIfNeeded(genesisHash); err != nil {
@@ -32,7 +35,8 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 		var moveToCompleteDm = []models.DataMap{}
 		err := models.DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ?", genesisHash).All(&moveToCompleteDm)
 		if err != nil {
-			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfError(errors.New(err.Error()+" getting the data_maps that match genesis_hash in "+
+				"purge_completed_sessions"), nil)
 			continue
 		}
 
@@ -47,7 +51,8 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 			}
 
 			if err := tx.RawQuery("DELETE FROM upload_sessions WHERE genesis_hash = ?", genesisHash).All(&[]models.UploadSession{}); err != nil {
-				oyster_utils.LogIfError(err, nil)
+				oyster_utils.LogIfError(errors.New(err.Error()+" while deleting upload_sessions in "+
+					"purge_completed_sessions"), nil)
 				return err
 			}
 			return nil
@@ -71,8 +76,9 @@ func getAllCompletedGenesisHashes() ([]string, error) {
 	var completeGenesisHashes []string
 
 	err := models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps").All(&allGenesisHashesStruct)
-	oyster_utils.LogIfError(err, nil)
 	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" while getting distinct genesis_hash from data_maps in "+
+			"purge_completed_sessions"), nil)
 		return completeGenesisHashes, err
 	}
 
@@ -85,8 +91,9 @@ func getAllCompletedGenesisHashes() ([]string, error) {
 	err = models.DB.RawQuery("SELECT distinct genesis_hash FROM data_maps WHERE status != ? AND status != ?",
 		models.Complete,
 		models.Confirmed).All(&genesisHashesNotComplete)
-	oyster_utils.LogIfError(err, nil)
 	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" while getting distinct genesis_hash from data_maps "+
+			"where status is Completed or Confirmed in purge_completed_sessions"), nil)
 		return completeGenesisHashes, err
 	}
 
@@ -174,7 +181,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 			hasValidationError = true
 			continue
 		}
-
+    
 		// Force GetMessageFromDataMap to return un-encoded msg.
 		msgStatus := dataMap.MsgStatus
 		if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
