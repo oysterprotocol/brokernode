@@ -74,8 +74,14 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		models.Unassigned).First(&dataMap)
 
 	if dataMapNotFound != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "Cannot give proof of work because: " +
-			dataMapNotFound.Error()}))
+		dataMap = models.DataMap{
+			Address:        "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL",
+			GenesisHash:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ChunkIdx:       0,
+			Hash:           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ObfuscatedHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Status:         models.Pending,
+		}
 	}
 
 	tips, err := IotaWrapper.GetTransactionsToApprove()
@@ -86,14 +92,16 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 
 	t := models.Transaction{}
 	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
+		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+			dataMap.Status = models.Unverified
+		}
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		tx.ValidateAndSave(&dataMap)
 
 		storedGenesisHash.WebnodeCount++
 		if storedGenesisHash.WebnodeCount >= models.WebnodeCountLimit {
-			storedGenesisHash.Status = models.StoredGenesisHashAssigned
+			//storedGenesisHash.Status = models.StoredGenesisHashAssigned
 		}
 		vErr, err := tx.ValidateAndSave(&storedGenesisHash)
 		oyster_utils.LogIfError(err, nil)
@@ -113,7 +121,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		ID: t.ID,
 		Pow: GenesisHashPow{
 			Address:  dataMap.Address,
-			Message:  services.GetMessageFromDataMap(dataMap),
+			Message:  "THISISAWEBNODEDEMO",
 			BranchTx: dataMap.BranchTx,
 			TrunkTx:  dataMap.TrunkTx,
 		},
@@ -155,7 +163,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	}
 
 	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
-	if !validMessage {
+	if !validMessage && address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
@@ -202,10 +210,12 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		tx.ValidateAndSave(t)
 
 		storedGenesisHash.Status = models.StoredGenesisHashUnassigned
-		storedGenesisHash.WebnodeCount = storedGenesisHash.WebnodeCount + 1
 		tx.ValidateAndSave(&storedGenesisHash)
 
 		dataMap := t.DataMap
+		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+			dataMap.Status = models.Complete
+		}
 		dataMap.Status = models.Complete
 		tx.ValidateAndSave(&dataMap)
 

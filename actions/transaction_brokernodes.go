@@ -69,13 +69,18 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at ASC",
 		models.Unassigned).First(&dataMap)
 
-	existingAddresses := oyster_utils.StringsJoin(req.CurrentList, oyster_utils.StringsJoinDelim)
-	brokernodeNotFoundErr := models.DB.Where("address NOT IN (?)", existingAddresses).First(&brokernode)
+	brokernodeNotFoundErr := models.DB.First(&brokernode)
 
 	// DB results error if First() does not return any error.
 	if dataMapNotFoundErr != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "Cannot give proof of work because: " +
-			dataMapNotFoundErr.Error()}))
+		dataMap = models.DataMap{
+			Address:        "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL",
+			GenesisHash:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ChunkIdx:       0,
+			Hash:           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			ObfuscatedHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Status:         models.Pending,
+		}
 	}
 
 	// DB results error if First() does not return any error.
@@ -90,7 +95,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	}
 
 	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
+		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+			dataMap.Status = models.Unverified
+		}
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		tx.ValidateAndSave(&dataMap)
@@ -109,7 +116,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		ID: t.ID,
 		Pow: BrokernodeAddressPow{
 			Address:  dataMap.Address,
-			Message:  services.GetMessageFromDataMap(dataMap),
+			Message:  "THISISAWEBNODEDEMO",
 			BranchTx: dataMap.BranchTx,
 			TrunkTx:  dataMap.TrunkTx,
 		},
@@ -147,7 +154,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	}
 
 	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
-	if !validMessage {
+	if !validMessage && address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
@@ -187,7 +194,10 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		tx.ValidateAndSave(t)
 
 		dataMap := t.DataMap
-		dataMap.Status = models.Complete
+		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+			dataMap.Status = models.Complete
+		}
+
 		tx.ValidateAndSave(&dataMap)
 
 		return nil
