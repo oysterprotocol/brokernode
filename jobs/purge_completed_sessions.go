@@ -170,6 +170,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
 			MsgStatus:   dataMap.MsgStatus,
+			MsgID:       oyster_utils.GenerateMsgID(models.CompletedDataMapsMsgIDPrefix, dataMap.GenesisHash, dataMap.ChunkIdx),
 		}
 		if !services.IsKvStoreEnabled() {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
@@ -181,7 +182,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 			hasValidationError = true
 			continue
 		}
-    
+
 		// Force GetMessageFromDataMap to return un-encoded msg.
 		msgStatus := dataMap.MsgStatus
 		if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
