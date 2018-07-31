@@ -30,14 +30,16 @@ type CompletedDataMap struct {
 	Address        string    `json:"address" db:"address"`
 }
 
-/*CompletedDataMapsTimeToLive will cause completed_data_maps
-message data to be garbage collected after two weeks.  This can
-be increased but for now it will give us ample time to make S3
-backups.*/
-const CompletedDataMapsTimeToLive = 7 * 24 * time.Hour
+const (
+	/*CompletedDataMapsTimeToLive will cause completed_data_maps
+	message data to be garbage collected after two weeks.  This can
+	be increased but for now it will give us ample time to make S3
+	backups.*/
+	CompletedDataMapsTimeToLive = 7 * 24 * time.Hour
 
-func init() {
-}
+	/*CompletedDataMapsMsgIDPrefix is the prefix for the completed data map MsgID.*/
+	CompletedDataMapsMsgIDPrefix = "completeDataMap_"
+)
 
 // String is not required by pop and may be deleted
 func (d CompletedDataMap) String() string {
@@ -61,6 +63,7 @@ func (d *CompletedDataMap) Validate(tx *pop.Connection) (*validate.Errors, error
 		&validators.StringIsPresent{Field: d.GenesisHash, Name: "GenesisHash"},
 		&validators.IntIsGreaterThan{Field: d.ChunkIdx, Name: "ChunkIdx", Compared: -1},
 		&validators.StringIsPresent{Field: d.Hash, Name: "Hash"},
+		&validators.StringIsPresent{Field: d.MsgID, Name: "MsgID"},
 	), nil
 }
 
@@ -83,5 +86,5 @@ func (d *CompletedDataMap) BeforeCreate(tx *pop.Connection) error {
 }
 
 func (d *CompletedDataMap) generateMsgId() string {
-	return oyster_utils.GenerateMsgID("completeDataMap_", d.GenesisHash, d.ChunkIdx)
+	return oyster_utils.GenerateMsgID(CompletedDataMapsMsgIDPrefix, d.GenesisHash, d.ChunkIdx)
 }
