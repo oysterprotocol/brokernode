@@ -86,5 +86,5 @@ func (d *CompletedDataMap) BeforeCreate(tx *pop.Connection) error {
 }
 
 func (d *CompletedDataMap) generateMsgId() string {
-	return oyster_utils.GenerateMsgID(CompletedDataMapsMsgIDPrefix, d.GenesisHash, d.ChunkIdx)
+	return oyster_utils.GenerateBadgerKey(CompletedDataMapsMsgIDPrefix, d.GenesisHash, d.ChunkIdx)
 }

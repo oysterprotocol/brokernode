@@ -170,7 +170,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 			Hash:        dataMap.Hash,
 			Address:     dataMap.Address,
 			MsgStatus:   dataMap.MsgStatus,
-			MsgID:       oyster_utils.GenerateMsgID(models.CompletedDataMapsMsgIDPrefix, dataMap.GenesisHash, dataMap.ChunkIdx),
+			MsgID:       oyster_utils.GenerateBadgerKey(models.CompletedDataMapsMsgIDPrefix, dataMap.GenesisHash, dataMap.ChunkIdx),
 		}
 		if !services.IsKvStoreEnabled() {
 			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)

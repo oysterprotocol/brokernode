@@ -374,7 +374,7 @@ func IntMax(x, y int) int {
 	return y
 }
 
-/*GenerateMsgID will generate a msg_id for use with badger*/
-func GenerateMsgID(startingString string, genesisHash string, chunkIdx int) string {
+/*GenerateBadgerKey will generate a msg_id for use with badger*/
+func GenerateBadgerKey(startingString string, genesisHash string, chunkIdx int) string {
 	return fmt.Sprintf("%v%v__%d", startingString, genesisHash, chunkIdx)
 }
