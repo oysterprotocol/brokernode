@@ -23,11 +23,16 @@ scrape_configs:
     # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ['localhost:9090']
+    - targets: ['localhost:9090']
 
   - job_name: 'brokernode'
 
     # metrics_path defaults to '/metrics'
     # scheme defaults to 'http'.
     static_configs:
-      - targets: ['localhost:3000']
+    - targets: ['localhost:3000']
+
+  - job_name: 'node-exporter'
+
+    static_configs:
+    - targets: ['localhost:9100']

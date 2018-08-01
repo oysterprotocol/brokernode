@@ -1,12 +1,30 @@
 version: "3"
 
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
 services:
   prometheus:
     image: quay.io/prometheus/prometheus:latest
     ports:
     - "9090:9090"
     volumes:
-     - "./prometheus.yml:/var/lib/prometheus/prometheus.yml"
+    - prometheus_data:/prometheus
+    - "./prometheus.yml:/var/lib/prometheus/prometheus.yml"
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+    - "9100:9100"
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+    - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+    - prometheus
+    ports:
+    - "3001:3001"
+    volumes:
+    - grafana_data:/var/lib/grafana
   app:
     build: "."
     restart: "always"
