@@ -171,6 +171,8 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	req := transactionGenesisHashUpdateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
+	fmt.Println(c.Param("id"))
+
 	// Get transaction
 	t := &models.Transaction{}
 	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
