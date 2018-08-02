@@ -104,11 +104,22 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		}
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
-		vErr, err := tx.ValidateAndSave(&dataMap)
-		if vErr.HasAny() || err != nil {
-			fmt.Println(vErr.Error())
-			fmt.Println(err.Error())
-			return errors.New("some error occurred while updating the data map")
+		dm := []models.DataMap{}
+		_ = models.DB.Where("address = ?", dataMap.Address).All(&dm)
+		if len(dm) == 0 {
+			vErr, err := tx.ValidateAndSave(&dataMap)
+			if vErr.HasAny() || err != nil {
+				fmt.Println(vErr.Error())
+				fmt.Println(err.Error())
+				return errors.New("some error occurred while creating the data map")
+			}
+		} else {
+			vErr, err := tx.ValidateAndUpdate(&dataMap)
+			if vErr.HasAny() || err != nil {
+				fmt.Println(vErr.Error())
+				fmt.Println(err.Error())
+				return errors.New("some error occurred while updating the data map")
+			}
 		}
 
 		t = models.Transaction{
