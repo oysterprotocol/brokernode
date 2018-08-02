@@ -328,6 +328,10 @@ var _ = grift.Namespace("db", func() {
 		qaBrokerIPs := []string{
 			"52.14.218.135", "18.217.133.146",
 		}
+		qaBrokerAddresses := []string{
+			"https://broker-qa-1.oysternodes.com", "https://broker-qa-2.oysternodes.com",
+		}
+
 		rebelBrokerIPs := []string{
 			"18.188.230.212", "18.188.64.13",
 		}
@@ -335,10 +339,10 @@ var _ = grift.Namespace("db", func() {
 		hostIP := os.Getenv("HOST_IP")
 
 		if hostIP == "52.14.218.135" || hostIP == "18.217.133.146" {
-			for _, brokerIP := range qaBrokerIPs {
+			for i, brokerIP := range qaBrokerIPs {
 				if brokerIP != hostIP {
 					vErr, err := models.DB.ValidateAndCreate(&models.Brokernode{
-						Address: "http://" + brokerIP + ":3000",
+						Address: qaBrokerAddresses[i] + ":3000",
 					})
 					if err != nil || len(vErr.Errors) != 0 {
 						fmt.Println(err)
