@@ -123,8 +123,9 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Set("storage_years", alphaSession.StorageLengthInYears))
 
 	vErr, err := alphaSession.StartUploadSession()
-	if err != nil {
-		fmt.Println(err)
+	if err != nil || vErr.HasAny() {
+		err = errors.New(fmt.Sprintf("StartUploadSession error: %v and validation error: %v", err, vErr)
+		c.Error(400, err)
 		return err
 	}
 
