@@ -63,11 +63,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	genesisHash := []models.StoredGenesisHash{}
+	genesisHash := models.StoredGenesisHash{}
 
-	models.DB.All(&genesisHash)
+	genHashNotFoundErr := models.DB.First(&genesisHash)
 
-	if len(genesisHash) == 0 {
+	if genHashNotFoundErr != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
 	}
 
@@ -124,11 +124,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			}
 		}
 
-		genesisHash[0].WebnodeCount++
-		if genesisHash[0].WebnodeCount >= models.WebnodeCountLimit {
+		genesisHash.WebnodeCount++
+		if genesisHash.WebnodeCount >= models.WebnodeCountLimit {
 			//storedGenesisHash.Status = models.StoredGenesisHashAssigned
 		}
-		vErr, err := tx.ValidateAndSave(&genesisHash[0])
+		vErr, err := tx.ValidateAndSave(&genesisHash)
 		if vErr.HasAny() || err != nil {
 			fmt.Println(vErr.Error())
 			fmt.Println(err.Error())
@@ -141,7 +141,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			Type:      models.TransactionTypeGenesisHash,
 			Status:    models.TransactionStatusPending,
 			DataMapID: idToUse,
-			Purchase:  genesisHash[0].GenesisHash,
+			Purchase:  genesisHash.GenesisHash,
 		}
 		tx.ValidateAndSave(&t)
 		return nil
