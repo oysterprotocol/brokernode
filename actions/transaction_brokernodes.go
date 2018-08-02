@@ -98,6 +98,8 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
+	idToUse := dataMap.ID
+
 	err = models.DB.Transaction(func(tx *pop.Connection) error {
 		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
 			dataMap.Status = models.Unverified
@@ -114,6 +116,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 				return errors.New("some error occurred while creating the data map")
 			}
 		} else {
+			idToUse = dm[0].ID
 			vErr, err := tx.ValidateAndUpdate(&dataMap)
 			if vErr.HasAny() || err != nil {
 				fmt.Println(vErr.Error())
@@ -125,7 +128,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		t = models.Transaction{
 			Type:      models.TransactionTypeBrokernode,
 			Status:    models.TransactionStatusPending,
-			DataMapID: dataMap.ID,
+			DataMapID: idToUse,
 			Purchase:  brokernode.Address,
 		}
 		tx.ValidateAndSave(&t)
