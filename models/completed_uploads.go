@@ -159,6 +159,7 @@ func NewCompletedUpload(session UploadSession) error {
 	var vErr *validate.Errors
 	privateKey := session.DecryptSessionEthKey()
 	completedUpload := CompletedUpload{}
+	errorInfo := map[string]interface{}{"sessionID": session.ID}
 
 	switch session.Type {
 	case SessionTypeAlpha:
@@ -169,13 +170,10 @@ func NewCompletedUpload(session UploadSession) error {
 		}
 
 		vErr, err = DB.ValidateAndSave(&completedUpload)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
-		if len(vErr.Errors) != 0 {
-			oyster_utils.LogIfValidationError(
-				"validation errors for creating completedUpload with SessionTypeAlpha.", vErr, nil)
-		}
+		oyster_utils.LogIfError(err, errorInfo)
+		oyster_utils.LogIfValidationError(
+			"validation errors for creating completedUpload with SessionTypeAlpha.", vErr, errorInfo)
+
 	case SessionTypeBeta:
 		completedUpload = CompletedUpload{
 			GenesisHash:   session.GenesisHash,
@@ -184,16 +182,12 @@ func NewCompletedUpload(session UploadSession) error {
 		}
 
 		vErr, err = DB.ValidateAndSave(&completedUpload)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
-		if len(vErr.Errors) != 0 {
-			oyster_utils.LogIfValidationError(
-				"validation errors for creating completedUpload with SessionTypeBeta.", vErr, nil)
-		}
+		oyster_utils.LogIfError(err, errorInfo)
+		oyster_utils.LogIfValidationError(
+			"validation errors for creating completedUpload with SessionTypeBeta.", vErr, errorInfo)
 	default:
 		err = errors.New("no session type provided for session in method models.NewCompletedUpload")
-		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type})
+		oyster_utils.LogIfError(err, map[string]interface{}{"sessionType": session.Type, "sessionID": session.ID})
 		return err
 	}
 
