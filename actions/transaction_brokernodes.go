@@ -107,9 +107,14 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		dm := []models.DataMap{}
 		_ = models.DB.Where("address = ?", dataMap.Address).All(&dm)
 		idToUse := dataMap.ID
-		if len(dm) == 0 {
-			idToUse = dataMap.ID
+		if len(dm) == 0 || len(dm) > 0 && dm[0].ID == uuid.Nil {
+
+			fmt.Println()
+			fmt.Println("ROW DOES NOT EXIST")
+			fmt.Println()
+
 			vErr, err := tx.ValidateAndCreate(&dataMap)
+			idToUse = dataMap.ID
 			if vErr.HasAny() || err != nil {
 				fmt.Println(vErr.Error())
 				fmt.Println(err.Error())
