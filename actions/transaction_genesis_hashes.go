@@ -137,13 +137,24 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		oyster_utils.LogIfError(err, nil)
 		oyster_utils.LogIfValidationError("validation errors in transaction_genesis_hashes.", vErr, nil)
 
+		fmt.Println()
+		fmt.Println("Using ID: ")
+		fmt.Println(idToUse)
+		fmt.Println()
+
 		t = models.Transaction{
 			Type:      models.TransactionTypeGenesisHash,
 			Status:    models.TransactionStatusPending,
 			DataMapID: idToUse,
 			Purchase:  genesisHash.GenesisHash,
 		}
-		tx.ValidateAndSave(&t)
+
+		vErr, err = tx.ValidateAndSave(&t)
+		if vErr.HasAny() || err != nil {
+			fmt.Println(vErr.Error())
+			fmt.Println(err.Error())
+			return errors.New("some error occurred while creating the transaction")
+		}
 		return nil
 	})
 
