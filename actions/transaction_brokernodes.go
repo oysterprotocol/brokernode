@@ -109,7 +109,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		dm := []models.DataMap{}
 		_ = models.DB.Where("address = ?", dataMap.Address).All(&dm)
 		if len(dm) == 0 {
-			vErr, err := tx.ValidateAndSave(&dataMap)
+			vErr, err := tx.ValidateAndCreate(&dataMap)
 			if vErr.HasAny() || err != nil {
 				fmt.Println(vErr.Error())
 				fmt.Println(err.Error())
@@ -194,8 +194,6 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
-	fmt.Println(iotaTransaction.TrunkTransaction)
-	fmt.Println(iotaTransaction.BranchTransaction)
 	_, err = giota.ToTrytes(t.DataMap.BranchTx)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)

@@ -63,9 +63,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	req := transactionGenesisHashCreateReq{}
 	oyster_utils.ParseReqBody(c.Request(), &req)
 
-	storedGenesisHash, genesisHashNotFound := models.GetGenesisHashForWebnode(req.CurrentList)
+	genesisHash := []models.StoredGenesisHash{}
 
-	if genesisHashNotFound != nil {
+	models.DB.All(&genesisHash)
+
+	if len(genesisHash) == 0 {
 		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
 	}
 
@@ -104,9 +106,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		dataMap.BranchTx = string(tips.BranchTransaction)
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		dm := []models.DataMap{}
-		err := models.DB.Where("address = ?", dataMap.Address).All(&dm)
+		_ = models.DB.Where("address = ?", dataMap.Address).All(&dm)
 		if len(dm) == 0 {
-			vErr, err := tx.ValidateAndSave(&dataMap)
+			vErr, err := tx.ValidateAndCreate(&dataMap)
 			if vErr.HasAny() || err != nil {
 				fmt.Println(vErr.Error())
 				fmt.Println(err.Error())
@@ -122,11 +124,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			}
 		}
 
-		storedGenesisHash.WebnodeCount++
-		if storedGenesisHash.WebnodeCount >= models.WebnodeCountLimit {
+		genesisHash[0].WebnodeCount++
+		if genesisHash[0].WebnodeCount >= models.WebnodeCountLimit {
 			//storedGenesisHash.Status = models.StoredGenesisHashAssigned
 		}
-		vErr, err := tx.ValidateAndSave(&storedGenesisHash)
+		vErr, err := tx.ValidateAndSave(&genesisHash[0])
 		if vErr.HasAny() || err != nil {
 			fmt.Println(vErr.Error())
 			fmt.Println(err.Error())
@@ -139,7 +141,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 			Type:      models.TransactionTypeGenesisHash,
 			Status:    models.TransactionStatusPending,
 			DataMapID: idToUse,
-			Purchase:  storedGenesisHash.GenesisHash,
+			Purchase:  genesisHash[0].GenesisHash,
 		}
 		tx.ValidateAndSave(&t)
 		return nil
@@ -207,8 +209,6 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
-	fmt.Println(iotaTransaction.TrunkTransaction)
-	fmt.Println(iotaTransaction.BranchTransaction)
 	_, err = giota.ToTrytes(t.DataMap.BranchTx)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
