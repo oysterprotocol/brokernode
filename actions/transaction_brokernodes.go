@@ -98,8 +98,6 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
-	idToUse := dataMap.ID
-
 	err = models.DB.Transaction(func(tx *pop.Connection) error {
 		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
 			dataMap.Status = models.Unverified
@@ -108,7 +106,9 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		dataMap.TrunkTx = string(tips.TrunkTransaction)
 		dm := []models.DataMap{}
 		_ = models.DB.Where("address = ?", dataMap.Address).All(&dm)
+		idToUse := dataMap.ID
 		if len(dm) == 0 {
+			idToUse = dataMap.ID
 			vErr, err := tx.ValidateAndCreate(&dataMap)
 			if vErr.HasAny() || err != nil {
 				fmt.Println(vErr.Error())
