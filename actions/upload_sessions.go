@@ -124,7 +124,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	vErr, err := alphaSession.StartUploadSession()
 	if err != nil || vErr.HasAny() {
-		err = fmt.Errorf("StartUploadSession error: %v and validation error: %v", err, vErr))
+		err = fmt.Errorf("StartUploadSession error: %v and validation error: %v", err, vErr)
 		c.Error(400, err)
 		return err
 	}
