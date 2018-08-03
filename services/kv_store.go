@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -13,7 +14,7 @@ import (
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
 const badgerDir = "/var/lib/badger/prod"
-const CompletedDir = "completed"
+const CompletedDir = "complete"
 const InProgressDir = "current"
 const HashDir = "hash"
 const MessageDir = "message"
@@ -25,9 +26,16 @@ var isKvStoreEnable bool
 var badgerDirTest string
 var DBMap KVDBMap
 
-type KVDBMap map[string]*badger.DB
+type ChunkDataType int
+type KVDBMap map[string]DBData
 type KVPairs map[string]string
 type KVKeys []string
+
+type DBData struct {
+	DatabaseName  string
+	DirectoryPath string
+	Database      *badger.DB
+}
 
 type ChunkData struct {
 	Address string
@@ -36,6 +44,7 @@ type ChunkData struct {
 }
 
 func init() {
+
 	DBMap = make(KVDBMap)
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
@@ -53,26 +62,67 @@ func init() {
 	}
 }
 
+func GetBadgerDirName(dirs []string) string {
+	return buildBadgerName(dirs, string(os.PathSeparator))
+}
+
+func GetBadgerDBName(names []string) string {
+	return buildBadgerName(names, "_")
+}
+
+func GetBadgerKey(keyStrings []string) string {
+	return buildBadgerName(keyStrings, "_")
+}
+
+func buildBadgerName(names []string, separator string) string {
+	returnName := names[0]
+
+	for i := 1; i < len(names); i++ {
+		returnName += separator + names[i]
+	}
+
+	return returnName
+}
+
 /*InitUniqueKvStore creates a new K:V store associated with a particular upload*/
-func InitUniqueKvStore(dirName string) error {
-	if DBMap[dirName] != nil {
+func InitUniqueKvStore(dbID []string) error {
+	dbName := GetBadgerDBName(dbID)
+	dirPath := GetBadgerDirName(dbID)
+	if DBMap[dbName].Database != nil {
 		return nil
 	}
 
 	opts := badger.DefaultOptions
 
 	if os.Getenv("GO_ENV") == "test" {
-		opts.Dir = badgerDirTest + "/" + dirName
-		opts.ValueDir = badgerDirTest + "/" + dirName
+
+		dir := badgerDirTest + dirPath
+
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			os.MkdirAll(dir, os.ModeDir)
+		}
+
+		opts.Dir = dir
+		opts.ValueDir = dir
 	} else {
-		opts.Dir = badgerDir + "/" + dirName
-		opts.ValueDir = badgerDir + "/" + dirName
+		dir := badgerDir + string(os.PathSeparator) + dirPath
+
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			os.MkdirAll(dir, os.ModeDir)
+		}
+
+		opts.Dir = dir
+		opts.ValueDir = dir
 	}
 
 	db, err := badger.Open(opts)
 	oyster_utils.LogIfError(err, nil)
 	if err == nil {
-		DBMap[dirName] = db
+		DBMap[dbName] = DBData{
+			Database:      db,
+			DatabaseName:  dbName,
+			DirectoryPath: dirPath,
+		}
 	}
 	return err
 }
@@ -100,13 +150,17 @@ func InitKvStore() (err error) {
 }
 
 /*CloseUniqueKvStore closes the K:V store associated with a particular upload.*/
-func CloseUniqueKvStore(dirName string) error {
-	if DBMap[dirName] == nil {
+func CloseUniqueKvStore(dbName string) error {
+	if DBMap[dbName].Database == nil {
 		return nil
 	}
-	err := DBMap[dirName].Close()
+	err := DBMap[dbName].Database.Close()
 	oyster_utils.LogIfError(err, nil)
-	DBMap[dirName] = nil
+
+	if _, ok := DBMap[dbName]; ok {
+		delete(DBMap, dbName)
+	}
+
 	return err
 }
 
@@ -122,19 +176,22 @@ func CloseKvStore() error {
 }
 
 /*RemoveAllUniqueKvStoreData removes all the data associated with a particular K:V store.*/
-func RemoveAllUniqueKvStoreData(dirName string) error {
-	if err := CloseUniqueKvStore(dirName); err != nil {
+func RemoveAllUniqueKvStoreData(dbName string) error {
+	directoryPath := DBMap[dbName].DirectoryPath
+
+	if err := CloseUniqueKvStore(dbName); err != nil {
 		return err
 	}
 
 	var dir string
 	if os.Getenv("GO_ENV") == "test" {
-		dir = badgerDirTest + "/" + dirName
+		dir = badgerDirTest + directoryPath
 	} else {
-		dir = badgerDir + "/" + dirName
+		dir = badgerDir + "/" + directoryPath
 	}
 
 	err := os.RemoveAll(dir)
+
 	oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
 	return err
 }
@@ -142,17 +199,17 @@ func RemoveAllUniqueKvStoreData(dirName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	for dirName := range DBMap {
-		if err := CloseUniqueKvStore(dirName); err != nil {
+	for dbName := range DBMap {
+		if err := CloseUniqueKvStore(dbName); err != nil {
 			errArray = append(errArray, err)
 			continue
 		}
 
 		var dir string
 		if os.Getenv("GO_ENV") == "test" {
-			dir = badgerDirTest + "/" + dirName
+			dir = badgerDirTest + "/" + DBMap[dbName].DirectoryPath
 		} else {
-			dir = badgerDir + "/" + dirName
+			dir = badgerDir + "/" + DBMap[dbName].DirectoryPath
 		}
 		err := os.RemoveAll(dir)
 		oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
@@ -178,20 +235,22 @@ func RemoveAllKvStoreData() error {
 }
 
 /*GetUniqueBadgerDb returns a database associated with an upload.  If not initialized this will return nil. */
-func GetUniqueBadgerDb(dirName string) *badger.DB {
-	return DBMap[dirName]
+func GetUniqueBadgerDb(dbName string) *badger.DB {
+	return DBMap[dbName].Database
 }
 
 /*GetOrInitUniqueBadgerDB returns a database associated with an upload. */
-func GetOrInitUniqueBadgerDB(dirName string) *badger.DB {
-	db := GetUniqueBadgerDb(dirName)
+func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
+	dbName := GetBadgerDBName(dbID)
+
+	db := GetUniqueBadgerDb(dbName)
 	if db != nil {
 		return db
 	}
 
-	err := InitUniqueKvStore(dirName)
+	err := InitUniqueKvStore(dbID)
 	oyster_utils.LogIfError(err, nil)
-	return GetUniqueBadgerDb(dirName)
+	return GetUniqueBadgerDb(dbName)
 }
 
 /*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/
@@ -225,24 +284,18 @@ func GetMessageFromDataMap(dataMap models.DataMap) string {
 /*GetChunkData returns the message, hash, and address for a chunk.*/
 func GetChunkData(prefix string, genesisHash string, chunkIdx int) ChunkData {
 
-	key := oyster_utils.GenerateBadgerKey(prefix, genesisHash, chunkIdx)
-
-	hashDBDir := prefix + "/" + HashDir + "/" + genesisHash
-	messageDBDir := prefix + "/" + MessageDir + "/" + genesisHash
-
-	GetOrInitUniqueBadgerDB(hashDBDir)
-	GetOrInitUniqueBadgerDB(messageDBDir)
+	key := GetBadgerKey([]string{genesisHash, strconv.Itoa(chunkIdx)})
 
 	hash := ""
 	message := ""
 
-	hashValues, _ := BatchGetFromUniqueDB(hashDBDir,
+	hashValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, HashDir},
 		&KVKeys{key})
 	if v, hasKey := (*hashValues)[key]; hasKey {
 		hash = v
 	}
 
-	messageValues, _ := BatchGetFromUniqueDB(messageDBDir,
+	messageValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, MessageDir},
 		&KVKeys{key})
 	if v, hasKey := (*messageValues)[key]; hasKey {
 		message = v
@@ -262,13 +315,17 @@ func GetChunkData(prefix string, genesisHash string, chunkIdx int) ChunkData {
 
 /*BatchGetFromUniqueDB returns KVPairs for a set of keys from a specific DB.
 It won't treat Key missing as error.*/
-func BatchGetFromUniqueDB(dirName string, ks *KVKeys) (kvs *KVPairs, err error) {
+func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
-	if DBMap[dirName] == nil {
-		DBMap[dirName] = GetOrInitUniqueBadgerDB(dirName)
+	dbName := GetBadgerDBName(dbID)
+	var db *badger.DB
+	if DBMap[dbName].Database == nil {
+		db = GetOrInitUniqueBadgerDB(dbID)
+	} else {
+		db = DBMap[dbName].Database
 	}
 
-	err = DBMap[dirName].View(func(txn *badger.Txn) error {
+	err = db.View(func(txn *badger.Txn) error {
 		for _, k := range *ks {
 			// Skip any empty keys.
 			if k == "" {
@@ -349,13 +406,17 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 /*BatchSetToUniqueDB updates a set of KVPairs in a unique database.
 Return error if any fails.*/
-func BatchSetToUniqueDB(dirName string, kvs *KVPairs, ttl time.Duration) error {
-	if DBMap[dirName] == nil {
-		DBMap[dirName] = GetOrInitUniqueBadgerDB(dirName)
+func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
+	dbName := GetBadgerDBName(dbID)
+	var db *badger.DB
+	if DBMap[dbName].Database == nil {
+		db = GetOrInitUniqueBadgerDB(dbID)
+	} else {
+		db = DBMap[dbName].Database
 	}
 
 	var err error
-	txn := DBMap[dirName].NewTransaction(true)
+	txn := db.NewTransaction(true)
 	for k, v := range *kvs {
 		if k == "" {
 			err = errors.New("BatchSetToUniqueDB does not accept key as empty string")
@@ -372,7 +433,7 @@ func BatchSetToUniqueDB(dirName string, kvs *KVPairs, ttl time.Duration) error {
 			if commitErr := txn.Commit(nil); commitErr != nil {
 				e = commitErr
 			} else {
-				txn = DBMap[dirName].NewTransaction(true)
+				txn = db.NewTransaction(true)
 				e = txn.SetWithTTL([]byte(k), []byte(v), ttl)
 			}
 		}
@@ -436,13 +497,17 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 
 /*BatchDeleteFromUniqueDB deletes a set of KVKeys from a specific DB.
 Return error if any fails.*/
-func BatchDeleteFromUniqueDB(dirName string, ks *KVKeys) error {
-	if DBMap[dirName] == nil {
-		DBMap[dirName] = GetOrInitUniqueBadgerDB(dirName)
+func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
+	dbName := GetBadgerDBName(dbID)
+	var db *badger.DB
+	if DBMap[dbName].Database == nil {
+		db = GetOrInitUniqueBadgerDB(dbID)
+	} else {
+		db = DBMap[dbName].Database
 	}
 
 	var err error
-	txn := DBMap[dirName].NewTransaction(true)
+	txn := db.NewTransaction(true)
 	for _, key := range *ks {
 		e := txn.Delete([]byte(key))
 		if e == nil {
@@ -454,7 +519,7 @@ func BatchDeleteFromUniqueDB(dirName string, ks *KVKeys) error {
 			if commitErr := txn.Commit(nil); commitErr != nil {
 				e = commitErr
 			} else {
-				txn = DBMap[dirName].NewTransaction(true)
+				txn = db.NewTransaction(true)
 				e = txn.Delete([]byte(key))
 			}
 		}
@@ -515,8 +580,8 @@ func BatchDelete(ks *KVKeys) error {
 
 /*DeleteDataFromUniqueDB deletes the data from a specific DB for all
 chunks within a certain range.  Note that endingIdx is inclusive */
-func DeleteDataFromUniqueDB(dirName string, prefix string, genesisHash string, startingIdx int,
-	endingIdx int) {
+func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int,
+	endingIdx int) error {
 
 	var keys KVKeys
 	step := 0
@@ -529,14 +594,15 @@ func DeleteDataFromUniqueDB(dirName string, prefix string, genesisHash string, s
 		step = -1
 		stop = endingIdx + step
 	} else {
-		keys = append(keys, oyster_utils.GenerateBadgerKey(prefix, genesisHash, startingIdx))
+		keys = append(keys, GetBadgerKey([]string{genesisHash, strconv.Itoa(startingIdx)}))
 	}
 
 	for i := startingIdx; i != stop; i = i + step {
-		keys = append(keys, oyster_utils.GenerateBadgerKey(prefix, genesisHash, i))
+		keys = append(keys, GetBadgerKey([]string{genesisHash, strconv.Itoa(i)}))
 	}
 
-	BatchDeleteFromUniqueDB(dirName, &keys)
+	err := BatchDeleteFromUniqueDB(dbID, &keys)
+	return err
 }
 
 /*DeleteMsgDatas deletes the data referred by dataMaps. */
