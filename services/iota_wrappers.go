@@ -1,8 +1,11 @@
 package services
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -41,8 +44,7 @@ type IotaService struct {
 	FindTransactions
 	GetTransactionsToApprove
 }
-
-type ProcessingFrequency struct {
+type ProcessingFhttpRequency struct {
 	RecentProcessingTimes []time.Duration
 	Frequency             float64
 }
@@ -69,8 +71,8 @@ type lambdaChunk struct {
 }
 
 type LambdaReq struct {
-	Provider string        `json:"provider"`
-	Chunks   []lambdaChunk `json:"chunks"`
+	Provider string         `json:"provider"`
+	Chunks   []*lambdaChunk `json:"chunks"`
 }
 
 // Things below are copied from the giota lib since they are not public.
@@ -85,7 +87,7 @@ const (
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 50 chunks per request.
-	lambdaUrl            = "https://TODO.com"
+	lambdaUrl            = "https://TODO.com/storeAndBroadcast"
 	maxLambdaConcurrency = 1000
 	maxLambdaChunksLen   = 50
 )
@@ -110,7 +112,7 @@ var (
 
 	// Lambda
 	provider   string
-	lambdaChan = make(chan []lambdaChunk, maxLambdaConcurrency)
+	lambdaChan = make(chan []*lambdaChunk, maxLambdaConcurrency)
 )
 
 func init() {
@@ -397,17 +399,19 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 				chunkBatch := make([]lambdaChunk, numChunks)
 				for j := 0; j < numChunks; j++ {
 					chk := chunks[offset+j]
-					chunkBatch[j] = lambdaChunk{
+					lamChk := lambdaChunk{
 						Address: chk.Address,
 						Value:   0,
 						Tag:     OysterTag,
 					}
 
-					chunkBatch[j].Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
+					lamChk.Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
 					if err != nil {
 						oyster_utils.LogIfError(err, nil)
 						panic(err)
 					}
+
+					chunkBatch[j] = &lamChk
 				}
 
 				// Push chunkBatch to chan
@@ -682,10 +686,37 @@ func verifyTreasure(addr []string) (bool, error) {
 	return true, nil
 }
 
-func lambdaWorker(lChan <-chan []lambdaChunk) {
+func lambdaWorker(lChan <-chan []*lambdaChunk) {
 	for chkBatch := range lChan {
+		// TODO: Need back pressure to not overwhelm lambdas
 		go func() {
-			// TODO: Send to lambda
+			req := LambdaReq{
+				Provider: provider,
+				Chunks:   chkBatch,
+			}
+
+			// Serialize params
+			reqBytes, err := json.Marshal(req)
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+			}
+
+			// Setup request
+			httpReq, err := http.NewRequest("POST", lambdaUrl, bytes.NewBuffer(reqBytes))
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+			}
+			httpReq.Header.Set("Content-Type", "application/json")
+
+			// Make request
+			client := &http.Client{}
+			res, err := client.Do(httpReq)
+			defer res.Body.Close()
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+			}
+
+			// TODO: log res.Body?
 		}()
 	}
 }
