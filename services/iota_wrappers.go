@@ -68,6 +68,13 @@ const (
 
 	// By a hard limit on the request for FindTransaction to IOTA
 	MaxNumberOfAddressPerFindTransactionRequest = 1000
+
+	// Lambda
+	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
+	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
+	// Limit to 1000 POSTs and 50 chunks per request.
+	maxLambdaConcurrency = 1000
+	maxLambdaChunksLen   = 50
 )
 
 var (
@@ -87,6 +94,9 @@ var (
 	PoWFrequency    ProcessingFrequency
 	minPoWFrequency = 1
 	OysterTag, _    = giota.ToTrytes("OYSTERGOLANG")
+
+	// Lambda
+	lambdaChan = make(chan string, maxLambdaConcurrency)
 )
 
 func init() {
@@ -147,6 +157,7 @@ func init() {
 
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
+		go lambdaWorker(lambdaChan)
 	}
 
 	PoWFrequency.Frequency = 2
@@ -352,15 +363,21 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 		models.DB.ValidateAndSave(&chunk)
 	}
 
-	channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
-	models.DB.ValidateAndSave(channel)
+	if os.Getenv("ENABLE_LAMBDA") == true {
+		go func() {
+			// TODO: prep and chunk by limit, then send to channel
+		}()
+	} else {
+		channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
+		models.DB.ValidateAndSave(channel)
 
-	powJob := PowJob{
-		Chunks:         chunks,
-		BroadcastNodes: make([]string, 1),
+		powJob := PowJob{
+			Chunks:         chunks,
+			BroadcastNodes: make([]string, 1),
+		}
+
+		Channel[channel.ChannelID].Channel <- powJob
 	}
-
-	Channel[channel.ChannelID].Channel <- powJob
 }
 
 func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
@@ -613,4 +630,12 @@ func verifyTreasure(addr []string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func lambdaWorker(lChan <-chan string) {
+	for chunks := range lChan {
+		go func() {
+			// TODO: Send to lambda
+		}()
+	}
 }

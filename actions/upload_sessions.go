@@ -5,20 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"gopkg.in/segmentio/analytics-go.v3"
-
-	"net/http"
-	"time"
-
 	"github.com/pkg/errors"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 type UploadSessionResource struct {
