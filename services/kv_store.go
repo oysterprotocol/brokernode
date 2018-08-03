@@ -211,7 +211,7 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 	if os.Getenv("GO_ENV") == "test" {
 		dir = badgerDirTest + directoryPath
 	} else {
-		dir = badgerDir + "/" + directoryPath
+		dir = badgerDir + string(os.PathSeparator) + directoryPath
 	}
 
 	err := os.RemoveAll(dir)
@@ -224,6 +224,7 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
 	for dbName := range dbMap {
+		directoryPath := dbMap[dbName].DirectoryPath
 		if err := CloseUniqueKvStore(dbName); err != nil {
 			errArray = append(errArray, err)
 			continue
@@ -231,9 +232,9 @@ func RemoveAllKvStoreDataFromAllKvStores() []error {
 
 		var dir string
 		if os.Getenv("GO_ENV") == "test" {
-			dir = badgerDirTest + "/" + dbMap[dbName].DirectoryPath
+			dir = badgerDirTest + directoryPath
 		} else {
-			dir = badgerDir + "/" + dbMap[dbName].DirectoryPath
+			dir = badgerDir + string(os.PathSeparator) + directoryPath
 		}
 		err := os.RemoveAll(dir)
 		oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
