@@ -363,7 +363,7 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 		models.DB.ValidateAndSave(&chunk)
 	}
 
-	if os.Getenv("ENABLE_LAMBDA") == true {
+	if os.Getenv("ENABLE_LAMBDA") == "true" {
 		go func() {
 			// TODO: prep and chunk by limit, then send to channel
 		}()
