@@ -1,6 +1,7 @@
 package oyster_utils
 
 import (
+	"crypto/sha512"
 	"encoding/hex"
 	"errors"
 	"github.com/iotaledger/giota"
@@ -141,11 +142,16 @@ func MakeAddress(hashString string) string {
 		return PadWith9s(result, 81)
 	}
 	return result
-
 }
 
 func PadWith9s(stringToPad string, desiredLength int) string {
 	padCountInt := desiredLength - len(stringToPad)
 	var retStr = stringToPad + strings.Repeat("9", padCountInt)
 	return retStr[0:desiredLength]
+}
+
+/*Sha256ToAddress wraps functionality to turn a sha256 hash into an address*/
+func Sha256ToAddress(hashString string) string {
+	obfuscatedHash := HashHex(hashString, sha512.New384())
+	return string(MakeAddress(obfuscatedHash))
 }

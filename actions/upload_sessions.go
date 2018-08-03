@@ -418,7 +418,7 @@ func convertToBadgerKeyedMapForChunks(chunks []chunkReq, genesisHash string, tre
 			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
 		}
 
-		key := oyster_utils.GenerateMsgID("", genesisHash, chunkIdx)
+		key := oyster_utils.GenerateBadgerKey("", genesisHash, chunkIdx)
 		chunksMap[key] = chunk
 	}
 	return chunksMap
