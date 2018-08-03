@@ -5,7 +5,6 @@ ignored_folders:
 - logs
 - assets
 - public
-- grifts
 - tmp
 - bin
 - node_modules
