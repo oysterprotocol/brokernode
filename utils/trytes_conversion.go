@@ -150,6 +150,7 @@ func PadWith9s(stringToPad string, desiredLength int) string {
 	return retStr[0:desiredLength]
 }
 
+/*Sha256ToAddress wraps functionality to turn a sha256 hash into an address*/
 func Sha256ToAddress(hashString string) string {
 	obfuscatedHash := HashHex(hashString, sha512.New384())
 	return string(MakeAddress(obfuscatedHash))

@@ -14,9 +14,17 @@ import (
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
 const badgerDir = "/var/lib/badger/prod"
+
+/*CompletedDir is a directory for completed data maps*/
 const CompletedDir = "complete"
+
+/*InProgressDir is a directory for chunks we are still working on*/
 const InProgressDir = "current"
+
+/*HashDir is a directory for hashes*/
 const HashDir = "hash"
+
+/*MessageDir is a directory for messages*/
 const MessageDir = "message"
 
 // Singleton DB
@@ -24,19 +32,26 @@ var badgerDB *badger.DB
 var dbNoInitError error
 var isKvStoreEnable bool
 var badgerDirTest string
-var DBMap KVDBMap
+var dbMap KVDBMap
 
-type ChunkDataType int
+/*KVDBMap is a type which is a map with strings as keys and DBData as the value.  We use this type to make a
+data structure tracking all the unique DBs that are still alive*/
 type KVDBMap map[string]DBData
+
+/*KVPairs is a type.  Map key strings to value strings*/
 type KVPairs map[string]string
+
+/*KVKeys is a type.  An array of key strings*/
 type KVKeys []string
 
+/*DBData defines what data to expect for each database stored in DVDBMap*/
 type DBData struct {
 	DatabaseName  string
 	DirectoryPath string
 	Database      *badger.DB
 }
 
+/*ChunkData is the type of response we will give when a caller wants data about a specific chunk*/
 type ChunkData struct {
 	Address string
 	Hash    string
@@ -45,7 +60,7 @@ type ChunkData struct {
 
 func init() {
 
-	DBMap = make(KVDBMap)
+	dbMap = make(KVDBMap)
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
 	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
@@ -62,14 +77,23 @@ func init() {
 	}
 }
 
+/*GetBadgerDirName will make a directory path from an array of strings.
+will/look/like/this
+*/
 func GetBadgerDirName(dirs []string) string {
 	return buildBadgerName(dirs, string(os.PathSeparator))
 }
 
+/*GetBadgerDBName will make a DB name from an array of strings
+will_look_like_this
+*/
 func GetBadgerDBName(names []string) string {
 	return buildBadgerName(names, "_")
 }
 
+/*GetBadgerKey will make a key for a key value pair from an array of strings
+someGenHash_1
+*/
 func GetBadgerKey(keyStrings []string) string {
 	return buildBadgerName(keyStrings, "_")
 }
@@ -88,7 +112,7 @@ func buildBadgerName(names []string, separator string) string {
 func InitUniqueKvStore(dbID []string) error {
 	dbName := GetBadgerDBName(dbID)
 	dirPath := GetBadgerDirName(dbID)
-	if DBMap[dbName].Database != nil {
+	if dbMap[dbName].Database != nil {
 		return nil
 	}
 
@@ -118,7 +142,7 @@ func InitUniqueKvStore(dbID []string) error {
 	db, err := badger.Open(opts)
 	oyster_utils.LogIfError(err, nil)
 	if err == nil {
-		DBMap[dbName] = DBData{
+		dbMap[dbName] = DBData{
 			Database:      db,
 			DatabaseName:  dbName,
 			DirectoryPath: dirPath,
@@ -151,14 +175,14 @@ func InitKvStore() (err error) {
 
 /*CloseUniqueKvStore closes the K:V store associated with a particular upload.*/
 func CloseUniqueKvStore(dbName string) error {
-	if DBMap[dbName].Database == nil {
+	if dbMap[dbName].Database == nil {
 		return nil
 	}
-	err := DBMap[dbName].Database.Close()
+	err := dbMap[dbName].Database.Close()
 	oyster_utils.LogIfError(err, nil)
 
-	if _, ok := DBMap[dbName]; ok {
-		delete(DBMap, dbName)
+	if _, ok := dbMap[dbName]; ok {
+		delete(dbMap, dbName)
 	}
 
 	return err
@@ -177,7 +201,7 @@ func CloseKvStore() error {
 
 /*RemoveAllUniqueKvStoreData removes all the data associated with a particular K:V store.*/
 func RemoveAllUniqueKvStoreData(dbName string) error {
-	directoryPath := DBMap[dbName].DirectoryPath
+	directoryPath := dbMap[dbName].DirectoryPath
 
 	if err := CloseUniqueKvStore(dbName); err != nil {
 		return err
@@ -199,7 +223,7 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	for dbName := range DBMap {
+	for dbName := range dbMap {
 		if err := CloseUniqueKvStore(dbName); err != nil {
 			errArray = append(errArray, err)
 			continue
@@ -207,9 +231,9 @@ func RemoveAllKvStoreDataFromAllKvStores() []error {
 
 		var dir string
 		if os.Getenv("GO_ENV") == "test" {
-			dir = badgerDirTest + "/" + DBMap[dbName].DirectoryPath
+			dir = badgerDirTest + "/" + dbMap[dbName].DirectoryPath
 		} else {
-			dir = badgerDir + "/" + DBMap[dbName].DirectoryPath
+			dir = badgerDir + "/" + dbMap[dbName].DirectoryPath
 		}
 		err := os.RemoveAll(dir)
 		oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
@@ -236,7 +260,7 @@ func RemoveAllKvStoreData() error {
 
 /*GetUniqueBadgerDb returns a database associated with an upload.  If not initialized this will return nil. */
 func GetUniqueBadgerDb(dbName string) *badger.DB {
-	return DBMap[dbName].Database
+	return dbMap[dbName].Database
 }
 
 /*GetOrInitUniqueBadgerDB returns a database associated with an upload. */
@@ -319,10 +343,10 @@ func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
 	dbName := GetBadgerDBName(dbID)
 	var db *badger.DB
-	if DBMap[dbName].Database == nil {
+	if dbMap[dbName].Database == nil {
 		db = GetOrInitUniqueBadgerDB(dbID)
 	} else {
-		db = DBMap[dbName].Database
+		db = dbMap[dbName].Database
 	}
 
 	err = db.View(func(txn *badger.Txn) error {
@@ -409,10 +433,10 @@ Return error if any fails.*/
 func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 	dbName := GetBadgerDBName(dbID)
 	var db *badger.DB
-	if DBMap[dbName].Database == nil {
+	if dbMap[dbName].Database == nil {
 		db = GetOrInitUniqueBadgerDB(dbID)
 	} else {
-		db = DBMap[dbName].Database
+		db = dbMap[dbName].Database
 	}
 
 	var err error
@@ -500,10 +524,10 @@ Return error if any fails.*/
 func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
 	dbName := GetBadgerDBName(dbID)
 	var db *badger.DB
-	if DBMap[dbName].Database == nil {
+	if dbMap[dbName].Database == nil {
 		db = GetOrInitUniqueBadgerDB(dbID)
 	} else {
-		db = DBMap[dbName].Database
+		db = dbMap[dbName].Database
 	}
 
 	var err error
