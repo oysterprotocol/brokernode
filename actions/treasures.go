@@ -2,11 +2,13 @@ package actions
 
 import (
 	"errors"
+	"fmt"
+	"os"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
-	"os"
 )
 
 type TreasuresResource struct {
@@ -31,7 +33,11 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTreasuresResourceVerifyAndClaim, start)
 
 	req := treasureReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	if req.EthKey == os.Getenv("TEST_MODE_WALLET_KEY") {
 		return c.Render(200, r.JSON(treasureRes{

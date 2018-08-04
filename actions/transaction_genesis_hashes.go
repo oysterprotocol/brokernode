@@ -60,7 +60,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionGenesisHashResourceCreate, start)
 
 	req := transactionGenesisHashCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	storedGenesisHash, genesisHashNotFound := models.GetGenesisHashForWebnode(req.CurrentList)
 
@@ -127,7 +131,11 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionGenesisHashResourceUpdate, start)
 
 	req := transactionGenesisHashUpdateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	// Get transaction
 	t := &models.Transaction{}

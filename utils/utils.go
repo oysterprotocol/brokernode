@@ -98,7 +98,7 @@ func SetLogInfoForDatabaseUrl(dbUrl string) {
 }
 
 // ParseReqBody take a request and parses the body to the target interface.
-func ParseReqBody(req *http.Request, dest interface{}) (err error) {
+func ParseReqBody(req *http.Request, dest interface{}) error {
 	body := req.Body
 	defer body.Close()
 
@@ -110,26 +110,26 @@ func ParseReqBody(req *http.Request, dest interface{}) (err error) {
 			"Header":        req.Header,
 			"ContentLength": req.ContentLength,
 			"Body":          req.Body})
-		return
+		return err
 	}
 	err = json.Unmarshal(bodyBytes, dest)
 	LogIfError(err, nil)
-	return
+	return err
 }
 
 // ParseResBody take a request and parses the body to the target interface.
-func ParseResBody(res *http.Response, dest interface{}) (err error) {
+func ParseResBody(res *http.Response, dest interface{}) error {
 	body := res.Body
 	defer body.Close()
 
 	bodyBytes, err := ioutil.ReadAll(body)
 	if err != nil {
 		LogIfError(err, nil)
-		return
+		return err
 	}
 	err = json.Unmarshal(bodyBytes, dest)
 	LogIfError(err, nil)
-	return
+	return err
 }
 
 /*ConvertToByte converts trytes to bytes.*/

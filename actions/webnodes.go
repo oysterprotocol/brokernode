@@ -1,10 +1,12 @@
 package actions
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
-	"os"
 )
 
 type WebnodeResource struct {
@@ -36,7 +38,11 @@ func (usr *WebnodeResource) Create(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramWebnodeResourceCreate, start)
 
 	req := webnodeCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	w := models.Webnode{
 		Address: req.Address,

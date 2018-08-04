@@ -59,7 +59,11 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceCreate, start)
 
 	req := transactionBrokernodeCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	dataMap := models.DataMap{}
 	brokernode := models.Brokernode{}
@@ -123,7 +127,11 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTransactionBrokernodeResourceUpdate, start)
 
 	req := transactionBrokernodeUpdateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	// Get transaction
 	t := &models.Transaction{}
