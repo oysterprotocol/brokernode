@@ -89,21 +89,30 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
-	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
-		dataMap.BranchTx = string(tips.BranchTransaction)
-		dataMap.TrunkTx = string(tips.TrunkTransaction)
-		tx.ValidateAndSave(&dataMap)
+	dataMap.Status = models.Unverified
+	dataMap.BranchTx = string(tips.BranchTransaction)
+	dataMap.TrunkTx = string(tips.TrunkTransaction)
 
-		t = models.Transaction{
-			Type:      models.TransactionTypeBrokernode,
-			Status:    models.TransactionStatusPending,
-			DataMapID: dataMap.ID,
-			Purchase:  brokernode.Address,
+	t = models.Transaction{
+		Type:      models.TransactionTypeBrokernode,
+		Status:    models.TransactionStatusPending,
+		DataMapID: dataMap.ID,
+		Purchase:  brokernode.Address,
+	}
+
+	err = models.DB.Transaction(func(tx *pop.Connection) error {
+		vErr, err := tx.ValidateAndSave(&dataMap)
+		if err != nil || vErr.HasAny() {
+			return fmt.Errorf("Unable to Save dataMap: %v, %v", vErr, err)
 		}
-		tx.ValidateAndSave(&t)
+
+		vErr, err = tx.ValidateAndSave(&t)
+		if err != nil || vErr.HasAny() {
+			return fmt.Errorf("Unable to Save Transaction: %v, %v", vErr, err)
+		}
 		return nil
 	})
+	oyster_utils.LogIfError(err, nil)
 
 	res := transactionBrokernodeCreateRes{
 		ID: t.ID,
