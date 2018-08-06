@@ -172,7 +172,11 @@ func init() {
 
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
-		go lambdaWorker(provider, lambdaChan)
+
+		// Start lambda worker pool.
+		for i := 0; i < maxLambdaConcurrency; i++ {
+			go lambdaWorker(provider, lambdaChan)
+		}
 	}
 
 	PoWFrequency.Frequency = 2
@@ -647,36 +651,34 @@ func verifyTreasure(addr []string) (bool, error) {
 
 func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 	for chkBatch := range lChan {
-		// TODO: Need back pressure to not overwhelm lambdas
-		go func() {
-			req := LambdaReq{
-				Provider: provider,
-				Chunks:   chkBatch,
-			}
 
-			// Serialize params
-			reqBytes, err := json.Marshal(req)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-			}
+		req := LambdaReq{
+			Provider: provider,
+			Chunks:   chkBatch,
+		}
 
-			// Setup request
-			httpReq, err := http.NewRequest("POST", lambdaUrl, bytes.NewBuffer(reqBytes))
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-			}
-			httpReq.Header.Set("Content-Type", "application/json")
+		// Serialize params
+		reqBytes, err := json.Marshal(req)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
 
-			// Make request
-			client := &http.Client{}
-			res, err := client.Do(httpReq)
-			defer res.Body.Close()
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-			}
+		// Setup request
+		httpReq, err := http.NewRequest("POST", lambdaUrl, bytes.NewBuffer(reqBytes))
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+		httpReq.Header.Set("Content-Type", "application/json")
 
-			// TODO: log res.Body?
-		}()
+		// Make request
+		client := &http.Client{}
+		res, err := client.Do(httpReq)
+		defer res.Body.Close()
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+
+		// TODO: log res.Body?
 	}
 }
 
