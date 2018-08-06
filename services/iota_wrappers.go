@@ -699,7 +699,7 @@ func batchPowOnLambda(chunks []models.DataMap) {
 		}
 
 		// Map chunk to lambdaChunk
-		chunkBatch := make([]lambdaChunk, numChunks)
+		chunkBatch := make([]*lambdaChunk, numChunks)
 		for j := 0; j < numChunks; j++ {
 			chk := chunks[offset+j]
 			lamChk := lambdaChunk{
@@ -708,7 +708,8 @@ func batchPowOnLambda(chunks []models.DataMap) {
 				Tag:     OysterTag,
 			}
 
-			lamChk.Message, err := giota.ToTrytes(GetMessageFromDataMap(chk))
+			msg, err := giota.ToTrytes(GetMessageFromDataMap(chk))
+			lamChk.Message = msg
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				panic(err)
