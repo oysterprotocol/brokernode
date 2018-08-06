@@ -92,7 +92,11 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreate, start)
 
 	req := uploadSessionCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
 		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
@@ -159,7 +163,13 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			return err
 		}
 		betaSessionRes := &uploadSessionCreateBetaRes{}
-		oyster_utils.ParseResBody(betaRes, betaSessionRes)
+		if err := oyster_utils.ParseResBody(betaRes, betaSessionRes); err != nil {
+			err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
+			// This should consider as BadRequest since the client pick the beta node.
+			c.Error(400, err)
+			return err
+		}
+
 		betaSessionID = betaSessionRes.ID
 
 		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
@@ -221,7 +231,11 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceUpdate, start)
 
 	req := UploadSessionUpdateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	// Get session
 	uploadSession := &models.UploadSession{}
@@ -269,7 +283,11 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreateBeta, start)
 
 	req := uploadSessionCreateReq{}
-	oyster_utils.ParseReqBody(c.Request(), &req)
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return err
+	}
 
 	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
 
