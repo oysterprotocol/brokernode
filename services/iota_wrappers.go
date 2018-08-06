@@ -70,7 +70,7 @@ type lambdaChunk struct {
 	Tag     giota.Trytes `json:"tag"`
 }
 
-type LambdaReq struct {
+type lambdaReq struct {
 	Provider string         `json:"provider"`
 	Chunks   []*lambdaChunk `json:"chunks"`
 }
@@ -87,7 +87,7 @@ const (
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 50 chunks per request.
-	lambdaUrl            = "https://TODO.com/storeAndBroadcast"
+	lambdaURL            = "https://stub-url.com/storeAndBroadcast"
 	maxLambdaConcurrency = 1000
 	maxLambdaChunksLen   = 50
 	oysterTagStr         = "OYSTERGOLANG"
@@ -653,7 +653,7 @@ func verifyTreasure(addr []string) (bool, error) {
 func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 	for chkBatch := range lChan {
 
-		req := LambdaReq{
+		req := lambdaReq{
 			Provider: provider,
 			Chunks:   chkBatch,
 		}
@@ -665,7 +665,7 @@ func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 		}
 
 		// Setup request
-		httpReq, err := http.NewRequest("POST", lambdaUrl, bytes.NewBuffer(reqBytes))
+		httpReq, err := http.NewRequest("POST", lambdaURL, bytes.NewBuffer(reqBytes))
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 		}
@@ -674,12 +674,12 @@ func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 		// Make request
 		client := &http.Client{}
 		res, err := client.Do(httpReq)
-		defer res.Body.Close()
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 		}
+		defer res.Body.Close()
 
-		// TODO: log res.Body?
+		// log res.Body to segment?
 	}
 }
 
