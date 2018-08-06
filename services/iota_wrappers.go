@@ -64,10 +64,10 @@ type FilteredChunk struct {
 }
 
 type lambdaChunk struct {
-	Address string `json:"address"`
-	Value   int    `json:"value"`
-	Message string `json:"message"`
-	Tag     string `json:"tag"`
+	Address string       `json:"address"`
+	Value   int          `json:"value"`
+	Message giota.Trytes `json:"message"`
+	Tag     giota.Trytes `json:"tag"`
 }
 
 type LambdaReq struct {
@@ -90,6 +90,7 @@ const (
 	lambdaUrl            = "https://TODO.com/storeAndBroadcast"
 	maxLambdaConcurrency = 1000
 	maxLambdaChunksLen   = 50
+	oysterTagStr         = "OYSTERGOLANG"
 )
 
 var (
@@ -108,7 +109,7 @@ var (
 	api             *giota.API
 	PoWFrequency    ProcessingFrequency
 	minPoWFrequency = 1
-	OysterTag, _    = giota.ToTrytes("OYSTERGOLANG")
+	OysterTag, _    = giota.ToTrytes(oysterTagStr)
 
 	// Lambda
 	lambdaChan = make(chan []*lambdaChunk, maxLambdaConcurrency)
@@ -690,7 +691,7 @@ func batchPowOnLambda(chunks []models.DataMap) {
 		remChunks := len(chunks) - offset
 
 		// Numnber of chunks in this batch.
-		var int numChunks
+		var numChunks int
 		if remChunks > maxLambdaChunksLen {
 			numChunks = maxLambdaChunksLen
 		} else {
@@ -707,7 +708,7 @@ func batchPowOnLambda(chunks []models.DataMap) {
 				Tag:     OysterTag,
 			}
 
-			lamChk.Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
+			lamChk.Message, err := giota.ToTrytes(GetMessageFromDataMap(chk))
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				panic(err)
