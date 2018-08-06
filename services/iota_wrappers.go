@@ -44,7 +44,7 @@ type IotaService struct {
 	FindTransactions
 	GetTransactionsToApprove
 }
-type ProcessingFhttpRequency struct {
+type ProcessingFrequency struct {
 	RecentProcessingTimes []time.Duration
 	Frequency             float64
 }
@@ -111,7 +111,6 @@ var (
 	OysterTag, _    = giota.ToTrytes("OYSTERGOLANG")
 
 	// Lambda
-	provider   string
 	lambdaChan = make(chan []*lambdaChunk, maxLambdaConcurrency)
 )
 
@@ -128,7 +127,7 @@ func init() {
 		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
-	provider = "http://" + host_ip + ":14265"
+	provider := "http://" + host_ip + ":14265"
 
 	api = giota.NewAPI(provider, nil)
 
@@ -173,7 +172,7 @@ func init() {
 
 		// start the worker
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
-		go lambdaWorker(lambdaChan)
+		go lambdaWorker(provider, lambdaChan)
 	}
 
 	PoWFrequency.Frequency = 2
@@ -380,47 +379,7 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 	}
 
 	if os.Getenv("ENABLE_LAMBDA") == "true" {
-		go func() {
-			// Batch chunks by limit
-			numBatches := (len(chunks) / maxLambdaChunksLen) + 1
-			for i := 0; i < numBatches; i++ {
-				offset := i * maxLambdaChunksLen
-				remChunks := len(chunk) - offset
-
-				// Numnber of chunks in this batch.
-				var int numChunks
-				if remChunks > maxLambdaChunksLen {
-					numChunks = maxLambdaChunksLen
-				} else {
-					numChunks = remChunks
-				}
-
-				// Map chunk to lambdaChunk
-				chunkBatch := make([]lambdaChunk, numChunks)
-				for j := 0; j < numChunks; j++ {
-					chk := chunks[offset+j]
-					lamChk := lambdaChunk{
-						Address: chk.Address,
-						Value:   0,
-						Tag:     OysterTag,
-					}
-
-					lamChk.Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
-					if err != nil {
-						oyster_utils.LogIfError(err, nil)
-						panic(err)
-					}
-
-					chunkBatch[j] = &lamChk
-				}
-
-				// Push chunkBatch to chan
-				lambdaChan <- chunkBatch
-			}
-
-		}()
-
-		// Do PoW + Broadcast locally.
+		go batchPowOnLambda(chunks)
 	} else {
 		channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
 		models.DB.ValidateAndSave(channel)
@@ -686,7 +645,7 @@ func verifyTreasure(addr []string) (bool, error) {
 	return true, nil
 }
 
-func lambdaWorker(lChan <-chan []*lambdaChunk) {
+func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 	for chkBatch := range lChan {
 		// TODO: Need back pressure to not overwhelm lambdas
 		go func() {
@@ -718,5 +677,44 @@ func lambdaWorker(lChan <-chan []*lambdaChunk) {
 
 			// TODO: log res.Body?
 		}()
+	}
+}
+
+func batchPowOnLambda(chunks []models.DataMap) {
+	// Batch chunks by limit
+	numBatches := (len(chunks) / maxLambdaChunksLen) + 1
+	for i := 0; i < numBatches; i++ {
+		offset := i * maxLambdaChunksLen
+		remChunks := len(chunks) - offset
+
+		// Numnber of chunks in this batch.
+		var int numChunks
+		if remChunks > maxLambdaChunksLen {
+			numChunks = maxLambdaChunksLen
+		} else {
+			numChunks = remChunks
+		}
+
+		// Map chunk to lambdaChunk
+		chunkBatch := make([]lambdaChunk, numChunks)
+		for j := 0; j < numChunks; j++ {
+			chk := chunks[offset+j]
+			lamChk := lambdaChunk{
+				Address: chk.Address,
+				Value:   0,
+				Tag:     OysterTag,
+			}
+
+			lamChk.Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				panic(err)
+			}
+
+			chunkBatch[j] = &lamChk
+		}
+
+		// Push chunkBatch to chan
+		lambdaChan <- chunkBatch
 	}
 }
