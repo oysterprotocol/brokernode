@@ -90,7 +90,7 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
 
-	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
+	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
 		oysterWorkerPerformIn(storeCompletedGenesisHashesHandler,
 			worker.Args{Duration: 1 * time.Minute})
 	}
