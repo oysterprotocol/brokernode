@@ -139,8 +139,8 @@ func init() {
 	powName, bestPow = giota.GetBestPoW()
 
 	IotaWrapper = IotaService{
-		SendChunksToLambda:             SendChunksToLambda,
-		SendChunksToChannel:            SendChunksToChannel,
+		SendChunksToLambda:             sendChunksToLambda,
+		SendChunksToChannel:            sendChunksToChannel,
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
