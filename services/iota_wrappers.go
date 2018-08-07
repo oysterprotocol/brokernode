@@ -140,7 +140,7 @@ func init() {
 
 	IotaWrapper = IotaService{
 		SendChunksToLambda:             SendChunksToLambda,
-		SendChunksToChannel:            sendChunksToChannel,
+		SendChunksToChannel:            SendChunksToChannel,
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
 		ChunksMatch:                    chunksMatch,
@@ -709,7 +709,7 @@ func batchPowOnLambda(chunks *[]models.DataMap) {
 		// Map chunk to lambdaChunk
 		chunkBatch := make([]*lambdaChunk, numChunks)
 		for j := 0; j < numChunks; j++ {
-			chk := *chunks[offset+j]
+			chk := (*chunks)[offset+j]
 			lamChk := lambdaChunk{
 				Address: chk.Address,
 				Value:   0,
