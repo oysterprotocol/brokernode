@@ -67,7 +67,6 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	dataMap := models.DataMap{}
 	brokernode := models.Brokernode{}
-	t := models.Transaction{}
 
 	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
 	dataMapNotFoundErr := models.DB.Limit(1).Where("status = ? ORDER BY updated_at ASC",
@@ -93,24 +92,36 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
-	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
-		dataMap.BranchTx = string(tips.BranchTransaction)
-		dataMap.TrunkTx = string(tips.TrunkTransaction)
-		tx.ValidateAndSave(&dataMap)
+	dataMap.Status = models.Unverified
+	dataMap.BranchTx = string(tips.BranchTransaction)
+	dataMap.TrunkTx = string(tips.TrunkTransaction)
 
-		t = models.Transaction{
-			Type:      models.TransactionTypeBrokernode,
-			Status:    models.TransactionStatusPending,
-			DataMapID: dataMap.ID,
-			Purchase:  brokernode.Address,
+	transaction := models.Transaction{
+		Type:      models.TransactionTypeBrokernode,
+		Status:    models.TransactionStatusPending,
+		DataMapID: dataMap.ID,
+		Purchase:  brokernode.Address,
+	}
+
+	err = models.DB.Transaction(func(tx *pop.Connection) error {
+		vErr, err := tx.ValidateAndSave(&dataMap)
+		if err != nil || vErr.HasAny() {
+			return fmt.Errorf("Unable to Save dataMap: %v, %v", vErr, err)
 		}
-		tx.ValidateAndSave(&t)
+
+		vErr, err = tx.ValidateAndCreate(&transaction)
+		if err != nil || vErr.HasAny() {
+			return fmt.Errorf("Unable to Save Transaction: %v, %v", vErr, err)
+		}
 		return nil
 	})
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(400, err)
+	}
 
 	res := transactionBrokernodeCreateRes{
-		ID: t.ID,
+		ID: transaction.ID,
 		Pow: BrokernodeAddressPow{
 			Address:  dataMap.Address,
 			Message:  services.GetMessageFromDataMap(dataMap),
