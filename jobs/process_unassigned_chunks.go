@@ -123,7 +123,7 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 
 		StageTreasures(treasureChunksNeedAttaching, session)
 		if os.Getenv("ENABLE_LAMBDA") == "true" {
-
+			iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
 		} else if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
