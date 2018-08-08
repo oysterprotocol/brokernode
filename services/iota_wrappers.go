@@ -37,6 +37,7 @@ type PowChannel struct {
 
 type IotaService struct {
 	SendChunksToChannel
+	SendChunksToLambda
 	VerifyChunkMessagesMatchRecord
 	VerifyChunksMatchRecord
 	ChunksMatch
@@ -49,6 +50,7 @@ type ProcessingFrequency struct {
 	Frequency             float64
 }
 
+type SendChunksToLambda func(chunks *[]models.DataMap)
 type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
 type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
 type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
@@ -137,6 +139,7 @@ func init() {
 	powName, bestPow = giota.GetBestPoW()
 
 	IotaWrapper = IotaService{
+		SendChunksToLambda:             sendChunksToLambda,
 		SendChunksToChannel:            sendChunksToChannel,
 		VerifyChunkMessagesMatchRecord: verifyChunkMessagesMatchRecord,
 		VerifyChunksMatchRecord:        verifyChunksMatchRecord,
@@ -376,6 +379,15 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	return nil
 }
 
+func sendChunksToLambda(chunks *[]models.DataMap) {
+	for _, chunk := range *chunks {
+		chunk.Status = models.Unverified
+		models.DB.ValidateAndSave(&chunk)
+	}
+
+	go batchPowOnLambda(chunks)
+}
+
 func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) {
 
 	for _, chunk := range chunks {
@@ -383,19 +395,15 @@ func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) 
 		models.DB.ValidateAndSave(&chunk)
 	}
 
-	if os.Getenv("ENABLE_LAMBDA") == "true" {
-		go batchPowOnLambda(chunks)
-	} else {
-		channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
-		models.DB.ValidateAndSave(channel)
+	channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
+	models.DB.ValidateAndSave(channel)
 
-		powJob := PowJob{
-			Chunks:         chunks,
-			BroadcastNodes: make([]string, 1),
-		}
-
-		Channel[channel.ChannelID].Channel <- powJob
+	powJob := PowJob{
+		Chunks:         chunks,
+		BroadcastNodes: make([]string, 1),
 	}
+
+	Channel[channel.ChannelID].Channel <- powJob
 }
 
 func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
@@ -683,12 +691,12 @@ func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 	}
 }
 
-func batchPowOnLambda(chunks []models.DataMap) {
+func batchPowOnLambda(chunks *[]models.DataMap) {
 	// Batch chunks by limit
-	numBatches := (len(chunks) / maxLambdaChunksLen) + 1
+	numBatches := (len(*chunks) / maxLambdaChunksLen) + 1
 	for i := 0; i < numBatches; i++ {
 		offset := i * maxLambdaChunksLen
-		remChunks := len(chunks) - offset
+		remChunks := len(*chunks) - offset
 
 		// Numnber of chunks in this batch.
 		var numChunks int
@@ -701,7 +709,7 @@ func batchPowOnLambda(chunks []models.DataMap) {
 		// Map chunk to lambdaChunk
 		chunkBatch := make([]*lambdaChunk, numChunks)
 		for j := 0; j < numChunks; j++ {
-			chk := chunks[offset+j]
+			chk := (*chunks)[offset+j]
 			lamChk := lambdaChunk{
 				Address: chk.Address,
 				Value:   0,
