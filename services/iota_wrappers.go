@@ -89,7 +89,7 @@ const (
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 50 chunks per request.
-	lambdaURL            = "https://stub-url.com/storeAndBroadcast"
+	lambdaURL            = "https://8qsl7hjsuh.execute-api.us-east-1.amazonaws.com/dev/attach-and-broadcast"
 	maxLambdaConcurrency = 1000
 	maxLambdaChunksLen   = 50
 	oysterTagStr         = "OYSTERGOLANG"
