@@ -183,11 +183,10 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	models.NewBrokerBrokerTransaction(&alphaSession)
 
-	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
-		// not doing error handling here, relying on beta to throw the error since returning
-		// an error here breaks the unit tests
-		fmt.Println(err)
+		c.Error(400, err)
+		return err
 	}
 
 	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
