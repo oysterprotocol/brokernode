@@ -197,6 +197,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			c.Error(400, err)
 			return err
 		}
+
 		if len(mergedIndexes) != len(privateKeys) {
 			err := errors.New("privateKeys and mergedIndexes should have the same length")
 			oyster_utils.LogIfError(err, nil)
