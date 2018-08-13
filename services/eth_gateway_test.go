@@ -91,6 +91,7 @@ func printTx(tx *types.Transaction) {
 
 // generate address test
 func Test_generateAddress(t *testing.T) {
+	
 	// generate eth address using gateway
 	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -110,7 +111,9 @@ func Test_generateAddress(t *testing.T) {
 
 // generate address from private key test
 func Test_generateEthAddrFromPrivateKey(t *testing.T) {
+	
 	//services.RunOnTestNet()
+	
 	// generate eth address using gateway
 	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
 	if err != nil {
@@ -129,7 +132,6 @@ func Test_generateEthAddrFromPrivateKey(t *testing.T) {
 // get gas price from network test
 func Test_getGasPrice(t *testing.T) {
 	//services.RunOnTestNet()
-	//t.Skip(nil)
 	// get the suggested gas price
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	if err != nil {
@@ -145,6 +147,9 @@ func Test_getGasPrice(t *testing.T) {
 
 // check if it's worth it to try and reclaiming eth from an address
 func Test_checkIfWorthReclaimingGas(t *testing.T) {
+	
+	t.Skip(nil)
+	
 	worthIt, amountToReclaim, err := services.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, services.GasLimitETHSend)
 
 	if worthIt {
@@ -162,7 +167,9 @@ func Test_checkIfWorthReclaimingGas(t *testing.T) {
 
 // reclaim leftover gas
 func Test_reclaimGas(t *testing.T) {
-
+	
+	t.Skip(nil)
+	
 	gasToReclaim := big.NewInt(5000)
 	prlWallet := getWallet(prl2File)
 
@@ -179,7 +186,9 @@ func Test_reclaimGas(t *testing.T) {
 
 // get gas price from network test
 func Test_calculateGasNeeded(t *testing.T) {
-
+	
+	t.Skip(nil)
+	
 	gasPrice, err := services.EthWrapper.GetGasPrice()
 	gasLimitToUse := services.GasLimitETHSend
 
@@ -212,6 +221,7 @@ func Test_checkETHBalance(t *testing.T) {
 
 // get current block number
 func Test_getCurrentBlockNumber(t *testing.T) {
+	
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
 	if err != nil {
@@ -224,6 +234,7 @@ func Test_getCurrentBlockNumber(t *testing.T) {
 
 // get current block gas limit
 func Test_getCurrentBlockGasLimit(t *testing.T) {
+	
 	//services.RunOnTestNet()
 	// Get the current block from the network
 	block, err := services.EthWrapper.GetCurrentBlock()
@@ -237,6 +248,7 @@ func Test_getCurrentBlockGasLimit(t *testing.T) {
 
 func Test_getNonceForAccount(t *testing.T) {
 	//services.RunOnTestNet()
+	
 	// Get the nonce for the given account
 	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
 	if err != nil {
@@ -248,7 +260,7 @@ func Test_getNonceForAccount(t *testing.T) {
 
 // send gas(ether) to an address for a transaction
 func Test_sendEth(t *testing.T) {
-	t.Skip(nil)
+	
 	// services.RunOnTestNet()
 	// transfer
 	transferValue := big.NewInt(1)
@@ -281,6 +293,7 @@ func Test_sendEth(t *testing.T) {
 // ensure the transaction is stored in the transactions table
 // it is accessed with the lastTransactionHash from the previous test
 func Test_ensureTransactionStoredInPool(t *testing.T) {
+	
 	txHash := lastTransaction.Hash()
 	if len(txHash) <= 0 {
 		// set an existing tx hash
@@ -304,7 +317,7 @@ func Test_ensureTransactionStoredInPool(t *testing.T) {
 
 // ensure confirmation is made with last transaction hash from sendEth
 func Test_confirmTransactionStatus(t *testing.T) {
-
+	
 	//services.RunOnTestNet()
 	txHash := lastTransaction.Hash()
 	if len(txHash) <= 0 {
