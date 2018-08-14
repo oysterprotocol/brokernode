@@ -1,15 +1,14 @@
-package services
+package oyster_utils
 
 import (
 	"errors"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger"
-	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/utils"
 )
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
@@ -26,6 +25,8 @@ const HashDir = "hash"
 
 /*MessageDir is a directory for messages*/
 const MessageDir = "message"
+
+const KeyDelimiter = '_'
 
 // Singleton DB
 var badgerDB *badger.DB
@@ -53,9 +54,12 @@ type DBData struct {
 
 /*ChunkData is the type of response we will give when a caller wants data about a specific chunk*/
 type ChunkData struct {
-	Address string
-	Hash    string
-	Message string
+	Address     string
+	Hash        string
+	Message     string
+	RawMessage  string
+	Idx         int64
+	GenesisHash string
 }
 
 func init() {
@@ -77,6 +81,40 @@ func init() {
 	}
 }
 
+//
+func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKeys {
+
+	var keys KVKeys
+	step := int64(0)
+	stop := int64(0)
+
+	if startingIdx < endingIdx {
+		step = 1
+		stop = endingIdx + step
+	} else if startingIdx > endingIdx {
+		step = -1
+		stop = endingIdx + step
+	} else {
+		keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(startingIdx), 10)}))
+	}
+
+	for i := startingIdx; i != stop; i = i + step {
+		keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(i), 10)}))
+	}
+
+	return &keys
+}
+
+func getChunkIdxFromKey(key string) int64 {
+	s := key
+	if i := strings.LastIndexByte(key, KeyDelimiter); i >= 0 {
+		s = s[i+1:]
+	}
+	i, err := strconv.ParseInt(s, 10, 64)
+	LogIfError(err, nil)
+	return i
+}
+
 /*GetBadgerDirName will make a directory path from an array of strings.
 will/look/like/this
 */
@@ -88,14 +126,14 @@ func GetBadgerDirName(dirs []string) string {
 will_look_like_this
 */
 func GetBadgerDBName(names []string) string {
-	return buildBadgerName(names, "_")
+	return buildBadgerName(names, string(KeyDelimiter))
 }
 
 /*GetBadgerKey will make a key for a key value pair from an array of strings
 someGenHash_1
 */
 func GetBadgerKey(keyStrings []string) string {
-	return buildBadgerName(keyStrings, "_")
+	return buildBadgerName(keyStrings, string(KeyDelimiter))
 }
 
 func buildBadgerName(names []string, separator string) string {
@@ -140,7 +178,7 @@ func InitUniqueKvStore(dbID []string) error {
 	}
 
 	db, err := badger.Open(opts)
-	oyster_utils.LogIfError(err, nil)
+	LogIfError(err, nil)
 	if err == nil {
 		dbMap[dbName] = DBData{
 			Database:      db,
@@ -169,7 +207,7 @@ func InitKvStore() (err error) {
 	}
 
 	badgerDB, err = badger.Open(opts)
-	oyster_utils.LogIfError(err, nil)
+	LogIfError(err, nil)
 	return err
 }
 
@@ -179,7 +217,7 @@ func CloseUniqueKvStore(dbName string) error {
 		return nil
 	}
 	err := dbMap[dbName].Database.Close()
-	oyster_utils.LogIfError(err, nil)
+	LogIfError(err, nil)
 
 	if _, ok := dbMap[dbName]; ok {
 		delete(dbMap, dbName)
@@ -194,7 +232,7 @@ func CloseKvStore() error {
 		return nil
 	}
 	err := badgerDB.Close()
-	oyster_utils.LogIfError(err, nil)
+	LogIfError(err, nil)
 	badgerDB = nil
 	return err
 }
@@ -216,7 +254,7 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 
 	err := os.RemoveAll(dir)
 
-	oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
+	LogIfError(err, map[string]interface{}{"badgerDir": dir})
 	return err
 }
 
@@ -237,7 +275,7 @@ func RemoveAllKvStoreDataFromAllKvStores() []error {
 			dir = badgerDir + string(os.PathSeparator) + directoryPath
 		}
 		err := os.RemoveAll(dir)
-		oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
+		LogIfError(err, map[string]interface{}{"badgerDir": dir})
 	}
 	return errArray
 }
@@ -255,7 +293,7 @@ func RemoveAllKvStoreData() error {
 		dir = badgerDir
 	}
 	err := os.RemoveAll(dir)
-	oyster_utils.LogIfError(err, map[string]interface{}{"badgerDir": dir})
+	LogIfError(err, map[string]interface{}{"badgerDir": dir})
 	return err
 }
 
@@ -274,7 +312,7 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 	}
 
 	err := InitUniqueKvStore(dbID)
-	oyster_utils.LogIfError(err, nil)
+	LogIfError(err, nil)
 	return GetUniqueBadgerDb(dbName)
 }
 
@@ -288,31 +326,14 @@ func IsKvStoreEnabled() bool {
 	return isKvStoreEnable
 }
 
-/*DataMapGet returns the message reference by dataMap.*/
-func GetMessageFromDataMap(dataMap models.DataMap) string {
-	value := dataMap.Message
-	if IsKvStoreEnabled() {
-		values, _ := BatchGet(&KVKeys{dataMap.MsgID})
-		if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
-			value = v
-		}
-	}
-
-	if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
-		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(value)
-		value = string(message)
-	}
-
-	return value
-}
-
 /*GetChunkData returns the message, hash, and address for a chunk.*/
-func GetChunkData(prefix string, genesisHash string, chunkIdx int) ChunkData {
+func GetChunkData(prefix string, genesisHash string, chunkIdx int64) ChunkData {
 
-	key := GetBadgerKey([]string{genesisHash, strconv.Itoa(chunkIdx)})
+	key := GetBadgerKey([]string{genesisHash, strconv.FormatInt(int64(chunkIdx), 10)})
 
 	hash := ""
 	message := ""
+	rawMessage := ""
 
 	hashValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, HashDir},
 		&KVKeys{key})
@@ -323,19 +344,67 @@ func GetChunkData(prefix string, genesisHash string, chunkIdx int) ChunkData {
 	messageValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, MessageDir},
 		&KVKeys{key})
 	if v, hasKey := (*messageValues)[key]; hasKey {
-		message = v
+		rawMessage = v
 	}
 
-	trytes, _ := oyster_utils.ChunkMessageToTrytesWithStopper(message)
-	message = string(trytes)
+	if rawMessage != "" {
+		trytes, _ := ChunkMessageToTrytesWithStopper(rawMessage)
+		message = string(trytes)
+	}
 
-	address := oyster_utils.Sha256ToAddress(hash)
+	address := Sha256ToAddress(hash)
 
 	return ChunkData{
-		Address: address,
-		Message: message,
-		Hash:    hash,
+		Address:     address,
+		RawMessage:  rawMessage,
+		Message:     message,
+		Hash:        hash,
+		Idx:         chunkIdx,
+		GenesisHash: genesisHash,
 	}
+}
+
+/*GetBulkChunkData returns the message, hash, and address for a large number of chunks.*/
+func GetBulkChunkData(prefix string, genesisHash string, ks *KVKeys) ([]ChunkData, error) {
+
+	var chunkData []ChunkData
+
+	hashValues, errHash := BatchGetFromUniqueDB([]string{prefix, genesisHash, HashDir},
+		ks)
+	LogIfError(errHash, nil)
+
+	messageValues, errMessage := BatchGetFromUniqueDB([]string{prefix, genesisHash, MessageDir},
+		ks)
+	LogIfError(errMessage, nil)
+
+	if errHash != nil {
+		return chunkData, errHash
+	}
+	if errMessage != nil {
+		return chunkData, errMessage
+	}
+
+	for _, key := range *(ks) {
+		_, hasMessageKey := (*messageValues)[key]
+		_, hasHashKey := (*hashValues)[key]
+
+		if hasMessageKey && hasHashKey {
+			message := ""
+			trytes, _ := ChunkMessageToTrytesWithStopper((*messageValues)[key])
+			message = string(trytes)
+
+			address := Sha256ToAddress((*hashValues)[key])
+			chunkData = append(chunkData, ChunkData{
+				Address:     address,
+				Hash:        (*hashValues)[key],
+				Message:     message,
+				RawMessage:  (*messageValues)[key],
+				Idx:         getChunkIdxFromKey(key),
+				GenesisHash: genesisHash,
+			})
+		}
+	}
+	return chunkData, nil
 }
 
 /*BatchGetFromUniqueDB returns KVPairs for a set of keys from a specific DB.
@@ -381,7 +450,7 @@ func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 
 		return nil
 	})
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 
 	return
 }
@@ -424,7 +493,7 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 		return nil
 	})
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 
 	return
 }
@@ -473,7 +542,7 @@ func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 	if err == nil {
 		err = txn.Commit(nil)
 	}
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
 }
 
@@ -516,7 +585,7 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 	if err == nil {
 		err = txn.Commit(nil)
 	}
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
 }
 
@@ -560,7 +629,7 @@ func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
 		err = txn.Commit(nil)
 	}
 
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 	return err
 }
 
@@ -599,46 +668,21 @@ func BatchDelete(ks *KVKeys) error {
 		err = txn.Commit(nil)
 	}
 
-	oyster_utils.LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
+	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
 	return err
 }
 
 /*DeleteDataFromUniqueDB deletes the data from a specific DB for all
 chunks within a certain range.  Note that endingIdx is inclusive */
-func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int,
-	endingIdx int) error {
+func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int64,
+	endingIdx int64) error {
 
-	var keys KVKeys
-	step := 0
-	stop := 0
+	keys := GenerateBulkKeys(genesisHash, startingIdx, endingIdx)
 
-	if startingIdx < endingIdx {
-		step = 1
-		stop = endingIdx + step
-	} else if startingIdx > endingIdx {
-		step = -1
-		stop = endingIdx + step
-	} else {
-		keys = append(keys, GetBadgerKey([]string{genesisHash, strconv.Itoa(startingIdx)}))
-	}
-
-	for i := startingIdx; i != stop; i = i + step {
-		keys = append(keys, GetBadgerKey([]string{genesisHash, strconv.Itoa(i)}))
-	}
-
-	err := BatchDeleteFromUniqueDB(dbID, &keys)
+	err := BatchDeleteFromUniqueDB(dbID, keys)
 	return err
 }
 
-/*DeleteMsgDatas deletes the data referred by dataMaps. */
-func DeleteMsgDatas(dataMaps []models.DataMap) {
-	if !IsKvStoreEnabled() {
-		return
-	}
-
-	var keys KVKeys
-	for _, dm := range dataMaps {
-		keys = append(keys, dm.MsgID)
-	}
-	BatchDelete(&keys)
+func AllChunkDataHasArrived(chunkData ChunkData) bool {
+	return chunkData.Address != "" && chunkData.Message != "" && chunkData.Hash != ""
 }

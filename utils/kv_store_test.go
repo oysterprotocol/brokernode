@@ -1,4 +1,4 @@
-package services_test
+package oyster_utils_test
 
 import (
 	"strconv"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -16,30 +15,30 @@ const guessedMaxBatchSize = 200000
 var testDBID = []string{"prefix", "genHash", "data"}
 
 func Test_KVStore_Init(t *testing.T) {
-	err := services.InitKvStore()
+	err := oyster_utils.InitKvStore()
 
 	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
-	defer services.CloseKvStore()
+	defer oyster_utils.CloseKvStore()
 }
 
 func Test_KVStore_MassBatchSet(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	err := services.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
+	err := oyster_utils.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	kvs, _ := services.BatchGet(&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
+	kvs, _ := oyster_utils.BatchGet(&oyster_utils.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "Expect only an item")
 }
 
 func Test_KVStoreBatchGet(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	services.BatchSet(&services.KVPairs{"key": "oyster"}, models.TestValueTimeToLive)
+	oyster_utils.BatchSet(&oyster_utils.KVPairs{"key": "oyster"}, models.TestValueTimeToLive)
 
-	kvs, err := services.BatchGet(&services.KVKeys{"key"})
+	kvs, err := oyster_utils.BatchGet(&oyster_utils.KVKeys{"key"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
@@ -47,12 +46,12 @@ func Test_KVStoreBatchGet(t *testing.T) {
 }
 
 func Test_KVStoreBatchGet_WithMissingKey(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	services.BatchSet(&services.KVPairs{"key": "oyster"}, models.TestValueTimeToLive)
+	oyster_utils.BatchSet(&oyster_utils.KVPairs{"key": "oyster"}, models.TestValueTimeToLive)
 
-	kvs, err := services.BatchGet(&services.KVKeys{"key", "unknownKey"})
+	kvs, err := oyster_utils.BatchGet(&oyster_utils.KVKeys{"key", "unknownKey"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
@@ -60,90 +59,65 @@ func Test_KVStoreBatchGet_WithMissingKey(t *testing.T) {
 }
 
 func Test_KVStore_MassBatchGet(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	err := services.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
+	err := oyster_utils.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	kvs, _ := services.BatchGet(getKeys(guessedMaxBatchSize))
+	kvs, _ := oyster_utils.BatchGet(getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertTrue(len(*kvs) == guessedMaxBatchSize, t, "")
 }
 
 func Test_KVStoreBatchDelete(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	services.BatchSet(&services.KVPairs{"key1": "oyster1", "key2": "oyster2"}, models.TestValueTimeToLive)
+	oyster_utils.BatchSet(&oyster_utils.KVPairs{"key1": "oyster1", "key2": "oyster2"}, models.TestValueTimeToLive)
 
-	err := services.BatchDelete(&services.KVKeys{"key1"})
+	err := oyster_utils.BatchDelete(&oyster_utils.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could not delete key")
 
-	kvs, err := services.BatchGet(&services.KVKeys{"key1"})
+	kvs, err := oyster_utils.BatchGet(&oyster_utils.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could complete get key")
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
 
 func Test_KVStore_MassBatchDelete(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	err := services.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
+	err := oyster_utils.BatchSet(getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	err = services.BatchDelete(getKeys(guessedMaxBatchSize))
+	err = oyster_utils.BatchDelete(getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertNoError(err, t, "")
 }
 
 func Test_KVStore_RemoveAllKvStoreData(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
+	oyster_utils.InitKvStore()
+	defer oyster_utils.CloseKvStore()
 
-	services.BatchSet(getKvPairs(2), models.TestValueTimeToLive)
-	err := services.RemoveAllKvStoreData()
+	oyster_utils.BatchSet(getKvPairs(2), models.TestValueTimeToLive)
+	err := oyster_utils.RemoveAllKvStoreData()
 	oyster_utils.AssertNoError(err, t, "")
 
-	services.InitKvStore()
-	kvs, _ := services.BatchGet(getKeys(2))
+	oyster_utils.InitKvStore()
+	kvs, _ := oyster_utils.BatchGet(getKeys(2))
 
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
 
-func Test_KVStore_GetMessageFromDataMap_FromKVStore(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
-
-	services.BatchSet(getKvPairs(1), models.TestValueTimeToLive)
-
-	dataMap := models.DataMap{
-		MsgID: "0",
-	}
-
-	oyster_utils.AssertStringEqual(services.GetMessageFromDataMap(dataMap), "0", t)
-}
-
-func Test_KVStore_GetMessageFromDataMap_FromMessage(t *testing.T) {
-	services.InitKvStore()
-	defer services.CloseKvStore()
-
-	dataMap := models.DataMap{
-		MsgID:   "1",
-		Message: "hello",
-	}
-
-	oyster_utils.AssertStringEqual(services.GetMessageFromDataMap(dataMap), "hello", t)
-}
-
-func getKvPairs(count int) *services.KVPairs {
-	pairs := services.KVPairs{}
+func getKvPairs(count int) *oyster_utils.KVPairs {
+	pairs := oyster_utils.KVPairs{}
 	for i := 0; i < count; i++ {
 		pairs[strconv.Itoa(i)] = strconv.Itoa(i)
 	}
 	return &pairs
 }
 
-func getKeys(count int) *services.KVKeys {
-	keys := services.KVKeys{}
+func getKeys(count int) *oyster_utils.KVKeys {
+	keys := oyster_utils.KVKeys{}
 	for i := 0; i < guessedMaxBatchSize; i++ {
 		keys = append(keys, strconv.Itoa(i))
 	}
@@ -151,36 +125,36 @@ func getKeys(count int) *services.KVKeys {
 }
 
 func Test_KVStore_InitUniqueKvStore(t *testing.T) {
-	err := services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
+	err := oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
 
 	oyster_utils.AssertNoError(err, t, "Could not create Badger DB")
-	defer services.CloseUniqueKvStore(dbName)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 }
 
 func Test_KVStore_MassBatchSetToUniqueDB(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	err := services.BatchSetToUniqueDB(testDBID,
+	err := oyster_utils.BatchSetToUniqueDB(testDBID,
 		getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	kvs, _ := services.BatchGetFromUniqueDB(testDBID,
-		&services.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
+	kvs, _ := oyster_utils.BatchGetFromUniqueDB(testDBID,
+		&oyster_utils.KVKeys{strconv.Itoa(guessedMaxBatchSize - 1)})
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "Expect only an item")
 }
 
 func Test_KVStore_BatchGetFromUniqueDB(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	services.BatchSetToUniqueDB(testDBID, &services.KVPairs{"key": "oyster"},
+	oyster_utils.BatchSetToUniqueDB(testDBID, &oyster_utils.KVPairs{"key": "oyster"},
 		models.TestValueTimeToLive)
 
-	kvs, err := services.BatchGetFromUniqueDB(testDBID, &services.KVKeys{"key"})
+	kvs, err := oyster_utils.BatchGetFromUniqueDB(testDBID, &oyster_utils.KVKeys{"key"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
@@ -188,15 +162,15 @@ func Test_KVStore_BatchGetFromUniqueDB(t *testing.T) {
 }
 
 func Test_KVStore_BatchGetFromUniqueDB_WithMissingKey(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	services.BatchSetToUniqueDB(testDBID, &services.KVPairs{"key": "oyster"},
+	oyster_utils.BatchSetToUniqueDB(testDBID, &oyster_utils.KVPairs{"key": "oyster"},
 		models.TestValueTimeToLive)
 
-	kvs, err := services.BatchGetFromUniqueDB(testDBID,
-		&services.KVKeys{"key", "unknownKey"})
+	kvs, err := oyster_utils.BatchGetFromUniqueDB(testDBID,
+		&oyster_utils.KVKeys{"key", "unknownKey"})
 	oyster_utils.AssertNoError(err, t, "Could not get key")
 
 	oyster_utils.AssertTrue(len(*kvs) == 1, t, "")
@@ -204,88 +178,88 @@ func Test_KVStore_BatchGetFromUniqueDB_WithMissingKey(t *testing.T) {
 }
 
 func Test_KVStore_MassBatchGetFromUniqueDB(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	err := services.BatchSetToUniqueDB(testDBID,
+	err := oyster_utils.BatchSetToUniqueDB(testDBID,
 		getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	kvs, _ := services.BatchGetFromUniqueDB(testDBID, getKeys(guessedMaxBatchSize))
+	kvs, _ := oyster_utils.BatchGetFromUniqueDB(testDBID, getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertTrue(len(*kvs) == guessedMaxBatchSize, t, "")
 }
 
 func Test_KVStore_BatchDeleteFromUniqueDB(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	services.BatchSetToUniqueDB(testDBID,
-		&services.KVPairs{"key1": "oyster1", "key2": "oyster2"}, models.TestValueTimeToLive)
+	oyster_utils.BatchSetToUniqueDB(testDBID,
+		&oyster_utils.KVPairs{"key1": "oyster1", "key2": "oyster2"}, models.TestValueTimeToLive)
 
-	err := services.BatchDeleteFromUniqueDB(testDBID,
-		&services.KVKeys{"key1"})
+	err := oyster_utils.BatchDeleteFromUniqueDB(testDBID,
+		&oyster_utils.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could not delete key")
 
-	kvs, err := services.BatchGetFromUniqueDB(testDBID,
-		&services.KVKeys{"key1"})
+	kvs, err := oyster_utils.BatchGetFromUniqueDB(testDBID,
+		&oyster_utils.KVKeys{"key1"})
 	oyster_utils.AssertNoError(err, t, "Could complete get key")
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
 
 func Test_KVStore_Mass_BatchDeleteFromUniqueDB(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	err := services.BatchSetToUniqueDB(testDBID,
+	err := oyster_utils.BatchSetToUniqueDB(testDBID,
 		getKvPairs(guessedMaxBatchSize), models.TestValueTimeToLive)
 	oyster_utils.AssertNoError(err, t, "")
 
-	err = services.BatchDeleteFromUniqueDB(testDBID,
+	err = oyster_utils.BatchDeleteFromUniqueDB(testDBID,
 		getKeys(guessedMaxBatchSize))
 	oyster_utils.AssertNoError(err, t, "")
 }
 
 func Test_KVStore_RemoveAllUniqueKvStoreData(t *testing.T) {
-	services.InitUniqueKvStore(testDBID)
-	dbName := services.GetBadgerDBName(testDBID)
-	defer services.CloseUniqueKvStore(dbName)
+	oyster_utils.InitUniqueKvStore(testDBID)
+	dbName := oyster_utils.GetBadgerDBName(testDBID)
+	defer oyster_utils.CloseUniqueKvStore(dbName)
 
-	services.BatchSetToUniqueDB(testDBID, getKvPairs(2), models.TestValueTimeToLive)
-	err := services.RemoveAllUniqueKvStoreData(dbName)
+	oyster_utils.BatchSetToUniqueDB(testDBID, getKvPairs(2), models.TestValueTimeToLive)
+	err := oyster_utils.RemoveAllUniqueKvStoreData(dbName)
 	oyster_utils.AssertNoError(err, t, "")
 
-	services.InitUniqueKvStore(testDBID)
-	kvs, _ := services.BatchGetFromUniqueDB(testDBID, getKeys(2))
+	oyster_utils.InitUniqueKvStore(testDBID)
+	kvs, _ := oyster_utils.BatchGetFromUniqueDB(testDBID, getKeys(2))
 
 	oyster_utils.AssertTrue(len(*kvs) == 0, t, "")
 }
 
 func Test_KVStore_RemoveAllKvStoreDataFromAllKvStores(t *testing.T) {
 
-	dbID1 := []string{"prefix", "genhash1", services.MessageDir}
-	dbID2 := []string{"prefix", "genhash2", services.MessageDir}
+	dbID1 := []string{"prefix", "genhash1", oyster_utils.MessageDir}
+	dbID2 := []string{"prefix", "genhash2", oyster_utils.MessageDir}
 
-	services.InitUniqueKvStore(dbID1)
-	dbName1 := services.GetBadgerDBName(dbID1)
-	defer services.CloseUniqueKvStore(dbName1)
+	oyster_utils.InitUniqueKvStore(dbID1)
+	dbName1 := oyster_utils.GetBadgerDBName(dbID1)
+	defer oyster_utils.CloseUniqueKvStore(dbName1)
 
-	services.InitUniqueKvStore(dbID2)
-	dbName2 := services.GetBadgerDBName(dbID2)
-	defer services.CloseUniqueKvStore(dbName2)
+	oyster_utils.InitUniqueKvStore(dbID2)
+	dbName2 := oyster_utils.GetBadgerDBName(dbID2)
+	defer oyster_utils.CloseUniqueKvStore(dbName2)
 
-	services.BatchSetToUniqueDB(dbID1, getKvPairs(2), models.TestValueTimeToLive)
-	services.BatchSetToUniqueDB(dbID2, getKvPairs(2), models.TestValueTimeToLive)
+	oyster_utils.BatchSetToUniqueDB(dbID1, getKvPairs(2), models.TestValueTimeToLive)
+	oyster_utils.BatchSetToUniqueDB(dbID2, getKvPairs(2), models.TestValueTimeToLive)
 
-	services.RemoveAllKvStoreDataFromAllKvStores()
+	oyster_utils.RemoveAllKvStoreDataFromAllKvStores()
 
-	services.InitUniqueKvStore(dbID1)
-	services.InitUniqueKvStore(dbID2)
+	oyster_utils.InitUniqueKvStore(dbID1)
+	oyster_utils.InitUniqueKvStore(dbID2)
 
-	kvs1, _ := services.BatchGetFromUniqueDB(dbID1, getKeys(2))
-	kvs2, _ := services.BatchGetFromUniqueDB(dbID2, getKeys(2))
+	kvs1, _ := oyster_utils.BatchGetFromUniqueDB(dbID1, getKeys(2))
+	kvs2, _ := oyster_utils.BatchGetFromUniqueDB(dbID2, getKeys(2))
 
 	oyster_utils.AssertTrue(len(*kvs1) == 0, t, "")
 	oyster_utils.AssertTrue(len(*kvs2) == 0, t, "")
@@ -296,24 +270,24 @@ func Test_KVStore_GetChunkData(t *testing.T) {
 	prefix := "somePrefix"
 	genesisHash := "someGenHash"
 
-	messageDBID := []string{prefix, genesisHash, services.MessageDir}
-	messageDBName := services.GetBadgerDBName(messageDBID)
+	messageDBID := []string{prefix, genesisHash, oyster_utils.MessageDir}
+	messageDBName := oyster_utils.GetBadgerDBName(messageDBID)
 
-	hashDBID := []string{prefix, genesisHash, services.HashDir}
-	hashDBName := services.GetBadgerDBName(hashDBID)
+	hashDBID := []string{prefix, genesisHash, oyster_utils.HashDir}
+	hashDBName := oyster_utils.GetBadgerDBName(hashDBID)
 
 	hash := "abcdeff"
 	message := "testMessage"
 	testAddress := "PHYDCDNGNEKFPAHEO9VHR9UAKFLDLGICICIIJCNDLGMGIASAUCCHBCIDIDVCWC9EIGEFZAQDH9AIAIUFN"
 
-	services.InitUniqueKvStore(messageDBID)
-	services.InitUniqueKvStore(hashDBID)
+	oyster_utils.InitUniqueKvStore(messageDBID)
+	oyster_utils.InitUniqueKvStore(hashDBID)
 
-	defer services.CloseUniqueKvStore(messageDBName)
-	defer services.CloseUniqueKvStore(hashDBName)
+	defer oyster_utils.CloseUniqueKvStore(messageDBName)
+	defer oyster_utils.CloseUniqueKvStore(hashDBName)
 
-	services.BatchSetToUniqueDB(messageDBID,
-		&services.KVPairs{
+	oyster_utils.BatchSetToUniqueDB(messageDBID,
+		&oyster_utils.KVPairs{
 			genesisHash + "_1": message + "1",
 			genesisHash + "_2": message + "2",
 			genesisHash + "_3": message + "3",
@@ -322,8 +296,8 @@ func Test_KVStore_GetChunkData(t *testing.T) {
 			genesisHash + "_6": message + "6"},
 		models.TestValueTimeToLive)
 
-	services.BatchSetToUniqueDB(hashDBID,
-		&services.KVPairs{
+	oyster_utils.BatchSetToUniqueDB(hashDBID,
+		&oyster_utils.KVPairs{
 			genesisHash + "_1": hash + "1",
 			genesisHash + "_2": hash + "2",
 			genesisHash + "_3": hash + "3",
@@ -332,7 +306,7 @@ func Test_KVStore_GetChunkData(t *testing.T) {
 			genesisHash + "_6": hash + "6"},
 		models.TestValueTimeToLive)
 
-	chunkData := services.GetChunkData(prefix, genesisHash, 3)
+	chunkData := oyster_utils.GetChunkData(prefix, genesisHash, 3)
 
 	trytes, _ := oyster_utils.ChunkMessageToTrytesWithStopper(message + "3")
 
@@ -346,15 +320,15 @@ func Test_KVStore_DeleteDataFromUniqueDB_Ascending(t *testing.T) {
 	prefix := "somePrefix"
 	genesisHash := "someGenHash"
 
-	messageDBID := []string{prefix, genesisHash, services.MessageDir}
-	messageDBName := services.GetBadgerDBName(messageDBID)
+	messageDBID := []string{prefix, genesisHash, oyster_utils.MessageDir}
+	messageDBName := oyster_utils.GetBadgerDBName(messageDBID)
 
 	message := "testMessage"
 
-	services.InitUniqueKvStore(messageDBID)
-	defer services.CloseUniqueKvStore(messageDBName)
+	oyster_utils.InitUniqueKvStore(messageDBID)
+	defer oyster_utils.CloseUniqueKvStore(messageDBName)
 
-	keys := &services.KVKeys{
+	keys := &oyster_utils.KVKeys{
 		genesisHash + "_1",
 		genesisHash + "_2",
 		genesisHash + "_3",
@@ -363,8 +337,8 @@ func Test_KVStore_DeleteDataFromUniqueDB_Ascending(t *testing.T) {
 		genesisHash + "_6",
 	}
 
-	services.BatchSetToUniqueDB(messageDBID,
-		&services.KVPairs{
+	oyster_utils.BatchSetToUniqueDB(messageDBID,
+		&oyster_utils.KVPairs{
 			genesisHash + "_1": message + "1",
 			genesisHash + "_2": message + "2",
 			genesisHash + "_3": message + "3",
@@ -373,11 +347,11 @@ func Test_KVStore_DeleteDataFromUniqueDB_Ascending(t *testing.T) {
 			genesisHash + "_6": message + "6"},
 		models.TestValueTimeToLive)
 
-	err := services.DeleteDataFromUniqueDB(messageDBID, genesisHash, 2, 4)
+	err := oyster_utils.DeleteDataFromUniqueDB(messageDBID, genesisHash, 2, 4)
 
 	oyster_utils.AssertNoError(err, t, "Could not delete from db for certain index range")
 
-	kvs, _ := services.BatchGetFromUniqueDB(messageDBID, keys)
+	kvs, _ := oyster_utils.BatchGetFromUniqueDB(messageDBID, keys)
 	oyster_utils.AssertTrue(len(*kvs) == 3, t, "")
 
 	foundWhatWeWanted := false
@@ -400,15 +374,15 @@ func Test_KVStore_DeleteDataFromUniqueDB_Descending(t *testing.T) {
 	prefix := "somePrefix"
 	genesisHash := "someGenHash"
 
-	messageDBID := []string{prefix, genesisHash, services.MessageDir}
-	messageDBName := services.GetBadgerDBName(messageDBID)
+	messageDBID := []string{prefix, genesisHash, oyster_utils.MessageDir}
+	messageDBName := oyster_utils.GetBadgerDBName(messageDBID)
 
 	message := "testMessage"
 
-	services.InitUniqueKvStore(messageDBID)
-	defer services.CloseUniqueKvStore(messageDBName)
+	oyster_utils.InitUniqueKvStore(messageDBID)
+	defer oyster_utils.CloseUniqueKvStore(messageDBName)
 
-	keys := &services.KVKeys{
+	keys := &oyster_utils.KVKeys{
 		genesisHash + "_1",
 		genesisHash + "_2",
 		genesisHash + "_3",
@@ -417,8 +391,8 @@ func Test_KVStore_DeleteDataFromUniqueDB_Descending(t *testing.T) {
 		genesisHash + "_6",
 	}
 
-	services.BatchSetToUniqueDB(messageDBID,
-		&services.KVPairs{
+	oyster_utils.BatchSetToUniqueDB(messageDBID,
+		&oyster_utils.KVPairs{
 			genesisHash + "_1": message + "1",
 			genesisHash + "_2": message + "2",
 			genesisHash + "_3": message + "3",
@@ -427,11 +401,11 @@ func Test_KVStore_DeleteDataFromUniqueDB_Descending(t *testing.T) {
 			genesisHash + "_6": message + "6"},
 		models.TestValueTimeToLive)
 
-	err := services.DeleteDataFromUniqueDB(messageDBID, genesisHash, 4, 2)
+	err := oyster_utils.DeleteDataFromUniqueDB(messageDBID, genesisHash, 4, 2)
 
 	oyster_utils.AssertNoError(err, t, "Could not delete from db for certain index range")
 
-	kvs, _ := services.BatchGetFromUniqueDB(messageDBID, keys)
+	kvs, _ := oyster_utils.BatchGetFromUniqueDB(messageDBID, keys)
 	oyster_utils.AssertTrue(len(*kvs) == 3, t, "")
 
 	foundWhatWeWanted := false
