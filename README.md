@@ -125,7 +125,6 @@ create query -> Metrics lookup -> prometheus_ || any_variable
 Panel data source -> Monitor
 
 ## variable on metrics
-
 treasures_verify_and_claim_seconds
 upload_session_resource_create_seconds
 upload_session_resource_update_seconds
