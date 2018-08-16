@@ -6,9 +6,9 @@ docker-clean-dev:
 	docker system prune -f; \
 
 docker-setup-prod:
-	cp -f database.prod.yml database.yml
-	cp -f docker-compose.prod.yml docker-compose.yml
+	cp -vf database.prod.yml database.yml
+	cp -vf docker-compose.prod.yml docker-compose.yml
 
 docker-setup-dev:
-	cp -f database.dev.yml database.yml
-	cp -f docker-compose.dev.yml docker-compose.yml
+	cp -vf database.dev.yml database.yml &&
+	cp -vf docker-compose.dev.yml docker-compose.yml
