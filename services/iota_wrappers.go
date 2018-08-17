@@ -660,6 +660,8 @@ func verifyTreasure(addr []string) (bool, error) {
 
 func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 	for chkBatch := range lChan {
+		fmt.Printf("Lambda Worker Processing!!! \t %d chunks\n", len(chkBatch))
+		fmt.Println(lambdaURL)
 
 		req := lambdaReq{
 			Provider: provider,
