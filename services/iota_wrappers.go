@@ -698,8 +698,12 @@ func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 		bodyBytes, err := ioutil.ReadAll(res.Body)
 		bodyString := string(bodyBytes)
 
-		fmt.Println(bodyString)
-		fmt.Println(err.Error)
+		if err != nil {
+			fmt.Println(err.Error)
+		} else {
+			fmt.Println(bodyString)
+		}
+
 		fmt.Println("========= RESPONSE END =======")
 		// log res.Body to segment?
 	}
