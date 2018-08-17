@@ -92,7 +92,7 @@ const (
 	// Limit to 1000 POSTs and 50 chunks per request.
 	lambdaURL            = "https://1i4zp8tyhc.execute-api.us-east-2.amazonaws.com/dev/attach-and-broadcast"
 	maxLambdaConcurrency = 1000
-	maxLambdaChunksLen   = 50
+	maxLambdaChunksLen   = 20
 	oysterTagStr         = "OYSTERGOLANG"
 )
 
