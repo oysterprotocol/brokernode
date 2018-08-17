@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"os"
@@ -693,6 +694,13 @@ func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
 		}
 		defer res.Body.Close()
 
+		fmt.Println("=========RESPONSE START=======")
+		bodyBytes, err := ioutil.ReadAll(res.Body)
+		bodyString := string(bodyBytes)
+
+		fmt.Println(bodyString)
+		fmt.Println(err.Error)
+		fmt.Println("========= RESPONSE END =======")
 		// log res.Body to segment?
 	}
 }
