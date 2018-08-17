@@ -9,6 +9,11 @@ The broker node uses Docker to spin up a go app, [mysql, required download](http
 # Feel free to modify the .env file. Note: we don't check in .env file.
 cp .env.test .env
 
+# The database setup is different between dev and prod. Run the following script to change your DB setup.
+# NOTE: Please do not check in the changes to your database.yml and docker-compose.yml file.
+make docker-setup-dev
+# make docker-setup-prod # use this to setup prod.
+
 # Starts the brokernode on port 3000
 DEBUG=1 docker-compose up --build -d # This takes a few minutes when you first run it.
 
