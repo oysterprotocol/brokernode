@@ -270,7 +270,8 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 		return err
 	}
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
-	_, err = DB.ValidateAndSave(u)
+	vErr, err := DB.ValidateAndSave(u)
+	oyster_utils.LogIfValidationError("Unable to save UploadSession.", vErr, nil)
 	oyster_utils.LogIfError(err, nil)
 	return err
 }
@@ -293,7 +294,8 @@ func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
 			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in " +
 				"EncryptTreasureIdxMapKeys, or found duplicate chunks")
-			oyster_utils.LogIfError(err, map[string]interface{}{"treasureChunkSize": len(treasureChunks)})
+			oyster_utils.LogIfError(err,
+				map[string]interface{}{"treasureChunkSize": len(treasureChunks), "genesisHash": u.GenesisHash, "treasureMapIdx": treasureMap[i].Idx})
 			return err
 		}
 
@@ -314,7 +316,10 @@ func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
 	u.TreasureStatus = TreasureInDataMapPending
 
-	DB.ValidateAndSave(u)
+	vErr, err := DB.ValidateAndSave(u)
+	oyster_utils.LogIfValidationError("Unable to save UploadSession.", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+
 	return nil
 }
 
@@ -339,7 +344,9 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
 
-	DB.ValidateAndSave(u)
+	vErr, err := DB.ValidateAndSave(u)
+	oyster_utils.LogIfValidationError("Unable to save UploadSession.", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
 }
 
 func (u *UploadSession) GetTreasureIndexes() ([]int, error) {

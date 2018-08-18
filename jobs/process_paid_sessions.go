@@ -25,10 +25,10 @@ func EncryptKeysInTreasureIdxMaps() {
 	needKeysEncrypted, err := models.GetSessionsThatNeedKeysEncrypted()
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	for _, session := range needKeysEncrypted {
-
 		session.EncryptTreasureIdxMapKeys()
 	}
 }
@@ -39,6 +39,7 @@ func BuryTreasureInDataMaps() error {
 
 	if err != nil {
 		fmt.Println(err)
+		return err
 	}
 
 	for _, unburiedSession := range unburiedSessions {
@@ -104,7 +105,11 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			Set("message", message))
 	}
 	unburiedSession.TreasureStatus = models.TreasureInDataMapComplete
-	models.DB.ValidateAndSave(unburiedSession)
+
+	vErr, err := models.DB.ValidateAndSave(unburiedSession)
+	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfValidationError("Unable to save UnburiedSession.", vErr, nil)
+
 	return nil
 }
 
@@ -113,20 +118,17 @@ func MarkBuriedMapsAsUnassigned() {
 	readySessions, err := models.GetReadySessions()
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 
 	for _, readySession := range readySessions {
 
-		pendingChunks, err := models.GetPendingChunksBySession(readySession, 1)
-		if err != nil {
-			fmt.Println(err)
-		}
-
+		pendingChunks, _ := models.GetPendingChunksBySession(readySession, 1)
 		if len(pendingChunks) > 0 {
 			//oyster_utils.LogToSegment("process_paid_sessions: mark_data_maps_as_ready", analytics.NewProperties().
 			//	Set("genesis_hash", readySession.GenesisHash))
 
-			err = readySession.BulkMarkDataMapsAsUnassigned()
+			readySession.BulkMarkDataMapsAsUnassigned()
 		}
 	}
 }
