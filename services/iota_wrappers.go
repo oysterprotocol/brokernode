@@ -652,6 +652,11 @@ func lambdaWorker(provider string, lChan <-chan []*awsgateway.HooknodeChunk) {
 		err := awsgateway.InvokeHooknode(&req)
 		oyster_utils.LogIfError(err, nil)
 
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("DONE PROCESSING!!!!!")
+
 		// log res.Body to segment?
 	}
 }
