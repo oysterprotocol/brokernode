@@ -187,7 +187,6 @@ func SkipVerificationOfFirstChunks(chunks []oyster_utils.ChunkData, session mode
 }
 
 func StageTreasures(treasureChunks []oyster_utils.ChunkData, session models.UploadSession) {
-	/*TODO add tests for this method*/
 
 	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
 		return

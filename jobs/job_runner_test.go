@@ -71,16 +71,6 @@ func (suite *JobsSuite) SetupTest() {
 	}
 }
 
-//
-//func (suite *JobsSuite) TearDownSuite() {
-//}
-//
-//func (suite *JobsSuite) SetupTest() {
-//}
-//
-//func (suite *JobsSuite) TearDownTest() {
-//}
-
 func Test_JobsSuite(t *testing.T) {
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 	defer oyster_utils.ResetBrokerMode()
@@ -112,7 +102,7 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 	privateKeys := []string{}
 
 	for i := 0; i < len(mergedIndexes); i++ {
-		privateKeys = append(privateKeys, "000000000"+strconv.Itoa(i))
+		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
 	}
 
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)

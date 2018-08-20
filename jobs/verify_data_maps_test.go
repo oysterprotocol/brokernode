@@ -41,11 +41,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 	models.MakeChannels(3)
 
 	// populate data_maps
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
 	numChunks := 10
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: uint64(numChunks * 1000),
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -157,11 +156,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 	models.MakeChannels(3)
 
 	// populate data_maps
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
 	numChunks := 10
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: uint64(numChunks * 1000),
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -269,11 +267,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 	models.MakeChannels(3)
 
 	// populate data_maps
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
 	numChunks := 10
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: uint64(numChunks * 1000),
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -385,11 +382,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	models.MakeChannels(3)
 
 	// populate data_maps
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
 	numChunks := 10
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: uint64(numChunks * 1000),
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,

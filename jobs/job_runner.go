@@ -62,8 +62,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: 5 * time.Minute})
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler,
-		//worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
-		worker.Args{Duration: 20 * time.Second})
+		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
 		worker.Args{Duration: 1 * time.Minute})

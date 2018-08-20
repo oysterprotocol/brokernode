@@ -45,7 +45,7 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 	privateKeys := []string{}
 
 	for i := 0; i < len(mergedIndexes); i++ {
-		privateKeys = append(privateKeys, "000000000"+strconv.Itoa(i))
+		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
 	}
 
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)

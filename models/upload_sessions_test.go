@@ -35,14 +35,13 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	genHash := "abcdef01"
 	fileSizeBytes := uint64(123)
 	numChunks := 2
 	storageLengthInYears := 2
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        fileSizeBytes,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -56,9 +55,9 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 	suite.False(vErr.HasAny())
 
 	uSession := models.UploadSession{}
-	suite.DB.Where("genesis_hash = ?", genHash).First(&uSession)
+	suite.DB.Where("genesis_hash = ?", u.GenesisHash).First(&uSession)
 
-	suite.Equal(genHash, uSession.GenesisHash)
+	suite.Equal(u.GenesisHash, uSession.GenesisHash)
 	suite.Equal(fileSizeBytes, uSession.FileSizeBytes)
 	suite.Equal(numChunks+1, uSession.NumChunks)
 	suite.Equal(models.SessionTypeAlpha, uSession.Type)
@@ -71,7 +70,7 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash + "aa",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        fileSizeBytes,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -85,7 +84,7 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 	suite.False(vErr.HasAny())
 
 	uSession2 := models.UploadSession{}
-	suite.DB.Where("genesis_hash = ?", genHash+"aa").First(&uSession2)
+	suite.DB.Where("genesis_hash = ?", u2.GenesisHash).First(&uSession2)
 
 	// verify indexes for beta session
 	suite.Equal(int64(uSession2.NumChunks-1), uSession2.NextIdxToVerify)
@@ -93,7 +92,6 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 }
 
 func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
-	genHash := "abcdef02"
 	numChunks := 2
 	storageLengthInYears := 3
 
@@ -119,7 +117,7 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
 
 	u := models.UploadSession{
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -157,7 +155,7 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 	suite.Nil(err)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdef03",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeAlpha,
@@ -166,7 +164,7 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 		AllDataReady:   models.AllDataReady,
 	}
 	uploadSession2 := models.UploadSession{ // this one will be newest and last in the array
-		GenesisHash:    "abcdef04",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
@@ -175,7 +173,7 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 		AllDataReady:   models.AllDataReady,
 	}
 	uploadSession3 := models.UploadSession{ // this one will be oldest and first in the array
-		GenesisHash:    "abcdef05",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
@@ -184,7 +182,7 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 		AllDataReady:   models.AllDataReady,
 	}
 	uploadSession4 := models.UploadSession{ // will not be in the array
-		GenesisHash:    "abcdef06",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
@@ -193,7 +191,7 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 		AllDataReady:   models.AllDataReady,
 	}
 	uploadSession5 := models.UploadSession{ // will not be in the array
-		GenesisHash:    "abcdef07",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:  5000,
 		NumChunks:      7,
 		Type:           models.SessionTypeBeta,
@@ -245,7 +243,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 	storageLengthInYears := 3
 
 	u1 := models.UploadSession{
-		GenesisHash:          "abcdef08",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -257,7 +255,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 	suite.Nil(err)
 
 	u2 := models.UploadSession{
-		GenesisHash:          "abcdef09",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -269,7 +267,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
 	suite.Nil(err)
 
 	u3 := models.UploadSession{
-		GenesisHash:          "abcdef10",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -294,7 +292,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 	storageLengthInYears := 3
 
 	u1 := models.UploadSession{
-		GenesisHash:          "abcdef11",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -306,7 +304,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 	suite.Nil(err)
 
 	u2 := models.UploadSession{
-		GenesisHash:          "abcdef12",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -318,7 +316,7 @@ func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 	suite.Nil(err)
 
 	u3 := models.UploadSession{
-		GenesisHash:          "abcdef13",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -342,14 +340,13 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 
 	sectorSize := 100
 
-	genHash := "abcdef14"
 	numChunks := 250
 	storageLengthInYears := 3
 	alphaIndexes := []int{2, 121, 245}
 	betaIndexes := []int{9, 89, 230}
 
 	u := models.UploadSession{
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -399,7 +396,6 @@ func (suite *ModelSuite) Test_GetTreasureIndexes() {
 	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
-	genHash := "abcdef15"
 	numChunks := 250
 	storageLengthInYears := 3
 	expectedIndexes := []int{5, 121, 225}
@@ -421,15 +417,15 @@ func (suite *ModelSuite) Test_GetTreasureIndexes() {
 		}]`
 
 	u := models.UploadSession{
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
 		TreasureIdxMap:       nulls.String{string(testMap), true},
 	}
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
-	models.ProcessAndStoreChunkData(chunkReqs, genHash, expectedIndexes, models.TestValueTimeToLive)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, expectedIndexes, models.TestValueTimeToLive)
 
 	vErr, err := u.StartUploadSession()
 	suite.Nil(err)
@@ -441,12 +437,11 @@ func (suite *ModelSuite) Test_GetTreasureIndexes() {
 }
 
 func (suite *ModelSuite) Test_EncryptAndDecryptEthKey() {
-	genHash := "abcdef16"
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            400,
 		StorageLengthInYears: 4,
@@ -470,7 +465,7 @@ func (suite *ModelSuite) Test_WaitForAllChunks() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef17",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:            200,
 		FileSizeBytes:        9000000,
 		StorageLengthInYears: storageLengthInYears,
@@ -515,7 +510,7 @@ func (suite *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef18",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:            2,
 		FileSizeBytes:        9000000,
 		StorageLengthInYears: storageLengthInYears,
@@ -532,7 +527,7 @@ func (suite *ModelSuite) Test_CalculatePayment_Less_Than_1_GB() {
 
 func (suite *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
-	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	currentStoragePeg := models.StoragePeg
@@ -544,7 +539,7 @@ func (suite *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef19",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:            2,
 		FileSizeBytes:        1500000000,
 		StorageLengthInYears: storageLengthInYears,
@@ -561,7 +556,7 @@ func (suite *ModelSuite) Test_CalculatePayment_Greater_Than_1_GB() {
 
 func (suite *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
-	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	currentStoragePeg := models.StoragePeg
@@ -575,7 +570,7 @@ func (suite *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef20",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -592,7 +587,7 @@ func (suite *ModelSuite) Test_CalculatePayment_1_Chunk_Less_Than_2_GB() {
 
 func (suite *ModelSuite) Test_CalculatePayment_2_GB() {
 
-	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	currentStoragePeg := models.StoragePeg
@@ -606,7 +601,7 @@ func (suite *ModelSuite) Test_CalculatePayment_2_GB() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef21",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:            2,
 		FileSizeBytes:        fileSizeBytes,
 		StorageLengthInYears: storageLengthInYears,
@@ -623,13 +618,12 @@ func (suite *ModelSuite) Test_CalculatePayment_2_GB() {
 }
 
 func (suite *ModelSuite) Test_GetPRLsPerTreasure() {
-	defer oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
 
 	totalCost := 5
 	numSectors := 3
 
-	genHash := "abcdef22"
 	numChunks := 250
 	storageLengthInYears := 3
 	mergedIndexes := []int{2, 121, 245}
@@ -640,7 +634,7 @@ func (suite *ModelSuite) Test_GetPRLsPerTreasure() {
 	}
 
 	u := models.UploadSession{
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -687,7 +681,6 @@ func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	genHash := "abcdef23"
 	fileSizeBytes := 123
 	numChunks := 2
 	storageLengthInYears := 2
@@ -696,7 +689,7 @@ func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(fileSizeBytes),
 		NumChunks:            numChunks,
 		StorageLengthInYears: storageLengthInYears,
@@ -711,7 +704,7 @@ func (ms *ModelSuite) Test_SetBrokerTransactionToPaid() {
 	ms.Equal(0, len(vErr.Errors))
 
 	uSession := models.UploadSession{}
-	ms.DB.Where("genesis_hash = ?", genHash).All(&uSession)
+	ms.DB.Where("genesis_hash = ?", u.GenesisHash).All(&uSession)
 
 	models.NewBrokerBrokerTransaction(&uSession)
 
@@ -732,7 +725,7 @@ func (suite *ModelSuite) Test_ProcessAndStoreDataMap() {
 
 	oyster_utils.RemoveAllKvStoreDataFromAllKvStores()
 
-	genHash := "abcdef24"
+	genHash := oyster_utils.RandSeq(6, []rune("abcdef0123456789"))
 
 	mergedIndexes := []int{5}
 	chunkReqs := GenerateChunkRequests(10, genHash)
@@ -814,7 +807,7 @@ func (suite *ModelSuite) Test_EncryptTreasureChunkEthKey_DecryptTreasureChunkEth
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          "abcdef45",
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        123,
 		NumChunks:            400,
 		StorageLengthInYears: 4,
@@ -833,29 +826,26 @@ func (suite *ModelSuite) Test_EncryptTreasureChunkEthKey_DecryptTreasureChunkEth
 
 func (suite *ModelSuite) Test_WaitForAllHashes() {
 
-	genHash := "abcdef46"
 	numChunks := 7
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 
 	finishedHashes, _ := u.WaitForAllHashes(500)
 	suite.True(finishedHashes)
 
-	genHash = "abcdef47"
-
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -874,11 +864,9 @@ func (suite *ModelSuite) Test_WaitForAllMessages() {
 
 	numChunks := 7
 
-	genHash := "abcdef48"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -891,18 +879,18 @@ func (suite *ModelSuite) Test_WaitForAllMessages() {
 	// This will be false since we did not send any chunk requests
 	suite.False(finishedMessages)
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
 
 	firstBatch := chunkReqs[0:2]
 	secondBatch := chunkReqs[2:numChunks]
 
-	models.ProcessAndStoreChunkData(firstBatch, genHash, []int{}, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(firstBatch, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	finishedMessages, _ = u.WaitForAllMessages(2)
 	// This will be false since we have not yet sent all the chunks
 	suite.False(finishedMessages)
 
-	models.ProcessAndStoreChunkData(secondBatch, genHash, []int{}, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(secondBatch, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	finishedMessages, _ = u.WaitForAllMessages(10)
 	// This will be true since we have sent all the chunks
@@ -916,29 +904,26 @@ func (suite *ModelSuite) Test_CheckIfAllDataIsReady() {
 	*/
 }
 func (suite *ModelSuite) Test_CheckIfAllHashesAreReady() {
-	genHash := "abcdef50"
 	numChunks := 7
 
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 
 	finishedHashes := u.CheckIfAllHashesAreReady()
 	suite.True(finishedHashes)
 
-	genHash = "abcdef51"
-
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -958,11 +943,9 @@ func (suite *ModelSuite) Test_CheckIfAllMessagesAreReady() {
 
 	numChunks := 7
 
-	genHash := "abcdef49"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(7000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -975,18 +958,18 @@ func (suite *ModelSuite) Test_CheckIfAllMessagesAreReady() {
 	// This will be false since we did not send any chunk requests
 	suite.False(finishedMessages)
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
 
 	firstBatch := chunkReqs[0:2]
 	secondBatch := chunkReqs[2:numChunks]
 
-	models.ProcessAndStoreChunkData(firstBatch, genHash, []int{}, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(firstBatch, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	finishedMessages = u.CheckIfAllMessagesAreReady()
 	// This will be false since we have not yet sent all the chunks
 	suite.False(finishedMessages)
 
-	models.ProcessAndStoreChunkData(secondBatch, genHash, []int{}, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(secondBatch, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	// calling this to make sure badger has had time to finish
 	u.WaitForAllMessages(10)
@@ -1001,23 +984,21 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_alpha() {
 
 	numChunks := 9
 
-	genHash := "abcdef52"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
-	models.ProcessAndStoreChunkData(chunkReqs, genHash, []int{}, models.TestValueTimeToLive)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
@@ -1048,23 +1029,21 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_beta() {
 
 	numChunks := 9
 
-	genHash := "abcdef53"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
-	models.ProcessAndStoreChunkData(chunkReqs, genHash, []int{}, models.TestValueTimeToLive)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
@@ -1095,23 +1074,21 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted() {
 
 	numChunks := 9
 
-	genHash := "abcdef54"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
-	models.ProcessAndStoreChunkData(chunkReqs, genHash, []int{}, models.TestValueTimeToLive)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
@@ -1141,23 +1118,21 @@ func (suite *ModelSuite) Test_MoveAllChunksToCompleted() {
 
 	numChunks := 9
 
-	genHash := "abcdef55"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
 	}
 
 	suite.DB.ValidateAndCreate(&u)
-	err := models.BuildDataMapsForSession(genHash, numChunks)
+	err := models.BuildDataMapsForSession(u.GenesisHash, numChunks)
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, genHash)
-	models.ProcessAndStoreChunkData(chunkReqs, genHash, []int{}, models.TestValueTimeToLive)
+	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, models.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
@@ -1187,11 +1162,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_alpha_treasure_not_c
 
 	numChunks := 9
 
-	genHash := "abcdef56"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1221,11 +1194,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_alpha_treasure_compl
 
 	numChunks := 9
 
-	genHash := "abcdef57"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1257,11 +1228,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_not_co
 
 	numChunks := 9
 
-	genHash := "abcdef58"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1291,11 +1260,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_comple
 
 	numChunks := 9
 
-	genHash := "abcdef59"
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1327,11 +1294,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_alpha_treasure_not_c
 
 	numChunks := 9
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1360,11 +1325,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_alpha_treasure_compl
 
 	numChunks := 9
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1395,11 +1358,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_beta_treasure_not_co
 
 	numChunks := 9
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1428,11 +1389,9 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_beta_treasure_comple
 
 	numChunks := 9
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1463,11 +1422,9 @@ func (suite *ModelSuite) Test_DownGradeIndexesOnUnattachedChunks_alpha() {
 
 	numChunks := 15
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1496,11 +1453,9 @@ func (suite *ModelSuite) Test_DownGradeIndexesOnUnattachedChunks_beta() {
 
 	numChunks := 15
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,
@@ -1526,14 +1481,9 @@ func (suite *ModelSuite) Test_DownGradeIndexesOnUnattachedChunks_beta() {
 func (suite *ModelSuite) Test_GetCompletedSessions() {
 	numChunks := 15
 
-	genHash1 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash2 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash3 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash4 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u1 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash1,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1550,7 +1500,7 @@ func (suite *ModelSuite) Test_GetCompletedSessions() {
 
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash2,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1567,7 +1517,7 @@ func (suite *ModelSuite) Test_GetCompletedSessions() {
 
 	u3 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash3,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1584,7 +1534,7 @@ func (suite *ModelSuite) Test_GetCompletedSessions() {
 
 	u4 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash4,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1604,21 +1554,16 @@ func (suite *ModelSuite) Test_GetCompletedSessions() {
 	suite.Equal(2, len(completedSessions))
 
 	for _, session := range completedSessions {
-		suite.True(session.GenesisHash == genHash1 || session.GenesisHash == genHash3)
+		suite.True(session.GenesisHash == u1.GenesisHash || session.GenesisHash == u3.GenesisHash)
 	}
 }
 
 func (suite *ModelSuite) Test_GetReadySessions() {
 	numChunks := 15
 
-	genHash1 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash2 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash3 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-	genHash4 := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u1 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash1,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1635,7 +1580,7 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash2,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1652,7 +1597,7 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 
 	u3 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash3,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1669,7 +1614,7 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 
 	u4 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash4,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
@@ -1689,7 +1634,7 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 	suite.Equal(2, len(readySessions))
 
 	for _, session := range readySessions {
-		suite.True(session.GenesisHash == genHash2 || session.GenesisHash == genHash4)
+		suite.True(session.GenesisHash == u2.GenesisHash || session.GenesisHash == u4.GenesisHash)
 	}
 }
 
@@ -1700,11 +1645,9 @@ func (suite *ModelSuite) Test_GetChunkForWebnodePoW() {
 
 	numChunks := 9
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	u := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
-		GenesisHash:          genHash,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes:        uint64(9000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 2,

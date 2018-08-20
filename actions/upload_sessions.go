@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"strconv"
 
@@ -124,7 +123,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
 	if db == nil {
-		err := errors.New("error creating unique badger DB")
+		err := errors.New("error creating unique badger DB for hashes")
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
@@ -269,7 +268,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
 	if db == nil {
-		err := errors.New("error creating unique badger DB")
+		err := errors.New("error creating unique badger DB for messages")
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
@@ -332,7 +331,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
 	if db == nil {
-		err := errors.New("error creating unique badger DB")
+		err := errors.New("error creating unique badger DB for hashes")
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
@@ -427,64 +426,4 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
-}
-
-func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
-	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
-}
-
-func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
-
-	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
-		return
-	}
-
-	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := EthWrapper.WaitForTransfer(transferAddr, "prl")
-
-	paymentStatus := models.PaymentStatusConfirmed
-	if err != nil {
-		paymentStatus = models.PaymentStatusError
-	}
-
-	session := models.UploadSession{}
-	if err := models.DB.Find(&session, uploadSessionId); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return
-	}
-
-	if session.PaymentStatus != models.PaymentStatusConfirmed {
-		session.PaymentStatus = paymentStatus
-	}
-	if err := models.DB.Save(&session); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return
-	}
-
-	// Alpha send half of it to Beta
-	checkAndSendHalfPrlToBeta(session, balance)
-}
-
-func checkAndSendHalfPrlToBeta(session models.UploadSession, balance *big.Int) {
-	if session.Type != models.SessionTypeAlpha ||
-		session.PaymentStatus != models.PaymentStatusConfirmed ||
-		session.ETHAddrBeta.String == "" {
-		return
-	}
-
-	betaAddr := services.StringToAddress(session.ETHAddrBeta.String)
-	betaBalance := EthWrapper.CheckPRLBalance(betaAddr)
-	if betaBalance.Int64() > 0 {
-		return
-	}
-
-	var splitAmount big.Int
-	splitAmount.Set(balance)
-	splitAmount.Div(balance, big.NewInt(2))
-	callMsg := services.OysterCallMsg{
-		From:   services.StringToAddress(session.ETHAddrAlpha.String),
-		To:     betaAddr,
-		Amount: splitAmount,
-	}
-	EthWrapper.SendPRL(callMsg)
 }

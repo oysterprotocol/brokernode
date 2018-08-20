@@ -34,7 +34,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 	models.MakeChannels(3)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdef25",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -44,7 +44,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 	}
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:    "abcdef26",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
@@ -54,7 +54,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 	}
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:    "abcdef27",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -64,7 +64,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 	}
 
 	uploadSession4 := models.UploadSession{
-		GenesisHash:    "abcdef28",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
@@ -158,7 +158,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_not_attached_yet() {
 	models.MakeChannels(3)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdef29",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -195,7 +195,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_already_attached() {
 	models.MakeChannels(3)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdef30",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
@@ -231,7 +231,7 @@ func (suite *JobsSuite) Done_InsertTreasureChunks_AlphaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdef31",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeAlpha,
@@ -275,7 +275,7 @@ func (suite *JobsSuite) Done_InsertTreasureChunks_BetaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdef32",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeBeta,
@@ -324,7 +324,7 @@ func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Beta() {
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
-		GenesisHash:   "abcdef33",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeBeta,
@@ -378,7 +378,7 @@ func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Alpha() {
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
-		GenesisHash:   "abcdef34",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeAlpha,
@@ -417,6 +417,33 @@ func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Alpha() {
 		suite.True(int(chunk.Idx) >= restMinIdx &&
 			int(chunk.Idx) <= restMaxIdx)
 	}
+}
+
+func (suite *JobsSuite) Test_StageTreasures() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	u := models.UploadSession{
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        15000,
+		NumChunks:            15,
+		StorageLengthInYears: 1,
+	}
+
+	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+
+	treasureIndexes, _ := u.GetTreasureIndexes()
+	suite.Equal(1, len(treasureIndexes))
+
+	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIndexes[0]))
+
+	jobs.StageTreasures([]oyster_utils.ChunkData{chunkData}, u)
+
+	treasure := []models.Treasure{}
+
+	suite.DB.Where("genesis_hash = ? AND address = ?", u.GenesisHash, chunkData.Address).All(&treasure)
+
+	suite.Equal(1, len(treasure))
 }
 
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {

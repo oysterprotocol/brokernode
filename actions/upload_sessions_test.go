@@ -85,6 +85,16 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
+
+	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+
+	suite.Equal(genHash, chunkData.Hash)
+
+	brokerTx := []models.BrokerBrokerTransaction{}
+
+	suite.DB.Where("genesis_hash = ?", genHash).All(&brokerTx)
+
+	suite.Equal(1, len(brokerTx))
 }
 
 func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
@@ -137,6 +147,16 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
+
+	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+
+	suite.Equal(genHash, chunkData.Hash)
+
+	brokerTx := []models.BrokerBrokerTransaction{}
+
+	suite.DB.Where("genesis_hash = ?", genHash).All(&brokerTx)
+
+	suite.Equal(1, len(brokerTx))
 }
 
 func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {

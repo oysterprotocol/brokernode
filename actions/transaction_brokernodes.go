@@ -131,7 +131,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	// Get transaction
 	t := &models.Transaction{}
-	transactionError := models.DB.Where("data_map_id = ?", c.Param("id")).First(&t)
+	transactionError := models.DB.Find(t, c.Param("id"))
 
 	trytes, err := giota.ToTrytes(req.Trytes)
 	if err != nil {
@@ -162,7 +162,9 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
-	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), chunkToUse.Message)
+	_, messageErr := giota.ToTrytes(chunkToUse.Message)
+	validMessage := messageErr == nil && strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment),
+		chunkToUse.Message)
 	if !validMessage {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}

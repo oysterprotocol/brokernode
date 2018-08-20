@@ -36,11 +36,9 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 		"key": "thirdKeySecondMap"
 		}]`
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    genHash,
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      300,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
@@ -60,11 +58,9 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 
 	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	genHash = oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	// create and start the upload session for a data map that does not need treasure
 	uploadSession2 := models.UploadSession{
-		GenesisHash:    genHash,
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      300,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
@@ -108,11 +104,9 @@ func (suite *JobsSuite) Test_BuryTreasure() {
 	treasureIndexes[78] = 78
 	treasureIndexes[199] = 199
 
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    genHash,
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      300,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
