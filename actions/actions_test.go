@@ -15,9 +15,9 @@ type ActionSuite struct {
 func (suite *ActionSuite) SetupTest() {
 	suite.Action.SetupTest()
 
-	if services.IsKvStoreEnabled() {
-		suite.Nil(services.RemoveAllKvStoreData())
-		suite.Nil(services.InitKvStore())
+	if oyster_utils.IsKvStoreEnabled() {
+		suite.Nil(oyster_utils.RemoveAllKvStoreData())
+		suite.Nil(oyster_utils.InitKvStore())
 	}
 
 	EthWrapper = services.EthWrapper

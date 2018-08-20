@@ -3,16 +3,15 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/oysterprotocol/brokernode/utils"
 	"io/ioutil"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type mockWaitForTransfer struct {
@@ -49,8 +48,10 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 		GenerateKeys:    services.EthWrapper.GenerateKeys,
 	}
 
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	res := suite.JSON("/api/v2/upload-sessions").Post(map[string]interface{}{
-		"genesisHash":          "abcdef",
+		"genesisHash":          genHash,
 		"fileSizeBytes":        123,
 		"numChunks":            2,
 		"storageLengthInYears": 1,
@@ -64,7 +65,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	suite.Nil(err)
 
 	suite.Equal(200, res.Code)
-	suite.Equal("abcdef", resParsed.UploadSession.GenesisHash)
+	suite.Equal(genHash, resParsed.UploadSession.GenesisHash)
 	suite.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
 	suite.Equal(models.SessionTypeAlpha, resParsed.UploadSession.Type)
 	suite.NotEqual(0, resParsed.Invoice.Cost)
@@ -100,8 +101,10 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 		GenerateKeys:    services.EthWrapper.GenerateKeys,
 	}
 
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	res := suite.JSON("/api/v2/upload-sessions/beta").Post(map[string]interface{}{
-		"genesisHash":          "abcdef",
+		"genesisHash":          genHash,
 		"fileSizeBytes":        123,
 		"numChunks":            2,
 		"storageLengthInYears": 1,
@@ -116,7 +119,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	suite.Nil(err)
 
 	suite.Equal(200, res.Code)
-	suite.Equal("abcdef", resParsed.UploadSession.GenesisHash)
+	suite.Equal(genHash, resParsed.UploadSession.GenesisHash)
 	suite.Equal(uint64(123), resParsed.UploadSession.FileSizeBytes)
 	suite.Equal(models.SessionTypeBeta, resParsed.UploadSession.Type)
 	suite.Equal(1, len(resParsed.BetaTreasureIndexes))
@@ -142,8 +145,11 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	EthWrapper = services.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
+
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   genHash,
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusConfirmed,
@@ -165,8 +171,11 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 		SendPRL:         mockSendPrl.sendPrl,
 	}
+
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   genHash,
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusPending,
@@ -197,8 +206,11 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckI
 	EthWrapper = services.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
+
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   genHash,
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusInvoiced,
@@ -226,9 +238,11 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 		SendPRL:         mockSendPrl.sendPrl,
 	}
 
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	uploadSession1 := models.UploadSession{
 		Type:          models.SessionTypeBeta,
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   genHash,
 		FileSizeBytes: 123,
 		NumChunks:     2,
 		PaymentStatus: models.PaymentStatusInvoiced,
@@ -250,94 +264,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
 	//res := suite.JSON("/api/v2/upload-sessions/" + "noIDFound").Get()
 
 	//TODO: Return better error response when ID does not exist
-}
-
-func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessAll() {
-	vErr, err := suite.DB.ValidateAndCreate(&models.DataMap{
-		GenesisHash: "123",
-		ChunkIdx:    1,
-		Hash:        "1",
-		MsgID:       "msg_id_1",
-		MsgStatus:   models.MsgStatusNotUploaded,
-	})
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
-	vErr, err = suite.DB.ValidateAndCreate(&models.DataMap{
-		GenesisHash: "123",
-		ChunkIdx:    2,
-		Hash:        "2",
-		MsgID:       "msg_id_2",
-		MsgStatus:   models.MsgStatusNotUploaded,
-	})
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
-
-	ProcessAndStoreChunkData([]chunkReq{
-		chunkReq{Idx: 1, Data: strconv.Itoa(1), Hash: "123"},
-		chunkReq{Idx: 2, Data: strconv.Itoa(2), Hash: "123"}},
-		"123",
-		[]int{})
-
-	var dms []models.DataMap
-	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
-
-	suite.Equal(2, len(dms))
-
-	for _, dm := range dms {
-		suite.Equal("", dm.Message)
-
-		dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
-		message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
-		suite.Equal(string(message), services.GetMessageFromDataMap(dm))
-	}
-}
-
-func (suite *ActionSuite) Test_ProcessAndStoreDataMap_ProcessSome() {
-	vErr, err := suite.DB.ValidateAndCreate(&models.DataMap{
-		GenesisHash: "123",
-		ChunkIdx:    3,
-		Hash:        "3",
-		MsgID:       "msg_id_3",
-		MsgStatus:   models.MsgStatusNotUploaded,
-	})
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
-	vErr, err = suite.DB.ValidateAndCreate(&models.DataMap{
-		GenesisHash: "123",
-		ChunkIdx:    4,
-		Hash:        "4",
-		MsgID:       "msg_id_4",
-		MsgStatus:   models.MsgStatusNotUploaded,
-	})
-
-	ProcessAndStoreChunkData([]chunkReq{
-		chunkReq{Idx: 3, Data: strconv.Itoa(3), Hash: "123"}},
-		"123",
-		[]int{})
-
-	var dms []models.DataMap
-	suite.Nil(suite.DB.Where("genesis_hash = 123").All(&dms))
-
-	suite.Equal(2, len(dms))
-
-	for _, dm := range dms {
-		isProccessed := dm.ChunkIdx == 3
-
-		if isProccessed {
-			messageValue := services.GetMessageFromDataMap(dm)
-			suite.Equal("3", messageValue)
-		} else {
-			suite.Equal(models.MsgStatusNotUploaded, dm.MsgStatus)
-		}
-
-		if isProccessed {
-			dm.MsgStatus = models.MsgStatusUploadedHaveNotEncoded
-			message, _ := oyster_utils.ChunkMessageToTrytesWithStopper(strconv.Itoa(dm.ChunkIdx))
-			suite.Equal(string(message), services.GetMessageFromDataMap(dm))
-		} else {
-			suite.Equal("", services.GetMessageFromDataMap(dm))
-		}
-	}
 }
 
 func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateRes {

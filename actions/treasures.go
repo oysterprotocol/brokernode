@@ -45,7 +45,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 		}))
 	}
 
-	addr := models.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
+	addr := oyster_utils.ComputeSectorDataMapAddress(req.GenesisHash, req.SectorIdx, req.NumChunks)
 	verify, err := IotaWrapper.VerifyTreasure(addr)
 
 	_, keyErr := crypto.HexToECDSA(req.EthKey)

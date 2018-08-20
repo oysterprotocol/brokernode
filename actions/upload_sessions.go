@@ -53,14 +53,8 @@ type uploadSessionCreateBetaRes struct {
 	BetaTreasureIndexes []int                `json:"betaTreasureIndexes"`
 }
 
-type chunkReq struct {
-	Idx  int    `json:"idx"`
-	Data string `json:"data"`
-	Hash string `json:"hash"` // This is GenesisHash.
-}
-
 type UploadSessionUpdateReq struct {
-	Chunks []chunkReq `json:"chunks"`
+	Chunks []models.ChunkReq `json:"chunks"`
 }
 
 type paymentStatusCreateRes struct {
@@ -125,6 +119,16 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Set("file_size_byes", alphaSession.FileSizeBytes).
 		Set("num_chunks", alphaSession.NumChunks).
 		Set("storage_years", alphaSession.StorageLengthInYears))
+
+	dbID := []string{oyster_utils.InProgressDir, alphaSession.GenesisHash, oyster_utils.HashDir}
+
+	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		err := errors.New("error creating unique badger DB")
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
 
 	vErr, err := alphaSession.StartUploadSession()
 	if err != nil || vErr.HasAny() {
@@ -261,6 +265,15 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	}
 
 	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
+	dbID := []string{oyster_utils.InProgressDir, uploadSession.GenesisHash, oyster_utils.MessageDir}
+
+	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		err := errors.New("error creating unique badger DB")
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
 
 	// Update dMaps to have chunks async
 	go func() {
@@ -271,7 +284,8 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			Set("num_chunks", uploadSession.NumChunks).
 			Set("storage_years", uploadSession.StorageLengthInYears))
 
-		ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap)
+		models.ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap,
+			models.DataMapsTimeToLive)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
@@ -314,6 +328,16 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Set("num_chunks", u.NumChunks).
 		Set("storage_years", u.StorageLengthInYears))
 
+	dbID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		err := errors.New("error creating unique badger DB")
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
+
 	vErr, err := u.StartUploadSession()
 
 	if err != nil {
@@ -327,9 +351,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	models.NewBrokerBrokerTransaction(&u)
-
-	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes,
+		oyster_utils.FileSectorInChunkSize, req.NumChunks)
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -349,6 +372,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	models.NewBrokerBrokerTransaction(&u)
 
 	res := uploadSessionCreateBetaRes{
 		UploadSession:       u,
@@ -402,79 +427,6 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
-}
-
-/*ProcessAndStoreChunkData receives the genesis hash, chunk idx, and message from the client
-and adds it to the badger database*/
-func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
-	// the keys in this chunks map have already transformed indexes
-	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
-
-	// TODO: We should totally deprecate storing the message in sql and remove
-	// all of these IsKvStoreEnabled checks
-	if services.IsKvStoreEnabled() {
-		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-		for key, chunk := range chunksMap {
-
-			batchSetKvMap[key] = chunk.Data
-		}
-
-		services.BatchSet(&batchSetKvMap, models.DataMapsTimeToLive)
-	}
-}
-
-// convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.
-// Return minChunkId and maxChunkId.
-func convertToBadgerKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) map[string]chunkReq {
-	chunksMap := make(map[string]chunkReq)
-
-	for _, chunk := range chunks {
-		var chunkIdx int
-		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-			chunkIdx = chunk.Idx
-		} else {
-			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
-		}
-
-		key := oyster_utils.GenerateBadgerKey("", genesisHash, chunkIdx)
-		chunksMap[key] = chunk
-	}
-	return chunksMap
-}
-
-// convertToSQLKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
-func convertToSQLKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
-	chunksMap := make(map[string]chunkReq)
-	minChunkIdx := 0
-	maxChunkIdx := 0
-
-	for _, chunk := range chunks {
-		var chunkIdx int
-		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-			chunkIdx = chunk.Idx
-		} else {
-			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
-		}
-
-		key := sqlWhereForGenesisHashAndChunkIdx(genesisHash, chunkIdx)
-		chunksMap[key] = chunk
-		minChunkIdx = oyster_utils.IntMin(minChunkIdx, chunkIdx)
-		maxChunkIdx = oyster_utils.IntMax(maxChunkIdx, chunkIdx)
-	}
-	return chunksMap, minChunkIdx, maxChunkIdx
-}
-
-// convertToSQLKeyedMapForDataMap converts dataMaps into sql keyed maps. Remove any duplicate keyed.
-func convertToSQLKeyedMapForDataMap(dataMaps []models.DataMap) map[string]models.DataMap {
-	dmsMap := make(map[string]models.DataMap)
-	for _, dm := range dataMaps {
-		key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
-		// Only use the first one
-		if _, hasKey := dmsMap[key]; !hasKey {
-			dmsMap[key] = dm
-		}
-	}
-	return dmsMap
 }
 
 func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
