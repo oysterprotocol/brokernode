@@ -1,0 +1,59 @@
+package awsgateway
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/iotaledger/giota"
+)
+
+const (
+	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
+	hooknodeRegion = "us-east-2"
+)
+
+type HooknodeChunk struct {
+	Address string       `json:"address"`
+	Value   int          `json:"value"`
+	Message giota.Trytes `json:"message"`
+	Tag     giota.Trytes `json:"tag"`
+}
+
+type HooknodeReq struct {
+	Provider string           `json:"provider"`
+	Chunks   []*HooknodeChunk `json:"chunks"`
+}
+
+var (
+	sess = session.Must(session.NewSession(&aws.Config{Region: aws.String(hooknodeRegion)}))
+)
+
+func InvokeHooknode(req *HooknodeReq) error {
+	// Serialize params
+	payload, err := json.Marshal(*req)
+	if err != nil {
+		return err
+	}
+
+	// Invoke lambda.
+	client := lambda.New(sess)
+	res, err := client.Invoke(&lambda.InvokeInput{
+		FunctionName: aws.String(hooknodeFnName),
+		Payload:      payload,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("=========RESPONSE START=======")
+	bodyString := string(res.Payload)
+	fmt.Println("LAMBDA RETURNED")
+	fmt.Println(res.StatusCode)
+	fmt.Println(bodyString)
+	fmt.Println("========= RESPONSE END =======")
+
+	return nil
+}

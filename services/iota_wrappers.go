@@ -1,12 +1,8 @@
 package services
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
-	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -16,6 +12,7 @@ import (
 	"github.com/iotaledger/giota"
 	"github.com/joho/godotenv"
 	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/services/awsgateway"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
 )
@@ -66,34 +63,21 @@ type FilteredChunk struct {
 	NotAttached        []models.DataMap
 }
 
-type lambdaChunk struct {
-	Address string       `json:"address"`
-	Value   int          `json:"value"`
-	Message giota.Trytes `json:"message"`
-	Tag     giota.Trytes `json:"tag"`
-}
-
-type lambdaReq struct {
-	Provider string         `json:"provider"`
-	Chunks   []*lambdaChunk `json:"chunks"`
-}
-
-// Things below are copied from the giota lib since they are not public.
-// https://github.com/iotaledger/giota/blob/master/transfer.go#L322
 const (
 	maxTimestampTrytes = "MMMMMMMMM"
 
 	// By a hard limit on the request for FindTransaction to IOTA
 	MaxNumberOfAddressPerFindTransactionRequest = 1000
+	oysterTagStr                                = "OYSTERGOLANG"
+	oysterTagHookStr                            = "OYSTERHOOKNODE"
 
 	// Lambda
+	// These should be defined in the awsgateway package...
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
-	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
+	// 3MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 50 chunks per request.
-	lambdaURL            = "https://1i4zp8tyhc.execute-api.us-east-2.amazonaws.com/dev/attach-and-broadcast"
 	maxLambdaConcurrency = 1000
 	maxLambdaChunksLen   = 20
-	oysterTagStr         = "OYSTERGOLANG"
 )
 
 var (
@@ -101,21 +85,22 @@ var (
 	PowProcs    int
 	IotaWrapper IotaService
 	//This mutex was added by us.
-	mutex           = &sync.Mutex{}
-	seed            giota.Trytes
-	minDepth        = int64(1)
-	minWeightMag    = int64(6)
-	bestPow         giota.PowFunc
-	powName         string
-	Channel         = map[string]PowChannel{}
-	wg              sync.WaitGroup
-	api             *giota.API
-	PoWFrequency    ProcessingFrequency
-	minPoWFrequency = 1
-	OysterTag, _    = giota.ToTrytes(oysterTagStr)
+	mutex            = &sync.Mutex{}
+	seed             giota.Trytes
+	minDepth         = int64(1)
+	minWeightMag     = int64(6)
+	bestPow          giota.PowFunc
+	powName          string
+	Channel          = map[string]PowChannel{}
+	wg               sync.WaitGroup
+	api              *giota.API
+	PoWFrequency     ProcessingFrequency
+	minPoWFrequency  = 1
+	OysterTag, _     = giota.ToTrytes(oysterTagStr)
+	OysterTagHook, _ = giota.ToTrytes(oysterTagHookStr)
 
 	// Lambda
-	lambdaChan = make(chan []*lambdaChunk, maxLambdaConcurrency)
+	lambdaChan = make(chan []*awsgateway.HooknodeChunk, maxLambdaConcurrency)
 )
 
 func init() {
@@ -659,52 +644,22 @@ func verifyTreasure(addr []string) (bool, error) {
 	return true, nil
 }
 
-func lambdaWorker(provider string, lChan <-chan []*lambdaChunk) {
+func lambdaWorker(provider string, lChan <-chan []*awsgateway.HooknodeChunk) {
 	for chkBatch := range lChan {
 		if len(chkBatch) <= 0 {
 			continue
 		}
 
 		fmt.Printf("Lambda Worker Processing!!! \t %d chunks\n", len(chkBatch))
-		fmt.Println(lambdaURL)
 
-		req := lambdaReq{
+		req := awsgateway.HooknodeReq{
 			Provider: provider,
 			Chunks:   chkBatch,
 		}
 
-		// Serialize params
-		reqBytes, err := json.Marshal(req)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
+		err := awsgateway.InvokeHooknode(&req)
+		oyster_utils.LogIfError(err, nil)
 
-		// Setup request
-		httpReq, err := http.NewRequest("POST", lambdaURL, bytes.NewBuffer(reqBytes))
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
-		httpReq.Header.Set("Content-Type", "application/json")
-
-		// Make request
-		client := &http.Client{}
-		res, err := client.Do(httpReq)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-		}
-		defer res.Body.Close()
-
-		fmt.Println("=========RESPONSE START=======")
-		bodyBytes, err := ioutil.ReadAll(res.Body)
-		bodyString := string(bodyBytes)
-
-		if err != nil {
-			fmt.Println(err.Error)
-		} else {
-			fmt.Println(bodyString)
-		}
-
-		fmt.Println("========= RESPONSE END =======")
 		// log res.Body to segment?
 	}
 }
@@ -725,13 +680,13 @@ func batchPowOnLambda(chunks *[]models.DataMap) {
 		}
 
 		// Map chunk to lambdaChunk
-		chunkBatch := make([]*lambdaChunk, numChunks)
+		chunkBatch := make([]*awsgateway.HooknodeChunk, numChunks)
 		for j := 0; j < numChunks; j++ {
 			chk := (*chunks)[offset+j]
-			lamChk := lambdaChunk{
+			lamChk := awsgateway.HooknodeChunk{
 				Address: chk.Address,
 				Value:   0,
-				Tag:     OysterTag,
+				Tag:     OysterTagHook,
 			}
 
 			msg, err := giota.ToTrytes(GetMessageFromDataMap(chk))
