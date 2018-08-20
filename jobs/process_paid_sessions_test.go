@@ -46,8 +46,8 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
-	mergedIndexes := []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
-	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
+	mergedIndexes := []int{treasureIndexes[5]}
+	privateKeys := []string{"1000000001"}
 
 	chunkReqs := GenerateChunkRequests(300, uploadSession1.GenesisHash)
 
@@ -58,7 +58,7 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 
 	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	// create and start the upload session for a data map that does not need treasure
+	// create and start the upload session for a data map that will not need a treasure (payment still invoiced)
 	uploadSession2 := models.UploadSession{
 		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      300,
@@ -69,8 +69,8 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 		TreasureIdxMap: nulls.String{string(testMap2), true},
 	}
 
-	mergedIndexes = []int{15, 112, 275}
-	privateKeys = []string{"0000000001", "0000000002", "0000000003"}
+	mergedIndexes = []int{112}
+	privateKeys = []string{"2000000002"}
 
 	chunkReqs = GenerateChunkRequests(300, uploadSession2.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, uploadSession2.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
@@ -80,7 +80,7 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 
 	for {
 		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession2.WaitForAllMessages(3)
+		finishedMessages, _ := uploadSession1.WaitForAllMessages(3)
 		if finishedMessages {
 			break
 		}
@@ -91,6 +91,7 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 	suite.DB.Where("treasure_status = ?", models.TreasureInDataMapComplete).All(&session)
 	suite.Equal(1, len(session))
 	suite.Equal(uploadSession1.GenesisHash, session[0].GenesisHash)
+	suite.Equal(models.AllDataReady, session[0].AllDataReady)
 }
 
 func (suite *JobsSuite) Test_BuryTreasure() {
@@ -186,4 +187,5 @@ func (suite *JobsSuite) Test_BuryTreasure() {
 	session = []models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).All(&session)
 	suite.Equal(models.TreasureInDataMapComplete, session[0].TreasureStatus)
+	suite.Equal(models.AllDataReady, session[0].AllDataReady)
 }

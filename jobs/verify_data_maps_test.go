@@ -53,27 +53,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 		ETHPrivateKey: "000000000000005432",
 	}
 
-	_, err := uploadSession1.StartUploadSession()
-	suite.Nil(err)
-
-	mergedIndexes := []int{5}
-	privateKeys := []string{"0000000001"}
-
-	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-
-	chunkReqs := GenerateChunkRequests(numChunks, uploadSession1.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
-
-	for {
-		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession1.WaitForAllMessages(500)
-		if finishedMessages {
-			break
-		}
-	}
-
-	finishedHashes, _ := uploadSession1.WaitForAllHashes(500)
-	suite.True(finishedHashes)
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
@@ -168,27 +148,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 		ETHPrivateKey: "000000000000005432",
 	}
 
-	_, err := uploadSession1.StartUploadSession()
-	suite.Nil(err)
-
-	mergedIndexes := []int{5}
-	privateKeys := []string{"0000000001"}
-
-	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-
-	chunkReqs := GenerateChunkRequests(numChunks, uploadSession1.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
-
-	for {
-		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession1.WaitForAllMessages(500)
-		if finishedMessages {
-			break
-		}
-	}
-
-	finishedHashes, _ := uploadSession1.WaitForAllHashes(500)
-	suite.True(finishedHashes)
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
@@ -279,27 +239,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 		ETHPrivateKey: "000000000000005432",
 	}
 
-	_, err := uploadSession1.StartUploadSession()
-	suite.Nil(err)
-
-	mergedIndexes := []int{5}
-	privateKeys := []string{"0000000001"}
-
-	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-
-	chunkReqs := GenerateChunkRequests(numChunks, uploadSession1.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
-
-	for {
-		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession1.WaitForAllMessages(500)
-		if finishedMessages {
-			break
-		}
-	}
-
-	finishedHashes, _ := uploadSession1.WaitForAllHashes(500)
-	suite.True(finishedHashes)
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
@@ -394,27 +334,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 		ETHPrivateKey: "000000000000005432",
 	}
 
-	_, err := uploadSession1.StartUploadSession()
-	suite.Nil(err)
-
-	mergedIndexes := []int{5}
-	privateKeys := []string{"0000000001"}
-
-	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-
-	chunkReqs := GenerateChunkRequests(numChunks, uploadSession1.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
-
-	for {
-		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession1.WaitForAllMessages(500)
-		if finishedMessages {
-			break
-		}
-	}
-
-	finishedHashes, _ := uploadSession1.WaitForAllHashes(500)
-	suite.True(finishedHashes)
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))

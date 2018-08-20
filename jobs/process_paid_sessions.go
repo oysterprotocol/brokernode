@@ -80,6 +80,11 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			Set("message", message))
 	}
 	unburiedSession.TreasureStatus = models.TreasureInDataMapComplete
+
+	if unburiedSession.CheckIfAllDataIsReady() {
+		unburiedSession.AllDataReady = models.AllDataReady
+	}
+
 	models.DB.ValidateAndSave(unburiedSession)
 	return nil
 }
