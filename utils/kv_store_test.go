@@ -229,6 +229,7 @@ func Test_KVStore_RemoveAllUniqueKvStoreData(t *testing.T) {
 
 	oyster_utils.BatchSetToUniqueDB(testDBID, getKvPairs(2), models.TestValueTimeToLive)
 	err := oyster_utils.RemoveAllUniqueKvStoreData(dbName)
+
 	oyster_utils.AssertNoError(err, t, "")
 
 	oyster_utils.InitUniqueKvStore(testDBID)
