@@ -1,13 +1,13 @@
 package main
 
 import (
+	"github.com/oysterprotocol/brokernode/utils"
 	"log"
 	"math/rand"
 	"time"
 
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/actions"
-	"github.com/oysterprotocol/brokernode/services"
 )
 
 func main() {
@@ -16,12 +16,7 @@ func main() {
 	rand.Seed(time.Now().Unix())
 	app := actions.App()
 
-	// Setup KV Store
-	err := services.InitKvStore()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer services.CloseKvStore()
+	defer oyster_utils.CloseKvStore()
 
 	if err := app.Serve(); err != nil {
 		log.Fatal(err)

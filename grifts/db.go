@@ -227,12 +227,22 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("delete_uploads", "Removes any sessions or data_maps in the db")
 	grift.Add("delete_uploads", func(c *grift.Context) error {
 
-		models.DB.RawQuery("DELETE FROM upload_sessions").All(&[]models.UploadSession{})
-		models.DB.RawQuery("DELETE FROM data_maps").All(&[]models.DataMap{})
+		allSessions := []models.UploadSession{}
+		models.DB.RawQuery("select * from upload_sessions").All(&allSessions)
 
-		// Clean up KvStore
-		services.RemoveAllKvStoreData()
-		services.InitKvStore()
+		for i := range allSessions {
+			dbNameMessage := oyster_utils.GetBadgerDBName([]string{oyster_utils.InProgressDir,
+				allSessions[i].GenesisHash, oyster_utils.MessageDir})
+			dbNameHash := oyster_utils.GetBadgerDBName([]string{oyster_utils.InProgressDir,
+				allSessions[i].GenesisHash, oyster_utils.HashDir})
+			oyster_utils.RemoveAllUniqueKvStoreData(dbNameMessage)
+			oyster_utils.RemoveAllUniqueKvStoreData(dbNameHash)
+			oyster_utils.CloseUniqueKvStore(dbNameMessage)
+			oyster_utils.CloseUniqueKvStore(dbNameHash)
+		}
+
+		models.DB.RawQuery("DELETE FROM upload_sessions").All(&[]models.UploadSession{})
+
 		return nil
 	})
 
@@ -394,56 +404,31 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
-	grift.Desc("print_data_map_stats", "Counts the statuses of all data maps")
-	grift.Add("print_data_map_stats", func(c *grift.Context) error {
-
-		dataMapAll := []models.DataMap{}
-
-		dataMapPending := []models.DataMap{}
-		dataMapUnassigned := []models.DataMap{}
-		dataMapUnverified := []models.DataMap{}
-		dataMapComplete := []models.DataMap{}
-		dataMapConfirmed := []models.DataMap{}
-		dataMapError := []models.DataMap{}
-
-		models.DB.RawQuery("SELECT * from data_maps").All(&dataMapAll)
-
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Pending).All(&dataMapPending)
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Unassigned).All(&dataMapUnassigned)
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Unverified).All(&dataMapUnverified)
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Complete).All(&dataMapComplete)
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Confirmed).All(&dataMapConfirmed)
-		models.DB.RawQuery("SELECT * from data_maps WHERE status = ?", models.Error).All(&dataMapError)
-
-		fmt.Println("____________________________________________")
-		fmt.Printf("Pending count:      %d\n", len(dataMapPending))
-		fmt.Printf("Unassigned count:   %d\n", len(dataMapUnassigned))
-		fmt.Printf("Unverified count:   %d\n", len(dataMapUnverified))
-		fmt.Printf("Complete count:     %d\n", len(dataMapComplete))
-		fmt.Printf("Confirmed count:    %d\n", len(dataMapConfirmed))
-		fmt.Printf("Error count:        %d\n", len(dataMapError))
-		fmt.Println("_____________")
-		fmt.Printf("Total count:        %v\n", len(dataMapAll))
-		fmt.Printf("____________________________________________\n")
-
-		return nil
-	})
-
 	grift.Desc("print_data_maps", "Prints all data_maps")
 	grift.Add("print_data_maps", func(c *grift.Context) error {
 
-		dataMapAll := []models.DataMap{}
+		allSessions := []models.UploadSession{}
 
-		models.DB.RawQuery("SELECT * from data_maps").All(&dataMapAll)
+		models.DB.RawQuery("SELECT * from upload_sessions").All(&allSessions)
+
+		dataMapAll := []oyster_utils.ChunkData{}
+
+		for i := range allSessions {
+			keys := oyster_utils.GenerateBulkKeys(allSessions[i].GenesisHash, 0,
+				int64(allSessions[i].NumChunks-1))
+			chunkData, err := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir,
+				allSessions[i].GenesisHash, keys)
+			if err == nil && len(chunkData) != 0 {
+				dataMapAll = append(dataMapAll, chunkData...)
+			}
+		}
 
 		for _, dataMap := range dataMapAll {
 			fmt.Println("____________________________________________")
 			fmt.Println("Address:            " + dataMap.Address)
 			fmt.Println("Genesis Hash:       " + dataMap.GenesisHash)
-			fmt.Println("Message in mysql:   " + dataMap.Message)
-			fmt.Println("Message in badger:  " + services.GetMessageFromDataMap(dataMap))
-			fmt.Println("Status:             " + models.StatusMap[dataMap.Status])
-			fmt.Println("Message Status:     " + models.MsgStatusMap[dataMap.MsgStatus])
+			fmt.Println("Message (tryted):   " + dataMap.Message)
+			fmt.Println("Message (raw):      " + dataMap.RawMessage)
 			fmt.Println("____________________________________________")
 		}
 
@@ -920,17 +905,26 @@ var _ = grift.Namespace("db", func() {
 		return nil
 	})
 
-	grift.Desc("set_data_maps_to_unassigned", "Sets all data maps to unassigned")
-	grift.Add("set_data_maps_to_unassigned", func(c *grift.Context) error {
+	/*
+		grift.Desc("set_data_maps_to_unassigned", "Sets all data maps to unassigned")
+		grift.Add("set_data_maps_to_unassigned", func(c *grift.Context) error {
 
-		err := models.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
+		TODO:  One way to handle this would be to reset the NextIdxToAttachedAnd
+		NextIdxToVerify back to their starting values.  But, if we are currently moving data maps
+		to the completed database during the upload, this won't work because the broker will try again
+		to upload chunks that no longer exist in its in progress database for that session.  This
+		approach would only work if we only move all data maps to completed when the whole session is finished.
 
-		if err == nil {
-			fmt.Println("Statuses changed")
-		}
+			allSessions := []models.UploadSession{}
+			models.DB.RawQuery("select * from upload_sessions").All(&allSessions)
 
-		return nil
-	})
+			for i := range allSessions {
+
+			}
+
+			return nil
+		})
+	*/
 
 	grift.Desc("add_genesis_hashes_to_treasure", "Add gen hashes to treasures that need them")
 	grift.Add("add_genesis_hashes_to_treasure", func(c *grift.Context) error {
@@ -1022,89 +1016,6 @@ var _ = grift.Namespace("db", func() {
 		if err != nil {
 			fmt.Println(err)
 			return err
-		}
-
-		return nil
-	})
-
-	grift.Desc("make_treasures_and_data_maps", "Set status of all completed uploads")
-	grift.Add("make_treasures_and_data_maps", func(c *grift.Context) error {
-
-		// TODO: Delete after successful prod deploy.  This was just for testing.
-
-		vErr, err := models.DB.ValidateAndCreate(&models.CompletedDataMap{
-			GenesisHash: "aaaaaaaaaaaaaaaaaa",
-			Address:     "AAAAAAAAA",
-			ChunkIdx:    1,
-			Hash:        "someHash1",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
-		}
-
-		vErr, err = models.DB.ValidateAndCreate(&models.CompletedDataMap{
-			GenesisHash: "bbbbbbbbbbbbbbbbbb",
-			Address:     "BBBBBBBBB",
-			ChunkIdx:    2,
-			Hash:        "someHash2",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
-		}
-
-		vErr, err = models.DB.ValidateAndCreate(&models.CompletedDataMap{
-			GenesisHash: "cccccccccccccccccc",
-			Address:     "CCCCCCCCC",
-			ChunkIdx:    3,
-			Hash:        "someHash3",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
-		}
-
-		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
-			GenesisHash: "",
-			ETHAddr:     "a",
-			Address:     "AAAAAAAAA",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
-		}
-
-		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
-			GenesisHash: "",
-			ETHAddr:     "b",
-			Address:     "BBBBBBBBB",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
-		}
-
-		vErr, err = models.DB.ValidateAndCreate(&models.Treasure{
-			GenesisHash: "",
-			ETHAddr:     "c",
-			Address:     "CCCCCCCCC",
-		})
-		if err != nil {
-			return err
-		}
-		if len(vErr.Errors) != 0 {
-			return errors.New(vErr.Error())
 		}
 
 		return nil
