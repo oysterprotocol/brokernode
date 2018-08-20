@@ -70,14 +70,6 @@ const (
 	MaxNumberOfAddressPerFindTransactionRequest = 1000
 	oysterTagStr                                = "OYSTERGOLANG"
 	oysterTagHookStr                            = "OYSTERHOOKNODE"
-
-	// Lambda
-	// These should be defined in the awsgateway package...
-	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
-	// 3MB payload, 300 sec execution time, 1000 concurrent exectutions.
-	// Limit to 1000 POSTs and 50 chunks per request.
-	maxLambdaConcurrency = 1000
-	maxLambdaChunksLen   = 20
 )
 
 var (
@@ -100,7 +92,7 @@ var (
 	OysterTagHook, _ = giota.ToTrytes(oysterTagHookStr)
 
 	// Lambda
-	lambdaChan = make(chan []*awsgateway.HooknodeChunk, maxLambdaConcurrency)
+	lambdaChan = make(chan []*awsgateway.HooknodeChunk, awsgateway.MaxConcurrency)
 )
 
 func init() {
@@ -164,7 +156,7 @@ func init() {
 		go PowWorker(Channel[channel.ChannelID].Channel, channel.ChannelID, err)
 
 		// Start lambda worker pool.
-		for i := 0; i < maxLambdaConcurrency; i++ {
+		for i := 0; i < awsgateway.MaxConcurrency; i++ {
 			go lambdaWorker(provider, lambdaChan)
 		}
 	}
@@ -666,15 +658,15 @@ func lambdaWorker(provider string, lChan <-chan []*awsgateway.HooknodeChunk) {
 
 func batchPowOnLambda(chunks *[]models.DataMap) {
 	// Batch chunks by limit
-	numBatches := (len(*chunks) / maxLambdaChunksLen) + 1
+	numBatches := (len(*chunks) / awsgateway.MaxChunksLen) + 1
 	for i := 0; i < numBatches; i++ {
-		offset := i * maxLambdaChunksLen
+		offset := i * awsgateway.MaxChunksLen
 		remChunks := len(*chunks) - offset
 
 		// Numnber of chunks in this batch.
 		var numChunks int
-		if remChunks > maxLambdaChunksLen {
-			numChunks = maxLambdaChunksLen
+		if remChunks > awsgateway.MaxChunksLen {
+			numChunks = awsgateway.MaxChunksLen
 		} else {
 			numChunks = remChunks
 		}
