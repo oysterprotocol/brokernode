@@ -33,18 +33,27 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			continue
 		}
 
-		dataMaps := []models.DataMap{}
+		dbNameMessage := oyster_utils.GetBadgerDBName([]string{oyster_utils.InProgressDir,
+			session.GenesisHash, oyster_utils.MessageDir})
+		dbNameHash := oyster_utils.GetBadgerDBName([]string{oyster_utils.InProgressDir,
+			session.GenesisHash, oyster_utils.HashDir})
+
+		errMessage := oyster_utils.CloseUniqueKvStore(dbNameMessage)
+		if errMessage != nil {
+			oyster_utils.LogIfError(errors.New(errMessage.Error()+" deleting message data from "+
+				dbNameMessage+" in RemoveUnpaidUploadSession"), nil)
+			continue
+		}
+		errHash := oyster_utils.CloseUniqueKvStore(dbNameHash)
+		if errHash != nil {
+			oyster_utils.LogIfError(errors.New(errHash.Error()+" deleting hash data from "+
+				dbNameHash+" in RemoveUnpaidUploadSession"), nil)
+			continue
+		}
+
 		err := models.DB.Transaction(func(tx *pop.Connection) error {
-			if err := tx.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", session.GenesisHash).All(&dataMaps); err != nil {
-				return err
-			}
 			return tx.RawQuery("DELETE FROM upload_sessions WHERE id = ?", session.ID).All(&[]models.UploadSession{})
 		})
-		if err == nil {
-			services.DeleteMsgDatas(dataMaps)
-		} else {
-			oyster_utils.LogIfError(errors.New(err.Error()+" in transaction in "+
-				"remove_unpaid_upload_session"), nil)
-		}
+		oyster_utils.LogIfError(err, nil)
 	}
 }

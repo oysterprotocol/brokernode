@@ -43,23 +43,6 @@ func resetTestVariables_claimTreasureForWebnode(suite *JobsSuite) {
 	jobs.EthWrapper = services.EthWrapper
 }
 
-//jobs.EthWrapper.CheckETHBalance = func(addr common.Address) *big.Int {
-//	hasCalledCheckETHBalance_claimTreasureForWebnode = true
-//	/* give a large balance so it will think the gas has arrived */
-//	return big.NewInt(999999999)
-//}
-//jobs.EthWrapper.CalculateGasNeeded = func(desiredGasLimit uint64) (*big.Int, error) {
-//	/* return a small calculate of gas needed for PRL claim transaction so it will
-//	think the sent gas has arrived */
-//	hasCalledCalculateGas_claimTreasureForWebnode = true
-//	return big.NewInt(1), nil
-//}
-//jobs.EthWrapper.SendETH = func(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddress common.Address,
-//gas *big.Int) (types.Transactions, string, int64, error) {
-//	hasCalledSendETH_claimTreasureForWebnode = true
-//	return types.Transactions{}, "111111", 1, nil
-//}
-
 func (suite *JobsSuite) Test_CheckOngoingGasTransactions_gas_has_arrived() {
 	resetTestVariables_claimTreasureForWebnode(suite)
 

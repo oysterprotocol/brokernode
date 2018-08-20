@@ -35,7 +35,7 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 			break
 		}
 
-		chunks, _ := models.GetUnassignedChunksBySession(session, len(channels)*BundleSize)
+		chunks, _ := session.GetUnassignedChunksBySession(len(channels) * BundleSize)
 
 		if len(chunks) > 0 {
 
@@ -72,7 +72,8 @@ We separate out the treasure chunks from the regular chunks and keep the ones we
 then we filter the other types of chunks, then we insert the treasure chunks that need attaching
 back into the array based on their chunk_idx, then we send to the channels.
 */
-func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []models.ChunkChannel, iotaWrapper services.IotaService, session models.UploadSession) {
+func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels []models.ChunkChannel,
+	iotaWrapper services.IotaService, session models.UploadSession) {
 
 	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: filter_and_assign_chunks_to_channel", analytics.NewProperties().
 		Set("num_chunks", len(chunksIn)).
@@ -106,18 +107,14 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 		if len(filteredChunks.MatchesTangle) > 0 {
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: chunks_already_attached", analytics.NewProperties().
-				Set("genesis_hash", filteredChunks.MatchesTangle[0].GenesisHash).
 				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
-			for _, chunk := range filteredChunks.MatchesTangle {
-				chunk.Status = models.Complete
-				models.DB.ValidateAndSave(&chunk)
-			}
+			session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
+			session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
 		}
 
 		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
-
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
 
 		StageTreasures(treasureChunksNeedAttaching, session)
@@ -128,10 +125,12 @@ func FilterAndAssignChunksToChannels(chunksIn []models.DataMap, channels []model
 	}
 }
 
-func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.UploadSession) ([]models.DataMap, []models.DataMap) {
+func SkipVerificationOfFirstChunks(chunks []oyster_utils.ChunkData, session models.UploadSession) ([]oyster_utils.ChunkData,
+	[]oyster_utils.ChunkData) {
 
 	if len(chunks) == 0 {
-		return []models.DataMap{}, []models.DataMap{}
+		return []oyster_utils.ChunkData{},
+			[]oyster_utils.ChunkData{}
 	}
 
 	numChunks := session.NumChunks
@@ -161,23 +160,23 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 
 	if skipVerifyMinIdx == skipVerifyMaxIdx {
 		// very small file, don't bother with filtering
-		return []models.DataMap{}, chunks
+		return []oyster_utils.ChunkData{}, chunks
 	}
 
 	// first check that any are in the first third before we bother with this
-	firstIndex := chunks[0].ChunkIdx
-	lastIndex := chunks[len(chunks)-1].ChunkIdx
+	maxIdx := int64(math.Max(float64(chunks[0].Idx), float64(chunks[len(chunks)-1].Idx)))
+	minIdx := int64(math.Min(float64(chunks[0].Idx), float64(chunks[len(chunks)-1].Idx)))
 
-	if firstIndex >= verifyMinIdx && firstIndex <= verifyMaxIdx &&
-		lastIndex >= verifyMinIdx && lastIndex <= verifyMaxIdx {
-		return []models.DataMap{}, chunks
+	if minIdx >= int64(verifyMinIdx) && minIdx <= int64(verifyMaxIdx) &&
+		maxIdx >= int64(verifyMinIdx) && maxIdx <= int64(verifyMaxIdx) {
+		return []oyster_utils.ChunkData{}, chunks
 	}
 
-	skipVerifyOfChunks := []models.DataMap{}
-	restOfChunks := []models.DataMap{}
+	skipVerifyOfChunks := []oyster_utils.ChunkData{}
+	restOfChunks := []oyster_utils.ChunkData{}
 
 	for i := 0; i < len(chunks); i++ {
-		if chunks[i].ChunkIdx >= skipVerifyMinIdx && chunks[i].ChunkIdx <= skipVerifyMaxIdx {
+		if chunks[i].Idx >= int64(skipVerifyMinIdx) && chunks[i].Idx <= int64(skipVerifyMaxIdx) {
 			skipVerifyOfChunks = append(skipVerifyOfChunks, chunks[i])
 		} else {
 			restOfChunks = append(restOfChunks, chunks[i])
@@ -187,7 +186,7 @@ func SkipVerificationOfFirstChunks(chunks []models.DataMap, session models.Uploa
 	return skipVerifyOfChunks, restOfChunks
 }
 
-func StageTreasures(treasureChunks []models.DataMap, session models.UploadSession) {
+func StageTreasures(treasureChunks []oyster_utils.ChunkData, session models.UploadSession) {
 	/*TODO add tests for this method*/
 
 	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {
@@ -204,9 +203,9 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 		return
 	}
 
-	treasureIdxMap := make(map[int]models.TreasureMap)
+	treasureIdxMap := make(map[int64]models.TreasureMap)
 	for _, treasureIdxEntry := range treasureIdxMapArray {
-		treasureIdxMap[treasureIdxEntry.Idx] = treasureIdxEntry
+		treasureIdxMap[int64(treasureIdxEntry.Idx)] = treasureIdxEntry
 	}
 
 	prlPerTreasure, err := session.GetPRLsPerTreasure()
@@ -219,8 +218,8 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 	prlInWei := oyster_utils.ConvertToWeiUnit(prlPerTreasure)
 
 	for _, treasureChunk := range treasureChunks {
-		if _, ok := treasureIdxMap[treasureChunk.ChunkIdx]; ok {
-			decryptedKey, err := treasureChunk.DecryptEthKey(treasureIdxMap[treasureChunk.ChunkIdx].Key)
+		if _, ok := treasureIdxMap[treasureChunk.Idx]; ok {
+			decryptedKey, err := session.DecryptTreasureChunkEthKey(treasureIdxMap[treasureChunk.Idx].Key)
 			if err != nil {
 				fmt.Println("Cannot stage treasure to bury in process_unassigned_chunks: " + err.Error())
 				// already captured error in upstream function
@@ -233,12 +232,13 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 
 			if oyster_utils.BrokerMode == oyster_utils.ProdMode {
 				ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+
 				treasureToBury := models.Treasure{
-					GenesisHash: treasureChunk.GenesisHash,
+					GenesisHash: session.GenesisHash,
 					ETHAddr:     ethAddress.Hex(),
 					ETHKey:      decryptedKey,
 					Address:     treasureChunk.Address,
-					Message:     services.GetMessageFromDataMap(treasureChunk),
+					Message:     treasureChunk.Message,
 				}
 
 				treasureToBury.SetPRLAmount(prlInWei)
@@ -250,10 +250,11 @@ func StageTreasures(treasureChunks []models.DataMap, session models.UploadSessio
 }
 
 // add the treasure chunks back into the array in the appropriate position
-func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataMap, session models.UploadSession) []models.DataMap {
+func InsertTreasureChunks(chunks []oyster_utils.ChunkData, treasureChunks []oyster_utils.ChunkData,
+	session models.UploadSession) []oyster_utils.ChunkData {
 
 	if len(chunks) == 0 && len(treasureChunks) == 0 {
-		return []models.DataMap{}
+		return []oyster_utils.ChunkData{}
 	}
 	if len(treasureChunks) == 0 {
 		return chunks
@@ -269,9 +270,9 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 		idxTarget = -1
 	}
 
-	treasureChunksMapped := make(map[int]models.DataMap)
+	treasureChunksMapped := make(map[int64]oyster_utils.ChunkData)
 	for _, treasureChunk := range treasureChunks {
-		treasureChunksMapped[treasureChunk.ChunkIdx] = treasureChunk
+		treasureChunksMapped[treasureChunk.Idx] = treasureChunk
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: reinsert_treasure_chunks", analytics.NewProperties().
@@ -282,19 +283,19 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 
 	// this puts the treasure chunks back into the array where they belong
 	for ok, i := true, 0; ok; ok = treasureChunksInserted < len(treasureChunks) && i < len(chunks) {
-		if _, ok := treasureChunksMapped[chunks[i].ChunkIdx-idxTarget]; ok && i == 0 {
-			chunks = append([]models.DataMap{treasureChunksMapped[chunks[i].ChunkIdx-idxTarget]}, chunks...)
+		if _, ok := treasureChunksMapped[chunks[i].Idx-int64(idxTarget)]; ok && i == 0 {
+			chunks = append([]oyster_utils.ChunkData{treasureChunksMapped[chunks[i].Idx-int64(idxTarget)]}, chunks...)
 			treasureChunksInserted++
 			i++ // skip an iteration
-		} else if _, ok := treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]; ok &&
+		} else if _, ok := treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]; ok &&
 			i == len(chunks)-1 {
-			chunks = append(chunks, treasureChunksMapped[chunks[i].ChunkIdx+idxTarget])
+			chunks = append(chunks, treasureChunksMapped[chunks[i].Idx+int64(idxTarget)])
 			treasureChunksInserted++
 			i++ // skip an iteration
-		} else if _, ok := treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]; ok {
+		} else if _, ok := treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]; ok {
 			// LOOK INTO THIS
 			chunks = append(chunks[:i+2], chunks[i+1:]...)
-			chunks[i+1] = treasureChunksMapped[chunks[i].ChunkIdx+idxTarget]
+			chunks[i+1] = treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]
 			treasureChunksInserted++
 			i++ // skip an iteration
 		}
@@ -304,7 +305,7 @@ func InsertTreasureChunks(chunks []models.DataMap, treasureChunks []models.DataM
 }
 
 // actually send the chunks
-func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWrapper services.IotaService, session models.UploadSession) {
+func SendChunks(chunks []oyster_utils.ChunkData, channels []models.ChunkChannel, iotaWrapper services.IotaService, session models.UploadSession) {
 	// as long as there are still chunks and still channels, this for loop continues
 	for ok, i, j := true, 0, 0; ok; ok = i < len(chunks) && j < len(channels) {
 		end := i + BundleSize
@@ -322,13 +323,14 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 			//addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
 
 			oyster_utils.LogToSegment("process_unassigned_chunks: sending_chunks_to_channel", analytics.NewProperties().
-				Set("genesis_hash", chunks[i:end][0].GenesisHash).
+				Set("genesis_hash", session.GenesisHash).
 				Set("num_chunks", len(chunks[i:end])).
 				Set("channel_id", channels[j].ChannelID))
 			//Set("addresses", addresses).
 			//Set("chunk_indexes", indexes))
 
 			iotaWrapper.SendChunksToChannel(chunks[i:end], &channels[j])
+			session.UpdateIndexWithAttachedChunks(chunks[i:end])
 		}
 		j++
 		i += BundleSize
@@ -338,10 +340,11 @@ func SendChunks(chunks []models.DataMap, channels []models.ChunkChannel, iotaWra
 // check if a transaction exists for a treasure chunk's address.  If it does, mark it as complete.  If it doesn't,
 // we need to separate it from the other chunks so it doesn't get filtered out when VerifyChunkMessagesMatchRecord is
 // finding chunks that don't match the tangle.  Later we'll re-add it to the array for sending to the channels.
-func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession, iotaWrapper services.IotaService) ([]models.DataMap, []models.DataMap) {
+func HandleTreasureChunks(chunks []oyster_utils.ChunkData, session models.UploadSession,
+	iotaWrapper services.IotaService) ([]oyster_utils.ChunkData, []oyster_utils.ChunkData) {
 
-	var chunksToAttach []models.DataMap
-	var treasureChunksToAttach []models.DataMap
+	var chunksToAttach []oyster_utils.ChunkData
+	var treasureChunksToAttach []oyster_utils.ChunkData
 
 	treasureIndexes, err := session.GetTreasureIndexes()
 	if err != nil {
@@ -349,58 +352,55 @@ func HandleTreasureChunks(chunks []models.DataMap, session models.UploadSession,
 			"process_unassigned_chunks"), nil)
 	}
 	if len(chunks) == 0 {
-		return chunks, []models.DataMap{}
+		return chunks, []oyster_utils.ChunkData{}
 	}
 
-	maxIdx := int(math.Max(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
-	minIdx := int(math.Min(float64(chunks[0].ChunkIdx), float64(chunks[len(chunks)-1].ChunkIdx)))
+	maxIdx := int64(math.Max(float64(chunks[0].Idx), float64(chunks[len(chunks)-1].Idx)))
+	minIdx := int64(math.Min(float64(chunks[0].Idx), float64(chunks[len(chunks)-1].Idx)))
 
 	treasureMap := make(map[int]bool)
 	for _, idx := range treasureIndexes {
-		if idx >= minIdx && idx <= maxIdx {
+		if int64(idx) >= minIdx && int64(idx) <= maxIdx {
 			treasureMap[idx] = true
 		}
 	}
 
 	if len(treasureMap) == 0 {
-		return chunks, []models.DataMap{}
+		return chunks, []oyster_utils.ChunkData{}
 	}
 
 	for i := 0; i < len(chunks); i++ {
-		if _, ok := treasureMap[chunks[i].ChunkIdx]; ok {
+		if _, ok := treasureMap[int(chunks[i].Idx)]; ok {
 			address := make([]giota.Address, 0, 1)
 			chunkAddress, err := giota.ToAddress(chunks[i].Address)
 			if err != nil {
 				oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
 					"process_unassigned_chunks"), nil)
-				return chunks, []models.DataMap{}
+				return chunks, []oyster_utils.ChunkData{}
 			}
 			address = append(address, chunkAddress)
 			transactionsMap, err := iotaWrapper.FindTransactions(address)
 			if err != nil {
 				oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
 					"process_unassigned_chunks"), nil)
-				return chunks, []models.DataMap{}
+				return chunks, []oyster_utils.ChunkData{}
 			}
 			if _, ok := transactionsMap[chunkAddress]; !ok || transactionsMap == nil {
 				oyster_utils.LogToSegment("process_unassigned_chunks: "+
 					"treasure_chunk_not_attached", analytics.NewProperties().
-					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
-					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", services.GetMessageFromDataMap(chunks[i])))
+					Set("chunk_index", chunks[i].Idx).
+					Set("message", chunks[i].Message))
 
 				treasureChunksToAttach = append(treasureChunksToAttach, chunks[i])
 			} else {
 				oyster_utils.LogToSegment("process_unassigned_chunks: "+
 					"treasure_chunk_already_attached", analytics.NewProperties().
-					Set("genesis_hash", chunks[i].GenesisHash).
 					Set("address", chunks[i].Address).
-					Set("chunk_index", chunks[i].ChunkIdx).
-					Set("message", services.GetMessageFromDataMap(chunks[i])))
+					Set("chunk_index", chunks[i].Idx).
+					Set("message", chunks[i].Message))
 
-				chunks[i].Status = models.Complete
-				models.DB.ValidateAndSave(&chunks[i])
+				session.MoveChunksToCompleted([]oyster_utils.ChunkData{chunks[i]})
 			}
 		} else {
 			chunksToAttach = append(chunksToAttach, chunks[i])

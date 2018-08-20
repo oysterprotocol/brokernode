@@ -2,6 +2,7 @@ package jobs_test
 
 import (
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,6 +13,10 @@ import (
 )
 
 func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	jobs.EthWrapper = services.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
@@ -29,7 +34,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
-	AllPaid := "aaaaaa"
+	AllPaid := "cccccc"
 
 	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
 
@@ -44,7 +49,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 			return big.NewInt(10)
 		},
 	}
-	HasBalance := "aaaaaa"
+	HasBalance := "dddddd"
 	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
 
 	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
@@ -58,8 +63,8 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
 			return big.NewInt(0)
 		},
 	}
-	OnlyRemoveUploadSession_Expired := "aaaaaa"
-	OnlyRemoveUploadSession_NoExpired := "bbbbbb"
+	OnlyRemoveUploadSession_Expired := "eeeeee"
+	OnlyRemoveUploadSession_NoExpired := "ffffff"
 
 	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
@@ -73,13 +78,35 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 	session := models.UploadSession{
 		GenesisHash:    genesisHash,
 		FileSizeBytes:  8000,
-		NumChunks:      2,
+		NumChunks:      5,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  paymentStatus,
-		TreasureStatus: models.TreasureInDataMapComplete,
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 	_, err := session.StartUploadSession()
 	suite.Nil(err)
+
+	mergedIndexes := []int{3}
+	privateKeys := []string{"0000000001"}
+	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	chunkReqs1 := GenerateChunkRequests(session.NumChunks, session.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs1, session.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+
+	session.WaitForAllHashes(500)
+
+	treasureIndexMap, err := session.GetTreasureMap()
+
+	for _, entry := range treasureIndexMap {
+
+		key := oyster_utils.GetBadgerKey([]string{session.GenesisHash, strconv.Itoa(entry.Idx)})
+		oyster_utils.BatchSetToUniqueDB([]string{oyster_utils.InProgressDir, session.GenesisHash,
+			oyster_utils.MessageDir}, &oyster_utils.KVPairs{key: "someDummyMessage"}, models.TestValueTimeToLive)
+	}
+	session.TreasureStatus = models.TreasureInDataMapComplete
+	models.DB.ValidateAndSave(&session)
+
+	session.WaitForAllMessages(500)
 
 	if isExpired {
 		exceedLimitUpdateTime := time.Now().Add(-(jobs.UnpaidExpirationInHour + 1) * time.Hour)
@@ -118,10 +145,12 @@ func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMa
 	suite.Equal(expectedGenesisHash, sessions[0].GenesisHash)
 
 	if expectToHaveDataMap {
-		var dataMaps []models.DataMap
-		suite.Nil(suite.DB.RawQuery("SELECT * FROM data_maps").All(&dataMaps))
-		suite.True(len(dataMaps) > 0)
-		for _, dataMap := range dataMaps {
+
+		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, 0, int64(sessions[0].NumChunks-1))
+
+		chunkData, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, sessions[0].GenesisHash, keys)
+		suite.True(len(chunkData) == sessions[0].NumChunks)
+		for _, dataMap := range chunkData {
 			suite.Equal(expectedGenesisHash, dataMap.GenesisHash)
 		}
 	}

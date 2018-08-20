@@ -4,12 +4,12 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func (suite *JobsSuite) Test_ProcessPaidSessions() {
-	fileBytesCount := uint64(500000)
+func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
+
+	fileBytesCount := uint64(300000)
 
 	// This map seems pointless but it makes the testing
 	// in the for loop later on a bit simpler
@@ -22,216 +22,174 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// who already have treasure buried
 	testMap2 := `[{
 		"sector": 1,
-		"idx": 155,
+		"idx": 15,
 		"key": "firstKeySecondMap"
 		},
 		{
 		"sector": 2,
-		"idx": 204,
+		"idx": 112,
 		"key": "secondKeySecondMap"
 		},
 		{
 		"sector": 3,
-		"idx": 599,
+		"idx": 275,
 		"key": "thirdKeySecondMap"
 		}]`
 
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
 	// create and start the upload session for the data maps that need treasure buried
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdeff1",
-		NumChunks:      500,
+		GenesisHash:    genHash,
+		NumChunks:      300,
 		FileSizeBytes:  fileBytesCount,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
-	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
+	mergedIndexes := []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
+	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
+
+	chunkReqs := GenerateChunkRequests(300, uploadSession1.GenesisHash)
+
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+
+	_, err := uploadSession1.StartUploadSession()
+	suite.Nil(err)
+
+	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	genHash = oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
+	// create and start the upload session for a data map that does not need treasure
+	uploadSession2 := models.UploadSession{
+		GenesisHash:    genHash,
+		NumChunks:      300,
+		FileSizeBytes:  fileBytesCount,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusInvoiced,
+		TreasureStatus: models.TreasureInDataMapPending,
+		TreasureIdxMap: nulls.String{string(testMap2), true},
+	}
+
+	mergedIndexes = []int{15, 112, 275}
+	privateKeys = []string{"0000000001", "0000000002", "0000000003"}
+
+	chunkReqs = GenerateChunkRequests(300, uploadSession2.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession2.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+
+	_, err = uploadSession2.StartUploadSession()
+	suite.Nil(err)
+
+	for {
+		jobs.BuryTreasureInDataMaps()
+		finishedMessages, _ := uploadSession2.WaitForAllMessages(3)
+		if finishedMessages {
+			break
+		}
+	}
+
+	session := []models.UploadSession{}
+
+	suite.DB.Where("treasure_status = ?", models.TreasureInDataMapComplete).All(&session)
+	suite.Equal(1, len(session))
+	suite.Equal(uploadSession1.GenesisHash, session[0].GenesisHash)
+}
+
+func (suite *JobsSuite) Test_BuryTreasure() {
+
+	fileBytesCount := uint64(300000)
+
+	// This map seems pointless but it makes the testing
+	// in the for loop later on a bit simpler
+	treasureIndexes := map[int]int{}
+	treasureIndexes[5] = 5
+	treasureIndexes[78] = 78
+	treasureIndexes[199] = 199
+
+	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
+
+	// create and start the upload session for the data maps that need treasure buried
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    genHash,
+		NumChunks:      300,
+		FileSizeBytes:  fileBytesCount,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureInDataMapPending,
+	}
+
+	_, err := uploadSession1.StartUploadSession()
+	suite.Nil(err)
 
 	mergedIndexes := []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
 	privateKeys := []string{"0000000001", "0000000002", "0000000003"}
 
+	chunkReqs := GenerateChunkRequests(300, uploadSession1.GenesisHash)
+
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+
 	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-	uploadSession1.EncryptTreasureIdxMapKeys()
 
-	// create and start the upload session for the data maps that already have buried treasure
-	uploadSession2 := models.UploadSession{
-		GenesisHash:    "abcdeff2",
-		NumChunks:      500,
-		FileSizeBytes:  fileBytesCount,
-		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureInDataMapComplete,
-		TreasureIdxMap: nulls.String{string(testMap2), true},
-	}
+	session := []models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).All(&session)
 
-	chunksReady, _, err = uploadSession2.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-
-	mergedIndexes = []int{treasureIndexes[5], treasureIndexes[78], treasureIndexes[199]}
-	privateKeys = []string{"0000000001", "0000000002", "0000000003"}
-
-	uploadSession2.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-	uploadSession2.EncryptTreasureIdxMapKeys()
-
-	// verify that we have successfully created all the data maps
-	paidButUnburied := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
-	suite.Nil(err)
-
-	paidAndBuried := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
-	suite.Nil(err)
-
-	suite.NotEqual(0, len(paidButUnburied))
-	suite.NotEqual(0, len(paidAndBuried))
-
-	// verify that the "Message" field for every chunk in paidButUnburied is ""
-	for _, dMap := range paidButUnburied {
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
-		} else {
-			dMap.Message = "NOTEMPTY"
+	for {
+		ready := session[0].CheckIfAllHashesAreReady()
+		if ready {
+			break
 		}
-		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
-		suite.DB.ValidateAndSave(&dMap)
 	}
 
-	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
-	for _, dMap := range paidAndBuried {
-		suite.NotEqual(models.Unassigned, dMap.Status)
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
-		} else {
-			dMap.Message = "NOTEMPTY"
+	//Check that we have hash and address data for all 3 chunks,
+	//but not message data
+	chunkData1 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[5]))
+
+	suite.NotEqual("", chunkData1.Hash)
+	suite.NotEqual("", chunkData1.Address)
+	suite.Equal("", chunkData1.Message)
+
+	chunkData2 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[78]))
+
+	suite.NotEqual("", chunkData2.Hash)
+	suite.NotEqual("", chunkData2.Address)
+
+	chunkData3 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[199]))
+
+	suite.NotEqual("", chunkData3.Hash)
+	suite.NotEqual("", chunkData3.Address)
+
+	for {
+		//Call BuryTreasureInDataMaps, which will in turn call BuryTreasure, the method under test
+		jobs.BuryTreasureInDataMaps()
+		finishedMessages, _ := session[0].WaitForAllMessages(3)
+		if finishedMessages {
+			break
 		}
-		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
-		suite.DB.ValidateAndSave(&dMap)
 	}
 
-	// call method under test
-	jobs.ProcessPaidSessions(jobs.PrometheusWrapper)
+	//Check that we now have message data for all 3 chunks
+	chunkData1 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[5]))
 
-	paidButUnburied = []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&paidButUnburied)
-	suite.Nil(err)
+	suite.NotEqual("", chunkData1.Message)
 
-	/* Verify the following:
-	1.  If a chunk in paidButUnburied was one of the treasure chunks, Message is no longer ""
-	2.  Status of all data maps in paidButUnburied is now Unassigned (to get picked up by process_unassigned_chunks
-	*/
-	for _, dMap := range paidButUnburied {
-		if _, ok := treasureIndexes[dMap.ChunkIdx]; ok {
-			suite.NotEqual("", services.GetMessageFromDataMap(dMap))
-		} else {
-			suite.Equal("NOTEMPTY", services.GetMessageFromDataMap(dMap))
-		}
-		suite.Equal(models.Unassigned, dMap.Status)
-	}
+	chunkData2 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[78]))
 
-	paidAndBuried = []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&paidAndBuried)
-	suite.Nil(err)
+	suite.NotEqual("", chunkData2.Message)
 
-	// verify that all chunks in paidAndBuried have statuses changed to Unassigned
-	for _, dMap := range paidAndBuried {
-		suite.Equal(models.Unassigned, dMap.Status)
-	}
+	chunkData3 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(treasureIndexes[199]))
 
-	// get the session that was originally paid but unburied, and verify that all the
-	// keys are now "" but that we still have a value for the Idx
-	paidAndUnburiedSession := models.UploadSession{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").First(&paidAndUnburiedSession)
-	suite.Nil(err)
+	suite.NotEqual("", chunkData3.Message)
 
-	treasureIndex, err := paidAndUnburiedSession.GetTreasureMap()
-	suite.Nil(err)
-
-	suite.Equal(3, len(treasureIndex))
-
-	for _, entry := range treasureIndex {
-		_, ok := treasureIndexes[entry.Idx]
-		suite.True(ok)
-	}
-}
-
-func (suite *JobsSuite) Test_EncryptKeysInTreasureIdxMaps() {
-
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
-	defer oyster_utils.ResetBrokerMode()
-
-	fileBytesCount := uint64(500000)
-
-	// create and start the upload session for the data maps that need treasure buried
-	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdeff111111111111111111111111111111111111111111111",
-		NumChunks:      500,
-		FileSizeBytes:  fileBytesCount,
-		Type:           models.SessionTypeAlpha,
-		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureGeneratingKeys,
-	}
-
-	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-
-	mergedIndexes := []int{
-		5,
-		78,
-		199,
-	}
-
-	privateKey1 := "0000000001"
-	privateKey2 := "0000000002"
-	privateKey3 := "0000000003"
-
-	uploadSession1.MakeTreasureIdxMap(mergedIndexes, []string{
-		privateKey1,
-		privateKey2,
-		privateKey3,
-	})
-
-	treasureMap, err := uploadSession1.GetTreasureMap()
-	suite.Nil(err)
-
-	suite.Equal(3, len(treasureMap))
-
-	for _, entry := range treasureMap {
-		suite.True(entry.Key == privateKey1 ||
-			entry.Key == privateKey2 ||
-			entry.Key == privateKey3)
-	}
-
-	jobs.EncryptKeysInTreasureIdxMaps()
-
-	uploadSession := models.UploadSession{}
-	suite.DB.Where("genesis_hash = ?",
-		uploadSession1.GenesisHash).First(&uploadSession)
-
-	treasureMap2, err := uploadSession.GetTreasureMap()
-	suite.Nil(err)
-
-	suite.Equal(3, len(treasureMap2))
-
-	for _, entry := range treasureMap2 {
-		suite.True(entry.Key != privateKey1 &&
-			entry.Key != privateKey2 &&
-			entry.Key != privateKey3)
-	}
-
-	for _, entry := range treasureMap2 {
-		dm := models.DataMap{}
-		err := suite.DB.Where("genesis_hash = ? && chunk_idx = ?",
-			uploadSession1.GenesisHash,
-			entry.Idx).First(&dm)
-		suite.Nil(err)
-
-		decryptedKey, err := dm.DecryptEthKey(entry.Key)
-		suite.Nil(err)
-
-		suite.True(decryptedKey == privateKey1 ||
-			decryptedKey == privateKey2 ||
-			decryptedKey == privateKey3)
-	}
+	//Check that the session's TreasureStatus has changed
+	session = []models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).All(&session)
+	suite.Equal(models.TreasureInDataMapComplete, session[0].TreasureStatus)
 }

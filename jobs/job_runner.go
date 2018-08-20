@@ -42,11 +42,9 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler)
 	oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler)
 	oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler)
-	oysterWorker.Register(getHandlerName(updateTimedOutDataMapsHandler), updateTimedOutDataMapsHandler)
 	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
 	oysterWorker.Register(getHandlerName(claimTreasureForWebnodeHandler), claimTreasureForWebnodeHandler)
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
-	oysterWorker.Register(getHandlerName(updateMsgStatusHandler), updateMsgStatusHandler)
 
 	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
 	oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
@@ -54,7 +52,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(storeCompletedGenesisHashesHandler), storeCompletedGenesisHashesHandler)
 
-	if services.IsKvStoreEnabled() {
+	if oyster_utils.IsKvStoreEnabled() {
 		oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
 	}
 }
@@ -64,16 +62,14 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: 5 * time.Minute})
 
 	oysterWorkerPerformIn(processUnassignedChunksHandler,
-		worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
+		//worker.Args{Duration: time.Duration(services.GetProcessingFrequency()) * time.Second})
+		worker.Args{Duration: 20 * time.Second})
 
 	oysterWorkerPerformIn(purgeCompletedSessionsHandler,
 		worker.Args{Duration: 1 * time.Minute})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
 		worker.Args{Duration: 30 * time.Second})
-
-	oysterWorkerPerformIn(updateTimedOutDataMapsHandler,
-		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{Duration: 20 * time.Second})
@@ -83,9 +79,6 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
 		worker.Args{Duration: 24 * time.Hour})
-
-	oysterWorkerPerformIn(updateMsgStatusHandler,
-		worker.Args{Duration: 15 * time.Second})
 
 	oysterWorkerPerformIn(badgerDbGcHandler,
 		worker.Args{Duration: 10 * time.Minute})
@@ -144,24 +137,10 @@ func verifyDataMapsHandler(args worker.Args) error {
 	return nil
 }
 
-func updateTimedOutDataMapsHandler(args worker.Args) error {
-	UpdateTimeOutDataMaps(time.Now().Add(-2*time.Minute), PrometheusWrapper)
-
-	oysterWorkerPerformIn(updateTimedOutDataMapsHandler, args)
-	return nil
-}
-
 func processPaidSessionsHandler(args worker.Args) error {
 	ProcessPaidSessions(PrometheusWrapper)
 
 	oysterWorkerPerformIn(processPaidSessionsHandler, args)
-	return nil
-}
-
-func updateMsgStatusHandler(args worker.Args) error {
-	UpdateMsgStatus(PrometheusWrapper)
-
-	oysterWorkerPerformIn(updateMsgStatusHandler, args)
 	return nil
 }
 
