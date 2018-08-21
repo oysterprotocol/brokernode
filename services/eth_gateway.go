@@ -1285,8 +1285,9 @@ func configureGateway(network string) {
 		printConfig()
 	}
 
-	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("unable to load key: %v", err), nil)
+	if err != nil && os.Getenv("MODE") == "PROD_MODE" {
+		// Panic and force releaser to figure out.
+		panic(fmt.Errorf("unable to load key: %v", err))
 	}
 }
 
