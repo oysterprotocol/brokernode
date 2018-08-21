@@ -57,7 +57,6 @@ func InvokeHooknode(req *HooknodeReq) error {
 	}
 
 	fmt.Println("=========RESPONSE START=======")
-	fmt.Printf("%s", payload)
 	fmt.Println("LAMBDA RETURNED")
 	bodyString := string(res.Payload)
 	fmt.Println(bodyString)
