@@ -65,7 +65,6 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	}
 
 	brokernode := models.Brokernode{}
-	t := models.Transaction{}
 
 	dataMap, dataMapNotFoundErr := models.GetChunkForWebnodePoW()
 
@@ -91,22 +90,30 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	dataMapKey := oyster_utils.GetBadgerKey([]string{dataMap.GenesisHash, strconv.FormatInt(dataMap.Idx, 10)})
 
-	models.DB.Transaction(func(tx *pop.Connection) error {
+	transaction := models.Transaction{
+		Type:        models.TransactionTypeBrokernode,
+		Status:      models.TransactionStatusPending,
+		DataMapID:   dataMapKey,
+		GenesisHash: dataMap.GenesisHash,
+		Idx:         dataMap.Idx,
+		Purchase:    brokernode.Address,
+	}
 
-		t = models.Transaction{
-			Type:        models.TransactionTypeBrokernode,
-			Status:      models.TransactionStatusPending,
-			DataMapID:   dataMapKey,
-			GenesisHash: dataMap.GenesisHash,
-			Idx:         dataMap.Idx,
-			Purchase:    brokernode.Address,
+	err = models.DB.Transaction(func(tx *pop.Connection) error {
+
+		vErr, err := tx.ValidateAndCreate(&transaction)
+		if err != nil || vErr.HasAny() {
+			return fmt.Errorf("Unable to Save Transaction: %v, %v", vErr, err)
 		}
-		tx.ValidateAndSave(&t)
 		return nil
 	})
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(400, err)
+	}
 
 	res := transactionBrokernodeCreateRes{
-		ID: t.ID,
+		ID: transaction.ID,
 		Pow: BrokernodeAddressPow{
 			Address:  dataMap.Address,
 			Message:  dataMap.Message,
@@ -151,7 +158,6 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) &&
 		oyster_utils.AllChunkDataHasArrived(chunkDataComplete) {
 		chunkToUse = chunkDataComplete
-
 	} else if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) && !oyster_utils.AllChunkDataHasArrived(chunkDataComplete) {
 		return c.Render(400, r.JSON(map[string]string{"error": "Could not find data for specified chunk"}))
 	}

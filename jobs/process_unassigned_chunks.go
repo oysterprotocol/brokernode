@@ -3,14 +3,15 @@ package jobs
 import (
 	"errors"
 	"fmt"
+	"math"
+	"os"
+	"time"
+
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math"
-	"os"
-	"time"
 )
 
 const PercentOfChunksToSkipVerification = 45
@@ -118,8 +119,9 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
 
 		StageTreasures(treasureChunksNeedAttaching, session)
-
-		if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
+		if os.Getenv("ENABLE_LAMBDA") == "true" {
+			iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
+		} else if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
 			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
 		}
 	}

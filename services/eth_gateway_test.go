@@ -3,6 +3,14 @@ package services_test
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
+	"math/big"
+	"os"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -13,13 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/oysterprotocol/brokernode/services"
-	"io/ioutil"
-	"log"
-	"math/big"
-	"os"
-	"reflect"
-	"testing"
-	"time"
 )
 
 //
@@ -28,6 +29,8 @@ import (
 var oneEther = big.NewInt(1)
 var onePrl = big.NewInt(1)
 var oneWei = big.NewInt(1000000000000000000)
+
+const gasLimit = uint64(99999)
 
 // TX_HASH = 0xd87157b84528173156a1ff06fd452300c6efaee6ea4f3d53730f190dad630327
 //curl -H "Content-Type: application/json" -X POST --data \
@@ -349,7 +352,7 @@ func Test_deployOysterPearl(t *testing.T) {
 	// generate a new random account and a funded simulator
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
-	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth.From: {Balance: big.NewInt(990000000000)}})
+	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth.From: {Balance: big.NewInt(990000000000)}}, gasLimit)
 
 	// initialize the context
 	deadline := time.Now().Add(1000 * time.Millisecond)
@@ -384,7 +387,7 @@ func Test_simOysterPearlBury(t *testing.T) {
 	key, _ := crypto.GenerateKey()
 	auth := bind.NewKeyedTransactor(key)
 	fundedSupply := toWei(900)
-	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth.From: {Balance: big.NewInt(0).SetUint64(fundedSupply)}})
+	sim := backends.NewSimulatedBackend(core.GenesisAlloc{auth.From: {Balance: big.NewInt(0).SetUint64(fundedSupply)}}, gasLimit)
 
 	sim.Commit()
 

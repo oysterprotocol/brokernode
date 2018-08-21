@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"gopkg.in/segmentio/analytics-go.v3"
-
-	"net/http"
-	"time"
-
 	"github.com/pkg/errors"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 type UploadSessionResource struct {
@@ -146,7 +144,8 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	// Start Beta Session.
 	var betaSessionID = ""
 	var betaTreasureIndexes []int
-	if req.BetaIP != "" {
+	hasBeta := req.BetaIP != ""
+	if hasBeta {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -179,8 +178,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		alphaSession.ETHAddrBeta = betaSessionRes.UploadSession.ETHAddrBeta
 	}
 
-	err = models.DB.Save(&alphaSession)
-	if err != nil {
+	if err := models.DB.Save(&alphaSession); err != nil {
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
@@ -188,32 +186,24 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 
 	models.NewBrokerBrokerTransaction(&alphaSession)
 
-	mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
-	if err != nil {
-		// not doing error handling here, relying on beta to throw the error since returning
-		// an error here breaks the unit tests
-		fmt.Println(err)
-	}
+	if hasBeta {
+		mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
 
-	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
-	if err != nil {
-		err := errors.New("Could not generate eth keys: " + err.Error())
-		fmt.Println(err)
-		c.Error(400, err)
-		return err
-	}
-	if len(mergedIndexes) != len(privateKeys) {
-		err := errors.New("privateKeys and mergedIndexes should have the same length")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
-	// Update alpha treasure idx map.
-	alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-
-	if len(vErr.Errors) > 0 {
-		c.Render(422, r.JSON(vErr.Errors))
-		return err
+		privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
+		if err != nil {
+			err := errors.New("Could not generate eth keys: " + err.Error())
+			fmt.Println(err)
+			c.Error(400, err)
+			return err
+		}
+		if len(mergedIndexes) != len(privateKeys) {
+			err := errors.New("privateKeys and mergedIndexes should have the same length")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
+		// Update alpha treasure idx map.
+		alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	}
 
 	res := uploadSessionCreateRes{
@@ -339,8 +329,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	vErr, err := u.StartUploadSession()
 
-	if err != nil {
-		fmt.Println(err)
+	if err != nil || vErr.HasAny() {
+		err = fmt.Errorf("Can't startUploadSession with validation error: %v and err: %v", vErr, err)
 		c.Error(400, err)
 		return err
 	}
@@ -352,6 +342,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes,
 		oyster_utils.FileSectorInChunkSize, req.NumChunks)
+
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -366,7 +357,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 	if len(mergedIndexes) != len(privateKeys) {
 		err := errors.New("privateKeys and mergedIndexes should have the same length")
-		oyster_utils.LogIfError(err, nil)
+		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}

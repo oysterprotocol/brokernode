@@ -9,6 +9,11 @@ The broker node uses Docker to spin up a go app, [mysql, required download](http
 # Feel free to modify the .env file. Note: we don't check in .env file.
 cp .env.test .env
 
+# The database setup is different between dev and prod. Run the following script to change your DB setup.
+# NOTE: Please do not check in the changes to your database.yml and docker-compose.yml file.
+make docker-setup-dev
+# make docker-setup-prod # use this to setup prod.
+
 # Starts the brokernode on port 3000
 DEBUG=1 docker-compose up --build -d # This takes a few minutes when you first run it.
 
@@ -103,3 +108,49 @@ We recommend you heading over to [http://gobuffalo.io](http://gobuffalo.io) and 
 Good luck!
 
 [Powered by Buffalo](http://gobuffalo.io)
+
+## Grafana
+user: admin
+password: admin
+password can change on docker-compose.yml
+
+## Config Datasource
+[http://localhost:3100/datasources](http://localhost:3100/datasources)
+
+Name: Monitor
+Type: Prometheus
+Url: [http://localhost:9090](http://localhost:9090)
+Access: proxy
+
+## Config Graph
+[http://localhost:3100/dashboard/new](http://localhost:3100/dashboard/new)
+Add panel - Graph - Monitor - Metrics
+
+create query -> Metrics lookup -> prometheus_ || any_variable
+Panel data source -> Monitor
+
+## variable on metrics
+treasures_verify_and_claim_seconds
+upload_session_resource_create_seconds
+upload_session_resource_update_seconds
+upload_session_resource_create_beta_seconds
+upload_session_resource_get_payment_status_seconds
+webnode_resource_create_seconds
+transaction_brokernode_resource_create_seconds
+transaction_brokernode_resource_update_seconds
+transaction_genesis_hash_resource_create_seconds
+transaction_genesis_hash_resource_seconds
+claim_unused_prls_seconds
+claim_treasure_for_webnode_seconds
+check_alpha_payments_seconds
+check_beta_payments_seconds
+flush_old_web_nodes_seconds
+process_paid_sessions_seconds
+update_msg_status_seconds
+bury_treasure_addresses_seconds
+process_unassigned_chunks_seconds
+purge_completed_sessions_seconds
+store_completed_genesis_hashes_seconds
+remove_unpaid_upload_session_seconds
+update_time_out_datamaps_seconds
+verify_datamaps_seconds
