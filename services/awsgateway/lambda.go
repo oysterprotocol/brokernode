@@ -13,10 +13,10 @@ import (
 const (
 	// Public
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
-	// 3MB payload, 300 sec execution time, 1000 concurrent exectutions.
+	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 20 chunks per request.
 	MaxConcurrency = 1000
-	MaxChunksLen   = 50
+	MaxChunksLen   = 3000 // 3 MB
 
 	// private
 	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
