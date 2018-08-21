@@ -14,14 +14,19 @@ const (
 	// https://docs.aws.amazon.com/lambda/latest/dg/limits.html
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 20 chunks per request.
+
+	// MaxConcurrency is the number of lambdas running concurrently
 	MaxConcurrency = 1000
-	MaxChunksLen   = 3000 // 3 MB
+
+	// MaxChunksLen is the number of chunks sent to each lambda
+	MaxChunksLen = 3000 // 3 MB
 
 	// private
 	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
 	hooknodeRegion = "us-east-2"
 )
 
+// HooknodeChunk is the chunk object sent to lambda
 type HooknodeChunk struct {
 	Address string       `json:"address"`
 	Value   int          `json:"value"`
@@ -29,6 +34,7 @@ type HooknodeChunk struct {
 	Tag     giota.Trytes `json:"tag"`
 }
 
+// HooknodeReq is the payload sent to lambda
 type HooknodeReq struct {
 	Provider string           `json:"provider"`
 	Chunks   []*HooknodeChunk `json:"chunks"`
@@ -38,6 +44,7 @@ var (
 	sess = session.Must(session.NewSession(&aws.Config{Region: aws.String(hooknodeRegion)}))
 )
 
+// InvokeHooknode will invoke lambda to do PoW for the chunks in HooknodeReq
 func InvokeHooknode(req *HooknodeReq) error {
 	// Serialize params
 	payload, err := json.Marshal(*req)

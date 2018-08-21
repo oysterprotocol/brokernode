@@ -66,7 +66,8 @@ type FilteredChunk struct {
 const (
 	maxTimestampTrytes = "MMMMMMMMM"
 
-	// By a hard limit on the request for FindTransaction to IOTA
+	// MaxNumberOfAddressPerFindTransactionRequest is a hard limit
+	// on the request for FindTransaction to IOTA
 	MaxNumberOfAddressPerFindTransactionRequest = 1000
 	oysterTagStr                                = "OYSTERGOLANG"
 	oysterTagHookStr                            = "OYSTERHOOKNODE"
