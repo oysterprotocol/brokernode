@@ -2,7 +2,6 @@ package awsgateway
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -16,7 +15,7 @@ const (
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 20 chunks per request.
 	MaxConcurrency = 1000
-	MaxChunksLen   = 5000 // 3 MB
+	MaxChunksLen   = 3000 // 3 MB
 
 	// private
 	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
@@ -48,19 +47,17 @@ func InvokeHooknode(req *HooknodeReq) error {
 
 	// Invoke lambda.
 	client := lambda.New(sess)
-	res, err := client.Invoke(&lambda.InvokeInput{
+	_, err = client.Invoke(&lambda.InvokeInput{
 		FunctionName: aws.String(hooknodeFnName),
 		Payload:      payload,
 	})
-	if err != nil {
-		return err
-	}
 
-	fmt.Println("=========RESPONSE START=======")
-	fmt.Println("LAMBDA RETURNED")
-	bodyString := string(res.Payload)
-	fmt.Println(bodyString)
-	fmt.Println("========= RESPONSE END =======")
+	return err
 
-	return nil
+	// fmt.Println("=========RESPONSE START=======")
+	// fmt.Println("LAMBDA RETURNED")
+	// bodyString := string(res.Payload)
+	// fmt.Println(bodyString)
+	// fmt.Println("========= RESPONSE END =======")
+
 }
