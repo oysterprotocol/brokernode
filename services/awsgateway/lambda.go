@@ -16,7 +16,7 @@ const (
 	// 6MB payload, 300 sec execution time, 1000 concurrent exectutions.
 	// Limit to 1000 POSTs and 20 chunks per request.
 	MaxConcurrency = 1000
-	MaxChunksLen   = 3000 // 3 MB
+	MaxChunksLen   = 5000 // 3 MB
 
 	// private
 	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
