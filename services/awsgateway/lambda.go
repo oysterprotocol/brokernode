@@ -2,6 +2,7 @@ package awsgateway
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -22,8 +23,9 @@ const (
 	MaxChunksLen = 3000 // 3 MB
 
 	// private
-	hooknodeFnName = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
-	hooknodeRegion = "us-east-2"
+	hooknodeFnNameDev  = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
+	hooknodeFnNameProd = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-production-hooknode"
+	hooknodeRegion     = "us-east-2"
 )
 
 // HooknodeChunk is the chunk object sent to lambda
@@ -46,6 +48,11 @@ var (
 
 // InvokeHooknode will invoke lambda to do PoW for the chunks in HooknodeReq
 func InvokeHooknode(req *HooknodeReq) error {
+	hooknodeFnName := hooknodeFnNameProd
+	if os.Getenv("LAMBDA_ENV") == "dev" {
+		hooknodeFnName = hooknodeFnNameDev
+	}
+
 	// Serialize params
 	payload, err := json.Marshal(*req)
 	if err != nil {
