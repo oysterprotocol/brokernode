@@ -57,9 +57,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
-	chunksSession1InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -91,9 +91,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 
 	suite.Equal(int64(-1), session.NextIdxToVerify)
 
-	chunksSession1InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -152,9 +152,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
-	chunksSession1InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -186,9 +186,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 
 	suite.Equal(int64(7), session.NextIdxToVerify)
 
-	chunksSession1InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -243,9 +243,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
-	chunksSession1InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -277,9 +277,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 
 	suite.Equal(int64(-1), session.NextIdxToVerify)
 
-	chunksSession1InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -338,9 +338,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks))
-	chunksSession1InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect
@@ -372,9 +372,9 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 
 	suite.Equal(int64(-1), session.NextIdxToVerify)
 
-	chunksSession1InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	// check that it is the length we expect

@@ -35,7 +35,7 @@ func checkSessionChunks(IotaWrapper services.IotaService, session models.UploadS
 
 	keys := oyster_utils.GenerateBulkKeys(session.GenesisHash, session.NextIdxToVerify, session.NextIdxToAttach+offset)
 
-	chunkData, err := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, session.GenesisHash, keys)
+	chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash, keys)
 	if err != nil {
 		oyster_utils.LogIfError(errors.New(err.Error()+" getting chunk data in checkSessionChunks in "+
 			"verify_data_maps"), nil)
@@ -57,7 +57,6 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedChunks []oyster_uti
 	nonTreasureChunks := []oyster_utils.ChunkData{}
 
 	if len(filteredChunks.DoesNotMatchTangle) > 0 {
-
 		treasureIndexes, err := session.GetTreasureIndexes()
 		oyster_utils.LogIfError(err, nil)
 

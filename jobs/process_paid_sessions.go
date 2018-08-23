@@ -6,7 +6,6 @@ import (
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"strconv"
 )
 
 func ProcessPaidSessions(PrometheusWrapper services.PrometheusService) {
@@ -43,7 +42,8 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 
 	for _, entry := range treasureIndexMap {
 
-		treasureChunk := oyster_utils.GetChunkData(oyster_utils.InProgressDir, unburiedSession.GenesisHash, int64(entry.Idx))
+		treasureChunk := models.GetSingleChunkData(oyster_utils.InProgressDir, unburiedSession.GenesisHash, int64(entry.Idx))
+
 		if treasureChunk.Address == "" || treasureChunk.Hash == "" {
 			errString := "did not find a chunk that matched genesis_hash and chunk_idx in process_paid_sessions, or " +
 				"found duplicate chunks"
@@ -69,9 +69,11 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			return err
 		}
 
-		key := oyster_utils.GetBadgerKey([]string{unburiedSession.GenesisHash, strconv.Itoa(entry.Idx)})
-		oyster_utils.BatchSetToUniqueDB([]string{oyster_utils.InProgressDir, unburiedSession.GenesisHash,
-			oyster_utils.MessageDir}, &oyster_utils.KVPairs{key: message}, models.DataMapsTimeToLive)
+		err = unburiedSession.SetTreasureMessage(entry.Idx, message, models.DataMapsTimeToLive)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
 
 		oyster_utils.LogToSegment("process_paid_sessions: treasure_payload_buried_in_data_map", analytics.NewProperties().
 			Set("genesis_hash", unburiedSession.GenesisHash).
@@ -79,12 +81,16 @@ func BuryTreasure(treasureIndexMap []models.TreasureMap, unburiedSession *models
 			Set("chunk_idx", entry.Idx).
 			Set("message", message))
 	}
+
 	unburiedSession.TreasureStatus = models.TreasureInDataMapComplete
 
 	if unburiedSession.CheckIfAllDataIsReady() {
 		unburiedSession.AllDataReady = models.AllDataReady
 	}
 
-	models.DB.ValidateAndSave(unburiedSession)
+	vErr, err := models.DB.ValidateAndUpdate(unburiedSession)
+	oyster_utils.LogIfError(err, nil)
+	oyster_utils.LogIfValidationError("", vErr, nil)
+
 	return nil
 }

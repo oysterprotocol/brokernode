@@ -51,7 +51,7 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 
 	chunkReqs := GenerateChunkRequests(300, uploadSession1.GenesisHash)
 
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	_, err := uploadSession1.StartUploadSession()
 	suite.Nil(err)
@@ -73,7 +73,7 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 	privateKeys = []string{"2000000002"}
 
 	chunkReqs = GenerateChunkRequests(300, uploadSession2.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession2.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession2.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	_, err = uploadSession2.StartUploadSession()
 	suite.Nil(err)
@@ -123,7 +123,7 @@ func (suite *JobsSuite) Test_BuryTreasure() {
 
 	chunkReqs := GenerateChunkRequests(300, uploadSession1.GenesisHash)
 
-	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(chunkReqs, uploadSession1.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	uploadSession1.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
@@ -139,20 +139,20 @@ func (suite *JobsSuite) Test_BuryTreasure() {
 
 	//Check that we have hash and address data for all 3 chunks,
 	//but not message data
-	chunkData1 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData1 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[5]))
 
 	suite.NotEqual("", chunkData1.Hash)
 	suite.NotEqual("", chunkData1.Address)
 	suite.Equal("", chunkData1.Message)
 
-	chunkData2 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData2 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[78]))
 
 	suite.NotEqual("", chunkData2.Hash)
 	suite.NotEqual("", chunkData2.Address)
 
-	chunkData3 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData3 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[199]))
 
 	suite.NotEqual("", chunkData3.Hash)
@@ -168,17 +168,17 @@ func (suite *JobsSuite) Test_BuryTreasure() {
 	}
 
 	//Check that we now have message data for all 3 chunks
-	chunkData1 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData1 = models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[5]))
 
 	suite.NotEqual("", chunkData1.Message)
 
-	chunkData2 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData2 = models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[78]))
 
 	suite.NotEqual("", chunkData2.Message)
 
-	chunkData3 = oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData3 = models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(treasureIndexes[199]))
 
 	suite.NotEqual("", chunkData3.Message)

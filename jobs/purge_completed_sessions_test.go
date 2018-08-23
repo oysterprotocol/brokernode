@@ -9,6 +9,9 @@ import (
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
 	// running these tests in TestModeNoTreasure so we will not expect
 	// numChunks + 1 in subsequent tests, just numChunks
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
@@ -17,10 +20,9 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	fileBytesCount := uint64(30000)
 	numChunks := 30
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -31,10 +33,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	SessionSetUpForTest(&uploadSession1, []int{15, 20}, uploadSession1.NumChunks)
 
-	genHash = oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	uploadSession2 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -45,10 +45,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	SessionSetUpForTest(&uploadSession2, []int{11, 22}, uploadSession2.NumChunks)
 
-	genHash = oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
 	uploadSession3 := models.UploadSession{
-		GenesisHash:   genHash,
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -59,17 +57,21 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	SessionSetUpForTest(&uploadSession3, []int{12, 18}, uploadSession3.NumChunks)
 
-	finished1, _ := uploadSession1.WaitForAllHashes(500)
-	finished2, _ := uploadSession2.WaitForAllHashes(500)
-	finished3, _ := uploadSession3.WaitForAllHashes(500)
+	finished1, _ := uploadSession1.WaitForAllHashes(5)
+	finished2, _ := uploadSession2.WaitForAllHashes(5)
+	finished3, _ := uploadSession3.WaitForAllHashes(5)
 
-	suite.True(finished1 && finished2 && finished3)
+	suite.True(finished1)
+	suite.True(finished2)
+	suite.True(finished3)
 
-	finished1, _ = uploadSession1.WaitForAllMessages(500)
-	finished2, _ = uploadSession2.WaitForAllMessages(500)
-	finished3, _ = uploadSession3.WaitForAllMessages(500)
+	finished1, _ = uploadSession1.WaitForAllMessages(5)
+	finished2, _ = uploadSession2.WaitForAllMessages(5)
+	finished3, _ = uploadSession3.WaitForAllMessages(5)
 
-	suite.True(finished1 && finished2 && finished3)
+	suite.True(finished1)
+	suite.True(finished2)
+	suite.True(finished3)
 
 	// Set all sessions to states that will cause them to be picked up by
 	// GetSessionsByAge
@@ -84,23 +86,23 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
 		int64(uploadSession1.NumChunks-1))
-	chunksSession1InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
 	session2Keys := oyster_utils.GenerateBulkKeys(uploadSession2.GenesisHash, 0,
 		int64(uploadSession2.NumChunks-1))
-	chunksSession2InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
+	chunksSession2InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
 		session2Keys)
-	chunksSession2Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
+	chunksSession2Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
 		session2Keys)
 
 	session3Keys := oyster_utils.GenerateBulkKeys(uploadSession3.GenesisHash, 0,
 		int64(uploadSession3.NumChunks-1))
-	chunksSession3InProgress, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
+	chunksSession3InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
 		session3Keys)
-	chunksSession3Completed, _ := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
+	chunksSession3Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
 		session3Keys)
 
 	uploadSessions := []models.UploadSession{}
@@ -142,19 +144,19 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	//call method under test
 	jobs.PurgeCompletedSessions(jobs.PrometheusWrapper)
 
-	chunksSession1InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
-	chunksSession1Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
-	chunksSession2InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
+	chunksSession2InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
 		session2Keys)
-	chunksSession2Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
+	chunksSession2Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
 		session2Keys)
 
-	chunksSession3InProgress, _ = oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
+	chunksSession3InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
 		session3Keys)
-	chunksSession3Completed, _ = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
+	chunksSession3Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
 		session3Keys)
 
 	uploadSessions = []models.UploadSession{}
@@ -167,6 +169,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	// verify final lengths are what we expected
 	suite.Equal(0, len(chunksSession1InProgress))
+
 	suite.Equal(numChunks, len(chunksSession1Completed))
 	suite.Equal(0, len(chunksSession2Completed))
 	suite.Equal(numChunks, len(chunksSession2InProgress))

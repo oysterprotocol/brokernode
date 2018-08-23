@@ -205,7 +205,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_already_attached() {
 
 	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
-	chunkData20 := oyster_utils.GetChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+	chunkData20 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(20))
 
 	suite.NotEqual("", chunkData20.Address)
@@ -435,7 +435,7 @@ func (suite *JobsSuite) Test_StageTreasures() {
 	treasureIndexes, _ := u.GetTreasureIndexes()
 	suite.Equal(1, len(treasureIndexes))
 
-	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIndexes[0]))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIndexes[0]))
 
 	jobs.StageTreasures([]oyster_utils.ChunkData{chunkData}, u)
 

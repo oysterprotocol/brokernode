@@ -86,7 +86,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 
-	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(0))
 
 	suite.Equal(genHash, chunkData.Hash)
 
@@ -148,7 +148,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 
-	chunkData := oyster_utils.GetChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(0))
 
 	suite.Equal(genHash, chunkData.Hash)
 

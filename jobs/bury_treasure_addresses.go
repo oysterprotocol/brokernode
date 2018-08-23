@@ -514,7 +514,7 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 
 	// we passed the row by value, get it again in case it has changed
 	treasureRow := models.Treasure{}
-	err := models.DB.Find(treasureRow, treasureToBury.ID)
+	err := models.DB.Find(&treasureRow, treasureToBury.ID)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return

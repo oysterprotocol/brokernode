@@ -151,8 +151,8 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
 	}
 
-	chunkDataInProgress := oyster_utils.GetChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
-	chunkDataComplete := oyster_utils.GetChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
+	chunkDataInProgress := models.GetSingleChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
+	chunkDataComplete := models.GetSingleChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
 
 	chunkToUse := chunkDataInProgress
 	if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) &&

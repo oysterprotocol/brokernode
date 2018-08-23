@@ -17,8 +17,8 @@ type ModelSuite struct {
 func Test_ModelSuite(t *testing.T) {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
-	as := &ModelSuite{suite.NewModel()}
-	suite.Run(t, as)
+	ms := &ModelSuite{suite.NewModel()}
+	suite.Run(t, ms)
 }
 
 func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.ChunkReq {
@@ -51,7 +51,8 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	chunkReqs := GenerateChunkRequests(numChunksToGenerate, session.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+
+	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	for {
 		jobs.BuryTreasureInDataMaps()
@@ -64,7 +65,7 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 	session.WaitForAllHashes(100)
 
 	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, 0, int64(session.NumChunks-1))
-	bulkChunkData, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, session.GenesisHash,
+	bulkChunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash,
 		bulkKeys)
 
 	return bulkChunkData

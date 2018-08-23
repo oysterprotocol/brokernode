@@ -2,7 +2,6 @@ package jobs_test
 
 import (
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,7 +11,11 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
-func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
+func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
 
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
@@ -22,8 +25,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 			return big.NewInt(0)
 		},
 	}
-	UploadSessionsAndDataMap_Expired := "aaaaaa"
-	UploadSessionsAndDataMap_NoExpired := "bbbbbb"
+
+	UploadSessionsAndDataMap_Expired := "aaaaaaa1"
+	UploadSessionsAndDataMap_NoExpired := "bbbbbbb1"
 
 	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
 	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
@@ -33,8 +37,13 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap() {
 	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
 }
 
-func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
-	AllPaid := "cccccc"
+func (suite *JobsSuite) Test_RemoveUnpaid_allPaid_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	AllPaid := "ccccccc1"
 
 	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
 
@@ -43,13 +52,18 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid() {
 	verifyData(suite, AllPaid, true)
 }
 
-func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
+func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
 	jobs.EthWrapper = services.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
 	}
-	HasBalance := "dddddd"
+	HasBalance := "ddddddd1"
 	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
 
 	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
@@ -57,14 +71,100 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance() {
 	verifyData(suite, HasBalance, true)
 }
 
-func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession() {
+func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
 	jobs.EthWrapper = services.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
 	}
-	OnlyRemoveUploadSession_Expired := "eeeeee"
-	OnlyRemoveUploadSession_NoExpired := "ffffff"
+	OnlyRemoveUploadSession_Expired := "eeeeeee1"
+	OnlyRemoveUploadSession_NoExpired := "fffffff1"
+
+	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
+	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
+
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, OnlyRemoveUploadSession_NoExpired, false)
+}
+
+func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	jobs.EthWrapper = services.Eth{
+		CheckPRLBalance: func(addr common.Address) *big.Int {
+			return big.NewInt(0)
+		},
+	}
+	UploadSessionsAndDataMap_Expired := "aaaaaaa2"
+	UploadSessionsAndDataMap_NoExpired := "bbbbbbb2"
+
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
+
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
+}
+
+func (suite *JobsSuite) Test_RemoveUnpaid_allPaid_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	AllPaid := "ccccccc2"
+
+	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
+
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, AllPaid, true)
+}
+
+func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	jobs.EthWrapper = services.Eth{
+		CheckPRLBalance: func(addr common.Address) *big.Int {
+			return big.NewInt(10)
+		},
+	}
+	HasBalance := "ddddddd2"
+	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
+
+	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, HasBalance, true)
+}
+
+func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	jobs.EthWrapper = services.Eth{
+		CheckPRLBalance: func(addr common.Address) *big.Int {
+			return big.NewInt(0)
+		},
+	}
+	OnlyRemoveUploadSession_Expired := "eeeeeee2"
+	OnlyRemoveUploadSession_NoExpired := "fffffff2"
 
 	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
@@ -83,26 +183,26 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 		PaymentStatus:  paymentStatus,
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
-	_, err := session.StartUploadSession()
+
+	_, err := suite.DB.ValidateAndCreate(&session)
 	suite.Nil(err)
+	models.BuildDataMapsForSession(session.GenesisHash, session.NumChunks+1)
 
 	mergedIndexes := []int{3}
 	privateKeys := []string{"0000000001"}
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	chunkReqs1 := GenerateChunkRequests(session.NumChunks, session.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs1, session.GenesisHash, mergedIndexes, models.TestValueTimeToLive)
+	models.ProcessAndStoreChunkData(chunkReqs1, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	session.WaitForAllHashes(500)
 
 	treasureIndexMap, err := session.GetTreasureMap()
 
 	for _, entry := range treasureIndexMap {
-
-		key := oyster_utils.GetBadgerKey([]string{session.GenesisHash, strconv.Itoa(entry.Idx)})
-		oyster_utils.BatchSetToUniqueDB([]string{oyster_utils.InProgressDir, session.GenesisHash,
-			oyster_utils.MessageDir}, &oyster_utils.KVPairs{key: "someDummyMessage"}, models.TestValueTimeToLive)
+		session.SetTreasureMessage(entry.Idx, "someDummyMessage", oyster_utils.TestValueTimeToLive)
 	}
+
 	session.TreasureStatus = models.TreasureInDataMapComplete
 	models.DB.ValidateAndSave(&session)
 
@@ -111,6 +211,7 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 	if isExpired {
 		exceedLimitUpdateTime := time.Now().Add(-(jobs.UnpaidExpirationInHour + 1) * time.Hour)
 		// Force to update updated_at field
+
 		err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE id = ?",
 			exceedLimitUpdateTime.Format(oyster_utils.SqlTimeFormat), session.ID).All(&[]models.UploadSession{})
 		suite.Nil(err)
@@ -148,10 +249,14 @@ func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMa
 
 		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, 0, int64(sessions[0].NumChunks-1))
 
-		chunkData, _ := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, sessions[0].GenesisHash, keys)
+		chunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, sessions[0].GenesisHash, keys)
 		suite.True(len(chunkData) == sessions[0].NumChunks)
 		for _, dataMap := range chunkData {
 			suite.Equal(expectedGenesisHash, dataMap.GenesisHash)
 		}
 	}
+}
+
+func removeAllUploadSessions(suite *JobsSuite) {
+	suite.DB.RawQuery("DELETE FROM upload_sessions").All(&models.UploadSession{})
 }

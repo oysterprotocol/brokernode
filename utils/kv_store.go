@@ -26,7 +26,12 @@ const HashDir = "hash"
 /*MessageDir is a directory for messages*/
 const MessageDir = "message"
 
+/*KeyDelimiter is a delimiter character used in badger keys*/
 const KeyDelimiter = '_'
+
+/*TestValueTimeToLive is some default value we can use in unit
+tests for K:V pairs in badger*/
+const TestValueTimeToLive = 3 * time.Minute
 
 // Singleton DB
 var badgerDB *badger.DB
@@ -77,7 +82,7 @@ func init() {
 	// enable unless explicitly disabled in .env file
 	isKvStoreEnable = os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
-	if IsKvStoreEnabled() {
+	if DataMapStorageMode == DataMapsInSQL {
 		err := InitKvStore()
 		// If error in init the KV store. Just crash and fail the entirely process and wait for restart.
 		if err != nil {
@@ -118,7 +123,7 @@ func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKey
 	return &keys
 }
 
-func getChunkIdxFromKey(key string) int64 {
+func GetChunkIdxFromKey(key string) int64 {
 	s := key
 	if i := strings.LastIndexByte(key, KeyDelimiter); i >= 0 {
 		s = s[i+1:]
@@ -146,7 +151,7 @@ func GetBadgerDBName(names []string) string {
 someGenHash_1
 */
 func GetBadgerKey(keyStrings []string) string {
-	return buildBadgerName(keyStrings, string(KeyDelimiter))
+	return buildBadgerName(keyStrings, string(KeyDelimiter)+string(KeyDelimiter))
 }
 
 func buildBadgerName(names []string, separator string) string {
@@ -377,30 +382,30 @@ func GetMessageData(prefix string, genesisHash string, chunkIdx int64) string {
 
 	key := GetBadgerKey([]string{genesisHash, strconv.FormatInt(int64(chunkIdx), 10)})
 
-	hash := ""
+	rawMessage := ""
 
-	hashValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, MessageDir},
+	msgValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, MessageDir},
 		&KVKeys{key})
-	if v, hasKey := (*hashValues)[key]; hasKey {
-		hash = v
+	if v, hasKey := (*msgValues)[key]; hasKey {
+		rawMessage = v
 	}
 
-	return hash
+	return rawMessage
 }
 
 func GetHashData(prefix string, genesisHash string, chunkIdx int64) string {
 
 	key := GetBadgerKey([]string{genesisHash, strconv.FormatInt(int64(chunkIdx), 10)})
 
-	rawMessage := ""
+	hash := ""
 
-	messageValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, HashDir},
+	hashValues, _ := BatchGetFromUniqueDB([]string{prefix, genesisHash, HashDir},
 		&KVKeys{key})
-	if v, hasKey := (*messageValues)[key]; hasKey {
-		rawMessage = v
+	if v, hasKey := (*hashValues)[key]; hasKey {
+		hash = v
 	}
 
-	return rawMessage
+	return hash
 }
 
 /*GetBulkChunkData returns the message, hash, and address for a large number of chunks.*/
@@ -438,7 +443,7 @@ func GetBulkChunkData(prefix string, genesisHash string, ks *KVKeys) ([]ChunkDat
 				Hash:        (*hashValues)[key],
 				Message:     message,
 				RawMessage:  (*messageValues)[key],
-				Idx:         getChunkIdxFromKey(key),
+				Idx:         GetChunkIdxFromKey(key),
 				GenesisHash: genesisHash,
 			})
 		}
@@ -544,6 +549,7 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 /*BatchSetToUniqueDB updates a set of KVPairs in a unique database.
 Return error if any fails.*/
 func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
+	ttl = getTTL(ttl)
 	dbName := GetBadgerDBName(dbID)
 	var db *badger.DB
 	if dbMap[dbName].Database == nil {
@@ -591,6 +597,7 @@ func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 
 /*BatchSet updates a set of KVPairs. Return error if any fails.*/
 func BatchSet(kvs *KVPairs, ttl time.Duration) error {
+	ttl = getTTL(ttl)
 	if badgerDB == nil {
 		return dbNoInitError
 	}
@@ -728,4 +735,12 @@ func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int64
 
 func AllChunkDataHasArrived(chunkData ChunkData) bool {
 	return chunkData.Address != "" && chunkData.Message != "" && chunkData.Hash != ""
+}
+
+func getTTL(ttl time.Duration) time.Duration {
+	if os.Getenv("GO_ENV") != "test" {
+		return ttl
+	} else {
+		return TestValueTimeToLive
+	}
 }

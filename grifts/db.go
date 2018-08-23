@@ -416,7 +416,7 @@ var _ = grift.Namespace("db", func() {
 		for i := range allSessions {
 			keys := oyster_utils.GenerateBulkKeys(allSessions[i].GenesisHash, 0,
 				int64(allSessions[i].NumChunks-1))
-			chunkData, err := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir,
+			chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir,
 				allSessions[i].GenesisHash, keys)
 			if err == nil && len(chunkData) != 0 {
 				dataMapAll = append(dataMapAll, chunkData...)

@@ -117,14 +117,17 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Set("num_chunks", alphaSession.NumChunks).
 		Set("storage_years", alphaSession.StorageLengthInYears))
 
-	dbID := []string{oyster_utils.InProgressDir, alphaSession.GenesisHash, oyster_utils.HashDir}
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 
-	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
-	if db == nil {
-		err := errors.New("error creating unique badger DB for hashes")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
+		dbID := []string{oyster_utils.InProgressDir, alphaSession.GenesisHash, oyster_utils.HashDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for hashes")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
 	}
 
 	vErr, err := alphaSession.StartUploadSession()
@@ -254,14 +257,17 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 	}
 
 	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
-	dbID := []string{oyster_utils.InProgressDir, uploadSession.GenesisHash, oyster_utils.MessageDir}
 
-	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
-	if db == nil {
-		err := errors.New("error creating unique badger DB for messages")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		dbID := []string{oyster_utils.InProgressDir, uploadSession.GenesisHash, oyster_utils.MessageDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for messages")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
 	}
 
 	// Update dMaps to have chunks async
@@ -317,14 +323,16 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Set("num_chunks", u.NumChunks).
 		Set("storage_years", u.StorageLengthInYears))
 
-	dbID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		dbID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
 
-	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
-	if db == nil {
-		err := errors.New("error creating unique badger DB for hashes")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for hashes")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
 	}
 
 	vErr, err := u.StartUploadSession()
