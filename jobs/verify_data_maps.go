@@ -45,6 +45,7 @@ func checkSessionChunks(IotaWrapper services.IotaService, session models.UploadS
 	CheckChunks(IotaWrapper, chunkData, session)
 }
 
+/*CheckChunks will make calls to verify the chunks and update the indexes of the session*/
 func CheckChunks(IotaWrapper services.IotaService, unverifiedChunks []oyster_utils.ChunkData,
 	session models.UploadSession) {
 	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedChunks)

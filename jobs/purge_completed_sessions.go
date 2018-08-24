@@ -28,41 +28,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 	}
 
 	for _, genesisHash := range completeGenesisHashes {
-
-		err = models.DB.Transaction(func(tx *pop.Connection) error {
-
-			sessions := []models.UploadSession{}
-
-			err := models.DB.Where("genesis_hash = ?", genesisHash).All(&sessions)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				return err
-			}
-
-			if len(sessions) > 0 {
-				errMovingChunks := sessions[0].MoveAllChunksToCompleted()
-				if errMovingChunks != nil {
-					oyster_utils.LogIfError(err, nil)
-					return errMovingChunks
-				}
-				err = createCompletedDataMapIfNeeded(genesisHash)
-				if err == nil {
-					if err := tx.RawQuery("DELETE FROM upload_sessions WHERE genesis_hash = ?",
-						genesisHash).All(&[]models.UploadSession{}); err != nil {
-						oyster_utils.LogIfError(errors.New(err.Error()+" while deleting upload_sessions in "+
-							"purge_completed_sessions"), nil)
-						return err
-					}
-				}
-			}
-			return nil
-		})
-		oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
-			Set("genesis_hash", genesisHash))
-
-		if err != nil {
-			continue
-		}
+		purgeSessions(genesisHash)
 	}
 }
 
@@ -103,4 +69,41 @@ func createCompletedDataMapIfNeeded(genesisHash string) error {
 	err := models.NewCompletedUpload(session[0])
 	oyster_utils.LogIfError(err, nil)
 	return err
+}
+
+func purgeSessions(genesisHash string) {
+	err := models.DB.Transaction(func(tx *pop.Connection) error {
+
+		sessions := []models.UploadSession{}
+
+		err := models.DB.Where("genesis_hash = ?", genesisHash).All(&sessions)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		if len(sessions) > 0 {
+			errMovingChunks := sessions[0].MoveAllChunksToCompleted()
+			if errMovingChunks != nil {
+				oyster_utils.LogIfError(err, nil)
+				return errMovingChunks
+			}
+			err = createCompletedDataMapIfNeeded(genesisHash)
+			if err == nil {
+				if err := tx.RawQuery("DELETE FROM upload_sessions WHERE genesis_hash = ?",
+					genesisHash).All(&[]models.UploadSession{}); err != nil {
+					oyster_utils.LogIfError(errors.New(err.Error()+" while deleting upload_sessions in "+
+						"purge_completed_sessions"), nil)
+					return err
+				}
+			}
+		}
+		return nil
+	})
+	oyster_utils.LogToSegment("purge_completed_sessions: completed_session_purged", analytics.NewProperties().
+		Set("genesis_hash", genesisHash))
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+	}
 }

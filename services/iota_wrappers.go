@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -48,13 +47,35 @@ type ProcessingFrequency struct {
 	Frequency             float64
 }
 
+/*SendChunksToChannel defines the type for a function which sends chunks to a channel.  This type used for mocking.*/
 type SendChunksToChannel func([]oyster_utils.ChunkData, *models.ChunkChannel)
+
+/*VerifyChunkMessagesMatchRecord defines the type for a function which verifies chunk messages
+on the tangle match what we have stored in the db.  This type used for mocking.*/
 type VerifyChunkMessagesMatchRecord func([]oyster_utils.ChunkData) (filteredChunks FilteredChunk, err error)
+
+/*VerifyChunksMatchRecord defines the type for a function which verifies that chunks on the tangle match
+chunks in the db.  This type used for mocking.*/
 type VerifyChunksMatchRecord func([]oyster_utils.ChunkData, bool) (filteredChunks FilteredChunk, err error)
+
+/*ChunksMatch defines the type for a function which returns a boolean if chunk tangle data matches chunk db data.
+This type used for mocking.*/
 type ChunksMatch func(giota.Transaction, oyster_utils.ChunkData, bool) bool
+
+/*SendChunksToLambda defines the type for a function which will send the chunkds to AWS Lambda.
+This type used for mocking.*/
 type SendChunksToLambda func(chunks *[]oyster_utils.ChunkData)
+
+/*VerifyTreasure defines the type for a function which will verify webnode treasure claims.
+This type used for mocking.*/
 type VerifyTreasure func([]string) (verify bool, err error)
+
+/*FindTransactions defines the type for a function which will attempt to find transactions on the iota tangle based on
+addresses.  This type used for mocking.*/
 type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transaction, error)
+
+/*GetTransactionsToApprove defines the type for a function which will get a trunk and branch transaction for proof of
+work.  This type used for mocking.*/
 type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
 
 type FilteredChunk struct {
@@ -542,22 +563,24 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord oyster_utils.Chu
 	// occasionally have the wrong chunk_idx for msg_id
 	return true
 
-	message := chunkOnRecord.Message
-	if checkBranchAndTrunk == false &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
+	/*
+		message := chunkOnRecord.Message
+		if checkBranchAndTrunk == false &&
+			strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
 
-		return true
+			return true
 
-	} else {
+		} else {
 
-		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
-			Set("chunk_idx", chunkOnRecord.Idx).
-			Set("address", chunkOnRecord.Address).
-			Set("db_message", message).
-			Set("tangle_message", chunkOnTangle.SignatureMessageFragment))
+			oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
+				Set("chunk_idx", chunkOnRecord.Idx).
+				Set("address", chunkOnRecord.Address).
+				Set("db_message", message).
+				Set("tangle_message", chunkOnTangle.SignatureMessageFragment))
 
-		return false
-	}
+			return false
+		}
+	*/
 }
 
 // Verify PoW of work.

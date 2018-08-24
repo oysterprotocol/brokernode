@@ -158,7 +158,7 @@ func Sha256ToAddress(hashString string) string {
 	return string(MakeAddress(obfuscatedHash))
 }
 
-/*Computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.*/
+/*ComputeSectorDataMapAddress computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.*/
 func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes int) []string {
 	var addr []string
 

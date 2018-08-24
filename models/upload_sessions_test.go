@@ -235,55 +235,6 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 	suite.Equal(uploadSession2.GenesisHash, sessions[2].GenesisHash)
 }
 
-func (suite *ModelSuite) Test_GetSessionsThatNeedKeysEncrypted() {
-	defer oyster_utils.ResetBrokerMode()
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
-
-	numChunks := 250
-	storageLengthInYears := 3
-
-	u1 := models.UploadSession{
-		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:        123,
-		NumChunks:            numChunks,
-		StorageLengthInYears: storageLengthInYears,
-		PaymentStatus:        models.PaymentStatusConfirmed,
-		TreasureStatus:       models.TreasureGeneratingKeys,
-	}
-	vErr, err := u1.StartUploadSession()
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
-
-	u2 := models.UploadSession{
-		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:        123,
-		NumChunks:            numChunks,
-		StorageLengthInYears: storageLengthInYears,
-		PaymentStatus:        models.PaymentStatusInvoiced,
-		TreasureStatus:       models.TreasureGeneratingKeys,
-	}
-	vErr, err = u2.StartUploadSession()
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
-
-	u3 := models.UploadSession{
-		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:        123,
-		NumChunks:            numChunks,
-		StorageLengthInYears: storageLengthInYears,
-		PaymentStatus:        models.PaymentStatusConfirmed,
-		TreasureStatus:       models.TreasureInDataMapPending,
-	}
-	vErr, err = u3.StartUploadSession()
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
-
-	sessions, err := models.GetSessionsThatNeedKeysEncrypted()
-	suite.Nil(err)
-	suite.Equal(1, len(sessions))
-	suite.Equal(u1.GenesisHash, sessions[0].GenesisHash)
-}
-
 func (suite *ModelSuite) Test_GetSessionsThatNeedTreasure() {
 	defer oyster_utils.ResetBrokerMode()
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)

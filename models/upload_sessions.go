@@ -24,6 +24,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+/*ChunkReq is the form in which webinterface will send the data for each chunk*/
 type ChunkReq struct {
 	Idx  int    `json:"idx"`
 	Data string `json:"data"`
@@ -540,11 +541,13 @@ func (u *UploadSession) DecryptSessionEthKey() string {
 	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
 }
 
+/*EncryptTreasureChunkEthKey encrypts the eth key of the treasure chunk*/
 func (u *UploadSession) EncryptTreasureChunkEthKey(unencryptedKey string) (string, error) {
 	encryptedKey := oyster_utils.ReturnEncryptedEthKey(u.ID, u.CreatedAt, unencryptedKey)
 	return encryptedKey, nil
 }
 
+/*DecryptTreasureChunkEthKey decrypts the eth key of the treasure chunk*/
 func (u *UploadSession) DecryptTreasureChunkEthKey(encryptedKey string) (string, error) {
 	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, encryptedKey), nil
 }
@@ -610,11 +613,14 @@ func (u *UploadSession) WaitForAllMessages(maxTimesToCheckForAllChunks int) (boo
 	return true, nil
 }
 
+/*CheckIfAllDataIsReady wraps calls which will check if the message data and hash data have both been created*/
 func (u *UploadSession) CheckIfAllDataIsReady() bool {
 
 	return u.CheckIfAllHashesAreReady() && u.CheckIfAllMessagesAreReady()
 }
 
+/*CheckIfAllHashesAreReady verifies that all the hashes for the file chunks have been created.  It returns true if
+the first and last chunk hashes are present*/
 func (u *UploadSession) CheckIfAllHashesAreReady() bool {
 
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
@@ -636,6 +642,8 @@ func (u *UploadSession) CheckIfAllHashesAreReady() bool {
 	return len(dataMapStart) == 1 && len(dataMapEnd) == 1
 }
 
+/*CheckIfAllMessagesAreReady verifies that all the messages for the file chunks have been created.  It returns true if
+the first, last, and treasure chunk messages are present*/
 func (u *UploadSession) CheckIfAllMessagesAreReady() bool {
 
 	treasureIndexes, err := u.GetTreasureIndexes()
@@ -646,9 +654,8 @@ func (u *UploadSession) CheckIfAllMessagesAreReady() bool {
 
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 		return checkIfAllMessagesAreReadyInBadger(treasureIndexes, u)
-	} else {
-		return checkIfAllMessagesAreReadyInSQL(treasureIndexes, u)
 	}
+	return checkIfAllMessagesAreReadyInSQL(treasureIndexes, u)
 }
 
 func checkIfAllMessagesAreReadyInBadger(treasureIndexes []int, u *UploadSession) bool {
@@ -692,6 +699,7 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 	return allMessagesFound
 }
 
+/*GetUnassignedChunksBySession returns the chunk data for chunks that need attaching for a particular session*/
 func (u *UploadSession) GetUnassignedChunksBySession(limit int) (chunkData []oyster_utils.ChunkData, err error) {
 	var stopChunkIdx int64
 
@@ -715,6 +723,7 @@ func (u *UploadSession) GetUnassignedChunksBySession(limit int) (chunkData []oys
 	return chunkData, err
 }
 
+/*MoveChunksToCompleted receives some chunks for a session and moves them to a separate DB for completed chunks*/
 func (u *UploadSession) MoveChunksToCompleted(chunks []oyster_utils.ChunkData) {
 
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
@@ -754,6 +763,7 @@ func (u *UploadSession) MoveChunksToCompleted(chunks []oyster_utils.ChunkData) {
 	}
 }
 
+/*MoveAllChunksToCompleted moves all the chunks for an in-progress session to completed.*/
 func (u *UploadSession) MoveAllChunksToCompleted() error {
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 		return moveAllChunksToCompletedBadger(u)
@@ -897,6 +907,9 @@ func moveToComplete(dataMaps []oyster_utils.ChunkData) error {
 	return nil
 }
 
+/*UpdateIndexWithVerifiedChunks receives some chunks and will update the session's NextIdxToVerify property.
+Starting at its current NextIdxToVerify, it checks the next index and verifies that there is a chunk matching that
+index in the array passed in.  When it finds a missing index it sets the NextIdxToVerify to that index.*/
 func (u *UploadSession) UpdateIndexWithVerifiedChunks(chunks []oyster_utils.ChunkData) {
 
 	treasureIndexes, _ := u.GetTreasureIndexes()
@@ -951,6 +964,9 @@ func (u *UploadSession) UpdateIndexWithVerifiedChunks(chunks []oyster_utils.Chun
 	}
 }
 
+/*UpdateIndexWithAttachedChunks receives some chunks and will update the session's NextIdxToAttach property.
+Starting at its current NextIdxToAttach, it checks the next index and verifies that there is a chunk matching that
+index in the array passed in.  When it finds a missing index it sets the NextIdxToAttach to that index.*/
 func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.ChunkData) {
 
 	treasureIndexes, _ := u.GetTreasureIndexes()
@@ -1001,6 +1017,9 @@ func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.Chun
 	}
 }
 
+/*DownGradeIndexesOnUnattachedChunks receives chunks that are not attached or that were attached incorrectly.
+If it finds a chunk that is unattached that is below (if alpha) or above (if beta) its current indexes it will
+change its indexes to match these unattached chunks.*/
 func (u *UploadSession) DownGradeIndexesOnUnattachedChunks(chunks []oyster_utils.ChunkData) {
 	maxIdx := int64(chunks[0].Idx)
 	minIdx := int64(chunks[0].Idx)
@@ -1029,6 +1048,7 @@ func (u *UploadSession) DownGradeIndexesOnUnattachedChunks(chunks []oyster_utils
 	oyster_utils.LogIfError(err, nil)
 }
 
+/*SetTreasureMessage sets the treasure message for a treasure chunk of a session.*/
 func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload string,
 	ttl time.Duration) (err error) {
 
@@ -1043,6 +1063,7 @@ func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload st
 	return err
 }
 
+/*GetSessionsByAge gets all the sessions eligible for chunk attachment.*/
 func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
@@ -1058,6 +1079,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	return sessionsByAge, nil
 }
 
+/*GetCompletedSessions gets all the sessions whose index values suggest that they are completed.*/
 func GetCompletedSessions() ([]UploadSession, error) {
 	completedSessions := []UploadSession{}
 	sessions, err := GetSessionsByAge()
@@ -1082,20 +1104,8 @@ func GetCompletedSessions() ([]UploadSession, error) {
 	return completedSessions, nil
 }
 
-// GetSessionsThatNeedKeysEncrypted checks for sessions which the user has paid their PRL but in which
-// we have not yet encrypted the keys
-func GetSessionsThatNeedKeysEncrypted() ([]UploadSession, error) {
-	needKeysEncrypted := []UploadSession{}
-
-	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusConfirmed, TreasureGeneratingKeys).All(&needKeysEncrypted)
-	oyster_utils.LogIfError(err, nil)
-
-	return needKeysEncrypted, err
-}
-
-// GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
-// we have not yet buried the treasure.
+/*GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
+we have not yet buried the treasure.*/
 func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
@@ -1106,6 +1116,7 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	return unburiedSessions, err
 }
 
+/*GetReadySessions gets all the sessions eligible for chunk attachment which still need chunks to be attached.*/
 func GetReadySessions() ([]UploadSession, error) {
 	sessions := []UploadSession{}
 	readySessions := []UploadSession{}
@@ -1138,6 +1149,8 @@ func SetBrokerTransactionToPaid(session UploadSession) error {
 	return err
 }
 
+/*CreateTreasurePayload makes a payload for a treasure chunk by encrypting an ethereum private key using a sidechain
+hash as the key.*/
 func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainLength int) (string, error) {
 	keyLocation := rand.Intn(maxSideChainLength)
 
@@ -1154,6 +1167,7 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 	return treasurePayload, nil
 }
 
+/*GetChunkForWebnodePoW gets a chunk for webnode PoW and updates the index of the session.*/
 func GetChunkForWebnodePoW() (oyster_utils.ChunkData, error) {
 	var chunkData oyster_utils.ChunkData
 	var err error
@@ -1234,6 +1248,7 @@ func convertToBadgerKeyedMapForChunks(chunks []ChunkReq, genesisHash string, tre
 	return chunksMap
 }
 
+/*ProcessAndStoreChunkDataInSQL receives chunk data from the client and stores the data in data_maps rows.*/
 func ProcessAndStoreChunkDataInSQL(chunks []ChunkReq, genesisHash string, treasureIdxMap []int) {
 	// the keys in this chunks map have already transformed indexes
 	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
@@ -1247,6 +1262,7 @@ func ProcessAndStoreChunkDataInSQL(chunks []ChunkReq, genesisHash string, treasu
 	oyster_utils.BatchSet(&batchSetKvMap, DataMapsTimeToLive)
 }
 
+/*GetSingleChunkData gets data about a single chunk.*/
 func GetSingleChunkData(prefix string, genesisHash string, chunkIdx int64) oyster_utils.ChunkData {
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 		return oyster_utils.GetChunkData(prefix, genesisHash, chunkIdx)
@@ -1275,10 +1291,16 @@ func GetSingleChunkData(prefix string, genesisHash string, chunkIdx int64) oyste
 			hash = completedDataMaps[0].Hash
 		}
 	}
-	return returnChunkDataSQL(key, address, hash, genesisHash, chunkIdx)
+	chunkData := oyster_utils.ChunkData{
+		Address:     address,
+		Hash:        hash,
+		GenesisHash: genesisHash,
+		Idx:         chunkIdx,
+	}
+	return returnChunkDataSQL(key, chunkData)
 }
 
-func returnChunkDataSQL(key string, address string, hash string, genesisHash string, chunkIdx int64) oyster_utils.ChunkData {
+func returnChunkDataSQL(key string, chunkData oyster_utils.ChunkData) oyster_utils.ChunkData {
 	rawMessage := ""
 	message := ""
 	values, _ := oyster_utils.BatchGet(&oyster_utils.KVKeys{key})
@@ -1295,15 +1317,17 @@ func returnChunkDataSQL(key string, address string, hash string, genesisHash str
 	}
 
 	return oyster_utils.ChunkData{
-		Address:     address,
+		Address:     chunkData.Address,
 		RawMessage:  rawMessage,
 		Message:     message,
-		Hash:        hash,
-		Idx:         chunkIdx,
-		GenesisHash: genesisHash,
+		Hash:        chunkData.Hash,
+		Idx:         chunkData.Idx,
+		GenesisHash: chunkData.GenesisHash,
 	}
 }
 
+/*GetMultiChunkData gets data about multiple chunks.  It will only return data for a chunk if both the hash and message
+is ready.*/
 func GetMultiChunkData(prefix string, genesisHash string, ks *oyster_utils.KVKeys) ([]oyster_utils.ChunkData, error) {
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 		return oyster_utils.GetBulkChunkData(prefix, genesisHash, ks)

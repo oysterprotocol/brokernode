@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	/*DataMapTableName is the name of the data maps table in SQL*/
 	DataMapTableName = "data_maps"
 
 	// The max number of values to insert to db via Sql: INSERT INTO table_name VALUES.

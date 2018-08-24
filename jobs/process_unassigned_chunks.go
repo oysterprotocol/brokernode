@@ -3,11 +3,11 @@ package jobs
 import (
 	"errors"
 	"fmt"
+	"github.com/iotaledger/giota"
 	"math"
 	"os"
 	"time"
 
-	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -127,6 +127,8 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 	}
 }
 
+/*SkipVerificationOfFirstChunks will skip verifying for the first PercentOfChunksToSkipVerification% of chunks of
+the alpha session and the last PercentOfChunksToSkipVerification% of the beta session*/
 func SkipVerificationOfFirstChunks(chunks []oyster_utils.ChunkData, session models.UploadSession) ([]oyster_utils.ChunkData,
 	[]oyster_utils.ChunkData) {
 
@@ -188,6 +190,7 @@ func SkipVerificationOfFirstChunks(chunks []oyster_utils.ChunkData, session mode
 	return skipVerifyOfChunks, restOfChunks
 }
 
+/*StageTreasures creates the entries in the treasures table*/
 func StageTreasures(treasureChunks []oyster_utils.ChunkData, session models.UploadSession) {
 
 	if len(treasureChunks) == 0 || oyster_utils.BrokerMode != oyster_utils.ProdMode {

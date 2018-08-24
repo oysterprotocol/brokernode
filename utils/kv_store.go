@@ -94,12 +94,12 @@ func init() {
 func getDBMap() *KVDBMap {
 	if os.Getenv("GO_ENV") == "test" {
 		return &unitTestDBMap
-	} else {
-		return &prodDBMap
 	}
+	return &prodDBMap
 }
 
-//
+/*GenerateBulkKeys will generate keys for badger from a starting index to an ending index, with all keys having the
+same genesis hash*/
 func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKeys {
 
 	var keys KVKeys
@@ -123,6 +123,7 @@ func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKey
 	return &keys
 }
 
+/*GetChunkIdxFromKey determines the chunk idx based on the key*/
 func GetChunkIdxFromKey(key string) int64 {
 	s := key
 	if i := strings.LastIndexByte(key, KeyDelimiter); i >= 0 {
@@ -378,6 +379,7 @@ func GetChunkData(prefix string, genesisHash string, chunkIdx int64) ChunkData {
 	}
 }
 
+/*GetMessageData gets the message data for a chunk*/
 func GetMessageData(prefix string, genesisHash string, chunkIdx int64) string {
 
 	key := GetBadgerKey([]string{genesisHash, strconv.FormatInt(int64(chunkIdx), 10)})
@@ -393,6 +395,7 @@ func GetMessageData(prefix string, genesisHash string, chunkIdx int64) string {
 	return rawMessage
 }
 
+/*GetMessageData gets the hash data for a chunk*/
 func GetHashData(prefix string, genesisHash string, chunkIdx int64) string {
 
 	key := GetBadgerKey([]string{genesisHash, strconv.FormatInt(int64(chunkIdx), 10)})
@@ -733,6 +736,7 @@ func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int64
 	return err
 }
 
+/*AllChunkDataHasArrived returns true if we have both message data and hash data for a chunk*/
 func AllChunkDataHasArrived(chunkData ChunkData) bool {
 	return chunkData.Address != "" && chunkData.Message != "" && chunkData.Hash != ""
 }
@@ -740,7 +744,6 @@ func AllChunkDataHasArrived(chunkData ChunkData) bool {
 func getTTL(ttl time.Duration) time.Duration {
 	if os.Getenv("GO_ENV") != "test" {
 		return ttl
-	} else {
-		return TestValueTimeToLive
 	}
+	return TestValueTimeToLive
 }
