@@ -267,45 +267,48 @@ func InsertTreasureChunks(chunks []oyster_utils.ChunkData, treasureChunks []oyst
 		return treasureChunks
 	}
 
-	var idxTarget int
-	if session.Type == models.SessionTypeAlpha {
-		idxTarget = 1
-	} else {
-		idxTarget = -1
+	treasureChunksMapped := make(map[int64]oyster_utils.ChunkData)
+	nonTreasureChunksMapped := make(map[int64]oyster_utils.ChunkData)
+
+	maxIdx := int64(0)
+	minIdx := int64(0)
+
+	for _, chunk := range chunks {
+		maxIdx = int64(math.Max(float64(maxIdx), float64(chunk.Idx)))
+		minIdx = int64(math.Min(float64(minIdx), float64(chunk.Idx)))
+		nonTreasureChunksMapped[chunk.Idx] = chunk
+	}
+	for _, chunk := range treasureChunks {
+		maxIdx = int64(math.Max(float64(maxIdx), float64(chunk.Idx)))
+		minIdx = int64(math.Min(float64(minIdx), float64(chunk.Idx)))
+		treasureChunksMapped[chunk.Idx] = chunk
 	}
 
-	treasureChunksMapped := make(map[int64]oyster_utils.ChunkData)
-	for _, treasureChunk := range treasureChunks {
-		treasureChunksMapped[treasureChunk.Idx] = treasureChunk
+	returnChunks := []oyster_utils.ChunkData{}
+
+	startIdx := minIdx
+	endIdx := maxIdx
+	step := 1
+	if session.Type == models.SessionTypeBeta {
+		startIdx = maxIdx
+		endIdx = minIdx
+		step = -1
+	}
+
+	for i := startIdx; i != endIdx+int64(step); i = i + int64(step) {
+		if _, ok := treasureChunksMapped[i]; ok {
+			returnChunks = append(returnChunks, treasureChunksMapped[i])
+		}
+		if _, ok := nonTreasureChunksMapped[i]; ok {
+			returnChunks = append(returnChunks, nonTreasureChunksMapped[i])
+		}
 	}
 
 	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: reinsert_treasure_chunks", analytics.NewProperties().
 		Set("num_chunks", len(chunks)).
 		Set("num_treasure_chunks", len(treasureChunks)))
 
-	treasureChunksInserted := 0
-
-	// this puts the treasure chunks back into the array where they belong
-	for ok, i := true, 0; ok; ok = treasureChunksInserted < len(treasureChunks) && i < len(chunks) {
-		if _, ok := treasureChunksMapped[chunks[i].Idx-int64(idxTarget)]; ok && i == 0 {
-			chunks = append([]oyster_utils.ChunkData{treasureChunksMapped[chunks[i].Idx-int64(idxTarget)]}, chunks...)
-			treasureChunksInserted++
-			i++ // skip an iteration
-		} else if _, ok := treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]; ok &&
-			i == len(chunks)-1 {
-			chunks = append(chunks, treasureChunksMapped[chunks[i].Idx+int64(idxTarget)])
-			treasureChunksInserted++
-			i++ // skip an iteration
-		} else if _, ok := treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]; ok {
-			// LOOK INTO THIS
-			chunks = append(chunks[:i+2], chunks[i+1:]...)
-			chunks[i+1] = treasureChunksMapped[chunks[i].Idx+int64(idxTarget)]
-			treasureChunksInserted++
-			i++ // skip an iteration
-		}
-		i++
-	}
-	return chunks
+	return returnChunks
 }
 
 // actually send the chunks

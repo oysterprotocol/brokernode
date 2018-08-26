@@ -616,7 +616,7 @@ func (u *UploadSession) WaitForAllMessages(maxTimesToCheckForAllChunks int) (boo
 /*CheckIfAllDataIsReady wraps calls which will check if the message data and hash data have both been created*/
 func (u *UploadSession) CheckIfAllDataIsReady() bool {
 
-	return u.CheckIfAllHashesAreReady() && u.CheckIfAllMessagesAreReady()
+	return u.AllDataReady == AllDataReady || (u.CheckIfAllHashesAreReady() && u.CheckIfAllMessagesAreReady())
 }
 
 /*CheckIfAllHashesAreReady verifies that all the hashes for the file chunks have been created.  It returns true if

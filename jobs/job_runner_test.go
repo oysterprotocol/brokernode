@@ -24,7 +24,6 @@ func (suite *JobsSuite) SetupTest() {
 	suite.Model.SetupTest()
 
 	if oyster_utils.IsKvStoreEnabled() {
-		suite.Nil(oyster_utils.RemoveAllKvStoreData())
 		suite.Nil(oyster_utils.InitKvStore())
 	}
 

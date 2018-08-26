@@ -80,8 +80,11 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 
 	for {
 		jobs.BuryTreasureInDataMaps()
-		finishedMessages, _ := uploadSession1.WaitForAllMessages(3)
-		if finishedMessages {
+		session := models.UploadSession{}
+		models.DB.Find(&session, uploadSession1.ID)
+		finishedMessages, _ := session.WaitForAllMessages(3)
+		finishedHashes, _ := session.WaitForAllHashes(3)
+		if finishedMessages && finishedHashes {
 			break
 		}
 	}

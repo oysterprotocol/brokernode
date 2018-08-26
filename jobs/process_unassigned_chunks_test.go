@@ -17,7 +17,7 @@ var (
 	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
-func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
+func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
 	defer oyster_utils.ResetPoWMode()
@@ -100,9 +100,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 
 	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-	suite.Equal(4*(numChunks), len(AllChunksCalled))
-	// Normally we'd expect this to be 4*(numChunks + 1), but we didn't bother to make the
-	// message data for the treasure chunks
+	suite.Equal(4*(uploadSession1.NumChunks), len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
@@ -144,7 +142,7 @@ func (suite *JobsSuite) Done_ProcessUnassignedChunks() {
 	suite.Equal(3, genHashMapOrder[uploadSession3.GenesisHash])
 }
 
-func (suite *JobsSuite) Done_HandleTreasureChunks_not_attached_yet() {
+func (suite *JobsSuite) Test_HandleTreasureChunks_not_attached_yet() {
 
 	numChunks := 25
 
@@ -181,8 +179,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_not_attached_yet() {
 	suite.Equal(int64(15), treasureChunks[0].Idx)
 }
 
-func (suite *JobsSuite) Done_HandleTreasureChunks_already_attached() {
-
+func (suite *JobsSuite) Test_HandleTreasureChunks_already_attached() {
 	numChunks := 25
 
 	// make suite available inside mock methods
@@ -203,7 +200,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_already_attached() {
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
-	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
+	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{20}, uploadSession1.NumChunks)
 
 	chunkData20 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		int64(20))
@@ -226,7 +223,7 @@ func (suite *JobsSuite) Done_HandleTreasureChunks_already_attached() {
 	suite.Equal(0, len(treasureChunks))
 }
 
-func (suite *JobsSuite) Done_InsertTreasureChunks_AlphaSession() {
+func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
 
 	numChunks := 25
 
@@ -270,7 +267,7 @@ func (suite *JobsSuite) Done_InsertTreasureChunks_AlphaSession() {
 	}
 }
 
-func (suite *JobsSuite) Done_InsertTreasureChunks_BetaSession() {
+func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 
 	numChunks := 25
 
@@ -314,7 +311,7 @@ func (suite *JobsSuite) Done_InsertTreasureChunks_BetaSession() {
 	}
 }
 
-func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Beta() {
+func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
 	// instead of numChunks + 1
@@ -368,7 +365,7 @@ func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Beta() {
 	}
 }
 
-func (suite *JobsSuite) Done_SkipVerificationOfFirstChunks_Alpha() {
+func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
 	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
 	// instead of numChunks + 1

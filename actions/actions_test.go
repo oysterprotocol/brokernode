@@ -16,7 +16,6 @@ func (suite *ActionSuite) SetupTest() {
 	suite.Action.SetupTest()
 
 	if oyster_utils.IsKvStoreEnabled() {
-		suite.Nil(oyster_utils.RemoveAllKvStoreData())
 		suite.Nil(oyster_utils.InitKvStore())
 	}
 

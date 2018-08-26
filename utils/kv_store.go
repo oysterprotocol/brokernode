@@ -251,6 +251,7 @@ func CloseKvStore() error {
 	if badgerDB == nil {
 		return nil
 	}
+
 	err := badgerDB.Close()
 	LogIfError(err, nil)
 	badgerDB = nil

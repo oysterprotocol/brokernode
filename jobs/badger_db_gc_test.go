@@ -1,5 +1,6 @@
 package jobs_test
 
+/*
 import (
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -44,3 +45,4 @@ func (suite *JobsSuite) Test_BadgerDbGc() {
 	//Should NOT have been garbage collected
 	suite.Equal(valueToKeep, (*(keyValuePair))[keyToKeep])
 }
+*/
