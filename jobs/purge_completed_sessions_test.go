@@ -118,15 +118,13 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	err = suite.DB.All(&completedDataMaps)
 	suite.Nil(err)
 
-	if services.IsKvStoreEnabled() {
-		var keys services.KVKeys
-		for _, cDataMap := range completedDataMaps {
-			keys = append(keys, cDataMap.MsgID)
-		}
-		kvPairs, err := services.BatchGet(&keys)
-		suite.Nil(err)
-		suite.Equal(len(completedDataMaps), len(*kvPairs))
+	var keys services.KVKeys
+	for _, cDataMap := range completedDataMaps {
+		keys = append(keys, cDataMap.MsgID)
 	}
+	kvPairs, err := services.BatchGet(&keys)
+	suite.Nil(err)
+	suite.Equal(len(completedDataMaps), len(*kvPairs))
 
 	uploadSessions = []models.UploadSession{}
 	err = suite.DB.All(&uploadSessions)

@@ -64,9 +64,7 @@ func PurgeCompletedSessions(PrometheusWrapper services.PrometheusService) {
 			continue
 		}
 
-		if services.IsKvStoreEnabled() {
-			services.DeleteMsgDatas(moveToCompleteDm)
-		}
+		services.DeleteMsgDatas(moveToCompleteDm)
 	}
 }
 
@@ -172,9 +170,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 			MsgStatus:   dataMap.MsgStatus,
 			MsgID:       oyster_utils.GenerateBadgerKey(models.CompletedDataMapsMsgIDPrefix, dataMap.GenesisHash, dataMap.ChunkIdx),
 		}
-		if !services.IsKvStoreEnabled() {
-			completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
-		}
+		completedDataMap.Message = services.GetMessageFromDataMap(dataMap)
 
 		if vErr, err := completedDataMap.Validate(nil); err != nil || vErr.HasAny() {
 			oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, nil)
@@ -195,9 +191,7 @@ func moveToComplete(dataMaps []models.DataMap) error {
 	}
 
 	err := models.BatchUpsert("completed_data_maps", upsertedValues, dbOperation.GetColumns(), nil)
-	if services.IsKvStoreEnabled() {
-		services.BatchSet(&messagsKvPairs, models.CompletedDataMapsTimeToLive)
-	}
+	services.BatchSet(&messagsKvPairs, models.CompletedDataMapsTimeToLive)
 	if hasValidationError {
 		return errors.New("Partial update failed")
 	}

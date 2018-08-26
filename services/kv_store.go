@@ -65,15 +65,10 @@ func init() {
 
 	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
 
-	// enable unless explicitly disabled in .env file
-	isKvStoreEnable = os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
-
-	if IsKvStoreEnabled() {
-		err := InitKvStore()
-		// If error in init the KV store. Just crash and fail the entirely process and wait for restart.
-		if err != nil {
-			panic(err.Error())
-		}
+	err := InitKvStore()
+	// If error in init the KV store. Just crash and fail the entirely process and wait for restart.
+	if err != nil {
+		panic(err.Error())
 	}
 }
 
@@ -283,19 +278,14 @@ func GetBadgerDb() *badger.DB {
 	return badgerDB
 }
 
-/*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
-func IsKvStoreEnabled() bool {
-	return isKvStoreEnable
-}
-
 /*DataMapGet returns the message reference by dataMap.*/
 func GetMessageFromDataMap(dataMap models.DataMap) string {
-	value := dataMap.Message
-	if IsKvStoreEnabled() {
-		values, _ := BatchGet(&KVKeys{dataMap.MsgID})
-		if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
-			value = v
-		}
+	var value string
+	values, _ := BatchGet(&KVKeys{dataMap.MsgID})
+	if v, hasKey := (*values)[dataMap.MsgID]; hasKey {
+		value = v
+	} else {
+		value = dataMap.Message
 	}
 
 	if dataMap.MsgStatus == models.MsgStatusUploadedHaveNotEncoded {
@@ -632,10 +622,6 @@ func DeleteDataFromUniqueDB(dbID []string, genesisHash string, startingIdx int,
 
 /*DeleteMsgDatas deletes the data referred by dataMaps. */
 func DeleteMsgDatas(dataMaps []models.DataMap) {
-	if !IsKvStoreEnabled() {
-		return
-	}
-
 	var keys KVKeys
 	for _, dm := range dataMaps {
 		keys = append(keys, dm.MsgID)
