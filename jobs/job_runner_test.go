@@ -101,6 +101,8 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
 	}
 
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	models.DB.ValidateAndUpdate(session)
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	chunkReqs := GenerateChunkRequests(numChunksToGenerate, session.GenesisHash)
