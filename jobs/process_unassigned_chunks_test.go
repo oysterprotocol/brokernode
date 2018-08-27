@@ -425,6 +425,7 @@ func (suite *JobsSuite) Test_StageTreasures() {
 		FileSizeBytes:        15000,
 		NumChunks:            15,
 		StorageLengthInYears: 1,
+		PaymentStatus:        models.PaymentStatusConfirmed,
 	}
 
 	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
