@@ -1,8 +1,6 @@
 package jobs_test
 
 import (
-	"fmt"
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
@@ -15,7 +13,7 @@ var (
 	sendChunksToChannelMockCalled_process_unassigned_chunks              = false
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = false
 	findTransactionsMockCalled_process_unassigned_chunks                 = false
-	AllChunksCalled                                                      []models.DataMap
+	AllChunksCalled                                                      []oyster_utils.ChunkData
 	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
 
@@ -36,84 +34,73 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	models.MakeChannels(3)
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdeff1",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
+		AllDataReady:   models.AllDataReady,
 	}
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:    "abcdeff2",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
+		AllDataReady:   models.AllDataReady,
 	}
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:    "abcdeff3",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
+		AllDataReady:   models.AllDataReady,
 	}
 
 	uploadSession4 := models.UploadSession{
-		GenesisHash:    "abcdeff4",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeBeta,
 		PaymentStatus:  models.PaymentStatusConfirmed,
 		TreasureStatus: models.TreasureInDataMapComplete,
+		AllDataReady:   models.AllDataReady,
 	}
 
-	chunksReady, _, err := uploadSession1.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
-
-	chunksReady, _, err = uploadSession2.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
-
-	chunksReady, _, err = uploadSession3.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
-
-	chunksReady, _, err = uploadSession4.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
+	SessionSetUpForTest(&uploadSession2, []int{15}, uploadSession2.NumChunks)
+	SessionSetUpForTest(&uploadSession3, []int{15}, uploadSession3.NumChunks)
+	SessionSetUpForTest(&uploadSession4, []int{15}, uploadSession4.NumChunks)
 
 	// set uploadSession4 to be the oldest
-	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-20*time.Second), "abcdeff4").All(&[]models.UploadSession{})
+	err := suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+		time.Now().Add(-20*time.Second), uploadSession4.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession2 to next oldest
 	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-15*time.Second), "abcdeff2").All(&[]models.UploadSession{})
+		time.Now().Add(-15*time.Second), uploadSession2.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession1 to next oldest after uploadSession2
 	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
-		time.Now().Add(-10*time.Second), "abcdeff1").All(&[]models.UploadSession{})
+		time.Now().Add(-10*time.Second), uploadSession1.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// uploadSession3 will be the newest
-
-	// set all data maps to unassigned
-	err = suite.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
-	suite.Nil(err)
 
 	// call method under test
 	jobs.ProcessUnassignedChunks(IotaMock, jobs.PrometheusWrapper)
 
 	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-	suite.Equal(4*(numChunks+1), len(AllChunksCalled)) // 4 data maps so 4 chunks have been added
+	suite.Equal(4*(uploadSession1.NumChunks), len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
@@ -133,25 +120,29 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	i := 0
 
 	for _, chunk := range AllChunksCalled {
-		genHashMapIdx[chunk.GenesisHash] = append(genHashMapIdx[chunk.GenesisHash], chunk.ChunkIdx)
+		genHashMapIdx[chunk.GenesisHash] = append(genHashMapIdx[chunk.GenesisHash], int(chunk.Idx))
 		if _, ok := genHashMapOrder[chunk.GenesisHash]; !ok {
 			genHashMapOrder[chunk.GenesisHash] = i
 			i++
 		}
 	}
 
-	suite.True(genHashMapIdx["abcdeff4"][0] > genHashMapIdx["abcdeff4"][len(genHashMapIdx["abcdeff4"])-1])
-	suite.True(genHashMapIdx["abcdeff2"][0] > genHashMapIdx["abcdeff2"][len(genHashMapIdx["abcdeff2"])-1])
-	suite.True(genHashMapIdx["abcdeff1"][0] < genHashMapIdx["abcdeff1"][len(genHashMapIdx["abcdeff1"])-1])
-	suite.True(genHashMapIdx["abcdeff3"][0] < genHashMapIdx["abcdeff3"][len(genHashMapIdx["abcdeff3"])-1])
+	suite.True(genHashMapIdx[uploadSession4.GenesisHash][0] >
+		genHashMapIdx[uploadSession4.GenesisHash][len(genHashMapIdx[uploadSession4.GenesisHash])-1])
+	suite.True(genHashMapIdx[uploadSession2.GenesisHash][0] >
+		genHashMapIdx[uploadSession2.GenesisHash][len(genHashMapIdx[uploadSession2.GenesisHash])-1])
+	suite.True(genHashMapIdx[uploadSession1.GenesisHash][0] <
+		genHashMapIdx[uploadSession1.GenesisHash][len(genHashMapIdx[uploadSession1.GenesisHash])-1])
+	suite.True(genHashMapIdx[uploadSession3.GenesisHash][0] <
+		genHashMapIdx[uploadSession3.GenesisHash][len(genHashMapIdx[uploadSession3.GenesisHash])-1])
 
-	suite.Equal(0, genHashMapOrder["abcdeff4"])
-	suite.Equal(1, genHashMapOrder["abcdeff2"])
-	suite.Equal(2, genHashMapOrder["abcdeff1"])
-	suite.Equal(3, genHashMapOrder["abcdeff3"])
+	suite.Equal(0, genHashMapOrder[uploadSession4.GenesisHash])
+	suite.Equal(1, genHashMapOrder[uploadSession2.GenesisHash])
+	suite.Equal(2, genHashMapOrder[uploadSession1.GenesisHash])
+	suite.Equal(3, genHashMapOrder[uploadSession3.GenesisHash])
 }
 
-func (suite *JobsSuite) Test_HandleTreasureChunks() {
+func (suite *JobsSuite) Test_HandleTreasureChunks_not_attached_yet() {
 
 	numChunks := 25
 
@@ -164,66 +155,72 @@ func (suite *JobsSuite) Test_HandleTreasureChunks() {
 	// make 3 channels
 	models.MakeChannels(3)
 
-	treasureMap := `[{
-		"sector": 1,
-		"idx": 15,
-		"key": "000000000000000000000000000000010000000000000000000000000000000001"
-		},
-		{
-		"sector": 1,
-		"idx": 20,
-		"key": "000000000000000000000000000000020000000000000000000000000000000002"
-		}]`
-
 	uploadSession1 := models.UploadSession{
-		GenesisHash:    "abcdeff1",
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:      numChunks,
 		FileSizeBytes:  3000,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  models.PaymentStatusConfirmed,
-		TreasureStatus: models.TreasureInDataMapComplete,
-		TreasureIdxMap: nulls.String{string(treasureMap), true},
+		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
-	for i := 0; i < numChunks; i++ {
-		suite.DB.ValidateAndSave(&models.DataMap{
-			ChunkIdx:    i,
-			GenesisHash: "abcdeff1",
-			Hash:        "SOMEHASH",
-			Address:     "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
-			MsgID:       fmt.Sprintf("msg_id_%d", i),
-			MsgStatus:   models.MsgStatusNotUploaded,
-		})
-	}
+	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
-	// set all data maps to unassigned
-	err := suite.DB.RawQuery("UPDATE data_maps SET status = ?", models.Unassigned).All(&[]models.DataMap{})
-	suite.Nil(err)
-
-	treasureChunk := models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * FROM data_maps WHERE chunk_idx = ?", 20).First(&treasureChunk)
-	suite.Nil(err)
-
-	// setting the address to something that the findTransactions mock can check for
-	treasureChunk.Address = fakeFindTransactionsAddress
-	suite.DB.ValidateAndSave(&treasureChunk)
-
-	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
-	suite.Nil(err)
-	suite.Equal(numChunks, len(dataMaps))
+	finishedHashes := uploadSession1.CheckIfAllHashesAreReady()
+	finishedMessages := uploadSession1.CheckIfAllMessagesAreReady()
+	suite.True(finishedHashes && finishedMessages)
 
 	// call method under test
-	chunksToAttach, treasureChunks := jobs.HandleTreasureChunks(dataMaps, uploadSession1, IotaMock)
+	chunksToAttach, treasureChunks := jobs.HandleTreasureChunks(bulkChunkData, uploadSession1, IotaMock)
+
+	suite.True(findTransactionsMockCalled_process_unassigned_chunks)
+	suite.Equal(len(bulkChunkData)-1, len(chunksToAttach))
+	suite.Equal(1, len(treasureChunks))
+	suite.Equal(int64(15), treasureChunks[0].Idx)
+}
+
+func (suite *JobsSuite) Test_HandleTreasureChunks_already_attached() {
+	numChunks := 25
+
+	// make suite available inside mock methods
+	Suite = *suite
+
+	// assign the mock methods for this test
+	makeMocks_process_unassigned_chunks(&IotaMock)
+
+	// make 3 channels
+	models.MakeChannels(3)
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		NumChunks:      numChunks,
+		FileSizeBytes:  3000,
+		Type:           models.SessionTypeAlpha,
+		PaymentStatus:  models.PaymentStatusConfirmed,
+		TreasureStatus: models.TreasureInDataMapPending,
+	}
+
+	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{20}, uploadSession1.NumChunks)
+
+	chunkData20 := models.GetSingleChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		int64(20))
+
+	suite.NotEqual("", chunkData20.Address)
+	suite.NotEqual("", chunkData20.Message)
+
+	// tell the findTransactions mock to check for this address
+	fakeFindTransactionsAddress = chunkData20.Address
+
+	// call method under test
+	chunksToAttach, treasureChunks := jobs.HandleTreasureChunks(bulkChunkData, uploadSession1, IotaMock)
 
 	for _, chunk := range chunksToAttach {
-		suite.NotEqual(20, chunk.ChunkIdx)
+		suite.NotEqual(20, chunk.Idx)
 	}
 
 	suite.True(findTransactionsMockCalled_process_unassigned_chunks)
-	suite.Equal(len(dataMaps)-2, len(chunksToAttach))
-	suite.Equal(1, len(treasureChunks))
-	suite.Equal(15, treasureChunks[0].ChunkIdx)
+	suite.Equal(len(bulkChunkData)-1, len(chunksToAttach))
+	suite.Equal(0, len(treasureChunks))
 }
 
 func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
@@ -231,32 +228,24 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeAlpha,
 	}
 
-	nonTreasureChunks := []models.DataMap{}
-	treasureChunks := []models.DataMap{}
+	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
-	for i := 2; i < 25; i++ {
-		if i != 1 && i != 10 && i != 25 {
-			nonTreasureChunks = append(nonTreasureChunks, models.DataMap{
-				ChunkIdx: i,
-			})
+	nonTreasureChunks := []oyster_utils.ChunkData{}
+	treasureChunks := []oyster_utils.ChunkData{}
+
+	for i := 0; i < len(bulkChunkData); i++ {
+		if bulkChunkData[i].Idx != 1 && bulkChunkData[i].Idx != 10 && bulkChunkData[i].Idx != 25 {
+			nonTreasureChunks = append(nonTreasureChunks, bulkChunkData[i])
+		} else {
+			treasureChunks = append(treasureChunks, bulkChunkData[i])
 		}
 	}
-
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 1,
-	})
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 10,
-	})
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 25,
-	})
 
 	// call method under test
 	allChunks := jobs.InsertTreasureChunks(nonTreasureChunks, treasureChunks, uploadSession1)
@@ -265,15 +254,15 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_AlphaSession() {
 
 	// verify chunks are in the expected (ascending) order
 	for i, chunk := range allChunks {
-		if chunk.ChunkIdx == 1 {
-			suite.Equal(2, allChunks[i+1].ChunkIdx)
+		if chunk.Idx == 1 {
+			suite.Equal(int64(2), allChunks[i+1].Idx)
 		}
-		if chunk.ChunkIdx == 10 {
-			suite.Equal(9, allChunks[i-1].ChunkIdx)
-			suite.Equal(11, allChunks[i+1].ChunkIdx)
+		if chunk.Idx == 10 {
+			suite.Equal(int64(9), allChunks[i-1].Idx)
+			suite.Equal(int64(11), allChunks[i+1].Idx)
 		}
-		if chunk.ChunkIdx == 25 {
-			suite.Equal(24, allChunks[i-1].ChunkIdx)
+		if chunk.Idx == 25 {
+			suite.Equal(int64(24), allChunks[i-1].Idx)
 		}
 	}
 }
@@ -283,32 +272,24 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 	numChunks := 25
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeBeta,
 	}
 
-	nonTreasureChunks := []models.DataMap{}
-	treasureChunks := []models.DataMap{}
+	bulkChunkData := SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
-	for i := 25; i > 0; i-- {
-		if i != 1 && i != 10 && i != 25 {
-			nonTreasureChunks = append(nonTreasureChunks, models.DataMap{
-				ChunkIdx: i,
-			})
+	nonTreasureChunks := []oyster_utils.ChunkData{}
+	treasureChunks := []oyster_utils.ChunkData{}
+
+	for i := 0; i < len(bulkChunkData); i++ {
+		if bulkChunkData[i].Idx != 1 && bulkChunkData[i].Idx != 10 && bulkChunkData[i].Idx != 25 {
+			nonTreasureChunks = append(nonTreasureChunks, bulkChunkData[i])
+		} else {
+			treasureChunks = append(treasureChunks, bulkChunkData[i])
 		}
 	}
-
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 1,
-	})
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 10,
-	})
-	treasureChunks = append(treasureChunks, models.DataMap{
-		ChunkIdx: 25,
-	})
 
 	// call method under test
 	allChunks := jobs.InsertTreasureChunks(nonTreasureChunks, treasureChunks, uploadSession1)
@@ -317,43 +298,40 @@ func (suite *JobsSuite) Test_InsertTreasureChunks_BetaSession() {
 
 	// verify chunks are in the expected (descending) order
 	for i, chunk := range allChunks {
-		if chunk.ChunkIdx == 1 {
-			suite.Equal(2, allChunks[i-1].ChunkIdx)
+		if chunk.Idx == 1 {
+			suite.Equal(int64(2), allChunks[i-1].Idx)
 		}
-		if chunk.ChunkIdx == 10 {
-			suite.Equal(9, allChunks[i+1].ChunkIdx)
-			suite.Equal(11, allChunks[i-1].ChunkIdx)
+		if chunk.Idx == 10 {
+			suite.Equal(int64(9), allChunks[i+1].Idx)
+			suite.Equal(int64(11), allChunks[i-1].Idx)
 		}
-		if chunk.ChunkIdx == 25 {
-			suite.Equal(24, allChunks[i+1].ChunkIdx)
+		if chunk.Idx == 25 {
+			suite.Equal(int64(24), allChunks[i+1].Idx)
 		}
 	}
 }
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
+	// instead of numChunks + 1
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
 	defer oyster_utils.ResetBrokerMode()
 
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeBeta,
 	}
 
-	chunksReady, _, err := uploadSession.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
+	bulkChunkData := SessionSetUpForTest(&uploadSession, []int{}, uploadSession.NumChunks)
 
-	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
-	suite.Nil(err)
-	suite.Equal(numChunks+1, len(dataMaps))
+	suite.Equal(numChunks, len(bulkChunkData))
 
-	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(dataMaps, uploadSession)
+	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(bulkChunkData, uploadSession)
 
 	var lenOfChunksToSkipVerifying int
 	lenOfChunksToSkipVerifying = int((float64(numChunks + 1)) * (float64(jobs.PercentOfChunksToSkipVerification) /
@@ -364,7 +342,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 	suite.Equal(lenOfChunksToSkipVerifying,
 		len(skipVerifyChunks))
-	suite.Equal(numChunks+1-len(skipVerifyChunks), len(restOfChunks))
+	suite.Equal(numChunks-len(skipVerifyChunks), len(restOfChunks))
 
 	var skipVerifyMinIdx int
 	var skipVerifyMaxIdx int
@@ -378,39 +356,36 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 	restMaxIdx = lenOfRestOfChunks - 1
 
 	for _, chunk := range skipVerifyChunks {
-		suite.True(chunk.ChunkIdx >= skipVerifyMinIdx &&
-			chunk.ChunkIdx <= skipVerifyMaxIdx)
+		suite.True(int(chunk.Idx) >= skipVerifyMinIdx &&
+			int(chunk.Idx) <= skipVerifyMaxIdx)
 	}
 	for _, chunk := range restOfChunks {
-		suite.True(chunk.ChunkIdx >= restMinIdx &&
-			chunk.ChunkIdx <= restMaxIdx)
+		suite.True(int(chunk.Idx) >= restMinIdx &&
+			int(chunk.Idx) <= restMaxIdx)
 	}
 }
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
+	// instead of numChunks + 1
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
 	defer oyster_utils.ResetBrokerMode()
 
 	numChunks := 29
 
 	uploadSession := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		NumChunks:     numChunks,
 		FileSizeBytes: 3000,
 		Type:          models.SessionTypeAlpha,
 	}
 
-	chunksReady, _, err := uploadSession.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.Nil(err)
+	bulkChunkData := SessionSetUpForTest(&uploadSession, []int{}, uploadSession.NumChunks)
 
-	dataMaps := []models.DataMap{}
-	err = suite.DB.RawQuery("SELECT * FROM data_maps ORDER BY chunk_idx ASC").All(&dataMaps)
-	suite.Nil(err)
-	suite.Equal(numChunks+1, len(dataMaps))
+	suite.Equal(numChunks, len(bulkChunkData))
 
-	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(dataMaps, uploadSession)
+	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(bulkChunkData, uploadSession)
 
 	var lenOfChunksToSkipVerifying int
 	lenOfChunksToSkipVerifying = int((float64(numChunks + 1)) * (float64(jobs.PercentOfChunksToSkipVerification) /
@@ -418,7 +393,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
 	suite.Equal(lenOfChunksToSkipVerifying,
 		len(skipVerifyChunks))
-	suite.Equal(numChunks+1-len(skipVerifyChunks), len(restOfChunks))
+	suite.Equal(numChunks-len(skipVerifyChunks), len(restOfChunks))
 
 	var skipVerifyMinIdx int
 	var skipVerifyMaxIdx int
@@ -432,13 +407,41 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 	restMaxIdx = numChunks
 
 	for _, chunk := range skipVerifyChunks {
-		suite.True(chunk.ChunkIdx >= skipVerifyMinIdx &&
-			chunk.ChunkIdx <= skipVerifyMaxIdx)
+		suite.True(int(chunk.Idx) >= skipVerifyMinIdx &&
+			int(chunk.Idx) <= skipVerifyMaxIdx)
 	}
 	for _, chunk := range restOfChunks {
-		suite.True(chunk.ChunkIdx >= restMinIdx &&
-			chunk.ChunkIdx <= restMaxIdx)
+		suite.True(int(chunk.Idx) >= restMinIdx &&
+			int(chunk.Idx) <= restMaxIdx)
 	}
+}
+
+func (suite *JobsSuite) Test_StageTreasures() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	u := models.UploadSession{
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        15000,
+		NumChunks:            15,
+		StorageLengthInYears: 1,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+
+	treasureIndexes, _ := u.GetTreasureIndexes()
+	suite.Equal(1, len(treasureIndexes))
+
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIndexes[0]))
+
+	jobs.StageTreasures([]oyster_utils.ChunkData{chunkData}, u)
+
+	treasure := []models.Treasure{}
+
+	suite.DB.Where("genesis_hash = ? AND address = ?", u.GenesisHash, chunkData.Address).All(&treasure)
+
+	suite.Equal(1, len(treasure))
 }
 
 func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
@@ -447,7 +450,7 @@ func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
 	iotaMock.FindTransactions = findTransactions_process_unassigned_chunks
 }
 
-func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, channel *models.ChunkChannel) {
+func sendChunksToChannelMock_process_unassigned_chunks(chunks []oyster_utils.ChunkData, channel *models.ChunkChannel) {
 
 	// our mock was called
 	sendChunksToChannelMockCalled_process_unassigned_chunks = true
@@ -456,13 +459,13 @@ func sendChunksToChannelMock_process_unassigned_chunks(chunks []models.DataMap, 
 	AllChunksCalled = append(AllChunksCalled, chunks...)
 }
 
-func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
+func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []oyster_utils.ChunkData) (filteredChunks services.FilteredChunk, err error) {
 
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = true
 
-	matchesTangle := []models.DataMap{}
-	doesNotMatchTangle := []models.DataMap{}
-	notAttached := []models.DataMap{}
+	matchesTangle := []oyster_utils.ChunkData{}
+	doesNotMatchTangle := []oyster_utils.ChunkData{}
+	notAttached := []oyster_utils.ChunkData{}
 
 	// mark everything as unattached
 	notAttached = append(notAttached, chunks...)

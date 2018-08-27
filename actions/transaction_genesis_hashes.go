@@ -2,17 +2,16 @@ package actions
 
 import (
 	"fmt"
-	"math"
-	"os"
-	"strings"
-
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
 	"github.com/iotaledger/giota"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"math"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type TransactionGenesisHashResource struct {
@@ -72,14 +71,11 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
 	}
 
-	dataMap := models.DataMap{}
-	// TODO:  Would be better if this got a chunk from the session with the oldest "last chunk attached" time
-	dataMapNotFound := models.DB.Limit(1).Where("status = ? ORDER BY updated_at ASC",
-		models.Unassigned).First(&dataMap)
+	dataMap, dataMapNotFoundErr := models.GetChunkForWebnodePoW()
 
-	if dataMapNotFound != nil {
+	if dataMapNotFoundErr != nil {
 		return c.Render(403, r.JSON(map[string]string{"error": "Cannot give proof of work because: " +
-			dataMapNotFound.Error()}))
+			dataMapNotFoundErr.Error()}))
 	}
 
 	tips, err := IotaWrapper.GetTransactionsToApprove()
@@ -88,12 +84,10 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		c.Error(400, err)
 	}
 
+	dataMapKey := oyster_utils.GetBadgerKey([]string{dataMap.GenesisHash, strconv.FormatInt(dataMap.Idx, 10)})
+
 	t := models.Transaction{}
 	models.DB.Transaction(func(tx *pop.Connection) error {
-		dataMap.Status = models.Unverified
-		dataMap.BranchTx = string(tips.BranchTransaction)
-		dataMap.TrunkTx = string(tips.TrunkTransaction)
-		tx.ValidateAndSave(&dataMap)
 
 		storedGenesisHash.WebnodeCount++
 		if storedGenesisHash.WebnodeCount >= models.WebnodeCountLimit {
@@ -104,10 +98,12 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		oyster_utils.LogIfValidationError("validation errors in transaction_genesis_hashes.", vErr, nil)
 
 		t = models.Transaction{
-			Type:      models.TransactionTypeGenesisHash,
-			Status:    models.TransactionStatusPending,
-			DataMapID: dataMap.ID,
-			Purchase:  storedGenesisHash.GenesisHash,
+			Type:        models.TransactionTypeGenesisHash,
+			Status:      models.TransactionStatusPending,
+			DataMapID:   dataMapKey,
+			GenesisHash: dataMap.GenesisHash,
+			Idx:         dataMap.Idx,
+			Purchase:    storedGenesisHash.GenesisHash,
 		}
 		tx.ValidateAndSave(&t)
 		return nil
@@ -117,9 +113,9 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		ID: t.ID,
 		Pow: GenesisHashPow{
 			Address:  dataMap.Address,
-			Message:  services.GetMessageFromDataMap(dataMap),
-			BranchTx: dataMap.BranchTx,
-			TrunkTx:  dataMap.TrunkTx,
+			Message:  dataMap.Message,
+			BranchTx: string(tips.BranchTransaction),
+			TrunkTx:  string(tips.TrunkTransaction),
 		},
 	}
 
@@ -139,7 +135,7 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 
 	// Get transaction
 	t := &models.Transaction{}
-	transactionError := models.DB.Eager("DataMap").Find(t, c.Param("id"))
+	transactionError := models.DB.Find(t, c.Param("id"))
 	if transactionError != nil {
 		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
 	}
@@ -155,36 +151,30 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		return c.Render(400, r.JSON(map[string]string{"error": "Could not generate transaction object from trytes"}))
 	}
 
-	address, addError := giota.ToAddress(t.DataMap.Address)
+	chunkDataInProgress := models.GetSingleChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
+	chunkDataComplete := models.GetSingleChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
+
+	chunkToUse := chunkDataInProgress
+	if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) &&
+		oyster_utils.AllChunkDataHasArrived(chunkDataComplete) {
+		chunkToUse = chunkDataComplete
+
+	} else if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) && !oyster_utils.AllChunkDataHasArrived(chunkDataComplete) {
+		return c.Render(400, r.JSON(map[string]string{"error": "Could not find data for specified chunk"}))
+	}
+
+	address, addError := giota.ToAddress(chunkToUse.Address)
 
 	validAddress := addError == nil && address == iotaTransaction.Address
 	if !validAddress {
 		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
-	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
+	_, messageErr := giota.ToTrytes(chunkToUse.Message)
+	validMessage := messageErr == nil && strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment),
+		chunkToUse.Message)
 	if !validMessage {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
-	}
-
-	branchTxTrytes, err := giota.ToTrytes(t.DataMap.BranchTx)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
-	}
-	validBranch := branchTxTrytes == iotaTransaction.BranchTransaction
-	if !validBranch {
-		return c.Render(400, r.JSON(map[string]string{"error": "Branch is invalid"}))
-	}
-
-	trunkTxTrytes, err := giota.ToTrytes(t.DataMap.TrunkTx)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
-	}
-	validTrunk := trunkTxTrytes == iotaTransaction.TrunkTransaction
-	if !validTrunk {
-		return c.Render(400, r.JSON(map[string]string{"error": "Trunk is invalid"}))
 	}
 
 	host_ip := os.Getenv("HOST_IP")
@@ -212,10 +202,6 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		storedGenesisHash.Status = models.StoredGenesisHashUnassigned
 		storedGenesisHash.WebnodeCount = storedGenesisHash.WebnodeCount + 1
 		tx.ValidateAndSave(&storedGenesisHash)
-
-		dataMap := t.DataMap
-		dataMap.Status = models.Complete
-		tx.ValidateAndSave(&dataMap)
 
 		return nil
 	})

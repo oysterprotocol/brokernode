@@ -21,14 +21,15 @@ const (
 )
 
 type Transaction struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	Status    int       `json:"status" db:"status"`
-	Type      int       `json:"type" db:"type"`
-	DataMapID uuid.UUID `json:"data_map_id" db:"data_map_id"`
-	DataMap   DataMap   `belongs_to:"data_maps" db:"-"`
-	Purchase  string    `json:"purchase" db:"purchase"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	Status      int       `json:"status" db:"status"`
+	Type        int       `json:"type" db:"type"`
+	DataMapID   string    `json:"data_map_id" db:"data_map_id"`
+	GenesisHash string    `json:"genesis_hash" db:"genesis_hash"`
+	Idx         int64     `json:"idx" db:"idx"`
+	Purchase    string    `json:"purchase" db:"purchase"`
 }
 
 // String is not required by pop and may be deleted

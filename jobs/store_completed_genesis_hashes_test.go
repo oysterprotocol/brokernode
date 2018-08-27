@@ -12,16 +12,18 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	fileBytesCount := uint64(2500)
-	numChunks := 3
+	fileBytesCount := uint64(30000)
+	numChunks := 30
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
+	// we will set an upload session to use this same genesis hash to make sure a new one
+	// does not get created
 	suite.DB.ValidateAndSave(&models.StoredGenesisHash{
-		GenesisHash: "abcdeff4",
+		GenesisHash: "abcdef38",
 	})
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   "abcdef39",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -30,12 +32,10 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	_, vErr, err := uploadSession1.StartSessionAndWaitForChunks(500)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:   "abcdeff2",
+		GenesisHash:   "abcdef40",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -44,12 +44,10 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	_, vErr, err = uploadSession2.StartSessionAndWaitForChunks(500)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession2, []int{15}, uploadSession2.NumChunks)
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:   "abcdeff3",
+		GenesisHash:   "abcdef41",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -58,12 +56,12 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	_, vErr, err = uploadSession3.StartSessionAndWaitForChunks(500)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession3, []int{15}, uploadSession3.NumChunks)
 
+	// setting upload session to the same genesis hash as the stored genesis hash that already
+	// exists, to make sure a new one does not get created.
 	uploadSession4 := models.UploadSession{
-		GenesisHash:   "abcdeff4",
+		GenesisHash:   "abcdef38",
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -72,50 +70,45 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 		ETHPrivateKey: privateKey,
 	}
 
-	_, vErr, err = uploadSession4.StartSessionAndWaitForChunks(500)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession4, []int{15}, uploadSession4.NumChunks)
 
 	storedGenHashes := []models.StoredGenesisHash{}
-	err = suite.DB.All(&storedGenHashes)
+	err := suite.DB.All(&storedGenHashes)
 	suite.Nil(err)
 
 	// verify initial lengths are what we expected
 	// we created one to start with
 	suite.Equal(1, len(storedGenHashes))
 
-	// set all chunks of first data map to complete or confirmed
-	allDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&allDone)
-	suite.Nil(err)
+	// set first session's indexes so that it will be regarded as complete
+	firstSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).First(&firstSession)
+	firstSession.NextIdxToAttach = -1
+	firstSession.NextIdxToVerify = -1
+	firstSession.AllDataReady = models.AllDataReady
+	firstSession.PaymentStatus = models.PaymentStatusConfirmed
+	firstSession.TreasureStatus = models.TreasureInDataMapComplete
+	suite.DB.ValidateAndSave(&firstSession)
 
-	for _, dataMap := range allDone {
-		dataMap.Status = models.Complete
-		suite.DB.ValidateAndSave(&dataMap)
-	}
+	// set second session's indexes to midway through the map
+	secondSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession2.GenesisHash).First(&secondSession)
+	secondSession.NextIdxToAttach = int64(secondSession.NumChunks / 2)
+	secondSession.NextIdxToVerify = int64(secondSession.NumChunks / 2)
+	secondSession.AllDataReady = models.AllDataReady
+	secondSession.PaymentStatus = models.PaymentStatusConfirmed
+	secondSession.TreasureStatus = models.TreasureInDataMapComplete
+	suite.DB.ValidateAndSave(&secondSession)
 
-	// set one of them to "confirmed"
-	allDone[1].Status = models.Confirmed
-	suite.DB.ValidateAndSave(&allDone[1])
-
-	// set one chunk of second data map to complete
-	someDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&someDone)
-	suite.Nil(err)
-
-	someDone[0].Status = models.Complete
-	suite.DB.ValidateAndSave(&someDone[0])
-
-	// set all chunks of fourth data map to complete or confirmed
-	// this entry will already be in the stored genesis hashes table but it should not add it again
-	allDoneButAlreadyInStoredGenesisHashesTable := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff4").All(&allDoneButAlreadyInStoredGenesisHashesTable)
-	suite.Nil(err)
-
-	for _, dataMap := range allDoneButAlreadyInStoredGenesisHashesTable {
-		dataMap.Status = models.Complete
-		suite.DB.ValidateAndSave(&dataMap)
-	}
+	// set fourth session's indexes so that it will be regarded as complete
+	fourthSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession4.GenesisHash).First(&fourthSession)
+	fourthSession.NextIdxToAttach = int64(fourthSession.NumChunks)
+	fourthSession.NextIdxToVerify = int64(fourthSession.NumChunks)
+	fourthSession.AllDataReady = models.AllDataReady
+	fourthSession.PaymentStatus = models.PaymentStatusConfirmed
+	fourthSession.TreasureStatus = models.TreasureInDataMapComplete
+	suite.DB.ValidateAndSave(&fourthSession)
 
 	//call method under test
 	jobs.StoreCompletedGenesisHashes(jobs.PrometheusWrapper)
@@ -126,5 +119,9 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 
 	// verify final lengths is what we expected
 	// one new entry has been added
+	for _, hash := range storedGenHashes {
+		suite.True(hash.GenesisHash == "abcdef38" || hash.GenesisHash == uploadSession1.GenesisHash)
+	}
+
 	suite.Equal(2, len(storedGenHashes))
 }

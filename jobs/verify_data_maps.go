@@ -12,86 +12,78 @@ func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramVerifyDataMaps, start)
 
-	unverifiedDataMaps := []models.DataMap{}
+	sessions, err := models.GetSessionsByAge()
 
-	err := models.DB.Where("status = ?", models.Unverified).All(&unverifiedDataMaps)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+	for _, session := range sessions {
+		checkSessionChunks(IotaWrapper, session)
 	}
 
-	if len(unverifiedDataMaps) > 0 {
-		for i := 0; i < len(unverifiedDataMaps); i += BundleSize {
-			end := i + BundleSize
-
-			if end > len(unverifiedDataMaps) {
-				end = len(unverifiedDataMaps)
-			}
-
-			CheckChunks(IotaWrapper, unverifiedDataMaps[i:end])
-		}
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting sessions in VerifyDataMaps"), nil)
 	}
 }
 
-func CheckChunks(IotaWrapper services.IotaService, unverifiedDataMaps []models.DataMap) {
-	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedDataMaps)
+func checkSessionChunks(IotaWrapper services.IotaService, session models.UploadSession) {
+	if session.NextIdxToAttach == session.NextIdxToVerify {
+		return
+	}
+
+	offset := int64(1)
+	if session.Type == models.SessionTypeAlpha {
+		offset = -1
+	}
+
+	keys := oyster_utils.GenerateBulkKeys(session.GenesisHash, session.NextIdxToVerify, session.NextIdxToAttach+offset)
+
+	chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash, keys)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" getting chunk data in checkSessionChunks in "+
+			"verify_data_maps"), nil)
+		return
+	}
+
+	CheckChunks(IotaWrapper, chunkData, session)
+}
+
+/*CheckChunks will make calls to verify the chunks and update the indexes of the session*/
+func CheckChunks(IotaWrapper services.IotaService, unverifiedChunks []oyster_utils.ChunkData,
+	session models.UploadSession) {
+	filteredChunks, err := IotaWrapper.VerifyChunkMessagesMatchRecord(unverifiedChunks)
 	if err != nil {
 		oyster_utils.LogIfError(errors.New(err.Error()+" verifying chunks match record in CheckChunks() "+
 			"in verify_data_maps"), nil)
 	}
 
-	if len(filteredChunks.MatchesTangle) > 0 {
-
-		var updatedDms []string
-		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
-
-		for _, matchingChunk := range filteredChunks.MatchesTangle {
-			matchingChunk.Status = models.Complete
-			updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(matchingChunk))
-		}
-
-		err := models.BatchUpsert(
-			"data_maps",
-			updatedDms,
-			dbOperation.GetColumns(),
-			[]string{"status"})
-
-		if err != nil {
-			oyster_utils.LogIfError(errors.New(err.Error()+" setting status to complete in CheckChunks() "+
-				"in verify_data_maps"), nil)
-		}
-	}
+	treasureChunks := []oyster_utils.ChunkData{}
+	nonTreasureChunks := []oyster_utils.ChunkData{}
 
 	if len(filteredChunks.DoesNotMatchTangle) > 0 {
+		treasureIndexes, err := session.GetTreasureIndexes()
+		oyster_utils.LogIfError(err, nil)
 
-		// when we bring back hooknodes, decrement their reputation here
-
-		var updatedDms []string
-		dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&models.DataMap{})
-
-		for _, notMatchingChunk := range filteredChunks.DoesNotMatchTangle {
-
-			// if a chunk did not match the tangle in verify_data_maps
-			// we mark it as "Error" and there is no reason to check the tangle
-			// for it again while its status is still in an Error state
-
-			// this is to prevent verifyChunkMessageMatchesTangle
-			// from being executed on an Error'd chunk in process_unassigned_chunks
-			notMatchingChunk.Status = models.Error
-			notMatchingChunk.TrunkTx = ""
-			notMatchingChunk.BranchTx = ""
-			notMatchingChunk.NodeID = ""
-			updatedDms = append(updatedDms, dbOperation.GetUpdatedValue(notMatchingChunk))
+		treasureIdxMap := make(map[int64]bool)
+		for _, index := range treasureIndexes {
+			treasureIdxMap[int64(index)] = true
 		}
 
-		err := models.BatchUpsert(
-			"data_maps",
-			updatedDms,
-			dbOperation.GetColumns(),
-			[]string{"status", "trunk_tx", "branch_tx", "node_id"})
-
-		if err != nil {
-			oyster_utils.LogIfError(errors.New(err.Error()+" setting status to error in CheckChunks() "+
-				"in verify_data_maps"), nil)
+		for _, chunk := range filteredChunks.DoesNotMatchTangle {
+			if _, ok := treasureIdxMap[chunk.Idx]; ok {
+				treasureChunks = append(treasureChunks, chunk)
+			} else {
+				nonTreasureChunks = append(nonTreasureChunks, chunk)
+			}
 		}
+		session.DownGradeIndexesOnUnattachedChunks(nonTreasureChunks)
+	}
+
+	if len(filteredChunks.NotAttached) > 0 {
+		session.DownGradeIndexesOnUnattachedChunks(filteredChunks.NotAttached)
+	}
+
+	if len(filteredChunks.MatchesTangle) > 0 {
+		chunks := InsertTreasureChunks(filteredChunks.MatchesTangle, treasureChunks, session)
+
+		session.MoveChunksToCompleted(chunks)
+		session.UpdateIndexWithVerifiedChunks(chunks)
 	}
 }

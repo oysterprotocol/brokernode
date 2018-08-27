@@ -1,42 +1,84 @@
 package jobs_test
 
 import (
+	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 var (
 	verifyChunkMessagesMatchesRecordMockCalled_verify = false
 )
 
-func (suite *JobsSuite) Test_VerifyDataMaps() {
+func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 	// make suite available inside mock methods
 	Suite = *suite
 
+	verifyChunkMessagesMatchesRecordMockCalled_verify = false
+
 	// assign the mock methods for this test
-	makeMocks(&IotaMock)
+	// return all chunks as being attached to the tangle, i.e. all verified
+	IotaMock.VerifyChunkMessagesMatchRecord = func(chunks []oyster_utils.ChunkData) (filteredChunks services.FilteredChunk, err error) {
+
+		// our mock was called
+		verifyChunkMessagesMatchesRecordMockCalled_verify = true
+
+		matchesTangle := []oyster_utils.ChunkData{}
+		doesNotMatchTangle := []oyster_utils.ChunkData{}
+		notAttached := []oyster_utils.ChunkData{}
+
+		matchesTangle = append(matchesTangle, chunks...)
+
+		return services.FilteredChunk{
+			MatchesTangle:      matchesTangle,
+			NotAttached:        notAttached,
+			DoesNotMatchTangle: doesNotMatchTangle,
+		}, err
+	}
 
 	models.MakeChannels(3)
 
 	// populate data_maps
-	genHash := "abcdef"
 	numChunks := 10
 
-	vErr, err := models.BuildDataMaps(genHash, numChunks)
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes: uint64(numChunks * 1000),
+		NumChunks:     numChunks,
+		Type:          models.SessionTypeBeta,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: "000000000000005432",
+	}
+
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
+
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+		int64(uploadSession1.NumChunks))
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
 
 	// check that it is the length we expect
-	allDataMaps := []models.DataMap{}
-	err = suite.DB.All(&allDataMaps)
-	suite.Equal(numChunks, len(allDataMaps))
+	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(0, len(chunksSession1Completed))
 
-	// make first 6 data maps unverified
-	for i := 0; i < 6; i++ {
-		allDataMaps[i].Status = models.Unverified
-		suite.DB.ValidateAndSave(&allDataMaps[i])
-	}
+	// set all data maps to need verifying
+	session := models.UploadSession{}
+	suite.DB.First(&session)
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	session.TreasureStatus = models.TreasureInDataMapComplete
+	session.AllDataReady = models.AllDataReady
+	suite.DB.ValidateAndUpdate(&session)
+
+	session.NextIdxToAttach = -1
+	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	suite.DB.ValidateAndUpdate(&session)
+
+	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
@@ -44,38 +86,300 @@ func (suite *JobsSuite) Test_VerifyDataMaps() {
 	// verify the mock methods were called
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 
-	// verify that the data maps that didn't match the tangle were set to an error state
-	allDataMaps = []models.DataMap{}
-	err = suite.DB.Where("status = ?", models.Error).All(&allDataMaps)
-	suite.Equal(1, len(allDataMaps))
+	session = models.UploadSession{}
+	suite.DB.First(&session)
+
+	suite.Equal(int64(-1), session.NextIdxToVerify)
+
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(0, len(chunksSession1InProgress))
+	suite.Equal(numChunks+1, len(chunksSession1Completed))
+
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 }
 
-func makeMocks(iotaMock *services.IotaService) {
-	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock
+func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
+	// make suite available inside mock methods
+	Suite = *suite
+
+	verifyChunkMessagesMatchesRecordMockCalled_verify = false
+
+	// assign the mock methods for this test
+	// return all chunks as being attached to the tangle, i.e. all verified
+	IotaMock.VerifyChunkMessagesMatchRecord = func(chunks []oyster_utils.ChunkData) (filteredChunks services.FilteredChunk, err error) {
+
+		// our mock was called
+		verifyChunkMessagesMatchesRecordMockCalled_verify = true
+
+		matchesTangle := []oyster_utils.ChunkData{}
+		doesNotMatchTangle := []oyster_utils.ChunkData{}
+		notAttached := []oyster_utils.ChunkData{}
+
+		matchesTangle = append(matchesTangle, chunks[0], chunks[1], chunks[2])
+		doesNotMatchTangle = append(doesNotMatchTangle, chunks[3])
+		for i := 4; i < len(chunks); i++ {
+			notAttached = append(notAttached, chunks[i])
+		}
+
+		return services.FilteredChunk{
+			MatchesTangle:      matchesTangle,
+			NotAttached:        notAttached,
+			DoesNotMatchTangle: doesNotMatchTangle,
+		}, err
+	}
+
+	models.MakeChannels(3)
+
+	// populate data_maps
+	numChunks := 10
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes: uint64(numChunks * 1000),
+		NumChunks:     numChunks,
+		Type:          models.SessionTypeBeta,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: "000000000000005432",
+	}
+
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
+
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+		int64(uploadSession1.NumChunks))
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(0, len(chunksSession1Completed))
+
+	// set all data maps to need verifying
+	session := models.UploadSession{}
+	suite.DB.First(&session)
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	session.TreasureStatus = models.TreasureInDataMapComplete
+	session.AllDataReady = models.AllDataReady
+	suite.DB.ValidateAndUpdate(&session)
+
+	session.NextIdxToAttach = -1
+	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	suite.DB.ValidateAndUpdate(&session)
+
+	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+
+	// call method under test, passing in our mock of our iota methods
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+
+	// verify the mock methods were called
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
+
+	session = models.UploadSession{}
+	suite.DB.First(&session)
+
+	suite.Equal(int64(7), session.NextIdxToVerify)
+
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(session.NumChunks-3, len(chunksSession1InProgress))
+	suite.Equal(3, len(chunksSession1Completed))
+
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 }
 
-func verifyChunkMessagesMatchesRecordMock(chunks []models.DataMap) (filteredChunks services.FilteredChunk, err error) {
+func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
+	// make suite available inside mock methods
+	Suite = *suite
 
-	// our mock was called
-	verifyChunkMessagesMatchesRecordMockCalled_verify = true
+	verifyChunkMessagesMatchesRecordMockCalled_verify = false
 
-	allDataMaps := []models.DataMap{}
-	err = Suite.DB.All(&allDataMaps)
-	Suite.Nil(err)
+	// assign the mock methods for this test
+	// return all chunks as being attached to the tangle, i.e. all verified
+	IotaMock.VerifyChunkMessagesMatchRecord = func(chunks []oyster_utils.ChunkData) (filteredChunks services.FilteredChunk, err error) {
 
-	matchesTangle := []models.DataMap{}
-	doesNotMatchTangle := []models.DataMap{}
-	notAttached := []models.DataMap{}
+		// our mock was called
+		verifyChunkMessagesMatchesRecordMockCalled_verify = true
 
-	// assign some data_maps to different arrays to be returned when we filter the chunks
-	matchesTangle = append(matchesTangle, allDataMaps[0], allDataMaps[3], allDataMaps[4], allDataMaps[5])
-	notAttached = append(notAttached, allDataMaps[1])
-	// the contents of 'doesNotMatchTangle' is what we will be checking for later
-	doesNotMatchTangle = append(doesNotMatchTangle, allDataMaps[2])
+		matchesTangle := []oyster_utils.ChunkData{}
+		doesNotMatchTangle := []oyster_utils.ChunkData{}
+		notAttached := []oyster_utils.ChunkData{}
 
-	return services.FilteredChunk{
-		MatchesTangle:      matchesTangle,
-		NotAttached:        notAttached,
-		DoesNotMatchTangle: doesNotMatchTangle,
-	}, err
+		matchesTangle = append(matchesTangle, chunks...)
+
+		return services.FilteredChunk{
+			MatchesTangle:      matchesTangle,
+			NotAttached:        notAttached,
+			DoesNotMatchTangle: doesNotMatchTangle,
+		}, err
+	}
+
+	models.MakeChannels(3)
+
+	// populate data_maps
+	numChunks := 10
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes: uint64(numChunks * 1000),
+		NumChunks:     numChunks,
+		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: "000000000000005432",
+	}
+
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
+
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+		int64(uploadSession1.NumChunks))
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(0, len(chunksSession1Completed))
+
+	// set all data maps to need verifying
+	session := models.UploadSession{}
+	suite.DB.First(&session)
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	session.TreasureStatus = models.TreasureInDataMapComplete
+	session.AllDataReady = models.AllDataReady
+	suite.DB.ValidateAndUpdate(&session)
+
+	session.NextIdxToAttach = -1
+	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	suite.DB.ValidateAndUpdate(&session)
+
+	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+
+	// call method under test, passing in our mock of our iota methods
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+
+	// verify the mock methods were called
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
+
+	session = models.UploadSession{}
+	suite.DB.First(&session)
+
+	suite.Equal(int64(-1), session.NextIdxToVerify)
+
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(0, len(chunksSession1InProgress))
+	suite.Equal(numChunks+1, len(chunksSession1Completed))
+
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
+}
+
+func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
+	// make suite available inside mock methods
+	Suite = *suite
+
+	verifyChunkMessagesMatchesRecordMockCalled_verify = false
+
+	// assign the mock methods for this test
+	// return all chunks as being attached to the tangle, i.e. all verified
+	IotaMock.VerifyChunkMessagesMatchRecord = func(chunks []oyster_utils.ChunkData) (filteredChunks services.FilteredChunk, err error) {
+
+		// our mock was called
+		verifyChunkMessagesMatchesRecordMockCalled_verify = true
+
+		matchesTangle := []oyster_utils.ChunkData{}
+		doesNotMatchTangle := []oyster_utils.ChunkData{}
+		notAttached := []oyster_utils.ChunkData{}
+
+		matchesTangle = append(matchesTangle, chunks[0], chunks[1], chunks[2])
+		doesNotMatchTangle = append(doesNotMatchTangle, chunks[3])
+		for i := 4; i < len(chunks); i++ {
+			notAttached = append(notAttached, chunks[i])
+		}
+
+		return services.FilteredChunk{
+			MatchesTangle:      matchesTangle,
+			NotAttached:        notAttached,
+			DoesNotMatchTangle: doesNotMatchTangle,
+		}, err
+	}
+
+	models.MakeChannels(3)
+
+	// populate data_maps
+	numChunks := 10
+
+	uploadSession1 := models.UploadSession{
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes: uint64(numChunks * 1000),
+		NumChunks:     numChunks,
+		Type:          models.SessionTypeAlpha,
+		ETHAddrAlpha:  nulls.String{string("SOME_ALPHA_ETH_ADDRESS1"), true},
+		ETHAddrBeta:   nulls.String{string("SOME_BETA_ETH_ADDRESS1"), true},
+		ETHPrivateKey: "000000000000005432",
+	}
+
+	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
+
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+		int64(uploadSession1.NumChunks))
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(0, len(chunksSession1Completed))
+
+	// set all data maps to need verifying
+	session := models.UploadSession{}
+	suite.DB.First(&session)
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	session.TreasureStatus = models.TreasureInDataMapComplete
+	session.AllDataReady = models.AllDataReady
+	suite.DB.ValidateAndUpdate(&session)
+
+	session.NextIdxToAttach = -1
+	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	suite.DB.ValidateAndUpdate(&session)
+
+	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+
+	// call method under test, passing in our mock of our iota methods
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+
+	// verify the mock methods were called
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
+
+	session = models.UploadSession{}
+	suite.DB.First(&session)
+
+	suite.Equal(int64(-1), session.NextIdxToVerify)
+
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	// check that it is the length we expect
+	suite.Equal(session.NumChunks-3, len(chunksSession1InProgress))
+	suite.Equal(3, len(chunksSession1Completed))
+
+	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 }

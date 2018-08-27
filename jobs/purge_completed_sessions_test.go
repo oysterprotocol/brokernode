@@ -4,21 +4,25 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	// running these tests in TestModeNoTreasure so we will not expect
+	// numChunks + 1 in subsequent tests, just numChunks
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
 	defer oyster_utils.ResetBrokerMode()
 
-	fileBytesCount := uint64(2500)
-	numChunks := 3
+	fileBytesCount := uint64(30000)
+	numChunks := 30
 	privateKey := "1111111111111111111111111111111111111111111111111111111111111111"
 
 	uploadSession1 := models.UploadSession{
-		GenesisHash:   "abcdeff1",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeBeta,
@@ -27,14 +31,10 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	chunksReady, vErr, err := uploadSession1.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession1, []int{15, 20}, uploadSession1.NumChunks)
 
 	uploadSession2 := models.UploadSession{
-		GenesisHash:   "abcdeff2",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -43,13 +43,10 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	chunksReady, vErr, err = uploadSession2.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession2, []int{11, 22}, uploadSession2.NumChunks)
 
 	uploadSession3 := models.UploadSession{
-		GenesisHash:   "abcdeff3",
+		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 		FileSizeBytes: fileBytesCount,
 		NumChunks:     numChunks,
 		Type:          models.SessionTypeAlpha,
@@ -58,21 +55,58 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	chunksReady, vErr, err = uploadSession3.StartSessionAndWaitForChunks(500)
-	suite.True(chunksReady)
-	suite.False(vErr.HasAny())
-	suite.Nil(err)
+	SessionSetUpForTest(&uploadSession3, []int{12, 18}, uploadSession3.NumChunks)
 
-	allDataMaps := []models.DataMap{}
-	err = suite.DB.All(&allDataMaps)
-	suite.Nil(err)
+	finished1, _ := uploadSession1.WaitForAllHashes(5)
+	finished2, _ := uploadSession2.WaitForAllHashes(5)
+	finished3, _ := uploadSession3.WaitForAllHashes(5)
 
-	completedDataMaps := []models.CompletedDataMap{}
-	err = suite.DB.All(&completedDataMaps)
-	suite.Nil(err)
+	suite.True(finished1)
+	suite.True(finished2)
+	suite.True(finished3)
+
+	finished1, _ = uploadSession1.WaitForAllMessages(5)
+	finished2, _ = uploadSession2.WaitForAllMessages(5)
+	finished3, _ = uploadSession3.WaitForAllMessages(5)
+
+	suite.True(finished1)
+	suite.True(finished2)
+	suite.True(finished3)
+
+	// Set all sessions to states that will cause them to be picked up by
+	// GetSessionsByAge
+	sessions := []models.UploadSession{}
+	suite.DB.All(&sessions)
+	for _, session := range sessions {
+		session.PaymentStatus = models.PaymentStatusConfirmed
+		session.TreasureStatus = models.TreasureInDataMapComplete
+		session.AllDataReady = models.AllDataReady
+		suite.DB.ValidateAndUpdate(&session)
+	}
+
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+		int64(uploadSession1.NumChunks-1))
+	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
+
+	session2Keys := oyster_utils.GenerateBulkKeys(uploadSession2.GenesisHash, 0,
+		int64(uploadSession2.NumChunks-1))
+	chunksSession2InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
+		session2Keys)
+	chunksSession2Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
+		session2Keys)
+
+	session3Keys := oyster_utils.GenerateBulkKeys(uploadSession3.GenesisHash, 0,
+		int64(uploadSession3.NumChunks-1))
+	chunksSession3InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
+		session3Keys)
+	chunksSession3Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
+		session3Keys)
 
 	uploadSessions := []models.UploadSession{}
-	err = suite.DB.All(&uploadSessions)
+	err := suite.DB.All(&uploadSessions)
 	suite.Nil(err)
 
 	completedUploads := []models.CompletedUpload{}
@@ -80,51 +114,50 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Nil(err)
 
 	// verify initial lengths are what we expected
-	suite.Equal(3*(numChunks+1), len(allDataMaps)) // 3 data maps so 3 extra chunks have been added
-	suite.Equal(0, len(completedDataMaps))
+	suite.Equal(numChunks, len(chunksSession1InProgress))
+	suite.Equal(numChunks, len(chunksSession2InProgress))
+	suite.Equal(numChunks, len(chunksSession3InProgress))
+
+	suite.Equal(0, len(chunksSession1Completed))
+	suite.Equal(0, len(chunksSession2Completed))
+	suite.Equal(0, len(chunksSession3Completed))
+
 	suite.Equal(3, len(uploadSessions))
 	suite.Equal(0, len(completedUploads))
 
-	// set all chunks of first data map to complete or confirmed
-	allDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&allDone)
+	// set first session's NextIdxToVerify so that it will be regarded as complete
+	firstSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).First(&firstSession)
+	firstSession.NextIdxToAttach = -1
+	firstSession.NextIdxToVerify = -1
+	vErr, err := suite.DB.ValidateAndSave(&firstSession)
+	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
-	for _, dataMap := range allDone {
-		dataMap.Status = models.Complete
-		suite.DB.ValidateAndSave(&dataMap)
-	}
-
-	// set one of them to "confirmed"
-	allDone[1].Status = models.Confirmed
-	suite.DB.ValidateAndSave(&allDone[1])
-
-	// set one chunk of second data map to complete
-	someDone := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff2").All(&someDone)
-	suite.Nil(err)
-
-	someDone[0].Status = models.Complete
-	suite.DB.ValidateAndSave(&someDone[0])
+	// set second session's indexes to midway through the map
+	secondSession := models.UploadSession{}
+	suite.DB.Where("genesis_hash = ?", uploadSession2.GenesisHash).First(&secondSession)
+	secondSession.NextIdxToAttach = 16
+	secondSession.NextIdxToVerify = 15
+	suite.DB.ValidateAndSave(&secondSession)
 
 	//call method under test
 	jobs.PurgeCompletedSessions(jobs.PrometheusWrapper)
 
-	allDataMaps = []models.DataMap{}
-	err = suite.DB.All(&allDataMaps)
-	suite.Nil(err)
+	chunksSession1InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
+		session1Keys)
+	chunksSession1Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
+		session1Keys)
 
-	completedDataMaps = []models.CompletedDataMap{}
-	err = suite.DB.All(&completedDataMaps)
-	suite.Nil(err)
+	chunksSession2InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
+		session2Keys)
+	chunksSession2Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
+		session2Keys)
 
-	var keys services.KVKeys
-	for _, cDataMap := range completedDataMaps {
-		keys = append(keys, cDataMap.MsgID)
-	}
-	kvPairs, err := services.BatchGet(&keys)
-	suite.Nil(err)
-	suite.Equal(len(completedDataMaps), len(*kvPairs))
+	chunksSession3InProgress, _ = models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
+		session3Keys)
+	chunksSession3Completed, _ = models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
+		session3Keys)
 
 	uploadSessions = []models.UploadSession{}
 	err = suite.DB.All(&uploadSessions)
@@ -135,23 +168,16 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.Nil(err)
 
 	// verify final lengths are what we expected
-	suite.Equal(2*(numChunks+1), len(allDataMaps))   // 2 data maps so 2 extra chunks
-	suite.Equal(numChunks+1, len(completedDataMaps)) // 1 data map so 1 extra chunk
+	suite.Equal(0, len(chunksSession1InProgress))
+
+	suite.Equal(numChunks, len(chunksSession1Completed))
+	suite.Equal(0, len(chunksSession2Completed))
+	suite.Equal(numChunks, len(chunksSession2InProgress))
+	suite.Equal(0, len(chunksSession3Completed))
+	suite.Equal(numChunks, len(chunksSession3InProgress))
 	suite.Equal(2, len(uploadSessions))
 	suite.Equal(1, len(completedUploads))
 
-	// for good measure, verify that it's only "abcdeff1" in completed_data_maps
-	// and that "abcdeff1" is not in data_maps at all
-	genHash1InDataMaps := []models.DataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1InDataMaps)
-	suite.Equal(0, len(genHash1InDataMaps))
-	suite.Nil(err)
-
-	genHash1Completed := []models.CompletedDataMap{}
-	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&genHash1Completed)
-	suite.Equal(numChunks+1, len(genHash1Completed))
-	suite.Nil(err)
-
 	suite.Equal("SOME_BETA_ETH_ADDRESS1", completedUploads[0].ETHAddr)
-	suite.Equal("abcdeff1", completedUploads[0].GenesisHash)
+	suite.Equal(uploadSession1.GenesisHash, completedUploads[0].GenesisHash)
 }

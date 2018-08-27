@@ -1,11 +1,18 @@
 package models
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
+	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gobuffalo/pop"
@@ -16,6 +23,13 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
 )
+
+/*ChunkReq is the form in which webinterface will send the data for each chunk*/
+type ChunkReq struct {
+	Idx  int    `json:"idx"`
+	Data string `json:"data"`
+	Hash string `json:"hash"` // This is GenesisHash.
+}
 
 type Invoice struct {
 	Cost       decimal.Decimal `json:"cost"`
@@ -47,7 +61,17 @@ type UploadSession struct {
 
 	TreasureIdxMap nulls.String `json:"treasureIdxMap" db:"treasure_idx_map"`
 	Version        uint32       `json:"version" db:"version"`
+
+	NextIdxToAttach int64 `json:"nextIdxToAttach" db:"next_idx_to_attach"`
+	NextIdxToVerify int64 `json:"nextIdxToVerify" db:"next_idx_to_verify"`
+
+	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
 }
+
+const (
+	AllDataNotReady int = iota + 1
+	AllDataReady
+)
 
 // Enum for upload session type.
 const (
@@ -68,10 +92,35 @@ const (
 	TreasureInDataMapComplete
 )
 
-/*MaxTimesToCheckForAllChunks is the maximum number of times we will check for the chunks in WaitForAllChunks*/
-const MaxTimesToCheckForAllChunks = 5000
+const (
+	/*MaxTimesToCheckForAllChunks is the maximum number of times we will check for the chunks in WaitForAllChunks*/
+	MaxTimesToCheckForAllChunks = 5000
+	/*MaxBadgerInsertions is the maximum number of entries to add to badger at a time in
+	BuildDataMaps*/
+	MaxBadgerInsertions = 100
+	/*FileBytesChunkSize is the total number of bytes in ascii that can fit in a chunk*/
+	FileBytesChunkSize = float64(2187)
+	/*MaxSideChainLength is the maximum length of the sidechain that we will create for the encrypting of treasure*/
+	MaxSideChainLength = 1000
+	/*DataMapsTimeToLive will cause data_maps
+	message data to be garbage collected after two days.*/
+	DataMapsTimeToLive = 2 * 24 * time.Hour
+	/*CompletedDataMapsTimeToLive will cause completed_data_maps
+	message data to be garbage collected after 3 weeks.*/
+	CompletedDataMapsTimeToLive = 21 * 24 * time.Hour
+)
 
-var StoragePeg = decimal.NewFromFloat(float64(64)) // GB per year per PRL; TODO: query smart contract for real storage peg
+var (
+	/*TreasurePrefix appears at the beginning of every treasure payload*/
+	TreasurePrefix = hex.EncodeToString([]byte("Treasure: "))
+	/*TreasurePayloadLength - the length of the actual payload*/
+	TreasurePayloadLength = len(TreasurePrefix) + 96
+	/*TreasureChunkPadding - the length of padding to add after the payload*/
+	TreasureChunkPadding = int(FileBytesChunkSize) - TreasurePayloadLength
+	/*StoragePeg is how much storage in GB that one PRL will pay for, for a year.
+	Long-term we will query the smart contract for this value*/
+	StoragePeg = decimal.NewFromFloat(float64(64))
+)
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
@@ -127,6 +176,10 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 		u.Type = SessionTypeAlpha
 	}
 
+	if u.AllDataReady == 0 {
+		u.AllDataReady = AllDataNotReady
+	}
+
 	switch oyster_utils.BrokerMode {
 	case oyster_utils.ProdMode:
 		// Defaults to paymentStatusPending
@@ -171,6 +224,108 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
  * Methods
  */
 
+// BuildDataMapsForSession builds the datamap and inserts them into the badger DB.
+func BuildDataMapsForSession(genHash string, numChunks int) (err error) {
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInSQL {
+		vErr, err := BuildDataMapsForSessionInSQL(genHash, numChunks)
+		if err != nil {
+			return err
+		}
+		if vErr.HasAny() {
+			return errors.New(vErr.Error())
+		}
+	} else {
+		fileChunksCount := numChunks
+
+		currHash := genHash
+		insertionCount := 0
+
+		dbID := []string{oyster_utils.InProgressDir, genHash, oyster_utils.HashDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB")
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		kvPairs := oyster_utils.KVPairs{}
+
+		for i := 0; i < fileChunksCount; i++ {
+
+			kvPairs[oyster_utils.GetBadgerKey([]string{genHash, strconv.Itoa(i)})] = currHash
+			currHash = oyster_utils.HashHex(currHash, sha256.New())
+
+			insertionCount++
+			if insertionCount >= MaxBadgerInsertions {
+				err = oyster_utils.BatchSetToUniqueDB(dbID, &kvPairs, DataMapsTimeToLive)
+				if err == nil {
+					insertionCount = 0
+					kvPairs = oyster_utils.KVPairs{}
+				}
+				oyster_utils.LogIfError(err, nil)
+			}
+		}
+
+		if len(kvPairs) > 0 {
+			err = oyster_utils.BatchSetToUniqueDB(dbID, &kvPairs, DataMapsTimeToLive)
+			oyster_utils.LogIfError(err, nil)
+		}
+	}
+
+	return err
+}
+
+// BuildDataMapsForSessionInSQL builds the datamap and inserts them into the sql DB.
+func BuildDataMapsForSessionInSQL(genHash string, numChunks int) (vErr *validate.Errors, err error) {
+
+	fileChunksCount := numChunks
+
+	operation, _ := oyster_utils.CreateDbUpdateOperation(&DataMap{})
+	columnNames := operation.GetColumns()
+	var values []string
+
+	currHash := genHash
+	insertionCount := 0
+	for i := 0; i < fileChunksCount; i++ {
+
+		obfuscatedHash := oyster_utils.HashHex(currHash, sha512.New384())
+		currAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
+
+		dataMap := DataMap{
+			GenesisHash:    genHash,
+			ChunkIdx:       i,
+			Hash:           currHash,
+			ObfuscatedHash: obfuscatedHash,
+			Address:        currAddr,
+			Status:         Pending,
+			MsgID:          oyster_utils.GetBadgerKey([]string{genHash, strconv.Itoa(i)}),
+		}
+		// We use INSERT SQL query rather than default Create method.
+		dataMap.BeforeCreate(nil)
+
+		// Validate the data
+		vErr, _ = dataMap.Validate(nil)
+		oyster_utils.LogIfValidationError(
+			"validation errors for creating dataMap for batch insertion.", vErr, nil)
+		values = append(values, fmt.Sprintf("(%s)", operation.GetNewInsertedValue(dataMap)))
+
+		currHash = oyster_utils.HashHex(currHash, sha256.New())
+
+		insertionCount++
+		if insertionCount >= MaxNumberOfValueForInsertOperation {
+			err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
+			insertionCount = 0
+			values = nil
+		}
+	}
+	if len(values) > 0 {
+		err = insertsIntoDataMapsTable(columnNames, strings.Join(values, oyster_utils.COLUMNS_SEPARATOR), len(values))
+	}
+	return
+}
+
 // StartUploadSession will generate dataMaps and save the session and dataMaps
 // to the DB.
 func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) {
@@ -190,8 +345,29 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		DB.ValidateAndUpdate(u)
 	}
 
+	switch u.Type {
+	case SessionTypeAlpha:
+		u.NextIdxToAttach = 0
+		u.NextIdxToVerify = 0
+	case SessionTypeBeta:
+		u.NextIdxToAttach = int64(u.NumChunks - 1)
+		u.NextIdxToVerify = int64(u.NumChunks - 1)
+	}
+	DB.ValidateAndUpdate(u)
+
 	go func() {
-		vErr, err = BuildDataMaps(u.GenesisHash, u.NumChunks)
+		err = BuildDataMapsForSession(u.GenesisHash, u.NumChunks)
+		if err == nil {
+			finished, err := u.WaitForAllChunks(MaxTimesToCheckForAllChunks)
+			oyster_utils.LogIfError(err, nil)
+			session := UploadSession{}
+			if finished {
+				DB.Find(&session, u.ID)
+				session.AllDataReady = AllDataReady
+			}
+			DB.ValidateAndUpdate(&session)
+		}
+		oyster_utils.LogIfError(err, nil)
 	}()
 
 	return
@@ -208,16 +384,6 @@ func (u *UploadSession) StartSessionAndWaitForChunks(maxTimesToCheckForAllChunks
 	chunksAreFinished, err := u.WaitForAllChunks(maxTimesToCheckForAllChunks)
 	oyster_utils.LogIfError(err, nil)
 	return chunksAreFinished, vErr, err
-}
-
-// TODO: Chunk this to smaller batches?
-// DataMapsForSession fetches the datamaps associated with the session.
-func (u *UploadSession) DataMapsForSession() (dMaps *[]DataMap, err error) {
-	dMaps = &[]DataMap{}
-	err = DB.RawQuery("SELECT * FROM data_maps WHERE genesis_hash = ? ORDER BY chunk_idx ASC", u.GenesisHash).All(dMaps)
-	oyster_utils.LogIfError(err, nil)
-
-	return
 }
 
 func (u *UploadSession) GetInvoice() Invoice {
@@ -275,49 +441,6 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 	return err
 }
 
-/*EncryptTreasureIdxMapKeys encrypts the keys of the treasureIdxMap*/
-func (u *UploadSession) EncryptTreasureIdxMapKeys() error {
-
-	treasureMap, err := u.GetTreasureMap()
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
-	}
-
-	for i := range treasureMap {
-		treasureChunks, err := GetDataMapByGenesisHashAndChunkIdx(u.GenesisHash, treasureMap[i].Idx)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		if len(treasureChunks) == 0 || len(treasureChunks) > 1 {
-			err = errors.New("did not find a chunk that matched genesis_hash and chunk_idx in " +
-				"EncryptTreasureIdxMapKeys, or found duplicate chunks")
-			oyster_utils.LogIfError(err, map[string]interface{}{"treasureChunkSize": len(treasureChunks)})
-			return err
-		}
-
-		encryptedKey, err := treasureChunks[0].EncryptEthKey(treasureMap[i].Key)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-		treasureMap[i].Key = encryptedKey
-	}
-
-	treasureString, err := json.Marshal(treasureMap)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
-	}
-
-	u.TreasureIdxMap = nulls.String{string(treasureString), true}
-	u.TreasureStatus = TreasureInDataMapPending
-
-	DB.ValidateAndSave(u)
-	return nil
-}
-
 // Sets the TreasureIdxMap with Sector, Idx, and Key
 func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []string) {
 
@@ -325,10 +448,17 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 
 	for i, mergedIndex := range mergedIndexes {
 
+		key, err := u.EncryptTreasureChunkEthKey(privateKeys[i])
+		if err != nil {
+			oyster_utils.LogIfError(errors.New(err.Error()+" in MakeTreasureIdxMap"),
+				nil)
+			return
+		}
+
 		treasureIndexArray = append(treasureIndexArray, TreasureMap{
 			Sector: i,
 			Idx:    mergedIndex,
-			Key:    privateKeys[i],
+			Key:    key,
 		})
 	}
 
@@ -338,6 +468,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 	}
 
 	u.TreasureIdxMap = nulls.String{string(treasureString), true}
+	u.TreasureStatus = TreasureInDataMapPending
 
 	DB.ValidateAndSave(u)
 }
@@ -352,50 +483,6 @@ func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
 		treasureIndexArray = append(treasureIndexArray, treasure.Idx)
 	}
 	return treasureIndexArray, err
-}
-
-func (u *UploadSession) BulkMarkDataMapsAsUnassigned() error {
-	var err error
-	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
-		err = DB.RawQuery("UPDATE data_maps SET status = ? "+
-			"WHERE genesis_hash = ? AND status = ? AND message != ? AND msg_status = ?",
-			Unassigned,
-			u.GenesisHash,
-			Pending,
-			DataMap{}.Message,
-			MsgStatusUnmigrated).All(&[]DataMap{})
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
-			map[string]interface{}{
-				"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
-				"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
-	}
-
-	err = nil
-	for i := 0; i < oyster_utils.MAX_NUMBER_OF_SQL_RETRY; i++ {
-		err = DB.RawQuery("UPDATE data_maps SET status = ? "+
-			"WHERE genesis_hash = ? AND status = ? AND (msg_status = ? OR msg_status = ?)",
-			Unassigned,
-			u.GenesisHash,
-			Pending,
-			MsgStatusUploadedNoNeedEncode,
-			MsgStatusUploadedHaveNotEncoded).All(&[]DataMap{})
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		oyster_utils.LogIfError(errors.New(err.Error()+" in BulkMarkDataMapsAsUnassigned() in models/upload_sessions"),
-			map[string]interface{}{
-				"MaxRetry": oyster_utils.MAX_NUMBER_OF_SQL_RETRY,
-				"method":   "BulkMarkDataMapsAsUnassigned() in models/upload_sessions"})
-	}
-
-	return err
 }
 
 func (u *UploadSession) GetPRLsPerTreasure() (*big.Float, error) {
@@ -452,36 +539,537 @@ func (u *UploadSession) EncryptSessionEthKey() {
 
 func (u *UploadSession) DecryptSessionEthKey() string {
 	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
+}
 
+/*EncryptTreasureChunkEthKey encrypts the eth key of the treasure chunk*/
+func (u *UploadSession) EncryptTreasureChunkEthKey(unencryptedKey string) (string, error) {
+	encryptedKey := oyster_utils.ReturnEncryptedEthKey(u.ID, u.CreatedAt, unencryptedKey)
+	return encryptedKey, nil
+}
+
+/*DecryptTreasureChunkEthKey decrypts the eth key of the treasure chunk*/
+func (u *UploadSession) DecryptTreasureChunkEthKey(encryptedKey string) (string, error) {
+	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, encryptedKey), nil
 }
 
 /*WaitForAllChunks is a blocking call that will wait for all chunks or false and an error if we get an
 error, or if we have checked too many times.  This is mainly intended for use in unit tests.*/
 func (u *UploadSession) WaitForAllChunks(maxTimesToCheckForAllChunks int) (bool, error) {
+
+	hashesFinished, errHashes := u.WaitForAllHashes(MaxTimesToCheckForAllChunks)
+	messagesFinished, errMessages := u.WaitForAllMessages(MaxTimesToCheckForAllChunks)
+
+	if errHashes != nil {
+		return false, errHashes
+	}
+	if errMessages != nil {
+		return false, errMessages
+	}
+
+	return hashesFinished && messagesFinished, nil
+}
+
+/*WaitForAllHashes is a blocking call that will wait for all hashes of a file or return false and an
+error if we get an error, or if we have checked too many times.  This is mainly intended for use in unit tests.*/
+func (u *UploadSession) WaitForAllHashes(maxTimesToCheckForAllChunks int) (bool, error) {
+
 	timesChecked := 0
 	for {
-		count, err := DB.Where("genesis_hash = ?", u.GenesisHash).Count(&DataMap{})
+		ready := u.CheckIfAllHashesAreReady()
 		timesChecked++
-		if err != nil {
-			return false, err
+
+		if ready {
+			break
+		} else {
+			time.Sleep(2000 * time.Millisecond)
 		}
+
 		if timesChecked >= maxTimesToCheckForAllChunks {
 			return false, errors.New("checked for the chunks too many times")
-		}
-		if count >= u.NumChunks {
-			break
-		} else if count <= u.NumChunks {
-			time.Sleep(250 * time.Millisecond)
 		}
 	}
 	return true, nil
 }
 
+/*WaitForAllMessages is a blocking call that will wait for all messages of a file or return false and an
+error if we get an error, or if we have checked too many times.  This is mainly intended for use in unit tests.*/
+func (u *UploadSession) WaitForAllMessages(maxTimesToCheckForAllChunks int) (bool, error) {
+
+	timesChecked := 0
+	for {
+		ready := u.CheckIfAllMessagesAreReady()
+		timesChecked++
+
+		if ready {
+			break
+		} else {
+			time.Sleep(2000 * time.Millisecond)
+		}
+
+		if timesChecked >= maxTimesToCheckForAllChunks {
+			return false, errors.New("checked for the chunks too many times")
+		}
+	}
+	return true, nil
+}
+
+/*CheckIfAllDataIsReady wraps calls which will check if the message data and hash data have both been created*/
+func (u *UploadSession) CheckIfAllDataIsReady() bool {
+
+	return u.AllDataReady == AllDataReady || (u.CheckIfAllHashesAreReady() && u.CheckIfAllMessagesAreReady())
+}
+
+/*CheckIfAllHashesAreReady verifies that all the hashes for the file chunks have been created.  It returns true if
+the first and last chunk hashes are present*/
+func (u *UploadSession) CheckIfAllHashesAreReady() bool {
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		chunkDataStartHash := oyster_utils.GetHashData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+		chunkDataEndHash := oyster_utils.GetHashData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
+
+		return chunkDataStartHash != "" && chunkDataEndHash != ""
+	}
+
+	startIdx := 0
+	lastIdx := u.NumChunks - 1
+
+	dataMapStart := []DataMap{}
+	dataMapEnd := []DataMap{}
+
+	DB.Where("genesis_hash = ? AND chunk_idx = ?", u.GenesisHash, int(startIdx)).All(&dataMapStart)
+	DB.Where("genesis_hash = ? AND chunk_idx = ?", u.GenesisHash, int(lastIdx)).All(&dataMapEnd)
+
+	return len(dataMapStart) == 1 && len(dataMapEnd) == 1
+}
+
+/*CheckIfAllMessagesAreReady verifies that all the messages for the file chunks have been created.  It returns true if
+the first, last, and treasure chunk messages are present*/
+func (u *UploadSession) CheckIfAllMessagesAreReady() bool {
+
+	treasureIndexes, err := u.GetTreasureIndexes()
+	if err != nil || (len(treasureIndexes) == 0 && oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure) {
+		oyster_utils.LogIfError(err, nil)
+		return false
+	}
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		return checkIfAllMessagesAreReadyInBadger(treasureIndexes, u)
+	}
+	return checkIfAllMessagesAreReadyInSQL(treasureIndexes, u)
+}
+
+func checkIfAllMessagesAreReadyInBadger(treasureIndexes []int, u *UploadSession) bool {
+
+	chunkDataStartMessage := oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+	chunkDataEndMessage := oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
+
+	allMessagesFound := false
+	if chunkDataStartMessage != "" && chunkDataEndMessage != "" {
+		allMessagesFound = true
+		if len(treasureIndexes) > 0 {
+			for _, index := range treasureIndexes {
+				chunkDataTreasureMessage :=
+					oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, int64(index))
+				if chunkDataTreasureMessage == "" {
+					allMessagesFound = false
+				}
+			}
+		}
+	}
+	return allMessagesFound
+}
+
+func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bool {
+	chunkDataStart := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+	chunkDataEnd := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
+
+	allMessagesFound := false
+	if chunkDataStart.Message != "" && chunkDataEnd.Message != "" {
+		allMessagesFound = true
+		if len(treasureIndexes) > 0 {
+			for _, index := range treasureIndexes {
+				chunkDataTreasure :=
+					GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(index))
+				if chunkDataTreasure.Message == "" {
+					allMessagesFound = false
+				}
+			}
+		}
+	}
+	return allMessagesFound
+}
+
+/*GetUnassignedChunksBySession returns the chunk data for chunks that need attaching for a particular session*/
+func (u *UploadSession) GetUnassignedChunksBySession(limit int) (chunkData []oyster_utils.ChunkData, err error) {
+	var stopChunkIdx int64
+
+	if u.Type == SessionTypeAlpha {
+		stopChunkIdx = u.NextIdxToAttach + int64(limit) - 1
+		if stopChunkIdx > int64(u.NumChunks-1) {
+			stopChunkIdx = int64(u.NumChunks - 1)
+		}
+	} else {
+		stopChunkIdx = u.NextIdxToAttach - int64(limit) + 1
+		if stopChunkIdx < 0 {
+			stopChunkIdx = int64(0)
+		}
+	}
+
+	keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, u.NextIdxToAttach, stopChunkIdx)
+
+	chunkData, err = GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, keys)
+	oyster_utils.LogIfError(err, nil)
+
+	return chunkData, err
+}
+
+/*MoveChunksToCompleted receives some chunks for a session and moves them to a separate DB for completed chunks*/
+func (u *UploadSession) MoveChunksToCompleted(chunks []oyster_utils.ChunkData) {
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+
+		for i := range chunks {
+			inProgressMessageDBID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.MessageDir}
+			inProgressHashDBID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+			completeMessageDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.MessageDir}
+			completeHashDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.HashDir}
+
+			key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.FormatInt(chunks[i].Idx, 10)})
+
+			kvMessage := oyster_utils.KVPairs{key: chunks[i].RawMessage}
+			kvHash := oyster_utils.KVPairs{key: chunks[i].Hash}
+
+			errMessage := oyster_utils.BatchSetToUniqueDB(completeMessageDBID, &kvMessage,
+				CompletedDataMapsTimeToLive)
+			oyster_utils.LogIfError(errMessage, nil)
+			errHash := oyster_utils.BatchSetToUniqueDB(completeHashDBID, &kvHash,
+				CompletedDataMapsTimeToLive)
+			oyster_utils.LogIfError(errHash, nil)
+
+			if errMessage == nil && errHash == nil {
+				oyster_utils.BatchDeleteFromUniqueDB(inProgressMessageDBID, &oyster_utils.KVKeys{key})
+				oyster_utils.BatchDeleteFromUniqueDB(inProgressHashDBID, &oyster_utils.KVKeys{key})
+			} else if errMessage != nil {
+				oyster_utils.LogIfError(errors.New(errMessage.Error()+" while saving message to completed db "+
+					"in MoveChunksToCompleted in models/upload_sessions"), nil)
+			} else if errHash != nil {
+				oyster_utils.LogIfError(errors.New(errHash.Error()+" while saving hash to completed db "+
+					"in MoveChunksToCompleted in models/upload_sessions"), nil)
+			}
+		}
+	} else {
+		moveToComplete(chunks)
+	}
+}
+
+/*MoveAllChunksToCompleted moves all the chunks for an in-progress session to completed.*/
+func (u *UploadSession) MoveAllChunksToCompleted() error {
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		return moveAllChunksToCompletedBadger(u)
+	}
+	return moveAllChunksToCompletedSQL(u)
+}
+
+func moveAllChunksToCompletedBadger(u *UploadSession) error {
+	inProgressMessageDBID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.MessageDir}
+	inProgressHashDBID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+	completeMessageDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.MessageDir}
+	completeHashDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.HashDir}
+
+	keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, int64(u.NumChunks)-1)
+
+	kvMessages, err := oyster_utils.BatchGetFromUniqueDB(inProgressMessageDBID, keys)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+	kvHashes, err := oyster_utils.BatchGetFromUniqueDB(inProgressHashDBID, keys)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return err
+	}
+
+	errMessage := oyster_utils.BatchSetToUniqueDB(completeMessageDBID, kvMessages, CompletedDataMapsTimeToLive)
+	if errMessage != nil {
+		oyster_utils.LogIfError(errMessage, nil)
+		return errMessage
+	}
+	errHash := oyster_utils.BatchSetToUniqueDB(completeHashDBID, kvHashes, CompletedDataMapsTimeToLive)
+	if errHash != nil {
+		oyster_utils.LogIfError(errHash, nil)
+		return errHash
+	}
+
+	oyster_utils.BatchDeleteFromUniqueDB(inProgressMessageDBID, keys)
+	oyster_utils.BatchDeleteFromUniqueDB(inProgressHashDBID, keys)
+
+	return nil
+}
+
+func moveAllChunksToCompletedSQL(u *UploadSession) error {
+	maxChunksAtATime := 1000
+
+	for ok, i := true, 0; ok; ok = i < u.NumChunks {
+		end := i + maxChunksAtATime
+
+		if end > u.NumChunks {
+			end = u.NumChunks
+		}
+
+		if i >= end {
+			break
+		}
+
+		bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(i), int64(end))
+
+		chunks, err := GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, bulkKeys)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		if len(chunks[i:end]) > 0 {
+			err := moveToComplete(chunks[i:end])
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				return err
+			}
+		}
+		i += maxChunksAtATime
+	}
+	err := DB.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", u.GenesisHash).All(&[]DataMap{})
+	return err
+}
+
+func moveToComplete(dataMaps []oyster_utils.ChunkData) error {
+	if len(dataMaps) == 0 {
+		return nil
+	}
+
+	existedDataMaps := []CompletedDataMap{}
+	DB.RawQuery("SELECT address FROM completed_data_maps WHERE genesis_hash = ?", dataMaps[0].GenesisHash).All(&existedDataMaps)
+	existedMap := make(map[string]bool)
+	for _, dm := range existedDataMaps {
+		existedMap[dm.Address] = true
+	}
+
+	messagsKvPairs := oyster_utils.KVPairs{}
+	var upsertedValues []string
+	dbOperation, _ := oyster_utils.CreateDbUpdateOperation(&CompletedDataMap{})
+	hasValidationError := false
+
+	for _, dataMap := range dataMaps {
+		if _, hasKey := existedMap[dataMap.Address]; hasKey {
+			continue
+		}
+
+		completedDataMap := CompletedDataMap{
+			GenesisHash: dataMap.GenesisHash,
+			ChunkIdx:    int(dataMap.Idx),
+			Hash:        dataMap.Hash,
+			Address:     dataMap.Address,
+			MsgStatus:   MsgStatusUploadedHaveNotEncoded,
+			MsgID:       oyster_utils.GenerateBadgerKey(CompletedDataMapsMsgIDPrefix, dataMap.GenesisHash, int(dataMap.Idx)),
+		}
+
+		if vErr, err := completedDataMap.Validate(nil); err != nil || vErr.HasAny() {
+			oyster_utils.LogIfValidationError("CompletedDataMap validation failed", vErr, nil)
+			oyster_utils.LogIfError(err, nil)
+			hasValidationError = true
+			return errors.New("completedDataMap validation error in moveToComplete")
+		}
+
+		messagsKvPairs[completedDataMap.MsgID] = dataMap.RawMessage
+		upsertedValues = append(upsertedValues, dbOperation.GetNewInsertedValue(completedDataMap))
+	}
+
+	errBatchUpsert := BatchUpsert("completed_data_maps", upsertedValues, dbOperation.GetColumns(), nil)
+	if errBatchUpsert != nil {
+		return errors.New("BatchUpsert failed")
+	}
+
+	errBatchSet := oyster_utils.BatchSet(&messagsKvPairs, CompletedDataMapsTimeToLive)
+	if errBatchSet != nil {
+		return errors.New("BatchSet failed")
+	}
+
+	if hasValidationError {
+		return errors.New("Partial update failed")
+	}
+
+	for _, dataMap := range dataMaps {
+		err := DB.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ? and chunk_idx = ?",
+			dataMap.GenesisHash, int(dataMap.Idx)).All(&[]UploadSessions{})
+		oyster_utils.LogIfError(err, nil)
+	}
+	return nil
+}
+
+/*UpdateIndexWithVerifiedChunks receives some chunks and will update the session's NextIdxToVerify property.
+Starting at its current NextIdxToVerify, it checks the next index and verifies that there is a chunk matching that
+index in the array passed in.  When it finds a missing index it sets the NextIdxToVerify to that index.*/
+func (u *UploadSession) UpdateIndexWithVerifiedChunks(chunks []oyster_utils.ChunkData) {
+
+	treasureIndexes, _ := u.GetTreasureIndexes()
+
+	nextIdxToVerifyStart := u.NextIdxToVerify
+	nextIdxToVerifyNew := u.NextIdxToVerify
+
+	idxMap := make(map[int64]bool)
+	treasureIdxMap := make(map[int64]bool)
+
+	for i := range chunks {
+		idxMap[chunks[i].Idx] = true
+	}
+	for _, index := range treasureIndexes {
+		treasureIdxMap[int64(index)] = true
+	}
+
+	step := int64(1)
+
+	if u.Type == SessionTypeBeta {
+		step = int64(-1)
+	}
+
+	for i := nextIdxToVerifyStart; i != nextIdxToVerifyStart+(int64(len(chunks))*step); i = i + step {
+		if _, ok := treasureIdxMap[i]; !ok {
+			if _, ok := idxMap[i]; !ok {
+				break
+			}
+		} else {
+			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+			if chunk.Hash == "" {
+				break
+			}
+		}
+		nextIdxToVerifyNew = i + step
+	}
+
+	if u.Type == SessionTypeAlpha {
+		u.NextIdxToVerify = int64(math.Min(float64(nextIdxToVerifyNew), float64(u.NextIdxToAttach)))
+	} else {
+		u.NextIdxToVerify = int64(math.Max(float64(nextIdxToVerifyNew), float64(u.NextIdxToAttach)))
+	}
+
+	vErr, err := DB.ValidateAndUpdate(u)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" updating NextIdxToVerify in "+
+			"UpdateIndexWithVerifiedChunks in models/upload_sessions.go"), nil)
+	}
+	if vErr.HasAny() {
+		oyster_utils.LogIfValidationError(" updating NextIdxToVerify in "+
+			"UpdateIndexWithVerifiedChunks in models/upload_sessions.go", vErr, nil)
+	}
+}
+
+/*UpdateIndexWithAttachedChunks receives some chunks and will update the session's NextIdxToAttach property.
+Starting at its current NextIdxToAttach, it checks the next index and verifies that there is a chunk matching that
+index in the array passed in.  When it finds a missing index it sets the NextIdxToAttach to that index.*/
+func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.ChunkData) {
+
+	treasureIndexes, _ := u.GetTreasureIndexes()
+
+	nextIdxToAttachStart := u.NextIdxToAttach
+	nextIdxToAttachNew := u.NextIdxToAttach
+
+	idxMap := make(map[int64]bool)
+	treasureIdxMap := make(map[int64]bool)
+
+	for i := range chunks {
+		idxMap[chunks[i].Idx] = true
+	}
+	for _, index := range treasureIndexes {
+		treasureIdxMap[int64(index)] = true
+	}
+
+	step := int64(1)
+
+	if u.Type == SessionTypeBeta {
+		step = int64(-1)
+	}
+
+	for i := nextIdxToAttachStart; i != nextIdxToAttachStart+(int64(len(chunks))*step); i = i + step {
+		if _, ok := treasureIdxMap[i]; !ok {
+			if _, ok := idxMap[i]; !ok {
+				break
+			}
+		} else {
+			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+			if chunk.Hash == "" {
+				break
+			}
+		}
+		nextIdxToAttachNew = i + step
+	}
+
+	u.NextIdxToAttach = nextIdxToAttachNew
+
+	vErr, err := DB.ValidateAndUpdate(u)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" updating NextIdxToAttach in "+
+			"UpdateIndexWithAttachedChunks in models/upload_sessions.go"), nil)
+	}
+	if vErr.HasAny() {
+		oyster_utils.LogIfValidationError(" updating NextIdxToAttach in "+
+			"UpdateIndexWithAttachedChunks in models/upload_sessions.go", vErr, nil)
+	}
+}
+
+/*DownGradeIndexesOnUnattachedChunks receives chunks that are not attached or that were attached incorrectly.
+If it finds a chunk that is unattached that is below (if alpha) or above (if beta) its current indexes it will
+change its indexes to match these unattached chunks.*/
+func (u *UploadSession) DownGradeIndexesOnUnattachedChunks(chunks []oyster_utils.ChunkData) {
+	maxIdx := int64(chunks[0].Idx)
+	minIdx := int64(chunks[0].Idx)
+
+	var nextIdxToAttach int64
+	var nextIdxToVerify int64
+
+	for _, chunk := range chunks {
+		maxIdx = int64(math.Max(float64(chunk.Idx), float64(maxIdx)))
+		minIdx = int64(math.Min(float64(chunk.Idx), float64(minIdx)))
+	}
+
+	if u.Type == SessionTypeAlpha {
+		nextIdxToAttach = int64(math.Min(float64(minIdx), float64(u.NextIdxToAttach)))
+		nextIdxToVerify = int64(math.Min(float64(minIdx), float64(u.NextIdxToVerify)))
+	} else {
+		nextIdxToAttach = int64(math.Max(float64(maxIdx), float64(u.NextIdxToAttach)))
+		nextIdxToVerify = int64(math.Max(float64(maxIdx), float64(u.NextIdxToVerify)))
+	}
+
+	u.NextIdxToVerify = nextIdxToVerify
+	u.NextIdxToAttach = nextIdxToAttach
+
+	vErr, err := DB.ValidateAndUpdate(u)
+	oyster_utils.LogIfValidationError("updating session in verify_data_maps", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+}
+
+/*SetTreasureMessage sets the treasure message for a treasure chunk of a session.*/
+func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload string,
+	ttl time.Duration) (err error) {
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(treasureIndex)})
+		err = oyster_utils.BatchSetToUniqueDB([]string{oyster_utils.InProgressDir, u.GenesisHash,
+			oyster_utils.MessageDir}, &oyster_utils.KVPairs{key: treasurePayload}, ttl)
+	} else {
+		key := oyster_utils.GenerateBadgerKey("", u.GenesisHash, treasureIndex)
+		err = oyster_utils.BatchSet(&oyster_utils.KVPairs{key: treasurePayload}, ttl)
+	}
+	return err
+}
+
+/*GetSessionsByAge gets all the sessions eligible for chunk attachment.*/
 func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? ORDER BY created_at ASC", PaymentStatusConfirmed, TreasureInDataMapComplete).All(&sessionsByAge)
+		"treasure_status = ? AND all_data_ready = ? ORDER BY created_at ASC",
+		PaymentStatusConfirmed, TreasureInDataMapComplete, AllDataReady).All(&sessionsByAge)
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -491,20 +1079,33 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	return sessionsByAge, nil
 }
 
-// GetSessionsThatNeedKeysEncrypted checks for sessions which the user has paid their PRL but in which
-// we have not yet encrypted the keys
-func GetSessionsThatNeedKeysEncrypted() ([]UploadSession, error) {
-	needKeysEncrypted := []UploadSession{}
+/*GetCompletedSessions gets all the sessions whose index values suggest that they are completed.*/
+func GetCompletedSessions() ([]UploadSession, error) {
+	completedSessions := []UploadSession{}
+	sessions, err := GetSessionsByAge()
 
-	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusConfirmed, TreasureGeneratingKeys).All(&needKeysEncrypted)
-	oyster_utils.LogIfError(err, nil)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return nil, err
+	}
 
-	return needKeysEncrypted, err
+	for _, session := range sessions {
+		stop := session.NumChunks - 1
+		step := 1
+		if session.Type == SessionTypeBeta {
+			stop = 0
+			step = -1
+		}
+		if session.NextIdxToVerify == int64(stop+step) {
+			completedSessions = append(completedSessions, session)
+		}
+	}
+
+	return completedSessions, nil
 }
 
-// GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
-// we have not yet buried the treasure.
+/*GetSessionsThatNeedTreasure checks for sessions which the user has paid their PRL but in which
+we have not yet buried the treasure.*/
 func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	unburiedSessions := []UploadSession{}
 
@@ -515,12 +1116,20 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	return unburiedSessions, err
 }
 
+/*GetReadySessions gets all the sessions eligible for chunk attachment which still need chunks to be attached.*/
 func GetReadySessions() ([]UploadSession, error) {
+	sessions := []UploadSession{}
 	readySessions := []UploadSession{}
 
-	err := DB.Where("payment_status = ? AND treasure_status = ?",
-		PaymentStatusConfirmed, TreasureInDataMapComplete).All(&readySessions)
-	oyster_utils.LogIfError(err, nil)
+	sessions, err := GetSessionsByAge()
+
+	for _, session := range sessions {
+		if session.Type == SessionTypeBeta && session.NextIdxToAttach != -1 {
+			readySessions = append(readySessions, session)
+		} else if session.Type == SessionTypeAlpha && session.NextIdxToAttach < int64(session.NumChunks) {
+			readySessions = append(readySessions, session)
+		}
+	}
 
 	return readySessions, err
 }
@@ -538,4 +1147,201 @@ func SetBrokerTransactionToPaid(session UploadSession) error {
 
 	oyster_utils.LogIfError(err, nil)
 	return err
+}
+
+/*CreateTreasurePayload makes a payload for a treasure chunk by encrypting an ethereum private key using a sidechain
+hash as the key.*/
+func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	currentHash := sha256Hash
+	for i := 0; i <= keyLocation; i++ {
+		currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, sha256Hash)
+
+	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
+		oyster_utils.TrytesAlphabet)
+
+	return treasurePayload, nil
+}
+
+/*GetChunkForWebnodePoW gets a chunk for webnode PoW and updates the index of the session.*/
+func GetChunkForWebnodePoW() (oyster_utils.ChunkData, error) {
+	var chunkData oyster_utils.ChunkData
+	var err error
+	var vErr *validate.Errors
+	var i = 0
+	sessions, err := GetReadySessions()
+
+	for i := range sessions {
+		if sessions[i].Type == SessionTypeAlpha {
+			if sessions[i].NextIdxToAttach != int64(sessions[i].NumChunks-1) {
+				chunkData = GetSingleChunkData(oyster_utils.InProgressDir,
+					sessions[i].GenesisHash,
+					sessions[i].NextIdxToAttach)
+				sessions[i].NextIdxToAttach++
+				break
+			}
+		} else {
+			if sessions[i].NextIdxToAttach != int64(0) {
+				chunkData = GetSingleChunkData(oyster_utils.InProgressDir,
+					sessions[i].GenesisHash,
+					sessions[i].NextIdxToAttach)
+				sessions[i].NextIdxToAttach--
+				break
+			}
+		}
+	}
+
+	vErr, err = DB.ValidateAndUpdate(&sessions[i])
+	oyster_utils.LogIfValidationError("updating session in verify_data_maps", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+	return chunkData, err
+}
+
+/*ProcessAndStoreChunkData receives the genesis hash, chunk idx, and message from the client
+and adds it to the badger database*/
+func ProcessAndStoreChunkData(chunks []ChunkReq, genesisHash string, treasureIdxMap []int, ttl time.Duration) {
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInSQL {
+		ProcessAndStoreChunkDataInSQL(chunks, genesisHash, treasureIdxMap)
+		return
+	}
+
+	// the keys in this chunks map have already transformed indexes
+	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
+
+	dbID := []string{oyster_utils.InProgressDir, chunks[0].Hash, oyster_utils.MessageDir}
+
+	db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		return
+	}
+
+	batchSetKvMap := oyster_utils.KVPairs{} // Store chunk.Data into KVStore
+	for key, chunk := range chunksMap {
+		batchSetKvMap[key] = chunk.Data
+	}
+
+	err := oyster_utils.BatchSetToUniqueDB(dbID, &batchSetKvMap, ttl)
+	oyster_utils.LogIfError(err, nil)
+}
+
+// convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.
+// Return minChunkId and maxChunkId.
+func convertToBadgerKeyedMapForChunks(chunks []ChunkReq, genesisHash string, treasureIdxMap []int) map[string]ChunkReq {
+	chunksMap := make(map[string]ChunkReq)
+
+	var chunkIdx int
+	for _, chunk := range chunks {
+		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+			chunkIdx = chunk.Idx
+		} else {
+			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
+		}
+
+		key := oyster_utils.GetBadgerKey([]string{genesisHash, strconv.Itoa(chunkIdx)})
+		chunksMap[key] = chunk
+	}
+	return chunksMap
+}
+
+/*ProcessAndStoreChunkDataInSQL receives chunk data from the client and stores the data in data_maps rows.*/
+func ProcessAndStoreChunkDataInSQL(chunks []ChunkReq, genesisHash string, treasureIdxMap []int) {
+	// the keys in this chunks map have already transformed indexes
+	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
+
+	batchSetKvMap := oyster_utils.KVPairs{} // Store chunk.Data into KVStore
+	for key, chunk := range chunksMap {
+
+		batchSetKvMap[key] = chunk.Data
+	}
+
+	oyster_utils.BatchSet(&batchSetKvMap, DataMapsTimeToLive)
+}
+
+/*GetSingleChunkData gets data about a single chunk.*/
+func GetSingleChunkData(prefix string, genesisHash string, chunkIdx int64) oyster_utils.ChunkData {
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		return oyster_utils.GetChunkData(prefix, genesisHash, chunkIdx)
+	}
+
+	inProgressDataMaps := []DataMap{}
+	completedDataMaps := []CompletedDataMap{}
+	key := ""
+	address := ""
+	hash := ""
+
+	if prefix == oyster_utils.InProgressDir {
+		key = oyster_utils.GenerateBadgerKey("", genesisHash, int(chunkIdx))
+		DB.Where("genesis_hash = ? AND chunk_idx = ?", genesisHash, int(chunkIdx)).All(&inProgressDataMaps)
+
+		if len(inProgressDataMaps) > 0 {
+			address = inProgressDataMaps[0].Address
+			hash = inProgressDataMaps[0].Hash
+		}
+	} else {
+		key = oyster_utils.GenerateBadgerKey(CompletedDataMapsMsgIDPrefix, genesisHash, int(chunkIdx))
+		DB.Where("genesis_hash = ? AND chunk_idx = ?", genesisHash, int(chunkIdx)).All(&completedDataMaps)
+
+		if len(completedDataMaps) > 0 {
+			address = completedDataMaps[0].Address
+			hash = completedDataMaps[0].Hash
+		}
+	}
+	chunkData := oyster_utils.ChunkData{
+		Address:     address,
+		Hash:        hash,
+		GenesisHash: genesisHash,
+		Idx:         chunkIdx,
+	}
+	return returnChunkDataSQL(key, chunkData)
+}
+
+func returnChunkDataSQL(key string, chunkData oyster_utils.ChunkData) oyster_utils.ChunkData {
+	rawMessage := ""
+	message := ""
+	values, _ := oyster_utils.BatchGet(&oyster_utils.KVKeys{key})
+	if v, hasKey := (*values)[key]; hasKey {
+		rawMessage = v
+	}
+
+	if rawMessage != "" {
+		trytesMessage, err := oyster_utils.ChunkMessageToTrytesWithStopper(rawMessage)
+		oyster_utils.LogIfError(err, nil)
+		if err == nil {
+			message = string(trytesMessage)
+		}
+	}
+
+	return oyster_utils.ChunkData{
+		Address:     chunkData.Address,
+		RawMessage:  rawMessage,
+		Message:     message,
+		Hash:        chunkData.Hash,
+		Idx:         chunkData.Idx,
+		GenesisHash: chunkData.GenesisHash,
+	}
+}
+
+/*GetMultiChunkData gets data about multiple chunks.  It will only return data for a chunk if both the hash and message
+is ready.*/
+func GetMultiChunkData(prefix string, genesisHash string, ks *oyster_utils.KVKeys) ([]oyster_utils.ChunkData, error) {
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		return oyster_utils.GetBulkChunkData(prefix, genesisHash, ks)
+	}
+
+	chunkData := []oyster_utils.ChunkData{}
+
+	for _, key := range *(ks) {
+		chunkIdx := oyster_utils.GetChunkIdxFromKey(key)
+		singleChunkData := GetSingleChunkData(prefix, genesisHash, chunkIdx)
+
+		if singleChunkData.Hash != "" && singleChunkData.RawMessage != "" {
+			chunkData = append(chunkData, singleChunkData)
+		}
+	}
+	return chunkData, nil
 }

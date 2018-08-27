@@ -443,7 +443,7 @@ func SetClaimClockIfUnset(treasureClaim *models.WebnodeTreasureClaim) error {
 		}
 
 		treasureClaim.StartingClaimClock = claimClock.Int64()
-		vErr, err := models.DB.ValidateAndUpdate(treasureClaim)
+		vErr, err := models.DB.ValidateAndUpdate(&treasureClaim)
 
 		if len(vErr.Errors) > 0 {
 			oyster_utils.LogIfError(errors.New(vErr.Error()), nil)

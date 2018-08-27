@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"os"
 	"strconv"
@@ -51,14 +50,8 @@ type uploadSessionCreateBetaRes struct {
 	BetaTreasureIndexes []int                `json:"betaTreasureIndexes"`
 }
 
-type chunkReq struct {
-	Idx  int    `json:"idx"`
-	Data string `json:"data"`
-	Hash string `json:"hash"` // This is GenesisHash.
-}
-
 type UploadSessionUpdateReq struct {
-	Chunks []chunkReq `json:"chunks"`
+	Chunks []models.ChunkReq `json:"chunks"`
 }
 
 type paymentStatusCreateRes struct {
@@ -123,6 +116,19 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		Set("file_size_byes", alphaSession.FileSizeBytes).
 		Set("num_chunks", alphaSession.NumChunks).
 		Set("storage_years", alphaSession.StorageLengthInYears))
+
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+
+		dbID := []string{oyster_utils.InProgressDir, alphaSession.GenesisHash, oyster_utils.HashDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for hashes")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
+	}
 
 	vErr, err := alphaSession.StartUploadSession()
 	if err != nil || vErr.HasAny() {
@@ -252,6 +258,18 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 
 	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
 
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		dbID := []string{oyster_utils.InProgressDir, uploadSession.GenesisHash, oyster_utils.MessageDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for messages")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
+	}
+
 	// Update dMaps to have chunks async
 	go func() {
 		defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: async_datamap_updates", analytics.NewProperties().
@@ -261,7 +279,8 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			Set("num_chunks", uploadSession.NumChunks).
 			Set("storage_years", uploadSession.StorageLengthInYears))
 
-		ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap)
+		models.ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap,
+			models.DataMapsTimeToLive)
 	}()
 
 	return c.Render(202, r.JSON(map[string]bool{"success": true}))
@@ -304,6 +323,18 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		Set("num_chunks", u.NumChunks).
 		Set("storage_years", u.StorageLengthInYears))
 
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		dbID := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
+		if db == nil {
+			err := errors.New("error creating unique badger DB for hashes")
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
+	}
+
 	vErr, err := u.StartUploadSession()
 
 	if err != nil || vErr.HasAny() {
@@ -312,9 +343,14 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 
-	models.NewBrokerBrokerTransaction(&u)
+	if len(vErr.Errors) > 0 {
+		c.Render(422, r.JSON(vErr.Errors))
+		return err
+	}
 
-	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
+	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes,
+		oyster_utils.FileSectorInChunkSize, req.NumChunks)
+
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
@@ -334,6 +370,8 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 		return err
 	}
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	models.NewBrokerBrokerTransaction(&u)
 
 	res := uploadSessionCreateBetaRes{
 		UploadSession:       u,
@@ -387,133 +425,4 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 	}
 
 	return c.Render(200, r.JSON(res))
-}
-
-/*ProcessAndStoreChunkData receives the genesis hash, chunk idx, and message from the client
-and adds it to the badger database*/
-func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdxMap []int) {
-	// the keys in this chunks map have already transformed indexes
-	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
-
-	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-	for key, chunk := range chunksMap {
-
-		batchSetKvMap[key] = chunk.Data
-	}
-
-	services.BatchSet(&batchSetKvMap, models.DataMapsTimeToLive)
-}
-
-// convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.
-// Return minChunkId and maxChunkId.
-func convertToBadgerKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) map[string]chunkReq {
-	chunksMap := make(map[string]chunkReq)
-
-	for _, chunk := range chunks {
-		var chunkIdx int
-		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-			chunkIdx = chunk.Idx
-		} else {
-			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
-		}
-
-		key := oyster_utils.GenerateBadgerKey("", genesisHash, chunkIdx)
-		chunksMap[key] = chunk
-	}
-	return chunksMap
-}
-
-// convertToSQLKeyedMapForChunks converts chunkReq into sql keyed maps. Return minChunkId and maxChunkId.
-func convertToSQLKeyedMapForChunks(chunks []chunkReq, genesisHash string, treasureIdxMap []int) (map[string]chunkReq, int, int) {
-	chunksMap := make(map[string]chunkReq)
-	minChunkIdx := 0
-	maxChunkIdx := 0
-
-	for _, chunk := range chunks {
-		var chunkIdx int
-		if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-			chunkIdx = chunk.Idx
-		} else {
-			chunkIdx = oyster_utils.TransformIndexWithBuriedIndexes(chunk.Idx, treasureIdxMap)
-		}
-
-		key := sqlWhereForGenesisHashAndChunkIdx(genesisHash, chunkIdx)
-		chunksMap[key] = chunk
-		minChunkIdx = oyster_utils.IntMin(minChunkIdx, chunkIdx)
-		maxChunkIdx = oyster_utils.IntMax(maxChunkIdx, chunkIdx)
-	}
-	return chunksMap, minChunkIdx, maxChunkIdx
-}
-
-// convertToSQLKeyedMapForDataMap converts dataMaps into sql keyed maps. Remove any duplicate keyed.
-func convertToSQLKeyedMapForDataMap(dataMaps []models.DataMap) map[string]models.DataMap {
-	dmsMap := make(map[string]models.DataMap)
-	for _, dm := range dataMaps {
-		key := sqlWhereForGenesisHashAndChunkIdx(dm.GenesisHash, dm.ChunkIdx)
-		// Only use the first one
-		if _, hasKey := dmsMap[key]; !hasKey {
-			dmsMap[key] = dm
-		}
-	}
-	return dmsMap
-}
-
-func sqlWhereForGenesisHashAndChunkIdx(genesisHash string, chunkIdx int) string {
-	return fmt.Sprintf("(genesis_hash = '%s' AND chunk_idx = %d)", genesisHash, chunkIdx)
-}
-
-func waitForTransferAndNotifyBeta(alphaEthAddr string, betaEthAddr string, uploadSessionId string) {
-
-	if oyster_utils.BrokerMode != oyster_utils.ProdMode {
-		return
-	}
-
-	transferAddr := services.StringToAddress(alphaEthAddr)
-	balance, err := EthWrapper.WaitForTransfer(transferAddr, "prl")
-
-	paymentStatus := models.PaymentStatusConfirmed
-	if err != nil {
-		paymentStatus = models.PaymentStatusError
-	}
-
-	session := models.UploadSession{}
-	if err := models.DB.Find(&session, uploadSessionId); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return
-	}
-
-	if session.PaymentStatus != models.PaymentStatusConfirmed {
-		session.PaymentStatus = paymentStatus
-	}
-	if err := models.DB.Save(&session); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return
-	}
-
-	// Alpha send half of it to Beta
-	checkAndSendHalfPrlToBeta(session, balance)
-}
-
-func checkAndSendHalfPrlToBeta(session models.UploadSession, balance *big.Int) {
-	if session.Type != models.SessionTypeAlpha ||
-		session.PaymentStatus != models.PaymentStatusConfirmed ||
-		session.ETHAddrBeta.String == "" {
-		return
-	}
-
-	betaAddr := services.StringToAddress(session.ETHAddrBeta.String)
-	betaBalance := EthWrapper.CheckPRLBalance(betaAddr)
-	if betaBalance.Int64() > 0 {
-		return
-	}
-
-	var splitAmount big.Int
-	splitAmount.Set(balance)
-	splitAmount.Div(balance, big.NewInt(2))
-	callMsg := services.OysterCallMsg{
-		From:   services.StringToAddress(session.ETHAddrAlpha.String),
-		To:     betaAddr,
-		Amount: splitAmount,
-	}
-	EthWrapper.SendPRL(callMsg)
 }

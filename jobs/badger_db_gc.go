@@ -1,15 +1,17 @@
 package jobs
 
 import (
-	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 /*BadgerDbGc run garbage collector on current database to do compaction. It will spike the LSTM activity as a result.*/
 func BadgerDbGc() {
-	db := services.GetBadgerDb()
+	db := oyster_utils.GetBadgerDb()
 	if db == nil {
 		return
 	}
+
+	// TODO:  Make sure this will work with the new DB changes.  Do we need to call this for every db?
 
 	// It is recommended that this method be called during periods of low activity in your system, or periodically
 	for {

@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 
 	"errors"
@@ -1227,23 +1226,6 @@ func getTestWallet() *keystore.Key {
 func createContext() (ctx context.Context, cancel context.CancelFunc) {
 	deadline := time.Now().Add(5000 * time.Millisecond)
 	return context.WithDeadline(context.Background(), deadline)
-}
-
-// record transaction
-func recordTransaction(address common.Address, status string) {
-	// when a successful transaction event, will need to change the status
-	// of the correct row in the completed_uploads table.
-	// expect "address" to be the "to" address of the gas transaction or
-	// the "from" address of the PRL transaction.
-	// do *not* use the broker's main wallet address
-	switch status {
-	case "sendGas":
-		// gas transfers succeeded, call this method:
-		models.SetGasStatusByAddress(address.Hex(), models.GasTransferSuccess)
-	case "sendPRL":
-		// PRL transfer succeeded, call this:
-		models.SetPRLStatusByAddress(address.Hex(), models.PRLClaimSuccess)
-	}
 }
 
 var MAIN = "mainnet"

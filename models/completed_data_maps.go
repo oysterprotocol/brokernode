@@ -31,11 +31,6 @@ type CompletedDataMap struct {
 }
 
 const (
-	/*CompletedDataMapsTimeToLive will cause completed_data_maps
-	message data to be garbage collected after two weeks.  This can
-	be increased but for now it will give us ample time to make S3
-	backups.*/
-	CompletedDataMapsTimeToLive = 7 * 24 * time.Hour
 
 	/*CompletedDataMapsMsgIDPrefix is the prefix for the completed data map MsgID.*/
 	CompletedDataMapsMsgIDPrefix = "completeDataMap_"

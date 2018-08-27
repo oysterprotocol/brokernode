@@ -1,6 +1,7 @@
 package oyster_utils
 
 import (
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
@@ -104,6 +105,7 @@ func ChunkMessageToTrytesWithStopper(messageString string) (giota.Trytes, error)
 }
 
 func RunesToTrytes(r []rune) string {
+
 	var output string
 	for _, c := range r {
 		v1 := c % 27
@@ -154,4 +156,23 @@ func PadWith9s(stringToPad string, desiredLength int) string {
 func Sha256ToAddress(hashString string) string {
 	obfuscatedHash := HashHex(hashString, sha512.New384())
 	return string(MakeAddress(obfuscatedHash))
+}
+
+/*ComputeSectorDataMapAddress computes a particular sectorIdx addresses in term of DataMaps. Limit by maxNumbOfHashes.*/
+func ComputeSectorDataMapAddress(genHash string, sectorIdx int, maxNumOfHashes int) []string {
+	var addr []string
+
+	currHash := genHash
+	for i := 0; i < sectorIdx*FileSectorInChunkSize; i++ {
+		currHash = HashHex(currHash, sha256.New())
+	}
+
+	for i := 0; i < maxNumOfHashes; i++ {
+		obfuscatedHash := HashHex(currHash, sha512.New384())
+		currAddr := string(MakeAddress(obfuscatedHash))
+
+		addr = append(addr, currAddr)
+		currHash = HashHex(currHash, sha256.New())
+	}
+	return addr
 }

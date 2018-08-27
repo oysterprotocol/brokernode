@@ -17,6 +17,9 @@ type PoWModeStatus int
 /*OysterPaysStatus reflects whether uploads are free--this is mostly needed for unit tests*/
 type OysterPaysStatus int
 
+/*DataMapsStorageStatus reflects whether we are storing data maps in sql or badger*/
+type DataMapsStorageStatus int
+
 const (
 	/*ProdMode - the broker is requiring real PRL for uploads*/
 	ProdMode BrokerModeStatus = iota + 1
@@ -40,6 +43,13 @@ const (
 	OysterIsPaying
 )
 
+const (
+	/*DataMapsInSQL is when the data maps are stored in SQL*/
+	DataMapsInSQL DataMapsStorageStatus = iota + 1
+	/*DataMapsInBadger is when the data maps are stored in badger*/
+	DataMapsInBadger
+)
+
 /*BrokerMode - the mode the broker is in (prod, dummy treasure, etc.)*/
 var BrokerMode BrokerModeStatus
 
@@ -49,11 +59,15 @@ var PoWMode PoWModeStatus
 /*PaymentMode - whether Oyster is paying or not*/
 var PaymentMode OysterPaysStatus
 
+/*DataMapStorageMode - where we are storing the data maps*/
+var DataMapStorageMode DataMapsStorageStatus
+
 func init() {
 
 	ResetPoWMode()
 	ResetBrokerMode()
 	ResetPaymentMode()
+	ResetDataMapStorageMode()
 }
 
 /*ResetPoWMode - resets the PoWMode to whatever is in the .env file*/
@@ -109,6 +123,21 @@ func ResetPaymentMode() {
 	SetPaymentMode(mode)
 }
 
+/*ResetDataMapStorageMode - resets the storage mode to whatever is in the .env file*/
+func ResetDataMapStorageMode() {
+	dataMapsInBadger := os.Getenv("DATA_MAPS_IN_BADGER")
+
+	var mode DataMapsStorageStatus
+
+	switch dataMapsInBadger {
+	case "true":
+		mode = DataMapsInBadger
+	default:
+		mode = DataMapsInSQL
+	}
+	SetStorageMode(mode)
+}
+
 /*SetPoWMode - allow to change the mode within the code (such as for unit tests)*/
 func SetPoWMode(powMode PoWModeStatus) {
 	PoWMode = powMode
@@ -133,4 +162,18 @@ func SetBrokerMode(brokerMode BrokerModeStatus) {
 /*SetPaymentMode - allow to change the mode within the code (such as for unit tests)*/
 func SetPaymentMode(paymentMode OysterPaysStatus) {
 	PaymentMode = paymentMode
+}
+
+/*SetStorageMode - change where we are storing the data maps*/
+func SetStorageMode(dataStorageMode DataMapsStorageStatus) {
+
+	switch dataStorageMode {
+	case DataMapsInSQL:
+		InitKvStore()
+		log.Println("Make sure you set the correct mode in .env!  Broker storage mode is DataMapsInSQL")
+	case DataMapsInBadger:
+		log.Println("Make sure you set the correct mode in .env!  Broker storage mode is DataMapsInBadger")
+	}
+
+	DataMapStorageMode = dataStorageMode
 }

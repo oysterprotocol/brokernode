@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,7 +22,7 @@ type ChunkTracker struct {
 }
 
 type PowJob struct {
-	Chunks         []models.DataMap
+	Chunks         []oyster_utils.ChunkData
 	BroadcastNodes []string
 }
 
@@ -48,19 +47,41 @@ type ProcessingFrequency struct {
 	Frequency             float64
 }
 
-type SendChunksToLambda func(chunks *[]models.DataMap)
-type SendChunksToChannel func([]models.DataMap, *models.ChunkChannel)
-type VerifyChunkMessagesMatchRecord func([]models.DataMap) (filteredChunks FilteredChunk, err error)
-type VerifyChunksMatchRecord func([]models.DataMap, bool) (filteredChunks FilteredChunk, err error)
-type ChunksMatch func(giota.Transaction, models.DataMap, bool) bool
+/*SendChunksToChannel defines the type for a function which sends chunks to a channel.  This type used for mocking.*/
+type SendChunksToChannel func([]oyster_utils.ChunkData, *models.ChunkChannel)
+
+/*VerifyChunkMessagesMatchRecord defines the type for a function which verifies chunk messages
+on the tangle match what we have stored in the db.  This type used for mocking.*/
+type VerifyChunkMessagesMatchRecord func([]oyster_utils.ChunkData) (filteredChunks FilteredChunk, err error)
+
+/*VerifyChunksMatchRecord defines the type for a function which verifies that chunks on the tangle match
+chunks in the db.  This type used for mocking.*/
+type VerifyChunksMatchRecord func([]oyster_utils.ChunkData, bool) (filteredChunks FilteredChunk, err error)
+
+/*ChunksMatch defines the type for a function which returns a boolean if chunk tangle data matches chunk db data.
+This type used for mocking.*/
+type ChunksMatch func(giota.Transaction, oyster_utils.ChunkData, bool) bool
+
+/*SendChunksToLambda defines the type for a function which will send the chunkds to AWS Lambda.
+This type used for mocking.*/
+type SendChunksToLambda func(chunks *[]oyster_utils.ChunkData)
+
+/*VerifyTreasure defines the type for a function which will verify webnode treasure claims.
+This type used for mocking.*/
 type VerifyTreasure func([]string) (verify bool, err error)
+
+/*FindTransactions defines the type for a function which will attempt to find transactions on the iota tangle based on
+addresses.  This type used for mocking.*/
 type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transaction, error)
+
+/*GetTransactionsToApprove defines the type for a function which will get a trunk and branch transaction for proof of
+work.  This type used for mocking.*/
 type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
 
 type FilteredChunk struct {
-	MatchesTangle      []models.DataMap
-	DoesNotMatchTangle []models.DataMap
-	NotAttached        []models.DataMap
+	MatchesTangle      []oyster_utils.ChunkData
+	DoesNotMatchTangle []oyster_utils.ChunkData
+	NotAttached        []oyster_utils.ChunkData
 }
 
 const (
@@ -182,7 +203,7 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 			}
 			transfersArray[i].Address = address
 			transfersArray[i].Value = int64(0)
-			transfersArray[i].Message, err = giota.ToTrytes(GetMessageFromDataMap(chunk))
+			transfersArray[i].Message, err = giota.ToTrytes(chunk.Message)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				panic(err)
@@ -358,21 +379,12 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	return nil
 }
 
-func sendChunksToLambda(chunks *[]models.DataMap) {
-	for _, chunk := range *chunks {
-		chunk.Status = models.Unverified
-		models.DB.ValidateAndSave(&chunk)
-	}
+func sendChunksToLambda(chunks *[]oyster_utils.ChunkData) {
 
 	go batchPowOnLambda(chunks)
 }
 
-func sendChunksToChannel(chunks []models.DataMap, channel *models.ChunkChannel) {
-
-	for _, chunk := range chunks {
-		chunk.Status = models.Unverified
-		models.DB.ValidateAndSave(&chunk)
-	}
+func sendChunksToChannel(chunks []oyster_utils.ChunkData, channel *models.ChunkChannel) {
 
 	channel.EstReadyTime = SetEstimatedReadyTime(Channel[channel.ChannelID], len(chunks))
 	models.DB.ValidateAndSave(channel)
@@ -418,32 +430,24 @@ func SetEstimatedReadyTime(channel PowChannel, numChunks int) time.Time {
 	}
 }
 
-func verifyChunkMessagesMatchRecord(chunks []models.DataMap) (filteredChunks FilteredChunk, err error) {
+func verifyChunkMessagesMatchRecord(chunks []oyster_utils.ChunkData) (filteredChunks FilteredChunk, err error) {
 	filteredChunks, err = verifyChunksMatchRecord(chunks, false)
 	return filteredChunks, err
 }
 
-func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) (filteredChunks FilteredChunk, err error) {
+func verifyChunksMatchRecord(chunks []oyster_utils.ChunkData, checkTrunkAndBranch bool) (filteredChunks FilteredChunk, err error) {
 
 	filteredChunks = FilteredChunk{}
 	addresses := make([]giota.Address, 0, len(chunks))
 
 	for _, chunk := range chunks {
-		// if a chunk did not match the tangle in verify_data_maps
-		// we mark it as "Error" and there is no reason to check the tangle
-		// for it again while its status is still in an Error state
-
-		// this will cause this chunk to automatically get added to 'NotAttached' array
-		// and send to the channels
-		if chunk.Status != models.Error {
-			address, err := giota.ToAddress(chunk.Address)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				// trytes were not valid, skip this iteration
-				continue
-			}
-			addresses = append(addresses, address)
+		address, err := giota.ToAddress(chunk.Address)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			// trytes were not valid, skip this iteration
+			continue
 		}
+		addresses = append(addresses, address)
 	}
 
 	if len(addresses) == 0 {
@@ -484,8 +488,8 @@ func verifyChunksMatchRecord(chunks []models.DataMap, checkTrunkAndBranch bool) 
 	return filteredChunks, err
 }
 
-func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndBranch bool) (matchesTangle []models.DataMap,
-	notAttached []models.DataMap, doesNotMatch []models.DataMap) {
+func filterChunks(hashes []giota.Trytes, chunks []oyster_utils.ChunkData, checkTrunkAndBranch bool) (matchesTangle []oyster_utils.ChunkData,
+	notAttached []oyster_utils.ChunkData, doesNotMatch []oyster_utils.ChunkData) {
 
 	for i := 0; i < len(hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
 		end := i + MaxNumberOfAddressPerFindTransactionRequest
@@ -534,7 +538,7 @@ func filterChunks(hashes []giota.Trytes, chunks []models.DataMap, checkTrunkAndB
 	return matchesTangle, notAttached, doesNotMatch
 }
 
-func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk models.DataMap, checkTrunkAndBranch bool) (matchFound bool) {
+func checkTxObjectsForMatch(transactionObjectsArray []giota.Transaction, chunk oyster_utils.ChunkData, checkTrunkAndBranch bool) (matchFound bool) {
 	matchFound = false
 	for _, txObject := range transactionObjectsArray {
 		if chunksMatch(txObject, chunk, checkTrunkAndBranch) {
@@ -553,39 +557,30 @@ func makeTransactionObjects(transactionObjects []giota.Transaction) (transaction
 	return transactionObjectsMap
 }
 
-func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord models.DataMap, checkBranchAndTrunk bool) bool {
+func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord oyster_utils.ChunkData, checkBranchAndTrunk bool) bool {
 
 	// TODO delete this line when we figure out why uploads
 	// occasionally have the wrong chunk_idx for msg_id
 	return true
 
-	message := GetMessageFromDataMap(chunkOnRecord)
-	if checkBranchAndTrunk == false &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
+	/*
+		message := chunkOnRecord.Message
+		if checkBranchAndTrunk == false &&
+			strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
 
-		return true
+			return true
 
-	} else if strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.TrunkTransaction), chunkOnRecord.TrunkTx) &&
-		strings.Contains(fmt.Sprint(chunkOnTangle.BranchTransaction), chunkOnRecord.BranchTx) {
+		} else {
 
-		return true
+			oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
+				Set("chunk_idx", chunkOnRecord.Idx).
+				Set("address", chunkOnRecord.Address).
+				Set("db_message", message).
+				Set("tangle_message", chunkOnTangle.SignatureMessageFragment))
 
-	} else {
-
-		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
-			Set("genesis_hash", chunkOnRecord.GenesisHash).
-			Set("chunk_idx", chunkOnRecord.ChunkIdx).
-			Set("address", chunkOnRecord.Address).
-			Set("db_message", message).
-			Set("tangle_message", chunkOnTangle.SignatureMessageFragment).
-			Set("db_trunk", chunkOnRecord.TrunkTx).
-			Set("tangle_trunk", chunkOnTangle.TrunkTransaction).
-			Set("db_branch", chunkOnRecord.BranchTx).
-			Set("tangle_branch", chunkOnTangle.BranchTransaction))
-
-		return false
-	}
+			return false
+		}
+	*/
 }
 
 // Verify PoW of work.
@@ -662,7 +657,7 @@ func lambdaWorker(provider string, lChan <-chan []*awsgateway.HooknodeChunk) {
 	}
 }
 
-func batchPowOnLambda(chunks *[]models.DataMap) {
+func batchPowOnLambda(chunks *[]oyster_utils.ChunkData) {
 	// Batch chunks by limit
 	numBatches := (len(*chunks) / awsgateway.MaxChunksLen) + 1
 	for i := 0; i < numBatches; i++ {
@@ -687,12 +682,12 @@ func batchPowOnLambda(chunks *[]models.DataMap) {
 				Tag:     OysterTagHook,
 			}
 
-			msg, err := giota.ToTrytes(GetMessageFromDataMap(chk))
-			lamChk.Message = msg
+			msg, err := giota.ToTrytes(chk.Message)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				panic(err)
 			}
+			lamChk.Message = msg
 
 			chunkBatch[j] = &lamChk
 		}
