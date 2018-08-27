@@ -245,11 +245,7 @@ func (suite *ModelSuite) Test_GetAllUnassignedChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
-		} else {
-			dm.Message = "NOTEMPETY"
-		}
+		suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}
@@ -283,11 +279,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
-		} else {
-			dm.Message = "NOTEMPETY"
-		}
+		suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}
@@ -323,11 +315,7 @@ func (suite *ModelSuite) Test_GetPendingChunksBySession() {
 	err = suite.DB.Where("genesis_hash = ?", "abcdeff1").All(&dataMaps)
 	suite.Nil(err)
 	for _, dm := range dataMaps {
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
-		} else {
-			dm.Message = "NOTEMPETY"
-		}
+		suite.Nil(services.BatchSet(&services.KVPairs{dm.MsgID: "NOTEMPETY"}, models.TestValueTimeToLive))
 		dm.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dm)
 	}

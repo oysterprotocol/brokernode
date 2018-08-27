@@ -15,10 +15,8 @@ type ActionSuite struct {
 func (suite *ActionSuite) SetupTest() {
 	suite.Action.SetupTest()
 
-	if services.IsKvStoreEnabled() {
-		suite.Nil(services.RemoveAllKvStoreData())
-		suite.Nil(services.InitKvStore())
-	}
+	suite.Nil(services.RemoveAllKvStoreData())
+	suite.Nil(services.InitKvStore())
 
 	EthWrapper = services.EthWrapper
 	IotaWrapper = services.IotaWrapper

@@ -395,17 +395,13 @@ func ProcessAndStoreChunkData(chunks []chunkReq, genesisHash string, treasureIdx
 	// the keys in this chunks map have already transformed indexes
 	chunksMap := convertToBadgerKeyedMapForChunks(chunks, genesisHash, treasureIdxMap)
 
-	// TODO: We should totally deprecate storing the message in sql and remove
-	// all of these IsKvStoreEnabled checks
-	if services.IsKvStoreEnabled() {
-		batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
-		for key, chunk := range chunksMap {
+	batchSetKvMap := services.KVPairs{} // Store chunk.Data into KVStore
+	for key, chunk := range chunksMap {
 
-			batchSetKvMap[key] = chunk.Data
-		}
-
-		services.BatchSet(&batchSetKvMap, models.DataMapsTimeToLive)
+		batchSetKvMap[key] = chunk.Data
 	}
+
+	services.BatchSet(&batchSetKvMap, models.DataMapsTimeToLive)
 }
 
 // convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.

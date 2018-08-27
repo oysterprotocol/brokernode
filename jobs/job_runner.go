@@ -54,9 +54,8 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(storeCompletedGenesisHashesHandler), storeCompletedGenesisHashesHandler)
 
-	if services.IsKvStoreEnabled() {
-		//oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
-	}
+	// Need to re-enable this.
+	//oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
 }
 
 func doWork(oysterWorker *worker.Simple) {
@@ -87,8 +86,8 @@ func doWork(oysterWorker *worker.Simple) {
 	oysterWorkerPerformIn(updateMsgStatusHandler,
 		worker.Args{Duration: 15 * time.Second})
 
-// 	oysterWorkerPerformIn(badgerDbGcHandler,
-// 		worker.Args{Duration: 10 * time.Minute})
+	// 	oysterWorkerPerformIn(badgerDbGcHandler,
+	// 		worker.Args{Duration: 10 * time.Minute})
 
 	if oyster_utils.BrokerMode == oyster_utils.ProdMode {
 		oysterWorkerPerformIn(storeCompletedGenesisHashesHandler,

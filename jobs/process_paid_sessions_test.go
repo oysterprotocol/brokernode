@@ -89,11 +89,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 
 	// verify that the "Message" field for every chunk in paidButUnburied is ""
 	for _, dMap := range paidButUnburied {
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
-		} else {
-			dMap.Message = "NOTEMPTY"
-		}
+		suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
 		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dMap)
 	}
@@ -101,11 +97,7 @@ func (suite *JobsSuite) Test_ProcessPaidSessions() {
 	// verify that the "Status" field for every chunk in paidAndBuried is NOT Unassigned
 	for _, dMap := range paidAndBuried {
 		suite.NotEqual(models.Unassigned, dMap.Status)
-		if services.IsKvStoreEnabled() {
-			suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
-		} else {
-			dMap.Message = "NOTEMPTY"
-		}
+		suite.Nil(services.BatchSet(&services.KVPairs{dMap.MsgID: "NOTEMPTY"}, models.TestValueTimeToLive))
 		dMap.MsgStatus = models.MsgStatusUploadedNoNeedEncode
 		suite.DB.ValidateAndSave(&dMap)
 	}
