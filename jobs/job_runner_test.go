@@ -22,10 +22,7 @@ var Suite JobsSuite
 
 func (suite *JobsSuite) SetupTest() {
 	suite.Model.SetupTest()
-
-	if oyster_utils.IsKvStoreEnabled() {
-		suite.Nil(oyster_utils.InitKvStore())
-	}
+	suite.Nil(oyster_utils.InitKvStore())
 
 	// Reset the jobs's IotaWrapper, EthWrapper before each test.
 	// Some tests may override this value.

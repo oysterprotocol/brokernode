@@ -52,9 +52,8 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(checkBetaPaymentsHandler), checkBetaPaymentsHandler)
 	oysterWorker.Register(getHandlerName(storeCompletedGenesisHashesHandler), storeCompletedGenesisHashesHandler)
 
-	if oyster_utils.IsKvStoreEnabled() {
-		//oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
-	}
+	// Need to re-enable this.
+	//oysterWorker.Register(getHandlerName(badgerDbGcHandler), badgerDbGcHandler)
 }
 
 func doWork(oysterWorker *worker.Simple) {

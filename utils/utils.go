@@ -62,15 +62,13 @@ func init() {
 	if v := os.Getenv("DISPLAY_NAME"); v != "" {
 		displayName = v
 	}
-	kvStoreEnabled := os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
 	logErrorTags = map[string]string{
-		"mode":           os.Getenv("MODE"),
-		"hostIp":         os.Getenv("HOST_IP"),
-		"ethNodeUrl":     os.Getenv("ETH_NODE_URL"),
-		"osyterPay":      isOysterPay,
-		"displayName":    displayName,
-		"kvStoreEnabled": strconv.FormatBool(kvStoreEnabled),
+		"mode":        os.Getenv("MODE"),
+		"hostIp":      os.Getenv("HOST_IP"),
+		"ethNodeUrl":  os.Getenv("ETH_NODE_URL"),
+		"osyterPay":   isOysterPay,
+		"displayName": displayName,
 	}
 }
 

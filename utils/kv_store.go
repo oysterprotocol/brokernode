@@ -36,7 +36,6 @@ const TestValueTimeToLive = 3 * time.Minute
 // Singleton DB
 var badgerDB *badger.DB
 var dbNoInitError error
-var isKvStoreEnable bool
 var badgerDirTest string
 var dbMap KVDBMap
 var prodDBMap KVDBMap
@@ -78,9 +77,6 @@ func init() {
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
 	badgerDirTest, _ = ioutil.TempDir("", "badgerForUnitTest")
-
-	// enable unless explicitly disabled in .env file
-	isKvStoreEnable = os.Getenv("KEY_VALUE_STORE_ENABLED") != "false"
 
 	if DataMapStorageMode == DataMapsInSQL {
 		err := InitKvStore()
@@ -345,11 +341,6 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 /*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/
 func GetBadgerDb() *badger.DB {
 	return badgerDB
-}
-
-/*IsKvStoreEnabled returns true if KVStore is enabled. Check this before calling BatchGet/BatchSet.*/
-func IsKvStoreEnabled() bool {
-	return isKvStoreEnable
 }
 
 /*GetChunkData returns the message, hash, and address for a chunk.*/
