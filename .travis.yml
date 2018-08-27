@@ -49,7 +49,7 @@ before_script:
   #   "
 
 script:
-  - docker-compose exec app buffalo test -v
+  - docker-compose exec app buffalo test
 
   # Run the webinterface e2e tests on the newly deployed brokernode
   - git clone https://github.com/oysterprotocol/webinterface.git
