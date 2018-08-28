@@ -42,7 +42,22 @@ func checkSessionChunks(IotaWrapper services.IotaService, session models.UploadS
 		return
 	}
 
-	CheckChunks(IotaWrapper, chunkData, session)
+	for ok, i := true, 0; ok; ok = i < len(chunkData) {
+		end := i + services.MaxNumberOfAddressPerFindTransactionRequest
+
+		if end > len(chunkData) {
+			end = len(chunkData)
+		}
+
+		if i >= end {
+			break
+		}
+
+		if len(chunkData[i:end]) > 0 {
+			CheckChunks(IotaWrapper, chunkData[i:end], session)
+		}
+		i += services.MaxNumberOfAddressPerFindTransactionRequest
+	}
 }
 
 /*CheckChunks will make calls to verify the chunks and update the indexes of the session*/
