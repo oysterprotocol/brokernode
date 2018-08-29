@@ -72,17 +72,21 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 
 	brokernodeNotFoundErr := models.DB.First(&brokernode)
 
+	address := ""
+
 	// DB results error if First() does not return any error.
 	if dataMapNotFoundErr != nil {
+		address = "OYSTERPRL" + oyster_utils.RandSeq(72, oyster_utils.TrytesAlphabet)
+		genHash := oyster_utils.RandSeq(6, []rune("abcdef0123456789"))
 		dataMap = models.DataMap{
-			Address:        "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL",
-			GenesisHash:    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Address:        address,
+			GenesisHash:    genHash,
 			ChunkIdx:       0,
-			Hash:           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-			ObfuscatedHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Hash:           oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+			ObfuscatedHash: oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
 			Status:         models.Pending,
 			MsgStatus:      1,
-			MsgID: oyster_utils.GenerateMsgID("", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			MsgID: oyster_utils.GenerateMsgID("", genHash,
 				0),
 		}
 	}
@@ -99,7 +103,7 @@ func (usr *TransactionBrokernodeResource) Create(c buffalo.Context) error {
 	}
 
 	err = models.DB.Transaction(func(tx *pop.Connection) error {
-		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+		if dataMap.Address != address {
 			dataMap.Status = models.Unverified
 		}
 		dataMap.BranchTx = string(tips.BranchTransaction)
@@ -207,7 +211,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	}
 
 	validMessage := strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment), services.GetMessageFromDataMap(t.DataMap))
-	if !validMessage && address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+	if !validMessage && !strings.Contains(string(address), "OYSTERPRL") {
 		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
@@ -231,7 +235,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	broadcastErr := iotaAPI.BroadcastTransactions(iotaTransactions)
 
 	if broadcastErr != nil {
-		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
+		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed: " + broadcastErr.Error()}))
 	}
 
 	models.DB.Transaction(func(tx *pop.Connection) error {
@@ -239,7 +243,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		tx.ValidateAndSave(t)
 
 		dataMap := t.DataMap
-		if dataMap.Address != "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL" {
+		if !strings.Contains(string(dataMap.Address), "OYSTERPRL") {
 			dataMap.Status = models.Complete
 		}
 

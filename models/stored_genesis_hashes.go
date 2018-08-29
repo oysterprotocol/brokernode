@@ -101,17 +101,15 @@ func GetGenesisHashForWebnode(existingGenesisHashes []string) (StoredGenesisHash
 		existingGenHashMap[genHash] = true
 	}
 
-	err := DB.Where("webnode_count < ? AND status = ? AND treasure_status = ? ORDER BY created_at ASC",
-		WebnodeCountLimit, StoredGenesisHashUnassigned, TreasureBuried).All(&treasureBuriedGenesisHashes)
+	err := DB.Where("webnode_count < ? AND status = ? AND ORDER BY created_at ASC",
+		WebnodeCountLimit, StoredGenesisHashUnassigned).All(&treasureBuriedGenesisHashes)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return StoredGenesisHash{}, err
 	}
 
-	err = DB.Where("webnode_count < ? AND status = ?  AND TIMESTAMPDIFF(hour, created_at, NOW()) >= ? "+
-		"ORDER BY created_at ASC",
-		WebnodeCountLimit, StoredGenesisHashUnassigned,
-		HoursToAssumeTreasureHasBeenBuried).All(&treasureLikelyBuriedGenesisHashes)
+	err = DB.Where("webnode_count < ? ORDER BY created_at ASC",
+		WebnodeCountLimit).All(&treasureLikelyBuriedGenesisHashes)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return StoredGenesisHash{}, err
