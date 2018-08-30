@@ -277,12 +277,12 @@ func ConvertFromWeiUnit(wei *big.Int) *big.Float {
 
 func ConvertWeiToGwei(wei *big.Int) *big.Int {
 
-	return new(big.Int).Quo(wei, big.NewInt(params.Shannon))
+	return new(big.Int).Quo(wei, big.NewInt(params.GWei))
 }
 
 func ConvertGweiToWei(gwei *big.Int) *big.Int {
 
-	return new(big.Int).Mul(gwei, big.NewInt(params.Shannon))
+	return new(big.Int).Mul(gwei, big.NewInt(params.GWei))
 }
 
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
