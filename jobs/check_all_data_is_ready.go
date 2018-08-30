@@ -6,6 +6,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
+/*CheckAllDataIsReady checks if all data for sessions has been stored*/
 func CheckAllDataIsReady(PrometheusWrapper services.PrometheusService) {
 
 	start := PrometheusWrapper.TimeNow()

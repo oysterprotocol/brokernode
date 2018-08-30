@@ -15,7 +15,7 @@ import (
 	"github.com/oysterprotocol/brokernode/actions"
 )
 
-var Log = false
+var popLog = false
 
 var oysterLogger = func(lvl logging.Level, s string, args ...interface{}) {
 	if lvl == logging.SQL {
@@ -40,7 +40,7 @@ var oysterLogger = func(lvl logging.Level, s string, args ...interface{}) {
 	if pop.Color {
 		s = color.YellowString(s)
 	}
-	if Log {
+	if popLog {
 		fmt.Println(s)
 	}
 }
