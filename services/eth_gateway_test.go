@@ -1,17 +1,13 @@
 package services_test
 
 import (
-	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/oysterprotocol/brokernode/services"
 	"io/ioutil"
 	"math/big"
 	"os"
-	"reflect"
-	"testing"
 )
 
 //
@@ -44,8 +40,8 @@ var ethAccounts = map[string]interface{}{
 
 var prlAccounts = map[string]interface{}{
 	"prlAddress01": "0x1BE77862769AB791C4f95f8a2CBD0d3E07a3FD1f",
-	"prlAddress02": "0x73da066d94FC41f11C2672ed9ecD39127DA30976",
-	"prlAddress03": "0x74aD69B41e71E311304564611434dDD59Ee5d1F8",
+	"prlAddress02": "0x74aD69B41e71E311304564611434dDD59Ee5d1F8",
+	"prlAddress03": "0x73da066d94FC41f11C2672ed9ecD39127DA30976",
 }
 
 var ethAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["ethAddress01"]))
@@ -54,6 +50,7 @@ var prlAddress01 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress01"]))
 var prlAddress02 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress02"]))
 var prlAddress03 = common.HexToAddress(fmt.Sprint(ethAccounts["prlAddress03"]))
 
+var prlBank = "testdata/key.prv"
 var ethFile = "testdata/prl.prv"
 var prl1File = "testdata/prl.prv"
 var prl2File = "testdata/prl2.prv"
@@ -88,257 +85,257 @@ func printTx(tx *types.Transaction) {
 //
 // Ethereum Tests
 //
-
-// generate address test
-func Test_generateAddress(t *testing.T) {
-	
-	// generate eth address using gateway
-	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
-	if err != nil {
-		t.Fatalf("error creating ethereum network address")
-	}
-	// ensure address is correct format
-
-	if common.IsHexAddress(addr.Hex()[1:]) {
-		t.Fatalf("could not create a valid ethereum network address:%v", addr.Hex()[1:])
-	}
-	// ensure private key was returned
-	if privateKey == "" {
-		t.Fatalf("could not create a valid private key")
-	}
-	t.Logf("ethereum network address was generated %v\n", addr.Hex())
-}
-
-// generate address from private key test
-func Test_generateEthAddrFromPrivateKey(t *testing.T) {
-	
-	//services.RunOnTestNet()
-	
-	// generate eth address using gateway
-	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
-	if err != nil {
-		t.Fatalf("error creating ethereum network address")
-	}
-
-	generatedAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
-
-	// ensure address is what we expected
-	if originalAddr != generatedAddress {
-		t.Fatalf("generated address was %s but we expected %s", generatedAddress, originalAddr)
-	}
-	t.Logf("generated address :%v", generatedAddress.Hex())
-}
-
-// get gas price from network test
-func Test_getGasPrice(t *testing.T) {
-	//services.RunOnTestNet()
-	// get the suggested gas price
-	gasPrice, err := services.EthWrapper.GetGasPrice()
-	if err != nil {
-		t.Fatalf("error retrieving gas price: %v\n", err)
-	}
-	if gasPrice.IsUint64() && gasPrice.Uint64() > 0 {
-		t.Logf("gas price verified: %v\n", gasPrice)
-	} else {
-		t.Fatalf("gas price less than zero: %v\n", gasPrice)
-	}
-	t.Logf("current network gas price :%v", gasPrice.String())
-}
-
-// check if it's worth it to try and reclaiming eth from an address
-func Test_checkIfWorthReclaimingGas(t *testing.T) {
-	
-	t.Skip(nil)
-	
-	worthIt, amountToReclaim, err := services.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, services.GasLimitETHSend)
-
-	if worthIt {
-		t.Logf("Should try to reclaim gas: %v\n", "true")
-	} else {
-		t.Logf("Should try to reclaim gas: %v\n", "false")
-	}
-
-	t.Logf("Will attempt to reclaim this much: %v\n", amountToReclaim.String())
-
-	if err != nil {
-		t.Fatalf("Received an error: %v\n", err.Error())
-	}
-}
-
-// reclaim leftover gas
-func Test_reclaimGas(t *testing.T) {
-	
-	t.Skip(nil)
-	
-	gasToReclaim := big.NewInt(5000)
-	prlWallet := getWallet(prl2File)
-
-	success := services.EthWrapper.ReclaimGas(prlWallet.Address, prlWallet.PrivateKey, gasToReclaim)
-
-	// This isn't a very good test because it succeeds regardless of the outcome?
-
-	if success {
-		t.Logf("Reclaim gas success: %v\n", "true")
-	} else {
-		t.Logf("Reclaim gas success: %v\n", "false")
-	}
-}
-
-// get gas price from network test
-func Test_calculateGasNeeded(t *testing.T) {
-	
-	t.Skip(nil)
-	
-	gasPrice, err := services.EthWrapper.GetGasPrice()
-	gasLimitToUse := services.GasLimitETHSend
-
-	expectedGasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimitToUse)))
-
-	gasToSend, err := services.EthWrapper.CalculateGasNeeded(gasLimitToUse)
-	if expectedGasToSend.Int64() != gasToSend.Int64() {
-		t.Fatalf("failed to calculate the gas to send: %v\n", err)
-	}
-	if expectedGasToSend.Int64() == gasToSend.Int64() && gasToSend.Int64() > 0 {
-		t.Logf("successfully calculated gas to send: %v\n", gasToSend)
-	} else if gasToSend.Int64() <= 0 {
-		t.Fatalf("calculated a gas to send amount less than zero: %v\n", gasPrice)
-	}
-}
-
-// check balance on test network test
-func Test_checkETHBalance(t *testing.T) {
-	//services.RunOnTestNet()
-	//t.Skip(nil)
-	// test balance for an ether account
-	// Convert string address to byte[] address form
-	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
-	if bal.Int64() != -1 {
-		t.Logf("balance verified: %v\n", bal)
-	} else {
-		t.Fatalf("could not get balance")
-	}
-}
-
-// get current block number
-func Test_getCurrentBlockNumber(t *testing.T) {
-	
-	// Get the current block from the network
-	block, err := services.EthWrapper.GetCurrentBlock()
-	if err != nil {
-		t.Fatalf("could not retrieve the current block: %v\n", err)
-	}
-	if block != nil {
-		t.Logf("retrieved the current block: %v\n", block.Number())
-	}
-}
-
-// get current block gas limit
-func Test_getCurrentBlockGasLimit(t *testing.T) {
-	
-	//services.RunOnTestNet()
-	// Get the current block from the network
-	block, err := services.EthWrapper.GetCurrentBlock()
-	if err != nil {
-		t.Fatalf("could not retrieve the current block: %v\n", err)
-	}
-	if block != nil {
-		t.Logf("retrieved the current block gas limit: %v\n", block.GasLimit())
-	}
-}
-
-func Test_getNonceForAccount(t *testing.T) {
-	//services.RunOnTestNet()
-	
-	// Get the nonce for the given account
-	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
-	if err != nil {
-		t.Fatalf("unable to access the account nonce : %v", err)
-	} else {
-		t.Logf("valid account nonce : %v", nonce)
-	}
-}
-
-// send gas(ether) to an address for a transaction
-func Test_sendEth(t *testing.T) {
-	
-	// services.RunOnTestNet()
-	// transfer
-	transferValue := big.NewInt(1)
-	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
-	// Send ether to test account
-	// wallet := getWallet(ethFile)
-	to := common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
-	txs, _, _, err := services.EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, to, transferValueInWei)
-	//txs, _, _, err := services.EthWrapper.SendETH(from, services.MainWalletPrivateKey, to, transferValueInWei)
-	if err != nil {
-		t.Logf("failed to send ether to %v ether to %v\n", transferValue, to.Hex())
-		t.Fatalf("transaction error: %v\n", err)
-	}
-	for tx := range txs {
-		transaction := txs[tx]
-		// Store For Next Test
-		lastTransaction = *transaction
-		printTx(transaction)
-
-		// wait for confirmation
-		confirmed := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash(), 3)
-		if confirmed == 1 {
-			t.Logf("confirmed ether was sent to : %v", ethAddress02.Hex())
-		} else if confirmed == 0 {
-			t.Logf("failed to confirm sending ether")
-		}
-	}
-}
-
-// ensure the transaction is stored in the transactions table
-// it is accessed with the lastTransactionHash from the previous test
-func Test_ensureTransactionStoredInPool(t *testing.T) {
-	
-	txHash := lastTransaction.Hash()
-	if len(txHash) <= 0 {
-		// set an existing tx hash
-		txHash = lastTransactionHash
-	}
-	// check pending
-	isPending := services.EthWrapper.PendingConfirmation(txHash)
-	if isPending {
-		// get item by txHash and ensure its in the table
-		txWithBlockNumber := services.EthWrapper.GetTransaction(txHash)
-		if txWithBlockNumber.Transaction != nil {
-			// compare transaction hash
-			if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), txHash) {
-				t.Log("transaction is stored on the transactions table")
-			} else {
-				t.Fatal("transaction should be stored in the transaction table, post sendEth")
-			}
-		}
-	}
-}
-
-// ensure confirmation is made with last transaction hash from sendEth
-func Test_confirmTransactionStatus(t *testing.T) {
-	
-	//services.RunOnTestNet()
-	txHash := lastTransaction.Hash()
-	if len(txHash) <= 0 {
-		// set an existing tx hash
-		txHash = lastTransactionHash
-	}
-	// check pending
-	isPending := services.EthWrapper.PendingConfirmation(txHash)
-	if isPending {
-		// check confirmation
-		txStatus := services.EthWrapper.WaitForConfirmation(txHash, 3)
-		if txStatus == 0 {
-			t.Logf("transaction failure")
-		} else if txStatus == 1 {
-			t.Logf("confirmation completed")
-
-			bal := services.EthWrapper.CheckETHBalance(ethAddress02)
-			t.Logf("balance updated : %v", bal)
-		}
-	}
-}
+//
+//// generate address test
+//func Test_generateAddress(t *testing.T) {
+//
+//	// generate eth address using gateway
+//	addr, privateKey, err := services.EthWrapper.GenerateEthAddr()
+//	if err != nil {
+//		t.Fatalf("error creating ethereum network address")
+//	}
+//	// ensure address is correct format
+//
+//	if common.IsHexAddress(addr.Hex()[1:]) {
+//		t.Fatalf("could not create a valid ethereum network address:%v", addr.Hex()[1:])
+//	}
+//	// ensure private key was returned
+//	if privateKey == "" {
+//		t.Fatalf("could not create a valid private key")
+//	}
+//	t.Logf("ethereum network address was generated %v\n", addr.Hex())
+//}
+//
+//// generate address from private key test
+//func Test_generateEthAddrFromPrivateKey(t *testing.T) {
+//
+//	//services.RunOnTestNet()
+//
+//	// generate eth address using gateway
+//	originalAddr, originalPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+//	if err != nil {
+//		t.Fatalf("error creating ethereum network address")
+//	}
+//
+//	generatedAddress := services.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
+//
+//	// ensure address is what we expected
+//	if originalAddr != generatedAddress {
+//		t.Fatalf("generated address was %s but we expected %s", generatedAddress, originalAddr)
+//	}
+//	t.Logf("generated address :%v", generatedAddress.Hex())
+//}
+//
+//// get gas price from network test
+//func Test_getGasPrice(t *testing.T) {
+//	//services.RunOnTestNet()
+//	// get the suggested gas price
+//	gasPrice, err := services.EthWrapper.GetGasPrice()
+//	if err != nil {
+//		t.Fatalf("error retrieving gas price: %v\n", err)
+//	}
+//	if gasPrice.IsUint64() && gasPrice.Uint64() > 0 {
+//		t.Logf("gas price verified: %v\n", gasPrice)
+//	} else {
+//		t.Fatalf("gas price less than zero: %v\n", gasPrice)
+//	}
+//	t.Logf("current network gas price :%v", gasPrice.String())
+//}
+//
+//// check if it's worth it to try and reclaiming eth from an address
+//func Test_checkIfWorthReclaimingGas(t *testing.T) {
+//
+//	t.Skip(nil)
+//
+//	worthIt, amountToReclaim, err := services.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, services.GasLimitETHSend)
+//
+//	if worthIt {
+//		t.Logf("Should try to reclaim gas: %v\n", "true")
+//	} else {
+//		t.Logf("Should try to reclaim gas: %v\n", "false")
+//	}
+//
+//	t.Logf("Will attempt to reclaim this much: %v\n", amountToReclaim.String())
+//
+//	if err != nil {
+//		t.Fatalf("Received an error: %v\n", err.Error())
+//	}
+//}
+//
+//// reclaim leftover gas
+//func Test_reclaimGas(t *testing.T) {
+//
+//	t.Skip(nil)
+//
+//	gasToReclaim := big.NewInt(5000)
+//	prlWallet := getWallet(prl2File)
+//
+//	success := services.EthWrapper.ReclaimGas(prlWallet.Address, prlWallet.PrivateKey, gasToReclaim)
+//
+//	// This isn't a very good test because it succeeds regardless of the outcome?
+//
+//	if success {
+//		t.Logf("Reclaim gas success: %v\n", "true")
+//	} else {
+//		t.Logf("Reclaim gas success: %v\n", "false")
+//	}
+//}
+//
+//// get gas price from network test
+//func Test_calculateGasNeeded(t *testing.T) {
+//
+//	t.Skip(nil)
+//
+//	gasPrice, err := services.EthWrapper.GetGasPrice()
+//	gasLimitToUse := services.GasLimitETHSend
+//
+//	expectedGasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimitToUse)))
+//
+//	gasToSend, err := services.EthWrapper.CalculateGasNeeded(gasLimitToUse)
+//	if expectedGasToSend.Int64() != gasToSend.Int64() {
+//		t.Fatalf("failed to calculate the gas to send: %v\n", err)
+//	}
+//	if expectedGasToSend.Int64() == gasToSend.Int64() && gasToSend.Int64() > 0 {
+//		t.Logf("successfully calculated gas to send: %v\n", gasToSend)
+//	} else if gasToSend.Int64() <= 0 {
+//		t.Fatalf("calculated a gas to send amount less than zero: %v\n", gasPrice)
+//	}
+//}
+//
+//// check balance on test network test
+//func Test_checkETHBalance(t *testing.T) {
+//	//services.RunOnTestNet()
+//	//t.Skip(nil)
+//	// test balance for an ether account
+//	// Convert string address to byte[] address form
+//	bal := services.EthWrapper.CheckETHBalance(ethAddress01)
+//	if bal.Int64() != -1 {
+//		t.Logf("balance verified: %v\n", bal)
+//	} else {
+//		t.Fatalf("could not get balance")
+//	}
+//}
+//
+//// get current block number
+//func Test_getCurrentBlockNumber(t *testing.T) {
+//
+//	// Get the current block from the network
+//	block, err := services.EthWrapper.GetCurrentBlock()
+//	if err != nil {
+//		t.Fatalf("could not retrieve the current block: %v\n", err)
+//	}
+//	if block != nil {
+//		t.Logf("retrieved the current block: %v\n", block.Number())
+//	}
+//}
+//
+//// get current block gas limit
+//func Test_getCurrentBlockGasLimit(t *testing.T) {
+//
+//	//services.RunOnTestNet()
+//	// Get the current block from the network
+//	block, err := services.EthWrapper.GetCurrentBlock()
+//	if err != nil {
+//		t.Fatalf("could not retrieve the current block: %v\n", err)
+//	}
+//	if block != nil {
+//		t.Logf("retrieved the current block gas limit: %v\n", block.GasLimit())
+//	}
+//}
+//
+//func Test_getNonceForAccount(t *testing.T) {
+//	//services.RunOnTestNet()
+//
+//	// Get the nonce for the given account
+//	nonce, err := services.EthWrapper.GetNonce(context.Background(), ethCoinbase)
+//	if err != nil {
+//		t.Fatalf("unable to access the account nonce : %v", err)
+//	} else {
+//		t.Logf("valid account nonce : %v", nonce)
+//	}
+//}
+//
+//// send gas(ether) to an address for a transaction
+//func Test_sendEth(t *testing.T) {
+//
+//	// services.RunOnTestNet()
+//	// transfer
+//	transferValue := big.NewInt(1)
+//	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
+//	// Send ether to test account
+//	// wallet := getWallet(ethFile)
+//	to := common.HexToAddress("0xf10a2706e98ef86b6866ae6cab2e0ca501fdf091")
+//	txs, _, _, err := services.EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, to, transferValueInWei)
+//	//txs, _, _, err := services.EthWrapper.SendETH(from, services.MainWalletPrivateKey, to, transferValueInWei)
+//	if err != nil {
+//		t.Logf("failed to send ether to %v ether to %v\n", transferValue, to.Hex())
+//		t.Fatalf("transaction error: %v\n", err)
+//	}
+//	for tx := range txs {
+//		transaction := txs[tx]
+//		// Store For Next Test
+//		lastTransaction = *transaction
+//		printTx(transaction)
+//
+//		// wait for confirmation
+//		confirmed := services.EthWrapper.WaitForConfirmation(lastTransaction.Hash(), 3)
+//		if confirmed == 1 {
+//			t.Logf("confirmed ether was sent to : %v", ethAddress02.Hex())
+//		} else if confirmed == 0 {
+//			t.Logf("failed to confirm sending ether")
+//		}
+//	}
+//}
+//
+//// ensure the transaction is stored in the transactions table
+//// it is accessed with the lastTransactionHash from the previous test
+//func Test_ensureTransactionStoredInPool(t *testing.T) {
+//
+//	txHash := lastTransaction.Hash()
+//	if len(txHash) <= 0 {
+//		// set an existing tx hash
+//		txHash = lastTransactionHash
+//	}
+//	// check pending
+//	isPending := services.EthWrapper.PendingConfirmation(txHash)
+//	if isPending {
+//		// get item by txHash and ensure its in the table
+//		txWithBlockNumber := services.EthWrapper.GetTransaction(txHash)
+//		if txWithBlockNumber.Transaction != nil {
+//			// compare transaction hash
+//			if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), txHash) {
+//				t.Log("transaction is stored on the transactions table")
+//			} else {
+//				t.Fatal("transaction should be stored in the transaction table, post sendEth")
+//			}
+//		}
+//	}
+//}
+//
+//// ensure confirmation is made with last transaction hash from sendEth
+//func Test_confirmTransactionStatus(t *testing.T) {
+//
+//	//services.RunOnTestNet()
+//	txHash := lastTransaction.Hash()
+//	if len(txHash) <= 0 {
+//		// set an existing tx hash
+//		txHash = lastTransactionHash
+//	}
+//	// check pending
+//	isPending := services.EthWrapper.PendingConfirmation(txHash)
+//	if isPending {
+//		// check confirmation
+//		txStatus := services.EthWrapper.WaitForConfirmation(txHash, 3)
+//		if txStatus == 0 {
+//			t.Logf("transaction failure")
+//		} else if txStatus == 1 {
+//			t.Logf("confirmation completed")
+//
+//			bal := services.EthWrapper.CheckETHBalance(ethAddress02)
+//			t.Logf("balance updated : %v", bal)
+//		}
+//	}
+//}
 
 // utility to access the return the PRL wallet keystore
 func getWallet(fileName string) *keystore.Key {

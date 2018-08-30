@@ -714,7 +714,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string, sink chan<-
 		oyster_utils.LogIfError(fmt.Errorf("error subscribing to logs: %v", subErr), nil)
 		return nil, subErr
 	}
-	
+
 	// create new subscription to listen for our broker address filter query
 	return event.NewSubscription(func(quit <-chan struct{}) error {
 		defer sub.Unsubscribe()
@@ -725,8 +725,8 @@ func waitForTransfer(brokerAddr common.Address, transferType string, sink chan<-
 				fmt.Print(log)
 				fmt.Printf("Log Data:%v", string(log.Data))
 				fmt.Println("Confirmed Address:", log.Address.Hex())
-			  
-			  // balance check based on transfer type
+
+				// balance check based on transfer type
 				bal := big.NewInt(0)
 				if transferType == "eth" {
 					bal = checkETHBalance(brokerAddr)
@@ -740,17 +740,17 @@ func waitForTransfer(brokerAddr common.Address, transferType string, sink chan<-
 					// TODO Bury works, but we do it from the buryPRL method which calls a smart contract method
 					// TODO Bury has a contract event watcher to monitor for when bury() has been invoked in error/success
 				}
-				
+
 				// TODO Unpack log data into this OysterPearlTransactionType, manually set
 				event := new(OysterPearlTransactionType)
 				event.From = brokerAddr
 				event.Type = transferType
 				event.Value = bal
 				event.Raw = log
-				
+
 				// OysterPearlTransactionType will hold what the action was, SEND_GAS,SEND_PRL
 				// ensure confirmation type from "sendGas" or "sendPRL"
-				recordTransaction(log.Address, "")
+				recordTransaction(log.Address, "") // transfer type
 
 				select {
 				case sink <- event:
@@ -830,8 +830,6 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	}
 
 	// initialize the context
-	//ctx, cancel := createContext()
-	//defer cancel()
 	ctx := context.Background()
 
 	// generate nonce
@@ -925,7 +923,7 @@ func buryPrl(msg OysterCallMsg) (bool, string, int64) {
 		Context:  auth.Context,
 		Value:    &msg.Amount,
 	})
-	
+
 	if err != nil {
 		fmt.Printf("bury prl error : %v\n", err)
 		return false, "", 0
@@ -1003,7 +1001,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	client, _ := sharedClient()
 	treasureBalance := checkPRLBalance(treasureAddress)
 	fmt.Printf("treasure balance : %v\n", treasureBalance)
-
+	
 	if treasureBalance.Uint64() <= 0 {
 		err := errors.New("treasure balance insufficient")
 		oyster_utils.LogIfError(err, nil)
@@ -1058,7 +1056,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 		Context:  auth.Context,
 	}
 	// call claim, receiver is payout, fee coming from the treasure address and private key
-	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, MainWalletAddress)
+	tx, err := oysterPearl.Claim(&claimOpts, receiverAddress, treasureAddress)
 
 	if err != nil {
 		fmt.Printf("unable to call claim with transactor : %v", err)
@@ -1139,7 +1137,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	tx := types.NewTransaction(nonce, msg.To, &msg.Amount, msg.Gas, gasPrice, nil)
 
 	// signer
-	signer := types.NewEIP155Signer(big.NewInt(559966))
+	signer := types.NewEIP155Signer(chainId)
 
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
@@ -1192,21 +1190,14 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	}
 
 	log.Printf("authorized transactor : %v\n", auth.From.Hex())
-
-	// use this when in production:
+	
 	gasPrice, err := getGasPrice()
-
-	opts := bind.TransactOpts{
-		From:     auth.From,
-		Signer:   auth.Signer,
-		GasLimit: GasLimitPRLSend,
-		GasPrice: gasPrice,
-		Nonce:    auth.Nonce,
-		Context:  auth.Context,
-		Value: 		&msg.Amount,
-	}
-
-	tx, err := oysterPearl.Transfer(&opts, msg.To, &msg.Amount)
+	
+	auth.GasPrice = gasPrice
+	auth.GasLimit = GasLimitPRLSend
+	auth.Value = &msg.Amount
+	
+	tx, err := oysterPearl.Transfer(auth, msg.To, &msg.Amount)
 	if err != nil {
 		log.Printf("transfer failed : %v", err)
 		return false, "", int64(-1)
@@ -1217,6 +1208,195 @@ func sendPRLFromOyster(msg OysterCallMsg) (bool, string, int64) {
 	printTx(tx)
 
 	return true, tx.Hash().Hex(), int64(tx.Nonce())
+}
+
+/*
+
+ OysterPearlSession allows for simplified interaction with the OysterPearl Smart Contract.
+ By using getContractSession with a keyed transactor we can gain access to the oyster pearl contract with pre-configured session.
+ Below are the methods to interact with this API :
+ - transferWithSession
+ - buryWithSession
+ - buriedWithSession
+ - claimWithSession
+ - claimedWithSession
+ - totalSupplyWithSession
+ - getBalanceOfFromSession
+ - balanceOfWithSession
+ -
+*/
+
+// send PRL with OysterPearl contract wrapped in OysterPearlSession
+func transferWithSession(msg OysterCallMsg) {
+
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	log.Printf("authorized transactor : %v\n", auth.From.Hex())
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call transfer from contract session
+	tx, err := session.Transfer(msg.To, &msg.Amount)
+	if err != nil {
+		log.Printf("oyster pearl contract transfer session failed : %v", err)
+	}
+
+	// debug results
+	printTx(tx)
+
+	// check receipt and confirmation with client
+	sink := make(chan *OysterPearlTransactionType)
+	sub, err := waitForTransfer(auth.From, "prl", sink)
+
+	sub.Unsubscribe()
+
+	client, _ := sharedClient()
+	receipt, err := client.TransactionReceipt(context.Background(), tx.Hash())
+	if receipt.Status == 1 {
+		fmt.Printf("transaction completed : %v", tx.Hash())
+	} else {
+		fmt.Errorf("transaction failed : %v", tx.Hash())
+	}
+}
+
+// send PRL "From" with "To" as the destination address with OysterPearl contract wrapped in OysterPearlSession
+func transferFromWithSession(msg OysterCallMsg) {
+
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	log.Printf("authorized transactor : %v\n", auth.From.Hex())
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call transferFrom from contract session
+	tx, err := session.TransferFrom(msg.From, msg.To, &msg.Amount)
+	if err != nil {
+		log.Printf("oyster pearl contract transferFrom session failed : %v", err)
+	}
+
+	// debug results
+	printTx(tx)
+
+	// check receipt and confirmation
+
+}
+
+// bury "From" address with OysterPearl contract wrapped in OysterPearlSession
+func buryWithSession(msg OysterCallMsg) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call bury from contract session
+	tx, err := session.Bury()
+	if err != nil {
+		log.Printf("oyster pearl contract bury session failed : %v", err)
+	}
+
+	// debug results
+	printTx(tx)
+
+	// check receipt and confirmation
+}
+
+// checks if "From" address is buried with OysterPearl contract wrapped in OysterPearlSession
+func buriedWithSession(msg OysterCallMsg) (bool, error) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call buried from contract session
+	return session.Buried(msg.From)
+}
+
+// claim payout for "To" with fee paid by "From" address with OysterPearl contract wrapped in OysterPearlSession
+func claimWithSession(msg OysterCallMsg) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call claim from contract session
+	tx, err := session.Claim(msg.To, msg.From)
+	if err != nil {
+		log.Printf("oyster pearl contract claim session failed : %v", err)
+	}
+
+	// debug results
+	printTx(tx)
+
+	// check receipt and confirmation
+}
+
+// claimed PRL value for a given address with OysterPearl contract wrapped in OysterPearlSession
+func claimedWithSession(msg OysterCallMsg) (*big.Int, error) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call claimed from contract session
+	return session.Claimed(auth.From)
+}
+
+// total PRL supply with OysterPearl contract wrapped in OysterPearlSession
+func totalSupplyWithSession(msg OysterCallMsg) (*big.Int, error) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call totalSupply from contract session
+	return session.TotalSupply()
+}
+
+// balanceOf PRL for a given address with OysterPearl contract wrapped in OysterPearlSession
+func balanceOfWithSession(msg OysterCallMsg) (*big.Int, error) {
+
+	// initialize transactor
+	auth := bind.NewKeyedTransactor(&msg.PrivateKey)
+
+	// wrap token contract instance into a session
+	session := getContractSession(auth)
+
+	// call balanceOf from contract session
+	return session.BalanceOf(auth.From)
+}
+
+// utility to create contract sessions
+func getContractSession(auth *bind.TransactOpts) *OysterPearlSession {
+	client, _ := sharedClient()
+	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
+	if err != nil {
+		log.Printf("unable to instantiate the oyster pearl contract for session : %v", err)
+	}
+	// wrap token contract instance into a session
+	session := &OysterPearlSession{
+		Contract: oysterPearl,
+		CallOpts: bind.CallOpts{
+			Pending: true,
+		},
+		TransactOpts: bind.TransactOpts{
+			From:     auth.From,
+			Signer:   auth.Signer,
+			GasLimit: GasLimitPRLSend,
+		},
+	}
+	return session
 }
 
 // utility to process the transaction status
@@ -1293,7 +1473,7 @@ func configureGateway(network string) {
 		break
 	case TEST:
 		// oysterby test net chain id
-		chainId = big.NewInt(0)
+		chainId = big.NewInt(559966)
 		chainId.SetString(os.Getenv("CHAIN_ID"), 10)
 		break
 	}

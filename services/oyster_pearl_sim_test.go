@@ -178,6 +178,19 @@ func getBalance(t *testing.T, sim *backends.SimulatedBackend, address common.Add
 	fmt.Printf("new balance for address : %v", balance.Uint64())
 }
 
+type OysterAgent struct {
+	sim *backends.SimulatedBackend
+	currency string
+}
+
+func (e OysterAgent) setSimulator () {
+	// generate a new random account and a funded simulator
+	key, _ := crypto.GenerateKey()
+	auth := bind.NewKeyedTransactor(key)
+	// set simulator
+	e.sim = createSimulator(auth, key)
+}
+
 // simulated blockchain to deploy oyster pearl
 func Test_deployOysterPearl(t *testing.T) {
 	
@@ -840,7 +853,7 @@ func Test_balanceOfFromOysterPearl(t *testing.T) {
 	_, token, err := deployOysterPearl(auth, sim)
 	
 	// transfer tokens
-	//transferTokens(sim) 20 prl
+	//transferTokens(sim) 10 prl
 	value := onePrlWei.Mul(onePrlWei, big.NewInt(10))
 	t.Logf("transfer %s tokens", value)
 	
