@@ -35,11 +35,32 @@ func checkSessionChunks(IotaWrapper services.IotaService, session models.UploadS
 
 	keys := oyster_utils.GenerateBulkKeys(session.GenesisHash, session.NextIdxToVerify, session.NextIdxToAttach+offset)
 
-	chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash, keys)
-	if err != nil {
-		oyster_utils.LogIfError(errors.New(err.Error()+" getting chunk data in checkSessionChunks in "+
-			"verify_data_maps"), nil)
-		return
+	maxNumberOfRequests := 10
+	chunkData := []oyster_utils.ChunkData{}
+
+	for ok, i := true, 0; ok; ok = i < len(*keys) {
+		end := i + maxNumberOfRequests
+
+		if end > len(*keys) {
+			end = len(*keys)
+		}
+
+		if i >= end {
+			break
+		}
+
+		if len((*(keys))[i:end]) > 0 {
+			keySlice := oyster_utils.KVKeys{}
+			keySlice = append(keySlice, (*(keys))[i:end]...)
+			chunks, err := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash, &keySlice)
+			if err != nil {
+				oyster_utils.LogIfError(errors.New(err.Error()+" getting chunk data in checkSessionChunks in "+
+					"verify_data_maps"), nil)
+				continue
+			}
+			chunkData = append(chunkData, chunks...)
+		}
+		i += maxNumberOfRequests
 	}
 
 	for ok, i := true, 0; ok; ok = i < len(chunkData) {

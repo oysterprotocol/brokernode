@@ -271,6 +271,9 @@ func BuildDataMapsForSession(genHash string, numChunks int) (err error) {
 		if len(kvPairs) > 0 {
 			err = oyster_utils.BatchSetToUniqueDB(dbID, &kvPairs, DataMapsTimeToLive)
 			oyster_utils.LogIfError(err, nil)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -357,16 +360,6 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 
 	go func() {
 		err = BuildDataMapsForSession(u.GenesisHash, u.NumChunks)
-		if err == nil {
-			finished, err := u.WaitForAllChunks(MaxTimesToCheckForAllChunks)
-			oyster_utils.LogIfError(err, nil)
-			session := UploadSession{}
-			if finished {
-				DB.Find(&session, u.ID)
-				session.AllDataReady = AllDataReady
-			}
-			DB.ValidateAndUpdate(&session)
-		}
 		oyster_utils.LogIfError(err, nil)
 	}()
 
@@ -1063,6 +1056,21 @@ func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload st
 	return err
 }
 
+/*GetSessionsWithIncompleteData gets all the sessions for which we don't have all the data.*/
+func GetSessionsWithIncompleteData() ([]UploadSession, error) {
+	sessions := []UploadSession{}
+
+	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE all_data_ready = ?",
+		AllDataNotReady).All(&sessions)
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return nil, err
+	}
+
+	return sessions, nil
+}
+
 /*GetSessionsByAge gets all the sessions eligible for chunk attachment.*/
 func GetSessionsByAge() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
@@ -1227,6 +1235,9 @@ func ProcessAndStoreChunkData(chunks []ChunkReq, genesisHash string, treasureIdx
 
 	err := oyster_utils.BatchSetToUniqueDB(dbID, &batchSetKvMap, ttl)
 	oyster_utils.LogIfError(err, nil)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // convertToBadgerKeyedMapForChunks converts chunkReq into maps where the key is the badger msg_id.
