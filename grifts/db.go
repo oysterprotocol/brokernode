@@ -87,7 +87,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("upload_qa", "Adds a qa upload")
 	grift.Add("upload_qa", func(c *grift.Context) error {
 
-		numChunks := 2500
+		numChunks := 25000
 
 		uploadSession1 := models.UploadSession{
 			GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
@@ -100,10 +100,8 @@ var _ = grift.Namespace("db", func() {
 
 		SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
 
-		finishedHashes := uploadSession1.CheckIfAllHashesAreReady()
-		finishedMessages := uploadSession1.CheckIfAllMessagesAreReady()
-		fmt.Println(finishedHashes)
-		fmt.Println(finishedMessages)
+		uploadSession1.WaitForAllHashes(500)
+		uploadSession1.WaitForAllMessages(500)
 
 		time.Sleep(3 * time.Second)
 
@@ -629,6 +627,13 @@ var _ = grift.Namespace("db", func() {
 					treasureStatus = "TreasureInDataMapComplete"
 				}
 
+				allDataReady := "AllDataReady"
+				switch upload.AllDataReady {
+
+				case models.AllDataNotReady:
+					allDataReady = "AllDataNotReady"
+				}
+
 				fmt.Println("________________________________________________________")
 				fmt.Println("Type:                " + session)
 				fmt.Println("Genesis hash:        " + upload.GenesisHash)
@@ -639,6 +644,13 @@ var _ = grift.Namespace("db", func() {
 				fmt.Println("decrypted ETH Key:   " + decrypted)
 				fmt.Println("Payment Status:      " + paymentStatus)
 				fmt.Println("Treasure Status:     " + treasureStatus)
+				fmt.Println("AllDataReady:        " + allDataReady)
+				fmt.Print("NumChunks:           ")
+				fmt.Println(upload.NumChunks)
+				fmt.Print("NextIdxToAttach:     ")
+				fmt.Println(upload.NextIdxToAttach)
+				fmt.Print("NextIdxToVerify:     ")
+				fmt.Println(upload.NextIdxToVerify)
 				fmt.Println("________________________________________________________")
 			}
 		} else {

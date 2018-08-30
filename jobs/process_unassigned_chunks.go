@@ -110,9 +110,11 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 			oyster_utils.LogToSegment("process_unassigned_chunks: chunks_already_attached", analytics.NewProperties().
 				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
-			session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
 			session.UpdateIndexWithAttachedChunks(filteredChunks.MatchesTangle)
-			session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
+
+			// TODO:  Investigate whether we want to keep these enabled or not
+			//session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
+			//session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
 		}
 
 		nonTreasureChunksToSend := []oyster_utils.ChunkData{}
