@@ -17,7 +17,7 @@ const (
 	// Limit to 1000 POSTs and 20 chunks per request.
 
 	// MaxConcurrency is the number of lambdas running concurrently
-	MaxConcurrency = 1000
+	MaxConcurrency = 5000
 
 	// MaxChunksLen is the number of chunks sent to each lambda
 	MaxChunksLen = 3000 // 3 MB
