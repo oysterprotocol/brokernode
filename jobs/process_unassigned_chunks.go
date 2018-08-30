@@ -116,7 +116,15 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 
 		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
-		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
+		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching,
+			session)
+
+		fmt.Println("len(nonTreasureChunksToSend)")
+		fmt.Println(len(nonTreasureChunksToSend))
+		fmt.Println("len(treasureChunksNeedAttaching)")
+		fmt.Println(len(treasureChunksNeedAttaching))
+		fmt.Println("len(chunksIncludingTreasureChunks)")
+		fmt.Println(len(chunksIncludingTreasureChunks))
 
 		StageTreasures(treasureChunksNeedAttaching, session)
 		if os.Getenv("ENABLE_LAMBDA") == "true" {

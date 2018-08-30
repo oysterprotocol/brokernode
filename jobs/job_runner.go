@@ -45,6 +45,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
 	oysterWorker.Register(getHandlerName(claimTreasureForWebnodeHandler), claimTreasureForWebnodeHandler)
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
+	oysterWorker.Register(getHandlerName(checkAllDataIsReadyHandler), checkAllDataIsReadyHandler)
 
 	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
 	oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
@@ -77,6 +78,9 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler,
 		worker.Args{Duration: 24 * time.Hour})
+
+	oysterWorkerPerformIn(checkAllDataIsReadyHandler,
+		worker.Args{Duration: 7 * time.Second})
 
 	// 	oysterWorkerPerformIn(badgerDbGcHandler,
 	// 		worker.Args{Duration: 10 * time.Minute})
@@ -170,6 +174,13 @@ func removeUnpaidUploadSessionHandler(args worker.Args) error {
 	RemoveUnpaidUploadSession(PrometheusWrapper)
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
+	return nil
+}
+
+func checkAllDataIsReadyHandler(args worker.Args) error {
+	CheckAllDataIsReady(PrometheusWrapper)
+
+	oysterWorkerPerformIn(checkAllDataIsReadyHandler, args)
 	return nil
 }
 
