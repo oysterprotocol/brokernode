@@ -111,26 +111,26 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
 			session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
+			session.UpdateIndexWithAttachedChunks(filteredChunks.MatchesTangle)
 			session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
 		}
 
-		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
+		nonTreasureChunksToSend := []oyster_utils.ChunkData{}
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, skipVerifyOfChunks...)
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.NotAttached...)
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching,
 			session)
 
-		fmt.Println("len(nonTreasureChunksToSend)")
-		fmt.Println(len(nonTreasureChunksToSend))
-		fmt.Println("len(treasureChunksNeedAttaching)")
-		fmt.Println(len(treasureChunksNeedAttaching))
-		fmt.Println("len(chunksIncludingTreasureChunks)")
-		fmt.Println(len(chunksIncludingTreasureChunks))
-
 		StageTreasures(treasureChunksNeedAttaching, session)
-		if os.Getenv("ENABLE_LAMBDA") == "true" {
-			iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
-		} else if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
-			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+
+		if oyster_utils.PoWMode == oyster_utils.PoWEnabled && len(chunksIncludingTreasureChunks) > 0 {
+			session.UpdateIndexWithAttachedChunks(chunksIncludingTreasureChunks)
+			if os.Getenv("ENABLE_LAMBDA") == "true" {
+				iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
+			} else {
+				SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+			}
 		}
 	}
 }
