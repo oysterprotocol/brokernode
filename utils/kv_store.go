@@ -2,6 +2,7 @@ package oyster_utils
 
 import (
 	"errors"
+	"github.com/orcaman/concurrent-map"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -37,9 +38,11 @@ const TestValueTimeToLive = 3 * time.Minute
 var badgerDB *badger.DB
 var dbNoInitError error
 var badgerDirTest string
-var dbMap KVDBMap
+
 var prodDBMap KVDBMap
 var unitTestDBMap KVDBMap
+
+var dbMap cmap.ConcurrentMap
 
 /*KVDBMap is a type which is a map with strings as keys and DBData as the value.  We use this type to make a
 data structure tracking all the unique DBs that are still alive*/
@@ -72,7 +75,7 @@ func init() {
 
 	prodDBMap = make(KVDBMap)
 	unitTestDBMap = make(KVDBMap)
-	dbMap = make(KVDBMap)
+	dbMap = cmap.New()
 
 	dbNoInitError = errors.New("badgerDB not initialized, Call InitKvStore() first")
 
@@ -165,7 +168,8 @@ func buildBadgerName(names []string, separator string) string {
 func InitUniqueKvStore(dbID []string) error {
 	dbName := GetBadgerDBName(dbID)
 	dirPath := GetBadgerDirName(dbID)
-	if dbMap[dbName].Database != nil {
+	val, ok := dbMap.Get(dbName)
+	if ok == true && val != nil {
 		return nil
 	}
 
@@ -196,11 +200,12 @@ func InitUniqueKvStore(dbID []string) error {
 	LogIfError(err, nil)
 
 	if err == nil {
-		dbMap[dbName] = DBData{
+		dbData := DBData{
 			Database:      db,
 			DatabaseName:  dbName,
 			DirectoryPath: dirPath,
 		}
+		dbMap.Set(dbName, dbData)
 	}
 	return err
 }
@@ -229,14 +234,16 @@ func InitKvStore() (err error) {
 
 /*CloseUniqueKvStore closes the K:V store associated with a particular upload.*/
 func CloseUniqueKvStore(dbName string) error {
-	if dbMap[dbName].Database == nil {
+	value, ok := dbMap.Get(dbName)
+	if value == nil || ok != true {
 		return nil
 	}
-	err := dbMap[dbName].Database.Close()
+	dbData := value.(DBData)
+	err := dbData.Database.Close()
 	LogIfError(err, nil)
 
-	if _, ok := dbMap[dbName]; ok {
-		delete(dbMap, dbName)
+	if ok {
+		dbMap.Remove(dbName)
 	}
 
 	return err
@@ -256,7 +263,13 @@ func CloseKvStore() error {
 
 /*RemoveAllUniqueKvStoreData removes all the data associated with a particular K:V store.*/
 func RemoveAllUniqueKvStoreData(dbName string) error {
-	directoryPath := dbMap[dbName].DirectoryPath
+	value, ok := dbMap.Get(dbName)
+	if value == nil || ok != true {
+		return errors.New("did not find database with name: " +
+			dbName + " in RemoveAllUniqueKvStoreData")
+	}
+	dbData := value.(DBData)
+	directoryPath := dbData.DirectoryPath
 
 	if err := CloseUniqueKvStore(dbName); err != nil {
 		return err
@@ -278,8 +291,15 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	for dbName := range dbMap {
-		directoryPath := dbMap[dbName].DirectoryPath
+	allDBs := dbMap.Keys()
+	for _, dbName := range allDBs {
+		value, ok := dbMap.Get(dbName)
+		if value == nil || ok != true {
+			errArray = append(errArray, errors.New("did not find database with name: "+
+				dbName+" in RemoveAllKvStoreDataFromAllKvStores"))
+		}
+		dbData := value.(DBData)
+		directoryPath := dbData.DirectoryPath
 		if err := CloseUniqueKvStore(dbName); err != nil {
 			errArray = append(errArray, err)
 			continue
@@ -316,7 +336,12 @@ func RemoveAllKvStoreData() error {
 
 /*GetUniqueBadgerDb returns a database associated with an upload.  If not initialized this will return nil. */
 func GetUniqueBadgerDb(dbName string) *badger.DB {
-	return dbMap[dbName].Database
+	value, ok := dbMap.Get(dbName)
+	if value == nil || ok != true {
+		return nil
+	}
+	dbData := value.(DBData)
+	return dbData.Database
 }
 
 /*GetOrInitUniqueBadgerDB returns a database associated with an upload. */
@@ -450,13 +475,7 @@ func GetBulkChunkData(prefix string, genesisHash string, ks *KVKeys) ([]ChunkDat
 It won't treat Key missing as error.*/
 func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
-	dbName := GetBadgerDBName(dbID)
-	var db *badger.DB
-	if dbMap[dbName].Database == nil {
-		db = GetOrInitUniqueBadgerDB(dbID)
-	} else {
-		db = dbMap[dbName].Database
-	}
+	db := GetOrInitUniqueBadgerDB(dbID)
 
 	if db == nil {
 		return kvs, errors.New("nil database")
@@ -545,13 +564,7 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 Return error if any fails.*/
 func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 	ttl = getTTL(ttl)
-	dbName := GetBadgerDBName(dbID)
-	var db *badger.DB
-	if dbMap[dbName].Database == nil {
-		db = GetOrInitUniqueBadgerDB(dbID)
-	} else {
-		db = dbMap[dbName].Database
-	}
+	db := GetOrInitUniqueBadgerDB(dbID)
 
 	var err error
 	txn := db.NewTransaction(true)
@@ -637,13 +650,7 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 /*BatchDeleteFromUniqueDB deletes a set of KVKeys from a specific DB.
 Return error if any fails.*/
 func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
-	dbName := GetBadgerDBName(dbID)
-	var db *badger.DB
-	if dbMap[dbName].Database == nil {
-		db = GetOrInitUniqueBadgerDB(dbID)
-	} else {
-		db = dbMap[dbName].Database
-	}
+	db := GetOrInitUniqueBadgerDB(dbID)
 
 	var err error
 	txn := db.NewTransaction(true)
