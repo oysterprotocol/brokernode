@@ -110,19 +110,29 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 			oyster_utils.LogToSegment("process_unassigned_chunks: chunks_already_attached", analytics.NewProperties().
 				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
-			session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
-			session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
+			session.UpdateIndexWithAttachedChunks(filteredChunks.MatchesTangle)
+
+			// TODO:  Investigate whether we want to keep these enabled or not
+			//session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
+			//session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
 		}
 
-		nonTreasureChunksToSend := append(skipVerifyOfChunks, filteredChunks.NotAttached...)
+		nonTreasureChunksToSend := []oyster_utils.ChunkData{}
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, skipVerifyOfChunks...)
+		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.NotAttached...)
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
-		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching, session)
+		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching,
+			session)
 
 		StageTreasures(treasureChunksNeedAttaching, session)
-		if os.Getenv("ENABLE_LAMBDA") == "true" {
-			iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
-		} else if oyster_utils.PoWMode == oyster_utils.PoWEnabled {
-			SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+
+		if oyster_utils.PoWMode == oyster_utils.PoWEnabled && len(chunksIncludingTreasureChunks) > 0 {
+			session.UpdateIndexWithAttachedChunks(chunksIncludingTreasureChunks)
+			if os.Getenv("ENABLE_LAMBDA") == "true" {
+				iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
+			} else {
+				SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+			}
 		}
 	}
 }

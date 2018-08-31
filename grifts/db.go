@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/iotaledger/giota"
 	"github.com/markbates/grift/grift"
+	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -29,7 +31,89 @@ func getAddress() (common.Address, string, error) {
 	return address, griftPrivateKey, nil
 }
 
+func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.ChunkReq {
+	chunkReqs := []models.ChunkReq{}
+
+	for i := 0; i < numToGenerate; i++ {
+
+		trytes, _ := giota.ToTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
+
+		req := models.ChunkReq{
+			Idx:  i,
+			Hash: genesisHash,
+			Data: string(trytes),
+		}
+
+		chunkReqs = append(chunkReqs, req)
+	}
+	return chunkReqs
+}
+
+func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
+	numChunksToGenerate int) []oyster_utils.ChunkData {
+	session.StartUploadSession()
+	privateKeys := []string{}
+
+	for i := 0; i < len(mergedIndexes); i++ {
+		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
+	}
+
+	session.PaymentStatus = models.PaymentStatusConfirmed
+	models.DB.ValidateAndUpdate(session)
+	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	chunkReqs := GenerateChunkRequests(numChunksToGenerate, session.GenesisHash)
+	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
+
+	for {
+		jobs.BuryTreasureInDataMaps()
+		finishedMessages, _ := session.WaitForAllMessages(3)
+		if finishedMessages {
+			break
+		}
+	}
+
+	_, _ = session.WaitForAllHashes(10)
+
+	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, 0, int64(session.NumChunks-1))
+	bulkChunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash,
+		bulkKeys)
+
+	return bulkChunkData
+}
+
 var _ = grift.Namespace("db", func() {
+
+	grift.Desc("upload_qa", "Adds a qa upload")
+	grift.Add("upload_qa", func(c *grift.Context) error {
+
+		numChunks := 25000
+
+		uploadSession1 := models.UploadSession{
+			GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+			NumChunks:      numChunks,
+			FileSizeBytes:  3000,
+			Type:           models.SessionTypeBeta,
+			PaymentStatus:  models.PaymentStatusConfirmed,
+			TreasureStatus: models.TreasureInDataMapPending,
+		}
+
+		SessionSetUpForTest(&uploadSession1, []int{15}, uploadSession1.NumChunks)
+
+		uploadSession1.WaitForAllHashes(500)
+		uploadSession1.WaitForAllMessages(500)
+
+		time.Sleep(3 * time.Second)
+
+		session := models.UploadSession{}
+		models.DB.Find(&session, uploadSession1.ID)
+
+		fmt.Println(session.PaymentStatus)
+		fmt.Println(session.TreasureStatus)
+		fmt.Println(session.AllDataReady)
+
+		return nil
+	})
 
 	grift.Desc("seed", "Seeds a database")
 	grift.Add("seed", func(c *grift.Context) error {
@@ -543,6 +627,13 @@ var _ = grift.Namespace("db", func() {
 					treasureStatus = "TreasureInDataMapComplete"
 				}
 
+				allDataReady := "AllDataReady"
+				switch upload.AllDataReady {
+
+				case models.AllDataNotReady:
+					allDataReady = "AllDataNotReady"
+				}
+
 				fmt.Println("________________________________________________________")
 				fmt.Println("Type:                " + session)
 				fmt.Println("Genesis hash:        " + upload.GenesisHash)
@@ -553,6 +644,13 @@ var _ = grift.Namespace("db", func() {
 				fmt.Println("decrypted ETH Key:   " + decrypted)
 				fmt.Println("Payment Status:      " + paymentStatus)
 				fmt.Println("Treasure Status:     " + treasureStatus)
+				fmt.Println("AllDataReady:        " + allDataReady)
+				fmt.Print("NumChunks:           ")
+				fmt.Println(upload.NumChunks)
+				fmt.Print("NextIdxToAttach:     ")
+				fmt.Println(upload.NextIdxToAttach)
+				fmt.Print("NextIdxToVerify:     ")
+				fmt.Println(upload.NextIdxToVerify)
 				fmt.Println("________________________________________________________")
 			}
 		} else {

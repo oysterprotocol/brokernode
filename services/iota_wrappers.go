@@ -491,6 +491,8 @@ func verifyChunksMatchRecord(chunks []oyster_utils.ChunkData, checkTrunkAndBranc
 func filterChunks(hashes []giota.Trytes, chunks []oyster_utils.ChunkData, checkTrunkAndBranch bool) (matchesTangle []oyster_utils.ChunkData,
 	notAttached []oyster_utils.ChunkData, doesNotMatch []oyster_utils.ChunkData) {
 
+	transactionObjectsMap := make(map[giota.Address][]giota.Transaction)
+
 	for i := 0; i < len(hashes); i += MaxNumberOfAddressPerFindTransactionRequest {
 		end := i + MaxNumberOfAddressPerFindTransactionRequest
 
@@ -508,33 +510,34 @@ func filterChunks(hashes []giota.Trytes, chunks []oyster_utils.ChunkData, checkT
 			oyster_utils.LogIfError(err, nil)
 		}
 
-		if len(trytesArray.Trytes) == 0 {
-			return matchesTangle, notAttached, doesNotMatch
-		}
-
 		transactionObjects := makeTransactionObjects(trytesArray.Trytes)
 
-		for _, chunk := range chunks {
-
-			chunkAddress, err := giota.ToAddress(chunk.Address)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				// trytes were not valid, skip this iteration
-				continue
-			}
-			if _, ok := transactionObjects[chunkAddress]; ok {
-
-				matchFound := checkTxObjectsForMatch(transactionObjects[chunkAddress], chunk, checkTrunkAndBranch)
-				if matchFound {
-					matchesTangle = append(matchesTangle, chunk)
-				} else {
-					doesNotMatch = append(doesNotMatch, chunk)
-				}
-			} else {
-				notAttached = append(notAttached, chunk)
-			}
+		for key, value := range transactionObjects {
+			transactionObjectsMap[key] = value
 		}
 	}
+
+	for _, chunk := range chunks {
+
+		chunkAddress, err := giota.ToAddress(chunk.Address)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			// trytes were not valid, skip this iteration
+			continue
+		}
+		if _, ok := transactionObjectsMap[chunkAddress]; ok {
+
+			matchFound := checkTxObjectsForMatch(transactionObjectsMap[chunkAddress], chunk, checkTrunkAndBranch)
+			if matchFound {
+				matchesTangle = append(matchesTangle, chunk)
+			} else {
+				doesNotMatch = append(doesNotMatch, chunk)
+			}
+		} else {
+			notAttached = append(notAttached, chunk)
+		}
+	}
+
 	return matchesTangle, notAttached, doesNotMatch
 }
 
