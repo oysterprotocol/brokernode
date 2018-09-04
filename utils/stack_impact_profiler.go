@@ -9,12 +9,38 @@ import (
 
 var Agent *stackimpact.Agent
 
+var agentKey string
+var span *stackimpact.Span
+
 func init() {
-	Agent = stackimpact.Start(stackimpact.Options{
-		AgentKey: "fa6aa0f39c917c329749721e98cfb6b269b88ed9",
-		AppName:  "Brokernode",
-		HostName: os.Getenv("HOST_IP"),
-	})
+
+	agentKey = os.Getenv("STACK_IMPACT_KEY")
+
+	if agentKey != "" {
+		Agent = stackimpact.Start(stackimpact.Options{
+			AgentKey: agentKey,
+			AppName:  "Brokernode",
+			HostName: os.Getenv("HOST_IP"),
+		})
+	}
+}
+
+func StartProfile() {
+	if agentKey != "" {
+		span = Agent.Profile()
+	}
+}
+
+func StartProfileWithName(name string) {
+	if agentKey != "" {
+		span = Agent.ProfileWithName(name)
+	}
+}
+
+func StopProfile() {
+	if agentKey != "" {
+		span.Stop()
+	}
 }
 
 func Trace() string {

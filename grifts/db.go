@@ -87,7 +87,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("upload_qa", "Adds a qa upload")
 	grift.Add("upload_qa", func(c *grift.Context) error {
 
-		numChunks := 25000
+		numChunks := 2500
 
 		uploadSession1 := models.UploadSession{
 			GenesisHash:    oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
