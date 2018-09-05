@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
 	"math/rand"
@@ -22,6 +21,7 @@ import (
 	"github.com/gobuffalo/validate/validators"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
+	"golang.org/x/crypto/sha3"
 )
 
 /*ChunkReq is the form in which webinterface will send the data for each chunk*/
@@ -1355,4 +1355,15 @@ func GetMultiChunkData(prefix string, genesisHash string, ks *oyster_utils.KVKey
 		}
 	}
 	return chunkData, nil
+}
+
+// GetMetaChunk will fetch the DB for the metadata chunk of the datamap.
+func (u *UploadSession) GetMetaChunk() (metaChunk Datamap, err error) {
+	metaIdx := 0 // NOTE: This will change with rev2.
+
+	metaChunk = DataMap{}
+	err = DB.Where("genesis_hash = ? AND chunk_idx = ?", u.GenesisHash, 0).First(&metaChunk)
+	oyster_utils.LogIfError(err)
+
+	return
 }
