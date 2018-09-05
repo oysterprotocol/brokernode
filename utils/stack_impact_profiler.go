@@ -7,6 +7,7 @@ import (
 	"runtime"
 )
 
+/*Agent - the stackImpact Agent*/
 var Agent *stackimpact.Agent
 
 var agentKey string
@@ -25,24 +26,28 @@ func init() {
 	}
 }
 
+/*StartProfile starts stackImpact profiling*/
 func StartProfile() {
 	if agentKey != "" {
 		span = Agent.Profile()
 	}
 }
 
+/*StartProfileWithName starts stackImpact profiling with a specific name*/
 func StartProfileWithName(name string) {
 	if agentKey != "" {
 		span = Agent.ProfileWithName(name)
 	}
 }
 
+/*StopProfile stops stackImpact profiling*/
 func StopProfile() {
 	if agentKey != "" {
 		span.Stop()
 	}
 }
 
+/*Trace should return the name of the calling function*/
 func Trace() string {
 	pc := make([]uintptr, 10) // at least 1 entry needed
 	runtime.Callers(2, pc)

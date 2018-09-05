@@ -33,6 +33,8 @@ func CheckAllDataIsReady(PrometheusWrapper services.PrometheusService) {
 	}
 }
 
+/*CheckSessionsWithIncompleteData grabs the sessions with incomplete data
+and checks if they are complete.*/
 func CheckSessionsWithIncompleteData() {
 	sessions, err := models.GetSessionsWithIncompleteData()
 
