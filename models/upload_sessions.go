@@ -1365,5 +1365,6 @@ func (u *UploadSession) GetMetaChunk() (metaChunk Datamap, err error) {
 	err = DB.Where("genesis_hash = ? AND chunk_idx = ?", u.GenesisHash, 0).First(&metaChunk)
 	oyster_utils.LogIfError(err)
 
+	// TODO: Check if msg is empty.
 	return
 }
