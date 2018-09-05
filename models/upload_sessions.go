@@ -693,16 +693,16 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 }
 
 /*GetUnassignedChunksBySession returns the chunk data for chunks that need attaching for a particular session*/
-func (u *UploadSession) GetUnassignedChunksBySession(limit int) (chunkData []oyster_utils.ChunkData, err error) {
+func (u *UploadSession) GetUnassignedChunksBySession(offset int) (chunkData []oyster_utils.ChunkData, err error) {
 	var stopChunkIdx int64
 
 	if u.Type == SessionTypeAlpha {
-		stopChunkIdx = u.NextIdxToAttach + int64(limit) - 1
+		stopChunkIdx = u.NextIdxToAttach + int64(offset)
 		if stopChunkIdx > int64(u.NumChunks-1) {
 			stopChunkIdx = int64(u.NumChunks - 1)
 		}
 	} else {
-		stopChunkIdx = u.NextIdxToAttach - int64(limit) + 1
+		stopChunkIdx = u.NextIdxToAttach - int64(offset)
 		if stopChunkIdx < 0 {
 			stopChunkIdx = int64(0)
 		}
@@ -771,41 +771,53 @@ func moveAllChunksToCompletedBadger(u *UploadSession) error {
 	completeMessageDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.MessageDir}
 	completeHashDBID := []string{oyster_utils.CompletedDir, u.GenesisHash, oyster_utils.HashDir}
 
-	keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, int64(u.NumChunks)-1)
+	for i := 0; i <= u.NumChunks-1; {
 
-	kvMessages, err := oyster_utils.BatchGetFromUniqueDB(inProgressMessageDBID, keys)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
-	}
-	kvHashes, err := oyster_utils.BatchGetFromUniqueDB(inProgressHashDBID, keys)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return err
-	}
+		stop := int64(i + MaxBadgerInsertions)
+		if stop > int64(u.NumChunks-1) {
+			stop = int64(u.NumChunks - 1)
+		}
 
-	errMessage := oyster_utils.BatchSetToUniqueDB(completeMessageDBID, kvMessages, CompletedDataMapsTimeToLive)
-	if errMessage != nil {
-		oyster_utils.LogIfError(errMessage, nil)
-		return errMessage
-	}
-	errHash := oyster_utils.BatchSetToUniqueDB(completeHashDBID, kvHashes, CompletedDataMapsTimeToLive)
-	if errHash != nil {
-		oyster_utils.LogIfError(errHash, nil)
-		return errHash
-	}
+		keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(i), stop)
 
-	oyster_utils.BatchDeleteFromUniqueDB(inProgressMessageDBID, keys)
-	oyster_utils.BatchDeleteFromUniqueDB(inProgressHashDBID, keys)
+		kvMessages, err := oyster_utils.BatchGetFromUniqueDB(inProgressMessageDBID, keys)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+		kvHashes, err := oyster_utils.BatchGetFromUniqueDB(inProgressHashDBID, keys)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return err
+		}
+
+		errMessage := oyster_utils.BatchSetToUniqueDB(completeMessageDBID, kvMessages, CompletedDataMapsTimeToLive)
+		if errMessage != nil {
+			oyster_utils.LogIfError(errMessage, nil)
+			return errMessage
+		}
+		errHash := oyster_utils.BatchSetToUniqueDB(completeHashDBID, kvHashes, CompletedDataMapsTimeToLive)
+		if errHash != nil {
+			oyster_utils.LogIfError(errHash, nil)
+			return errHash
+		}
+
+		oyster_utils.BatchDeleteFromUniqueDB(inProgressMessageDBID, keys)
+		oyster_utils.BatchDeleteFromUniqueDB(inProgressHashDBID, keys)
+
+		i = i + MaxBadgerInsertions
+
+		if i > u.NumChunks-1 {
+			i = u.NumChunks - 1
+		}
+	}
 
 	return nil
 }
 
 func moveAllChunksToCompletedSQL(u *UploadSession) error {
-	maxChunksAtATime := 1000
-
 	for ok, i := true, 0; ok; ok = i < u.NumChunks {
-		end := i + maxChunksAtATime
+		end := i + MaxBadgerInsertions
 
 		if end > u.NumChunks {
 			end = u.NumChunks
@@ -830,7 +842,7 @@ func moveAllChunksToCompletedSQL(u *UploadSession) error {
 				return err
 			}
 		}
-		i += maxChunksAtATime
+		i += MaxBadgerInsertions
 	}
 	err := DB.RawQuery("DELETE FROM data_maps WHERE genesis_hash = ?", u.GenesisHash).All(&[]DataMap{})
 	return err
@@ -1014,6 +1026,10 @@ func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.Chun
 If it finds a chunk that is unattached that is below (if alpha) or above (if beta) its current indexes it will
 change its indexes to match these unattached chunks.*/
 func (u *UploadSession) DownGradeIndexesOnUnattachedChunks(chunks []oyster_utils.ChunkData) {
+	if len(chunks) == 0 {
+		return
+	}
+
 	maxIdx := int64(chunks[0].Idx)
 	minIdx := int64(chunks[0].Idx)
 
@@ -1098,13 +1114,11 @@ func GetCompletedSessions() ([]UploadSession, error) {
 	}
 
 	for _, session := range sessions {
-		stop := session.NumChunks - 1
-		step := 1
+		stop := session.NumChunks
 		if session.Type == SessionTypeBeta {
-			stop = 0
-			step = -1
+			stop = -1
 		}
-		if session.NextIdxToVerify == int64(stop+step) {
+		if session.NextIdxToVerify == int64(stop) {
 			completedSessions = append(completedSessions, session)
 		}
 	}
@@ -1355,4 +1369,73 @@ func GetMultiChunkData(prefix string, genesisHash string, ks *oyster_utils.KVKey
 		}
 	}
 	return chunkData, nil
+}
+
+/*GetMultiChunkDataFromAnyDB gets data about multiple chunks.  It will get the data regardless of whether the chunks
+are in in-progress or complete database*/
+func GetMultiChunkDataFromAnyDB(genesisHash string, ks *oyster_utils.KVKeys) ([]oyster_utils.ChunkData, error) {
+	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
+		chunkDataInProgress, err := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, genesisHash, ks)
+		oyster_utils.LogIfError(err, nil)
+		if len(chunkDataInProgress) == len(*ks) {
+			return chunkDataInProgress, nil
+		}
+		if len(chunkDataInProgress) == 0 {
+			return oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, genesisHash, ks)
+		}
+		chunkDataComplete, err := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, genesisHash, ks)
+		oyster_utils.LogIfError(err, nil)
+		if len(chunkDataComplete) == 0 {
+			return chunkDataInProgress, nil
+		}
+		if len(chunkDataComplete) == len(*ks) {
+			return chunkDataComplete, nil
+		}
+		return reassembleChunks(chunkDataInProgress, chunkDataComplete, ks), nil
+	}
+
+	chunkData := []oyster_utils.ChunkData{}
+
+	for _, key := range *(ks) {
+		chunkIdx := oyster_utils.GetChunkIdxFromKey(key)
+		singleChunkDataInProgress := GetSingleChunkData(oyster_utils.InProgressDir, genesisHash, chunkIdx)
+
+		if singleChunkDataInProgress.Hash != "" && singleChunkDataInProgress.RawMessage != "" {
+			chunkData = append(chunkData, singleChunkDataInProgress)
+		} else {
+			singleChunkDataComplete := GetSingleChunkData(oyster_utils.CompletedDir, genesisHash, chunkIdx)
+
+			if singleChunkDataComplete.Hash != "" && singleChunkDataComplete.RawMessage != "" {
+				chunkData = append(chunkData, singleChunkDataComplete)
+			}
+		}
+	}
+	return chunkData, nil
+}
+
+func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataComplete []oyster_utils.ChunkData,
+	ks *oyster_utils.KVKeys) []oyster_utils.ChunkData {
+
+	chunkData := []oyster_utils.ChunkData{}
+	keyChunkMap := make(map[string]oyster_utils.ChunkData)
+
+	for _, chunk := range chunkDataInProgress {
+		key := oyster_utils.GetBadgerKey([]string{chunk.GenesisHash,
+			strconv.FormatInt(int64(chunk.Idx), 10)})
+		keyChunkMap[key] = chunk
+	}
+
+	for _, chunk := range chunkDataComplete {
+		key := oyster_utils.GetBadgerKey([]string{chunk.GenesisHash,
+			strconv.FormatInt(int64(chunk.Idx), 10)})
+		keyChunkMap[key] = chunk
+	}
+
+	for _, key := range *ks {
+		if _, ok := keyChunkMap[key]; ok {
+			chunkData = append(chunkData, keyChunkMap[key])
+		}
+	}
+
+	return chunkData
 }

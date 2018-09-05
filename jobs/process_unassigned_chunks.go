@@ -74,7 +74,10 @@ then we filter the other types of chunks, then we insert the treasure chunks tha
 back into the array based on their chunk_idx, then we send to the channels.
 */
 func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels []models.ChunkChannel,
-	iotaWrapper services.IotaService, session models.UploadSession) {
+	iotaWrapper services.IotaService, sessionParam models.UploadSession) {
+
+	session := &models.UploadSession{}
+	models.DB.Find(session, sessionParam.ID)
 
 	defer oyster_utils.TimeTrack(time.Now(), "process_unassigned_chunks: filter_and_assign_chunks_to_channel", analytics.NewProperties().
 		Set("num_chunks", len(chunksIn)).
@@ -91,11 +94,12 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 			break
 		}
 
-		chunks, treasureChunksNeedAttaching := HandleTreasureChunks(chunksIn[i:end], session, iotaWrapper)
+		chunks, treasureChunksNeedAttaching := HandleTreasureChunks(chunksIn[i:end], *session, iotaWrapper)
 
-		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, session)
+		skipVerifyOfChunks, restOfChunks := SkipVerificationOfFirstChunks(chunks, *session)
 
 		filteredChunks, err := iotaWrapper.VerifyChunkMessagesMatchRecord(restOfChunks)
+
 		if err != nil {
 			oyster_utils.LogIfError(errors.New(err.Error()+" in FilterAndAssignChunksToChannels() in "+
 				"process_unassigned_chunks"), map[string]interface{}{
@@ -111,10 +115,7 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 				Set("num_chunks", len(filteredChunks.MatchesTangle)))
 
 			session.UpdateIndexWithAttachedChunks(filteredChunks.MatchesTangle)
-
-			// TODO:  Investigate whether we want to keep these enabled or not
-			//session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
-			//session.MoveChunksToCompleted(filteredChunks.MatchesTangle)
+			session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
 		}
 
 		nonTreasureChunksToSend := []oyster_utils.ChunkData{}
@@ -122,16 +123,16 @@ func FilterAndAssignChunksToChannels(chunksIn []oyster_utils.ChunkData, channels
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.NotAttached...)
 		nonTreasureChunksToSend = append(nonTreasureChunksToSend, filteredChunks.DoesNotMatchTangle...)
 		chunksIncludingTreasureChunks := InsertTreasureChunks(nonTreasureChunksToSend, treasureChunksNeedAttaching,
-			session)
+			*session)
 
-		StageTreasures(treasureChunksNeedAttaching, session)
+		StageTreasures(treasureChunksNeedAttaching, *session)
 
 		if oyster_utils.PoWMode == oyster_utils.PoWEnabled && len(chunksIncludingTreasureChunks) > 0 {
 			session.UpdateIndexWithAttachedChunks(chunksIncludingTreasureChunks)
 			if os.Getenv("ENABLE_LAMBDA") == "true" {
 				iotaWrapper.SendChunksToLambda(&chunksIncludingTreasureChunks)
 			} else {
-				SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, session)
+				SendChunks(chunksIncludingTreasureChunks, channels, iotaWrapper, *session)
 			}
 		}
 	}
@@ -337,17 +338,12 @@ func SendChunks(chunks []oyster_utils.ChunkData, channels []models.ChunkChannel,
 
 		if len(chunks[i:end]) > 0 {
 
-			//addresses, indexes := models.MapChunkIndexesAndAddresses(chunks[i:end])
-
 			oyster_utils.LogToSegment("process_unassigned_chunks: sending_chunks_to_channel", analytics.NewProperties().
 				Set("genesis_hash", session.GenesisHash).
 				Set("num_chunks", len(chunks[i:end])).
 				Set("channel_id", channels[j].ChannelID))
-			//Set("addresses", addresses).
-			//Set("chunk_indexes", indexes))
 
 			iotaWrapper.SendChunksToChannel(chunks[i:end], &channels[j])
-			session.UpdateIndexWithAttachedChunks(chunks[i:end])
 		}
 		j++
 		i += BundleSize

@@ -22,6 +22,9 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
 	defer oyster_utils.ResetPoWMode()
 
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+	defer oyster_utils.ResetBrokerMode()
+
 	numChunks := 31
 
 	// make suite available inside mock methods
