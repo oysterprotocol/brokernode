@@ -692,6 +692,20 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 	return allMessagesFound
 }
 
+func GetMetaChunk(genHash string) (oyster_utils.ChunkData, error) {
+	// rev1
+	metaIdx := int64(0)
+	stopIdx := metaIdx + 1
+
+	keys := oyster_utils.GenerateBulkKeys(genHash, metaIdx, stopIdx)
+	chunks, err := GetMultiChunkData(oyster_utils.InProgressDir, genHash, keys)
+	oyster_utils.LogIfError(err, nil)
+
+	metaChunk := chunks[0] // Fetched just 1 chunk.
+
+	return metaChunk, err
+}
+
 /*GetUnassignedChunksBySession returns the chunk data for chunks that need attaching for a particular session*/
 func (u *UploadSession) GetUnassignedChunksBySession(limit int) (chunkData []oyster_utils.ChunkData, err error) {
 	var stopChunkIdx int64

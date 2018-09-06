@@ -47,6 +47,11 @@ func CheckPaymentToAlpha() {
 			}
 
 			models.SetUploadSessionToPaid(brokerTx)
+			meta, err := brokerTx.GetMetaChunk()
+			if err != nil {
+				oyster_utils.LogIfError(err, nil)
+				continue
+			}
 
 			// TODO: DO PoW HERE!
 
