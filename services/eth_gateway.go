@@ -23,10 +23,11 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 
 	"errors"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/joho/godotenv"
 	"io/ioutil"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/joho/godotenv"
 )
 
 type Eth struct {
@@ -254,6 +255,10 @@ func sharedClient() (c *ethclient.Client, err error) {
 	// check-lock-check pattern to avoid excessive locking.
 	mtx.Lock()
 	defer mtx.Unlock()
+
+	if client != nil {
+		return client, nil
+	}
 
 	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
