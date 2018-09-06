@@ -692,9 +692,9 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 	return allMessagesFound
 }
 
+// GetMetaChunk will fetch the metachunk associated with the genHash passed in.
 func GetMetaChunk(genHash string) (oyster_utils.ChunkData, error) {
-	// rev1
-	metaIdx := int64(0)
+	metaIdx := int64(0) // rev1
 	stopIdx := metaIdx + 1
 
 	keys := oyster_utils.GenerateBulkKeys(genHash, metaIdx, stopIdx)

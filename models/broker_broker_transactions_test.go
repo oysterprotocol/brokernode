@@ -338,50 +338,6 @@ func (suite *ModelSuite) Test_DeleteCompletedBrokerTransactions() {
 	suite.Equal(0, len(allBrokerTxs))
 }
 
-func (suite *ModelSuite) Test_GetMetaChunk() {
-
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
-	defer oyster_utils.ResetBrokerMode()
-
-	genHash := "abcdef"
-	fileSizeBytes := 123
-	numChunks := 2
-	storageLengthInYears := 2
-	privateKey := "abcdef1234567890"
-	startingEthAddr := "0000000000"
-
-	u := models.UploadSession{
-		Type:                 models.SessionTypeAlpha,
-		GenesisHash:          genHash,
-		FileSizeBytes:        uint64(fileSizeBytes),
-		NumChunks:            numChunks,
-		StorageLengthInYears: storageLengthInYears,
-		ETHPrivateKey:        privateKey,
-		ETHAddrAlpha:         nulls.String{string(startingEthAddr), true},
-		ETHAddrBeta:          nulls.String{string(startingEthAddr), true},
-		TotalCost:            totalCost,
-	}
-
-	vErr, err := u.StartUploadSession()
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
-
-	uSession := models.UploadSession{}
-	suite.DB.Where("genesis_hash = ?", genHash).First(&uSession)
-
-	models.NewBrokerBrokerTransaction(&uSession)
-
-	brokerTxs := returnAllBrokerBrokerTxs(suite)
-	suite.Equal(1, len(brokerTxs))
-
-	tx := brokerTxs[0]
-	meta, err := tx.GetMetaChunk()
-	suite.Nil(err)
-
-	suite.Equal(meta.GenesisHash, tx.GenesisHash)
-	suite.Equal(meta.ChunkIdx, 0) // rev1
-}
-
 func generateBrokerBrokerTransactions(suite *ModelSuite,
 	sessionType int,
 	paymentStatus models.PaymentStatus,

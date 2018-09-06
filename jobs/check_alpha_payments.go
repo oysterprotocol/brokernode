@@ -47,7 +47,7 @@ func CheckPaymentToAlpha() {
 			}
 
 			models.SetUploadSessionToPaid(brokerTx)
-			meta, err := brokerTx.GetMetaChunk()
+			metaChunk, err := models.GetMetaChunk(brokerTx.GenesisHash)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				continue
