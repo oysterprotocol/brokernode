@@ -29,19 +29,33 @@ func checkSessionChunks(IotaWrapper services.IotaService, sessionParam models.Up
 	session := &models.UploadSession{}
 	models.DB.Find(session, sessionParam.ID)
 
+	adjustIndexes(session)
+
 	if session.NextIdxToAttach == session.NextIdxToVerify {
-		chunks, _ := session.GetUnassignedChunksBySession(1)
-		if len(chunks) == 0 {
-			if session.Type == models.SessionTypeAlpha {
-				session.NextIdxToAttach = int64(session.NumChunks)
-			} else {
-				session.NextIdxToAttach = -1
-			}
-			models.DB.ValidateAndUpdate(session)
-		}
 		return
 	}
 
+	chunkData := getChunksToVerify(session)
+
+	for ok, i := true, 0; ok; ok = i < len(chunkData) {
+		end := i + services.MaxNumberOfAddressPerFindTransactionRequest
+
+		if end > len(chunkData) {
+			end = len(chunkData)
+		}
+
+		if i >= end {
+			break
+		}
+
+		if len(chunkData[i:end]) > 0 {
+			CheckChunks(IotaWrapper, chunkData[i:end], session)
+		}
+		i += services.MaxNumberOfAddressPerFindTransactionRequest
+	}
+}
+
+func getChunksToVerify(session *models.UploadSession) []oyster_utils.ChunkData {
 	offset := int64(1)
 	if session.Type == models.SessionTypeAlpha {
 		offset = -1
@@ -75,22 +89,20 @@ func checkSessionChunks(IotaWrapper services.IotaService, sessionParam models.Up
 		}
 		i += services.MaxNumberOfAddressPerFindTransactionRequest
 	}
+	return chunkData
+}
 
-	for ok, i := true, 0; ok; ok = i < len(chunkData) {
-		end := i + services.MaxNumberOfAddressPerFindTransactionRequest
-
-		if end > len(chunkData) {
-			end = len(chunkData)
+func adjustIndexes(session *models.UploadSession) {
+	if session.NextIdxToAttach == session.NextIdxToVerify {
+		chunks, _ := session.GetUnassignedChunksBySession(1)
+		if len(chunks) == 0 {
+			if session.Type == models.SessionTypeAlpha {
+				session.NextIdxToAttach = int64(session.NumChunks)
+			} else {
+				session.NextIdxToAttach = -1
+			}
+			models.DB.ValidateAndUpdate(session)
 		}
-
-		if i >= end {
-			break
-		}
-
-		if len(chunkData[i:end]) > 0 {
-			CheckChunks(IotaWrapper, chunkData[i:end], session)
-		}
-		i += services.MaxNumberOfAddressPerFindTransactionRequest
 	}
 }
 

@@ -1376,20 +1376,11 @@ are in in-progress or complete database*/
 func GetMultiChunkDataFromAnyDB(genesisHash string, ks *oyster_utils.KVKeys) ([]oyster_utils.ChunkData, error) {
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
 		chunkDataInProgress, err := oyster_utils.GetBulkChunkData(oyster_utils.InProgressDir, genesisHash, ks)
+		chunkDataComplete := []oyster_utils.ChunkData{}
 		oyster_utils.LogIfError(err, nil)
-		if len(chunkDataInProgress) == len(*ks) {
-			return chunkDataInProgress, nil
-		}
-		if len(chunkDataInProgress) == 0 {
-			return oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, genesisHash, ks)
-		}
-		chunkDataComplete, err := oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, genesisHash, ks)
-		oyster_utils.LogIfError(err, nil)
-		if len(chunkDataComplete) == 0 {
-			return chunkDataInProgress, nil
-		}
-		if len(chunkDataComplete) == len(*ks) {
-			return chunkDataComplete, nil
+		if len(chunkDataInProgress) != len(*ks) {
+			chunkDataComplete, err = oyster_utils.GetBulkChunkData(oyster_utils.CompletedDir, genesisHash, ks)
+			oyster_utils.LogIfError(err, nil)
 		}
 		return reassembleChunks(chunkDataInProgress, chunkDataComplete, ks), nil
 	}
@@ -1415,6 +1406,13 @@ func GetMultiChunkDataFromAnyDB(genesisHash string, ks *oyster_utils.KVKeys) ([]
 
 func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataComplete []oyster_utils.ChunkData,
 	ks *oyster_utils.KVKeys) []oyster_utils.ChunkData {
+
+	if len(chunkDataInProgress) == 0 {
+		return chunkDataComplete
+	}
+	if len(chunkDataComplete) == 0 {
+		return chunkDataInProgress
+	}
 
 	chunkData := []oyster_utils.ChunkData{}
 	keyChunkMap := make(map[string]oyster_utils.ChunkData)
