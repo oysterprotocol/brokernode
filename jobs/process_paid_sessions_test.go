@@ -94,7 +94,13 @@ func (suite *JobsSuite) Test_BuryTreasureInDataMaps() {
 	suite.DB.Where("treasure_status = ?", models.TreasureInDataMapComplete).All(&session)
 	suite.Equal(1, len(session))
 	suite.Equal(uploadSession1.GenesisHash, session[0].GenesisHash)
-	suite.Equal(models.AllDataReady, session[0].AllDataReady)
+
+	jobs.CheckSessionsWithIncompleteData()
+
+	u := models.UploadSession{}
+	models.DB.Find(&u, session[0].ID)
+
+	suite.Equal(models.AllDataReady, u.AllDataReady)
 }
 
 func (suite *JobsSuite) Test_BuryTreasure() {

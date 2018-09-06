@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/oysterprotocol/brokernode/utils"
 	"os"
 
 	raven "github.com/getsentry/raven-go"
@@ -103,6 +104,9 @@ func App() *buffalo.App {
 		statusResource := StatusResource{}
 		apiV2.GET("status", statusResource.CheckStatus)
 	}
+
+	oyster_utils.StartProfile()
+	defer oyster_utils.StopProfile()
 
 	return app
 }

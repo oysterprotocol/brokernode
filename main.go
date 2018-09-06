@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/oysterprotocol/brokernode/actions"
 	"github.com/oysterprotocol/brokernode/utils"
 	"log"
 	"math/rand"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/logging"
-	"github.com/oysterprotocol/brokernode/actions"
 )
 
 var popLog = false

@@ -1120,7 +1120,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_alpha() {
 
 	chunkData, err := u.GetUnassignedChunksBySession(3)
 
-	suite.Equal(3, len(chunkData))
+	suite.Equal(4, len(chunkData))
 
 	for _, chunk := range chunkData {
 		suite.True(chunk.Idx >= 2 && chunk.Idx <= 5)
@@ -1165,7 +1165,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_beta() {
 
 	chunkData, err := u.GetUnassignedChunksBySession(3)
 
-	suite.Equal(3, len(chunkData))
+	suite.Equal(4, len(chunkData))
 
 	for _, chunk := range chunkData {
 		suite.True(chunk.Idx >= 3 && chunk.Idx <= 6)
@@ -2050,4 +2050,194 @@ func (suite *ModelSuite) Test_GetMultiChunkData_sql() {
 	suite.NotEqual("", chunkData[1].Message)
 	suite.NotEqual("", chunkData[2].Hash)
 	suite.NotEqual("", chunkData[2].Message)
+}
+
+func (suite *ModelSuite) Test_GetMultiChunkDataFromAnyDB_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	numChunks := 9
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+	}
+
+	mergedIndexes := []int{5}
+
+	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
+
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+
+	chunkDataInProgress, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataAll, err := models.GetMultiChunkDataFromAnyDB(u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+
+	suite.Equal(len(chunkDataInProgress), len(chunkDataAll))
+
+	suite.NotEqual("", chunkDataInProgress[0].Hash)
+	suite.NotEqual("", chunkDataAll[0].Hash)
+	suite.NotEqual("", chunkDataInProgress[0].Message)
+	suite.NotEqual("", chunkDataAll[0].Message)
+	suite.NotEqual("", chunkDataInProgress[1].Hash)
+	suite.NotEqual("", chunkDataAll[1].Hash)
+	suite.NotEqual("", chunkDataInProgress[1].Message)
+	suite.NotEqual("", chunkDataAll[1].Message)
+	suite.NotEqual("", chunkDataInProgress[2].Hash)
+	suite.NotEqual("", chunkDataAll[2].Hash)
+	suite.NotEqual("", chunkDataInProgress[2].Message)
+	suite.NotEqual("", chunkDataAll[2].Message)
+
+	// Move some of the chunks to the completed directory
+	u.MoveChunksToCompleted([]oyster_utils.ChunkData{chunkDataInProgress[0]})
+
+	// Get the in progress chunks, complete chunks, and all the chunks
+	chunkDataInProgress, err = models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataComplete, err := models.GetMultiChunkData(oyster_utils.CompletedDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataAll, err = models.GetMultiChunkDataFromAnyDB(u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+
+	// Verify that the total number of chunks in chunkDataAll is the same as the sum of the complete and
+	// in progress chunks
+	suite.Equal(len(chunkDataInProgress)+len(chunkDataComplete), len(chunkDataAll))
+	suite.NotEqual(len(chunkDataInProgress), len(chunkDataAll))
+	suite.NotEqual(len(chunkDataComplete), len(chunkDataAll))
+
+	suite.NotEqual("", chunkDataInProgress[0].Hash)
+	suite.NotEqual("", chunkDataAll[0].Hash)
+	suite.NotEqual("", chunkDataInProgress[0].Message)
+	suite.NotEqual("", chunkDataAll[0].Message)
+	suite.NotEqual("", chunkDataInProgress[1].Hash)
+	suite.NotEqual("", chunkDataAll[1].Hash)
+	suite.NotEqual("", chunkDataInProgress[1].Message)
+	suite.NotEqual("", chunkDataAll[1].Message)
+
+	suite.NotEqual("", chunkDataComplete[0].Hash)
+	suite.NotEqual("", chunkDataAll[2].Hash)
+	suite.NotEqual("", chunkDataComplete[0].Message)
+	suite.NotEqual("", chunkDataAll[2].Message)
+}
+
+func (suite *ModelSuite) Test_GetMultiChunkDataFromAnyDB_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	oyster_utils.InitKvStore()
+
+	numChunks := 9
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+	}
+
+	mergedIndexes := []int{5}
+
+	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
+
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+
+	chunkDataInProgress, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataAll, err := models.GetMultiChunkDataFromAnyDB(u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+
+	suite.Equal(len(chunkDataInProgress), len(chunkDataAll))
+
+	suite.NotEqual("", chunkDataInProgress[0].Hash)
+	suite.NotEqual("", chunkDataAll[0].Hash)
+	suite.NotEqual("", chunkDataInProgress[0].Message)
+	suite.NotEqual("", chunkDataAll[0].Message)
+	suite.NotEqual("", chunkDataInProgress[1].Hash)
+	suite.NotEqual("", chunkDataAll[1].Hash)
+	suite.NotEqual("", chunkDataInProgress[1].Message)
+	suite.NotEqual("", chunkDataAll[1].Message)
+	suite.NotEqual("", chunkDataInProgress[2].Hash)
+	suite.NotEqual("", chunkDataAll[2].Hash)
+	suite.NotEqual("", chunkDataInProgress[2].Message)
+	suite.NotEqual("", chunkDataAll[2].Message)
+
+	// Move some of the chunks to the completed directory
+	u.MoveChunksToCompleted([]oyster_utils.ChunkData{chunkDataInProgress[0]})
+
+	// Get the in progress chunks, complete chunks, and all the chunks
+	chunkDataInProgress, err = models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataComplete, err := models.GetMultiChunkData(oyster_utils.CompletedDir, u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+	chunkDataAll, err = models.GetMultiChunkDataFromAnyDB(u.GenesisHash,
+		&oyster_utils.KVKeys{key1, key2, key3})
+	suite.Nil(err)
+
+	// Verify that the total number of chunks in chunkDataAll is the same as the sum of the complete and
+	// in progress chunks
+	suite.Equal(len(chunkDataInProgress)+len(chunkDataComplete), len(chunkDataAll))
+	suite.NotEqual(len(chunkDataInProgress), len(chunkDataAll))
+	suite.NotEqual(len(chunkDataComplete), len(chunkDataAll))
+
+	suite.NotEqual("", chunkDataInProgress[0].Hash)
+	suite.NotEqual("", chunkDataAll[0].Hash)
+	suite.NotEqual("", chunkDataInProgress[0].Message)
+	suite.NotEqual("", chunkDataAll[0].Message)
+	suite.NotEqual("", chunkDataInProgress[1].Hash)
+	suite.NotEqual("", chunkDataAll[1].Hash)
+	suite.NotEqual("", chunkDataInProgress[1].Message)
+	suite.NotEqual("", chunkDataAll[1].Message)
+
+	suite.NotEqual("", chunkDataComplete[0].Hash)
+	suite.NotEqual("", chunkDataAll[2].Hash)
+	suite.NotEqual("", chunkDataComplete[0].Message)
+	suite.NotEqual("", chunkDataAll[2].Message)
+}
+
+func (suite *ModelSuite) Test_GetSessionsWithIncompleteData() {
+	numChunks := 9
+
+	u1 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+		AllDataReady:         models.AllDataReady,
+	}
+
+	u2 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+		AllDataReady:         models.AllDataNotReady,
+	}
+
+	models.DB.ValidateAndCreate(&u1)
+	models.DB.ValidateAndCreate(&u2)
+
+	incompleteSessions, err := models.GetSessionsWithIncompleteData()
+	suite.Nil(err)
+	suite.Equal(1, len(incompleteSessions))
+	suite.Equal(u2.GenesisHash, incompleteSessions[0].GenesisHash)
 }
