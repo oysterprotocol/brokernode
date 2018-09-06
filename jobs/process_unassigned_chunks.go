@@ -21,7 +21,7 @@ func ProcessUnassignedChunks(iotaWrapper services.IotaService, PrometheusWrapper
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramProcessUnassignedChunks, start)
 
-	sessions, _ := models.GetSessionsByAge()
+	sessions, _ := models.GetReadySessions()
 
 	if len(sessions) > 0 {
 		GetSessionUnassignedChunks(sessions, iotaWrapper)

@@ -805,6 +805,10 @@ func moveAllChunksToCompletedBadger(u *UploadSession) error {
 		oyster_utils.BatchDeleteFromUniqueDB(inProgressMessageDBID, keys)
 		oyster_utils.BatchDeleteFromUniqueDB(inProgressHashDBID, keys)
 
+		if i == u.NumChunks-1 {
+			break
+		}
+
 		i = i + MaxBadgerInsertions
 
 		if i > u.NumChunks-1 {
@@ -1097,7 +1101,7 @@ func GetSessionsByAge() ([]UploadSession, error) {
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
-		return nil, err
+		return []UploadSession{}, err
 	}
 
 	return sessionsByAge, nil
