@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/orcaman/concurrent-map"
-
 	"github.com/dgraph-io/badger"
+	"github.com/orcaman/concurrent-map"
 )
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
