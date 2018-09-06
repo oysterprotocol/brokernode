@@ -2,12 +2,13 @@ package oyster_utils
 
 import (
 	"errors"
-	"github.com/orcaman/concurrent-map"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/orcaman/concurrent-map"
 
 	"github.com/dgraph-io/badger"
 )

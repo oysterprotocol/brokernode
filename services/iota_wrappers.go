@@ -380,7 +380,6 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 }
 
 func sendChunksToLambda(chunks *[]oyster_utils.ChunkData) {
-
 	go batchPowOnLambda(chunks)
 }
 

@@ -1356,15 +1356,3 @@ func GetMultiChunkData(prefix string, genesisHash string, ks *oyster_utils.KVKey
 	}
 	return chunkData, nil
 }
-
-// GetMetaChunk will fetch the DB for the metadata chunk of the datamap.
-func (u *UploadSession) GetMetaChunk() (metaChunk Datamap, err error) {
-	metaIdx := 0 // NOTE: This will change with rev2.
-
-	metaChunk = DataMap{}
-	err = DB.Where("genesis_hash = ? AND chunk_idx = ?", u.GenesisHash, 0).First(&metaChunk)
-	oyster_utils.LogIfError(err)
-
-	// TODO: Check if msg is empty.
-	return
-}

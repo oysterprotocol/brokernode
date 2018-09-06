@@ -286,6 +286,19 @@ func SetUploadSessionToPaid(brokerTx BrokerBrokerTransaction) error {
 	return err
 }
 
+func (brokerTx *BrokerBrokerTransaction) GetMetaChunk() (DataMap, error) {
+	metaIdx := 0 // NOTE: This will change with rev2.
+
+	metaChunk := DataMap{}
+	err := DB.
+		Where("genesis_hash = ? AND chunk_idx = ?", brokerTx.GenesisHash, metaIdx).
+		First(&metaChunk)
+	oyster_utils.LogIfError(err, nil)
+
+	// TODO: Check if msg is empty, and throw error.
+	return metaChunk, err
+}
+
 /* DeleteCompletedBrokerTransactions deletes any brokerTxs for which both alpha and beta are paid */
 func DeleteCompletedBrokerTransactions() {
 	err := DB.RawQuery("DELETE FROM broker_broker_transactions WHERE "+

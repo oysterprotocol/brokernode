@@ -1,11 +1,12 @@
 package jobs
 
 import (
+	"math/big"
+
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"gopkg.in/segmentio/analytics-go.v3"
-	"math/big"
 )
 
 /* CheckAlphaPayments handles the operations around checking the status of payments to alpha and
@@ -46,6 +47,9 @@ func CheckPaymentToAlpha() {
 			}
 
 			models.SetUploadSessionToPaid(brokerTx)
+
+			// TODO: DO PoW HERE!
+
 			oyster_utils.LogToSegment("check_alpha_payments: CheckPaymentToAlpha - alpha_confirmed",
 				analytics.NewProperties().
 					Set("beta_address", brokerTx.ETHAddrBeta).
