@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/gobuffalo/pop"
@@ -83,6 +84,10 @@ func purgeSessions(genesisHash string) {
 		}
 
 		if len(sessions) > 0 {
+
+			fmt.Println("PURGING SESSION!!")
+			fmt.Println(sessions[0])
+
 			errMovingChunks := sessions[0].MoveAllChunksToCompleted()
 			if errMovingChunks != nil {
 				oyster_utils.LogIfError(err, nil)

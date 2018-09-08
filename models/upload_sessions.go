@@ -124,8 +124,60 @@ var (
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
-	ju, _ := json.Marshal(u)
-	return string(ju)
+	session := "Beta"
+	if u.Type == SessionTypeAlpha {
+		session = "Alpha"
+	}
+
+	paymentStatus := "PaymentStatusInvoiced"
+
+	switch u.PaymentStatus {
+	case PaymentStatusPending:
+		paymentStatus = "PaymentStatusPending"
+	case PaymentStatusConfirmed:
+		paymentStatus = "PaymentStatusConfirmed"
+	case PaymentStatusError:
+		paymentStatus = "PaymentStatusError"
+	}
+
+	treasureStatus := "TreasureGeneratingKeys"
+
+	switch u.TreasureStatus {
+	case TreasureInDataMapPending:
+		treasureStatus = "TreasureInDataMapPending"
+	case TreasureInDataMapComplete:
+		treasureStatus = "TreasureInDataMapComplete"
+	}
+
+	allDataReady := "AllDataReady"
+	switch u.AllDataReady {
+
+	case AllDataNotReady:
+		allDataReady = "AllDataNotReady"
+	}
+
+	output := ""
+
+	output += fmt.Sprintln("________________________________________________________")
+	output += fmt.Sprintln("Type:                " + session)
+	output += fmt.Sprintln("Genesis hash:        " + u.GenesisHash)
+	output += fmt.Sprintln("ETH Address Alpha:   " + u.ETHAddrAlpha.String)
+	output += fmt.Sprintln("ETH Address Beta:    " + u.ETHAddrBeta.String)
+	output += fmt.Sprintln("ETH Key:             " + u.ETHPrivateKey)
+	decrypted := u.DecryptSessionEthKey()
+	output += fmt.Sprintln("decrypted ETH Key:   " + decrypted)
+	output += fmt.Sprintln("Payment Status:      " + paymentStatus)
+	output += fmt.Sprintln("Treasure Status:     " + treasureStatus)
+	output += fmt.Sprintln("AllDataReady:        " + allDataReady)
+	output += fmt.Sprint("NumChunks:           ")
+	output += fmt.Sprintln(u.NumChunks)
+	output += fmt.Sprint("NextIdxToAttach:     ")
+	output += fmt.Sprintln(u.NextIdxToAttach)
+	output += fmt.Sprint("NextIdxToVerify:     ")
+	output += fmt.Sprintln(u.NextIdxToVerify)
+	output += fmt.Sprintln("________________________________________________________")
+
+	return output
 }
 
 // UploadSessions is not required by pop and may be deleted
@@ -1091,12 +1143,12 @@ func GetSessionsWithIncompleteData() ([]UploadSession, error) {
 	return sessions, nil
 }
 
-/*GetSessionsByAge gets all the sessions eligible for chunk attachment.*/
-func GetSessionsByAge() ([]UploadSession, error) {
+/*GetSessionsByOldestUpdate gets all the sessions eligible for chunk attachment, from oldest update time to newest.*/
+func GetSessionsByOldestUpdate() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
 	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? AND all_data_ready = ? ORDER BY created_at ASC",
+		"treasure_status = ? AND all_data_ready = ? ORDER BY updated_at ASC",
 		PaymentStatusConfirmed, TreasureInDataMapComplete, AllDataReady).All(&sessionsByAge)
 
 	if err != nil {
@@ -1107,10 +1159,51 @@ func GetSessionsByAge() ([]UploadSession, error) {
 	return sessionsByAge, nil
 }
 
+/*GetReadySessions gets all the sessions eligible for chunk attachment which still need chunks to be attached.*/
+func GetReadySessions() ([]UploadSession, error) {
+	sessions := []UploadSession{}
+	readySessions := []UploadSession{}
+
+	sessions, err := GetSessionsByOldestUpdate()
+
+	for _, session := range sessions {
+		if session.Type == SessionTypeBeta && session.NextIdxToAttach != -1 {
+			readySessions = append(readySessions, session)
+		} else if session.Type == SessionTypeAlpha && session.NextIdxToAttach < int64(session.NumChunks) {
+			readySessions = append(readySessions, session)
+		}
+	}
+
+	return readySessions, err
+}
+
+/*GetVerifiableSessions gets all the sessions which we have already attached all the chunks for but which still need
+verification.*/
+func GetVerifiableSessions() ([]UploadSession, error) {
+	sessions := []UploadSession{}
+	verifiableSessions := []UploadSession{}
+
+	sessions, err := GetSessionsByOldestUpdate()
+
+	for _, session := range sessions {
+		if session.Type == SessionTypeBeta &&
+			session.NextIdxToAttach == -1 &&
+			session.NextIdxToVerify != session.NextIdxToAttach {
+			verifiableSessions = append(verifiableSessions, session)
+		} else if session.Type == SessionTypeAlpha &&
+			session.NextIdxToAttach == int64(session.NumChunks) &&
+			session.NextIdxToVerify != session.NextIdxToAttach {
+			verifiableSessions = append(verifiableSessions, session)
+		}
+	}
+
+	return verifiableSessions, err
+}
+
 /*GetCompletedSessions gets all the sessions whose index values suggest that they are completed.*/
 func GetCompletedSessions() ([]UploadSession, error) {
 	completedSessions := []UploadSession{}
-	sessions, err := GetSessionsByAge()
+	sessions, err := GetSessionsByOldestUpdate()
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -1140,24 +1233,6 @@ func GetSessionsThatNeedTreasure() ([]UploadSession, error) {
 	oyster_utils.LogIfError(err, nil)
 
 	return unburiedSessions, err
-}
-
-/*GetReadySessions gets all the sessions eligible for chunk attachment which still need chunks to be attached.*/
-func GetReadySessions() ([]UploadSession, error) {
-	sessions := []UploadSession{}
-	readySessions := []UploadSession{}
-
-	sessions, err := GetSessionsByAge()
-
-	for _, session := range sessions {
-		if session.Type == SessionTypeBeta && session.NextIdxToAttach != -1 {
-			readySessions = append(readySessions, session)
-		} else if session.Type == SessionTypeAlpha && session.NextIdxToAttach < int64(session.NumChunks) {
-			readySessions = append(readySessions, session)
-		}
-	}
-
-	return readySessions, err
 }
 
 /* SetBrokerTransactionToPaid will find the the upload session's corresponding broker_broker_transaction and set it

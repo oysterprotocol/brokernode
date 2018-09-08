@@ -239,11 +239,11 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 	uploadSession1.AllDataReady = models.AllDataReady
 	suite.DB.ValidateAndUpdate(uploadSession1)
 
-	uploadSession1.NextIdxToAttach = -1
-	uploadSession1.NextIdxToVerify = int64(uploadSession1.NumChunks - 1)
+	uploadSession1.NextIdxToAttach = int64(uploadSession1.NumChunks)
+	uploadSession1.NextIdxToVerify = 0
 	suite.DB.ValidateAndUpdate(uploadSession1)
 
-	suite.Equal(int64(uploadSession1.NumChunks-1), uploadSession1.NextIdxToVerify)
+	suite.Equal(int64(0), uploadSession1.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
@@ -254,7 +254,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 	session := models.UploadSession{}
 	suite.DB.First(&session)
 
-	suite.Equal(int64(-1), session.NextIdxToVerify)
+	suite.Equal(int64(uploadSession1.NumChunks), session.NextIdxToVerify)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 }
 
@@ -324,11 +324,11 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	session.AllDataReady = models.AllDataReady
 	suite.DB.ValidateAndUpdate(&session)
 
-	session.NextIdxToAttach = -1
-	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	session.NextIdxToAttach = int64(session.NumChunks)
+	session.NextIdxToVerify = 0
 	suite.DB.ValidateAndUpdate(&session)
 
-	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+	suite.Equal(int64(0), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
@@ -339,7 +339,6 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	session = models.UploadSession{}
 	suite.DB.First(&session)
 
-	suite.Equal(int64(-1), session.NextIdxToVerify)
-
-	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
+	// we only set 3 to be matching the tangle
+	suite.Equal(int64(3), session.NextIdxToVerify)
 }

@@ -12,7 +12,7 @@ func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramVerifyDataMaps, start)
 
-	sessions, err := models.GetSessionsByAge()
+	sessions, err := models.GetVerifiableSessions()
 
 	for _, session := range sessions {
 		checkSessionChunks(IotaWrapper, session)
