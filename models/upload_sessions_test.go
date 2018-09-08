@@ -149,7 +149,7 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	}
 }
 
-func (suite *ModelSuite) Test_GetSessionsByAge() {
+func (suite *ModelSuite) Test_GetSessionsByOldestUpdate() {
 
 	err := suite.DB.RawQuery("DELETE FROM upload_sessions").All(&[]models.UploadSession{})
 	suite.Nil(err)
@@ -217,14 +217,14 @@ func (suite *ModelSuite) Test_GetSessionsByAge() {
 	suite.Nil(err)
 
 	// set uploadSession3 to be the oldest
-	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-10*time.Second), uploadSession3.GenesisHash).All(&[]models.UploadSession{})
 
 	// set uploadSession2 to be the newest
-	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(10*time.Second), uploadSession2.GenesisHash).All(&[]models.UploadSession{})
 
-	sessions, err := models.GetSessionsByAge()
+	sessions, err := models.GetSessionsByOldestUpdate()
 	suite.Nil(err)
 
 	suite.Equal(3, len(sessions))
@@ -1847,6 +1847,121 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 
 	for _, session := range readySessions {
 		suite.True(session.GenesisHash == u2.GenesisHash || session.GenesisHash == u4.GenesisHash)
+	}
+}
+
+func (suite *ModelSuite) Test_GetVerifiableSessions() {
+	numChunks := 15
+
+	u1 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(numChunks),
+		NextIdxToVerify:      5,
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&u1)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u2 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(numChunks),
+		NextIdxToVerify:      int64(numChunks),
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u2)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u3 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(5),
+		NextIdxToVerify:      int64(0),
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u3)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u4 := models.UploadSession{
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(-1),
+		NextIdxToVerify:      5,
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u4)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u5 := models.UploadSession{
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(-1),
+		NextIdxToVerify:      int64(-1),
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u5)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u6 := models.UploadSession{
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(7),
+		NextIdxToVerify:      int64(9),
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u6)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	sessions, err := models.GetVerifiableSessions()
+	suite.Nil(err)
+
+	suite.Equal(2, len(sessions))
+
+	for _, session := range sessions {
+		suite.True(session.GenesisHash == u4.GenesisHash || session.GenesisHash == u1.GenesisHash)
 	}
 }
 

@@ -74,7 +74,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	suite.True(finished3)
 
 	// Set all sessions to states that will cause them to be picked up by
-	// GetSessionsByAge
+	// GetSessionsByOldestUpdate
 	sessions := []models.UploadSession{}
 	suite.DB.All(&sessions)
 	for _, session := range sessions {
