@@ -995,14 +995,14 @@ func (u *UploadSession) UpdateIndexWithVerifiedChunks(chunks []oyster_utils.Chun
 	}
 
 	for i := nextIdxToVerifyStart; i != nextIdxToVerifyStart+(int64(len(chunks))*step); i = i + step {
-		if _, ok := treasureIdxMap[i]; !ok {
-			if _, ok := idxMap[i]; !ok {
+		if _, ok := idxMap[i]; !ok {
+			if _, ok := treasureIdxMap[i]; !ok {
 				break
-			}
-		} else {
-			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
-			if chunk.Hash == "" {
-				break
+			} else {
+				chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+				if chunk.Hash == "" {
+					break
+				}
 			}
 		}
 		nextIdxToVerifyNew = i + step
@@ -1052,14 +1052,14 @@ func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.Chun
 	}
 
 	for i := nextIdxToAttachStart; i != nextIdxToAttachStart+(int64(len(chunks))*step); i = i + step {
-		if _, ok := treasureIdxMap[i]; !ok {
-			if _, ok := idxMap[i]; !ok {
+		if _, ok := idxMap[i]; !ok {
+			if _, ok := treasureIdxMap[i]; !ok {
 				break
-			}
-		} else {
-			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
-			if chunk.Hash == "" {
-				break
+			} else {
+				chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+				if chunk.Hash == "" {
+					break
+				}
 			}
 		}
 		nextIdxToAttachNew = i + step
