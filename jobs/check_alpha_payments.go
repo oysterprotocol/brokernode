@@ -47,13 +47,18 @@ func CheckPaymentToAlpha() {
 			}
 
 			models.SetUploadSessionToPaid(brokerTx)
-			metaChunk, err := models.GetMetaChunk(brokerTx.GenesisHash)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				continue
-			}
 
-			// TODO: DO PoW HERE!
+			// Attach metachunk.
+			go func() {
+				metaChunk, err := models.GetMetaChunk(brokerTx.GenesisHash)
+				oyster_utils.LogIfError(err, nil)
+				if err != nil {
+					return
+				}
+
+				err = services.PowAndBroadcast([]oyster_utils.ChunkData{metaChunk})
+				oyster_utils.LogIfError(err, nil)
+			}()
 
 			oyster_utils.LogToSegment("check_alpha_payments: CheckPaymentToAlpha - alpha_confirmed",
 				analytics.NewProperties().
