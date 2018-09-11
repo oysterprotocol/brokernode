@@ -13,6 +13,7 @@ var (
 	sendChunksToChannelMockCalled_process_unassigned_chunks              = false
 	verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks = false
 	findTransactionsMockCalled_process_unassigned_chunks                 = false
+	sendChunksToLambdaMockCalled_process_unassigned_chunks               = false
 	AllChunksCalled                                                      []oyster_utils.ChunkData
 	fakeFindTransactionsAddress                                          = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 )
@@ -101,7 +102,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	// call method under test
 	jobs.ProcessUnassignedChunks(IotaMock, jobs.PrometheusWrapper)
 
-	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks)
+	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks || sendChunksToLambdaMockCalled_process_unassigned_chunks)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
 	suite.Equal(4*(uploadSession1.NumChunks), len(AllChunksCalled))
 
@@ -451,6 +452,7 @@ func makeMocks_process_unassigned_chunks(iotaMock *services.IotaService) {
 	iotaMock.VerifyChunkMessagesMatchRecord = verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks
 	iotaMock.SendChunksToChannel = sendChunksToChannelMock_process_unassigned_chunks
 	iotaMock.FindTransactions = findTransactions_process_unassigned_chunks
+	iotaMock.SendChunksToLambda = sendChunksToLambda_process_unassigned_chunks
 }
 
 func sendChunksToChannelMock_process_unassigned_chunks(chunks []oyster_utils.ChunkData, channel *models.ChunkChannel) {
@@ -493,4 +495,11 @@ func findTransactions_process_unassigned_chunks(addresses []giota.Address) (map[
 	findTransactionsMockCalled_process_unassigned_chunks = true
 
 	return addrToTransactionMap, nil
+}
+
+func sendChunksToLambda_process_unassigned_chunks(chunks *[]oyster_utils.ChunkData) {
+	sendChunksToLambdaMockCalled_process_unassigned_chunks = true
+
+	// stored all the chunks that get sent to the mock so we can run tests on them.
+	AllChunksCalled = append(AllChunksCalled, *chunks...)
 }

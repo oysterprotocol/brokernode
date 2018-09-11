@@ -190,23 +190,38 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	models.NewBrokerBrokerTransaction(&alphaSession)
 
 	if hasBeta {
-		mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes, oyster_utils.FileSectorInChunkSize, req.NumChunks)
+		mergedIndexes, _ := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes,
+			oyster_utils.FileSectorInChunkSize, req.NumChunks)
 
-		privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
-		if err != nil {
-			err := errors.New("Could not generate eth keys: " + err.Error())
+		if len(mergedIndexes) == 0 && oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+			err := errors.New("no indexes selected for treasure")
 			fmt.Println(err)
 			c.Error(400, err)
 			return err
 		}
-		if len(mergedIndexes) != len(privateKeys) {
-			err := errors.New("privateKeys and mergedIndexes should have the same length")
-			oyster_utils.LogIfError(err, nil)
-			c.Error(400, err)
-			return err
+
+		for {
+			privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
+			if err != nil {
+				err := errors.New("Could not generate eth keys: " + err.Error())
+				fmt.Println(err)
+				c.Error(400, err)
+				return err
+			}
+			if len(mergedIndexes) != len(privateKeys) {
+				err := errors.New("privateKeys and mergedIndexes should have the same length")
+				oyster_utils.LogIfError(err, nil)
+				c.Error(400, err)
+				return err
+			}
+			// Update alpha treasure idx map.
+			alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+			if alphaSession.TreasureStatus == models.TreasureInDataMapPending &&
+				alphaSession.TreasureIdxMap.Valid && alphaSession.TreasureIdxMap.String != "" {
+				break
+			}
 		}
-		// Update alpha treasure idx map.
-		alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 	}
 
 	res := uploadSessionCreateRes{
@@ -351,25 +366,38 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	mergedIndexes, err := oyster_utils.MergeIndexes(req.AlphaTreasureIndexes, betaTreasureIndexes,
 		oyster_utils.FileSectorInChunkSize, req.NumChunks)
 
+	if len(mergedIndexes) == 0 && oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+		err := errors.New("no indexes selected for treasure")
+		fmt.Println(err)
+		c.Error(400, err)
+		return err
+	}
+
 	if err != nil {
 		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
-	privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
-	if err != nil {
-		err := errors.New("Could not generate eth keys: " + err.Error())
-		fmt.Println(err)
-		c.Error(400, err)
-		return err
+	for {
+		privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
+		if err != nil {
+			err := errors.New("Could not generate eth keys: " + err.Error())
+			fmt.Println(err)
+			c.Error(400, err)
+			return err
+		}
+		if len(mergedIndexes) != len(privateKeys) {
+			err := errors.New("privateKeys and mergedIndexes should have the same length")
+			fmt.Println(err)
+			c.Error(400, err)
+			return err
+		}
+		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+		if u.TreasureStatus == models.TreasureInDataMapPending &&
+			u.TreasureIdxMap.Valid && u.TreasureIdxMap.String != "" {
+			break
+		}
 	}
-	if len(mergedIndexes) != len(privateKeys) {
-		err := errors.New("privateKeys and mergedIndexes should have the same length")
-		fmt.Println(err)
-		c.Error(400, err)
-		return err
-	}
-	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	models.NewBrokerBrokerTransaction(&u)
 

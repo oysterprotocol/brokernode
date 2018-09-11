@@ -130,8 +130,9 @@ func purgeCompletedSessionsHandler(args worker.Args) error {
 }
 
 func verifyDataMapsHandler(args worker.Args) error {
+	thresholdTime := time.Now().Add(-3 * time.Minute) // wait 3 minutes before verifying a file
 	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
-		VerifyDataMaps(IotaWrapper, PrometheusWrapper)
+		VerifyDataMaps(IotaWrapper, PrometheusWrapper, thresholdTime)
 	}
 
 	oysterWorkerPerformIn(verifyDataMapsHandler, args)
