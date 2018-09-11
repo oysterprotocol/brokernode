@@ -490,6 +490,7 @@ func (u *UploadSession) SetTreasureMap(treasureIndexMap []TreasureMap) error {
 func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []string) {
 
 	treasureIndexArray := make([]TreasureMap, 0)
+	successfulEncryption := true
 
 	for i, mergedIndex := range mergedIndexes {
 
@@ -505,17 +506,25 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 			Idx:    mergedIndex,
 			Key:    key,
 		})
+
+		decryptedKey, err := u.DecryptTreasureChunkEthKey(key)
+		if decryptedKey == "" {
+			successfulEncryption = false
+		}
 	}
 
-	treasureString, err := json.Marshal(treasureIndexArray)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+	if successfulEncryption {
+
+		treasureString, err := json.Marshal(treasureIndexArray)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+		}
+
+		u.TreasureIdxMap = nulls.String{string(treasureString), true}
+		u.TreasureStatus = TreasureInDataMapPending
+
+		DB.ValidateAndSave(u)
 	}
-
-	u.TreasureIdxMap = nulls.String{string(treasureString), true}
-	u.TreasureStatus = TreasureInDataMapPending
-
-	DB.ValidateAndSave(u)
 }
 
 func (u *UploadSession) GetTreasureIndexes() ([]int, error) {
@@ -995,14 +1004,14 @@ func (u *UploadSession) UpdateIndexWithVerifiedChunks(chunks []oyster_utils.Chun
 	}
 
 	for i := nextIdxToVerifyStart; i != nextIdxToVerifyStart+(int64(len(chunks))*step); i = i + step {
-		if _, ok := treasureIdxMap[i]; !ok {
-			if _, ok := idxMap[i]; !ok {
+		if _, ok := idxMap[i]; !ok {
+			if _, ok := treasureIdxMap[i]; !ok {
 				break
-			}
-		} else {
-			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
-			if chunk.Hash == "" {
-				break
+			} else {
+				chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+				if chunk.Hash == "" {
+					break
+				}
 			}
 		}
 		nextIdxToVerifyNew = i + step
@@ -1052,14 +1061,14 @@ func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.Chun
 	}
 
 	for i := nextIdxToAttachStart; i != nextIdxToAttachStart+(int64(len(chunks))*step); i = i + step {
-		if _, ok := treasureIdxMap[i]; !ok {
-			if _, ok := idxMap[i]; !ok {
+		if _, ok := idxMap[i]; !ok {
+			if _, ok := treasureIdxMap[i]; !ok {
 				break
-			}
-		} else {
-			chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
-			if chunk.Hash == "" {
-				break
+			} else {
+				chunk := GetSingleChunkData(oyster_utils.CompletedDir, u.GenesisHash, int64(i))
+				if chunk.Hash == "" {
+					break
+				}
 			}
 		}
 		nextIdxToAttachNew = i + step
@@ -1179,11 +1188,20 @@ func GetReadySessions() ([]UploadSession, error) {
 
 /*GetVerifiableSessions gets all the sessions which we have already attached all the chunks for but which still need
 verification.*/
-func GetVerifiableSessions() ([]UploadSession, error) {
+func GetVerifiableSessions(thresholdTime time.Time) ([]UploadSession, error) {
+
 	sessions := []UploadSession{}
 	verifiableSessions := []UploadSession{}
 
-	sessions, err := GetSessionsByOldestUpdate()
+	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
+		"treasure_status = ? AND all_data_ready = ? AND updated_at <= ? ORDER BY updated_at ASC",
+		PaymentStatusConfirmed, TreasureInDataMapComplete, AllDataReady,
+		thresholdTime).All(&sessions)
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return []UploadSession{}, err
+	}
 
 	for _, session := range sessions {
 		if session.Type == SessionTypeBeta &&

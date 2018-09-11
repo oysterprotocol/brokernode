@@ -6,6 +6,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"time"
 )
 
 var (
@@ -81,7 +82,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
 
 	// verify the mock methods were called
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
@@ -167,7 +168,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
 
 	// verify the mock methods were called
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
@@ -246,7 +247,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 	suite.Equal(int64(0), uploadSession1.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
 
 	// verify the mock methods were called
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
@@ -331,7 +332,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	suite.Equal(int64(0), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
-	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper)
+	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
 
 	// verify the mock methods were called
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
