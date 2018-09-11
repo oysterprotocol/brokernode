@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+/*VerifyDataMaps will check sessions for which attachment has been completed, to make sure the chunks
+have been attached to the tangle.*/
 func VerifyDataMaps(IotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService, thresholdTime time.Time) {
 
 	start := PrometheusWrapper.TimeNow()
