@@ -22,6 +22,9 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
 	defer oyster_utils.ResetPoWMode()
 
+	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+	defer oyster_utils.ResetBrokerMode()
+
 	numChunks := 31
 
 	// make suite available inside mock methods
@@ -79,17 +82,17 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	SessionSetUpForTest(&uploadSession4, []int{15}, uploadSession4.NumChunks)
 
 	// set uploadSession4 to be the oldest
-	err := suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err := suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-20*time.Second), uploadSession4.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession2 to next oldest
-	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-15*time.Second), uploadSession2.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 
 	// set uploadSession1 to next oldest after uploadSession2
-	err = suite.DB.RawQuery("UPDATE upload_sessions SET created_at = ? WHERE genesis_hash = ?",
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
 		time.Now().Add(-10*time.Second), uploadSession1.GenesisHash).All(&[]models.UploadSession{})
 	suite.Nil(err)
 

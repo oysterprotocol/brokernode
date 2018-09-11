@@ -23,10 +23,11 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 
 	"errors"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/joho/godotenv"
 	"io/ioutil"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/joho/godotenv"
 )
 
 type Eth struct {
@@ -255,6 +256,10 @@ func sharedClient() (c *ethclient.Client, err error) {
 	mtx.Lock()
 	defer mtx.Unlock()
 
+	if client != nil {
+		return client, nil
+	}
+
 	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
@@ -348,7 +353,7 @@ func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
 	privateKey = hex.EncodeToString(ethAccount.D.Bytes())
-	if privateKey[0] == '0' || len(privateKey) != 64 {
+	if privateKey[0] == '0' || len(privateKey) != 64 || len(addr) != 20 {
 		return generateEthAddr()
 	}
 	return addr, privateKey, err

@@ -105,7 +105,10 @@ func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKey
 	step := int64(0)
 	stop := int64(0)
 
-	if startingIdx < endingIdx {
+	if startingIdx == endingIdx {
+		keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(startingIdx), 10)}))
+		return &keys
+	} else if startingIdx < endingIdx {
 		step = 1
 		stop = endingIdx + step
 	} else if startingIdx > endingIdx {

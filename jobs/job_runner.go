@@ -68,7 +68,7 @@ func doWork(oysterWorker *worker.Simple) {
 		worker.Args{Duration: 1 * time.Minute})
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
-		worker.Args{Duration: 30 * time.Second})
+		worker.Args{Duration: 60 * time.Second})
 
 	oysterWorkerPerformIn(processPaidSessionsHandler,
 		worker.Args{Duration: 20 * time.Second})
@@ -114,7 +114,6 @@ func flushOldWebnodesHandler(args worker.Args) error {
 }
 
 func processUnassignedChunksHandler(args worker.Args) error {
-
 	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
 		ProcessUnassignedChunks(IotaWrapper, PrometheusWrapper)
 	}
