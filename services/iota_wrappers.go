@@ -186,6 +186,7 @@ func init() {
 	PoWFrequency.Frequency = 2
 }
 
+// PowAndBroadcast does PoW then attaches to the tangle
 func PowAndBroadcast(chunks []oyster_utils.ChunkData) (err error) {
 	transfersArray := make([]giota.Transfer, len(chunks))
 
