@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
 	"math/rand"
@@ -22,6 +21,7 @@ import (
 	"github.com/gobuffalo/validate/validators"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
+	"golang.org/x/crypto/sha3"
 )
 
 /*ChunkReq is the form in which webinterface will send the data for each chunk*/
@@ -777,6 +777,24 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 		}
 	}
 	return allMessagesFound
+}
+
+// GetMetaChunk will fetch the metachunk associated with the genHash passed in.
+func GetMetaChunk(genHash string) (oyster_utils.ChunkData, error) {
+	metaIdx := int64(0) // rev1
+	stopIdx := metaIdx + 1
+
+	keys := oyster_utils.GenerateBulkKeys(genHash, metaIdx, stopIdx)
+	chunks, err := GetMultiChunkData(oyster_utils.InProgressDir, genHash, keys)
+	oyster_utils.LogIfError(err, nil)
+
+	if len(chunks) > 0 {
+		metaChunk := chunks[0] // Fetched just 1 chunk.
+		return metaChunk, err
+	}
+
+	return oyster_utils.ChunkData{}, errors.New("metachunk not found")
+
 }
 
 /*GetUnassignedChunksBySession returns the chunk data for chunks that need attaching for a particular session*/

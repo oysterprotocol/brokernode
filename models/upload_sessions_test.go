@@ -3,13 +3,14 @@ package models_test
 import (
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"strconv"
+	"time"
+
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
-	"math/big"
-	"strconv"
-	"time"
 )
 
 func (suite *ModelSuite) Test_BigFileSize() {

@@ -1,12 +1,13 @@
 package models_test
 
 import (
+	"time"
+
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
-	"time"
 )
 
 var (
