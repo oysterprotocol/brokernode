@@ -393,7 +393,8 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 		return
 	}
 
-	u.EncryptSessionEthKey()
+	key, _ := u.EncryptSessionEthKey()
+	u.ETHPrivateKey = key
 
 	if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
 		u.NumChunks = oyster_utils.GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(u.NumChunks)
@@ -508,7 +509,7 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 		})
 
 		decryptedKey, err := u.DecryptTreasureChunkEthKey(key)
-		if decryptedKey == "" {
+		if decryptedKey != privateKeys[i] {
 			successfulEncryption = false
 		}
 	}
@@ -523,7 +524,9 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 		u.TreasureIdxMap = nulls.String{string(treasureString), true}
 		u.TreasureStatus = TreasureInDataMapPending
 
-		DB.ValidateAndSave(u)
+		vErr, err := DB.ValidateAndUpdate(u)
+		oyster_utils.LogIfValidationError("errors encrypting treasure eth key", vErr, nil)
+		oyster_utils.LogIfError(err, nil)
 	}
 }
 
@@ -586,24 +589,47 @@ func (u *UploadSession) GetPaymentStatus() string {
 	}
 }
 
-func (u *UploadSession) EncryptSessionEthKey() {
-	u.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
-	DB.ValidateAndSave(u)
+func (u *UploadSession) EncryptSessionEthKey() (string, error) {
+	var err error
+
+	session := &UploadSession{}
+	DB.Find(session, u.ID)
+
+	u.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(session.ID, session.CreatedAt, session.ETHPrivateKey)
+	vErr, err := DB.ValidateAndSave(u)
+	oyster_utils.LogIfValidationError("errors encrypting session eth key", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+	if vErr.HasAny() || err != nil {
+		err = errors.New("error while encrypting session eth key")
+	}
+	return u.ETHPrivateKey, err
 }
 
 func (u *UploadSession) DecryptSessionEthKey() string {
-	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, u.ETHPrivateKey)
+
+	session := &UploadSession{}
+	DB.Find(session, u.ID)
+
+	return oyster_utils.ReturnDecryptedEthKey(session.ID, session.CreatedAt, session.ETHPrivateKey)
 }
 
 /*EncryptTreasureChunkEthKey encrypts the eth key of the treasure chunk*/
 func (u *UploadSession) EncryptTreasureChunkEthKey(unencryptedKey string) (string, error) {
-	encryptedKey := oyster_utils.ReturnEncryptedEthKey(u.ID, u.CreatedAt, unencryptedKey)
+
+	session := &UploadSession{}
+	DB.Find(session, u.ID)
+
+	encryptedKey := oyster_utils.ReturnEncryptedEthKey(session.ID, session.CreatedAt, unencryptedKey)
 	return encryptedKey, nil
 }
 
 /*DecryptTreasureChunkEthKey decrypts the eth key of the treasure chunk*/
 func (u *UploadSession) DecryptTreasureChunkEthKey(encryptedKey string) (string, error) {
-	return oyster_utils.ReturnDecryptedEthKey(u.ID, u.CreatedAt, encryptedKey), nil
+
+	session := &UploadSession{}
+	DB.Find(session, u.ID)
+
+	return oyster_utils.ReturnDecryptedEthKey(session.ID, session.CreatedAt, encryptedKey), nil
 }
 
 /*WaitForAllChunks is a blocking call that will wait for all chunks or false and an error if we get an

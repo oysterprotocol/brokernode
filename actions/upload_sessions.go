@@ -217,8 +217,12 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			// Update alpha treasure idx map.
 			alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
+			treasureIndexes, _ := alphaSession.GetTreasureIndexes()
+
 			if alphaSession.TreasureStatus == models.TreasureInDataMapPending &&
-				alphaSession.TreasureIdxMap.Valid && alphaSession.TreasureIdxMap.String != "" {
+				alphaSession.TreasureIdxMap.Valid && alphaSession.TreasureIdxMap.String != "" &&
+				len(treasureIndexes) == len(mergedIndexes) {
+				models.DB.ValidateAndUpdate(&alphaSession)
 				break
 			}
 		}
@@ -393,8 +397,13 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 			return err
 		}
 		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+		treasureIndexes, err := u.GetTreasureIndexes()
+
 		if u.TreasureStatus == models.TreasureInDataMapPending &&
-			u.TreasureIdxMap.Valid && u.TreasureIdxMap.String != "" {
+			u.TreasureIdxMap.Valid && u.TreasureIdxMap.String != "" &&
+			len(treasureIndexes) == len(mergedIndexes) {
+			models.DB.ValidateAndUpdate(&u)
 			break
 		}
 	}
