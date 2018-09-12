@@ -141,9 +141,20 @@ func (c *CompletedUpload) BeforeCreate(tx *pop.Connection) error {
 	return nil
 }
 
-func (c *CompletedUpload) EncryptSessionEthKey() {
-	c.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(c.ID, c.CreatedAt, c.ETHPrivateKey)
-	DB.ValidateAndSave(c)
+func (c *CompletedUpload) EncryptSessionEthKey() (string, error) {
+	var err error
+
+	session := &CompletedUpload{}
+	DB.Find(session, c.ID)
+
+	c.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(session.ID, session.CreatedAt, session.ETHPrivateKey)
+	vErr, err := DB.ValidateAndSave(c)
+	oyster_utils.LogIfValidationError("errors encrypting session eth key", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+	if vErr.HasAny() || err != nil {
+		err = errors.New("error while encrypting session eth key")
+	}
+	return c.ETHPrivateKey, err
 }
 
 func (c *CompletedUpload) DecryptSessionEthKey() string {
@@ -191,7 +202,9 @@ func NewCompletedUpload(session UploadSession) error {
 		return err
 	}
 
-	completedUpload.EncryptSessionEthKey()
+	key, _ := completedUpload.EncryptSessionEthKey()
+	completedUpload.ETHPrivateKey = key
+	DB.ValidateAndUpdate(&completedUpload)
 
 	return nil
 }
