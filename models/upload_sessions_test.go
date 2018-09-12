@@ -1396,7 +1396,14 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_alpha_treasure_not_c
 		bulkKeys)
 	suite.Nil(err)
 
-	u.UpdateIndexWithVerifiedChunks(bulkChunkData)
+	withoutTreasureChunks := []oyster_utils.ChunkData{}
+	for _, chunkData := range bulkChunkData {
+		if chunkData.Idx != 5 {
+			withoutTreasureChunks = append(withoutTreasureChunks, chunkData)
+		}
+	}
+
+	u.UpdateIndexWithVerifiedChunks(withoutTreasureChunks)
 
 	suite.Equal(int64(mergedIndexes[0]), u.NextIdxToVerify)
 }
@@ -1462,7 +1469,14 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_not_co
 		bulkKeys)
 	suite.Nil(err)
 
-	u.UpdateIndexWithVerifiedChunks(bulkChunkData)
+	withoutTreasureChunks := []oyster_utils.ChunkData{}
+	for _, chunkData := range bulkChunkData {
+		if chunkData.Idx != 5 {
+			withoutTreasureChunks = append(withoutTreasureChunks, chunkData)
+		}
+	}
+
+	u.UpdateIndexWithVerifiedChunks(withoutTreasureChunks)
 
 	suite.Equal(int64(mergedIndexes[0]), u.NextIdxToVerify)
 }
@@ -1527,7 +1541,14 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_alpha_treasure_not_c
 		bulkKeys)
 	suite.Nil(err)
 
-	u.UpdateIndexWithAttachedChunks(bulkChunkData)
+	withoutTreasureChunks := []oyster_utils.ChunkData{}
+	for _, chunkData := range bulkChunkData {
+		if chunkData.Idx != 5 {
+			withoutTreasureChunks = append(withoutTreasureChunks, chunkData)
+		}
+	}
+
+	u.UpdateIndexWithAttachedChunks(withoutTreasureChunks)
 
 	suite.Equal(int64(mergedIndexes[0]), u.NextIdxToAttach)
 }
@@ -1591,7 +1612,14 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_beta_treasure_not_co
 		bulkKeys)
 	suite.Nil(err)
 
-	u.UpdateIndexWithAttachedChunks(bulkChunkData)
+	withoutTreasureChunks := []oyster_utils.ChunkData{}
+	for _, chunkData := range bulkChunkData {
+		if chunkData.Idx != 5 {
+			withoutTreasureChunks = append(withoutTreasureChunks, chunkData)
+		}
+	}
+
+	u.UpdateIndexWithAttachedChunks(withoutTreasureChunks)
 
 	suite.Equal(int64(mergedIndexes[0]), u.NextIdxToAttach)
 }
@@ -1956,7 +1984,7 @@ func (suite *ModelSuite) Test_GetVerifiableSessions() {
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
 
-	sessions, err := models.GetVerifiableSessions()
+	sessions, err := models.GetVerifiableSessions(time.Now().Add(1 * time.Minute))
 	suite.Nil(err)
 
 	suite.Equal(2, len(sessions))
@@ -1964,6 +1992,56 @@ func (suite *ModelSuite) Test_GetVerifiableSessions() {
 	for _, session := range sessions {
 		suite.True(session.GenesisHash == u4.GenesisHash || session.GenesisHash == u1.GenesisHash)
 	}
+}
+
+func (suite *ModelSuite) Test_GetVerifiableSessions_session_not_old_enough() {
+	numChunks := 15
+
+	u1 := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(numChunks),
+		NextIdxToVerify:      5,
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err := suite.DB.ValidateAndCreate(&u1)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	u2 := models.UploadSession{
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(15000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 1,
+		NextIdxToAttach:      int64(-1),
+		NextIdxToVerify:      5,
+		AllDataReady:         models.AllDataReady,
+		TreasureStatus:       models.TreasureInDataMapComplete,
+		PaymentStatus:        models.PaymentStatusConfirmed,
+	}
+
+	vErr, err = suite.DB.ValidateAndCreate(&u2)
+	suite.False(vErr.HasAny())
+	suite.Nil(err)
+
+	// set u1 to an update time which will cause it to get picked up by GetVerifiableSessions
+	err = suite.DB.RawQuery("UPDATE upload_sessions SET updated_at = ? WHERE genesis_hash = ?",
+		time.Now().Add(-5*time.Minute), u1.GenesisHash).All(&[]models.UploadSession{})
+	suite.Nil(err)
+
+	sessions, err := models.GetVerifiableSessions(time.Now().Add(-1 * time.Minute))
+	suite.Nil(err)
+
+	suite.Equal(1, len(sessions))
+
+	suite.True(sessions[0].GenesisHash == u1.GenesisHash)
 }
 
 func (suite *ModelSuite) Test_GetChunkForWebnodePoW() {

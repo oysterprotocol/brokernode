@@ -49,7 +49,7 @@ func GetSessionUnassignedChunks(sessions []models.UploadSession, iotaWrapper ser
 				Set("num_ready_channels", len(channels)))
 		}
 
-		if len(chunks) == len(channels)*BundleSize {
+		if len(chunks) >= len(channels)*BundleSize {
 			// we have used up all the channels, no point in doing the for loop again
 			break
 		}
