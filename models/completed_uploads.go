@@ -158,7 +158,10 @@ func (c *CompletedUpload) EncryptSessionEthKey() (string, error) {
 }
 
 func (c *CompletedUpload) DecryptSessionEthKey() string {
-	return oyster_utils.ReturnDecryptedEthKey(c.ID, c.CreatedAt, c.ETHPrivateKey)
+	session := &CompletedUpload{}
+	DB.Find(session, c.ID)
+
+	return oyster_utils.ReturnDecryptedEthKey(session.ID, session.CreatedAt, session.ETHPrivateKey)
 }
 
 /**

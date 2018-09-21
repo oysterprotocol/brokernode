@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"time"
 
@@ -132,14 +133,29 @@ func (b *BrokerBrokerTransaction) AfterCreate(tx *pop.Connection) error {
  */
 
 /*EncryptEthKey encrypts the private eth key*/
-func (b *BrokerBrokerTransaction) EncryptEthKey() {
-	b.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(b.ID, b.CreatedAt, b.ETHPrivateKey)
-	DB.ValidateAndSave(b)
+func (b *BrokerBrokerTransaction) EncryptEthKey() (string, error) {
+	var err error
+
+	bBT := &BrokerBrokerTransaction{}
+	DB.Find(bBT, b.ID)
+
+	b.ETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(bBT.ID, bBT.CreatedAt, bBT.ETHPrivateKey)
+	vErr, err := DB.ValidateAndSave(b)
+	oyster_utils.LogIfValidationError("errors encrypting broker broker transaction eth key", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+	if vErr.HasAny() || err != nil {
+		err = errors.New("error while encrypting broker broker transaction eth key")
+	}
+	return b.ETHPrivateKey, err
 }
 
 /*DecryptEthKey decrypts the private eth key*/
 func (b *BrokerBrokerTransaction) DecryptEthKey() string {
-	return oyster_utils.ReturnDecryptedEthKey(b.ID, b.CreatedAt, b.ETHPrivateKey)
+
+	bBT := &BrokerBrokerTransaction{}
+	DB.Find(bBT, b.ID)
+
+	return oyster_utils.ReturnDecryptedEthKey(bBT.ID, bBT.CreatedAt, bBT.ETHPrivateKey)
 }
 
 /*NewBrokerBrokerTransaction creates a new broker_broker_transaction that corresponds to a session */

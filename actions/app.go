@@ -96,13 +96,18 @@ func App() *buffalo.App {
 		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
 		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
 
-		// Treasures
+		// Treasure claims
 		treasures := TreasuresResource{}
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
 
 		// Status
 		statusResource := StatusResource{}
 		apiV2.GET("status", statusResource.CheckStatus)
+
+		// Treasure signing
+		signTreasureResource := SignTreasureResource{}
+		apiV2.GET("unsigned-treasure/{id}", signTreasureResource.GetUnsignedTreasure)
+		apiV2.PUT("signed-treasure/{id}", signTreasureResource.SignTreasure)
 	}
 
 	oyster_utils.StartProfile()
