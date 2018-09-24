@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math/big"
@@ -97,13 +98,30 @@ func (w *WebnodeTreasureClaim) AfterCreate(tx *pop.Connection) error {
 	return nil
 }
 
-func (w *WebnodeTreasureClaim) EncryptTreasureEthKey() {
-	w.TreasureETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(w.ID, w.CreatedAt, w.TreasureETHPrivateKey)
-	DB.ValidateAndSave(w)
+func (w *WebnodeTreasureClaim) EncryptTreasureEthKey() (string, error) {
+	var err error
+
+	webnodeClaim := &WebnodeTreasureClaim{}
+	DB.Find(webnodeClaim, w.ID)
+
+	w.TreasureETHPrivateKey = oyster_utils.ReturnEncryptedEthKey(webnodeClaim.ID, webnodeClaim.CreatedAt,
+		webnodeClaim.TreasureETHPrivateKey)
+	vErr, err := DB.ValidateAndSave(w)
+	oyster_utils.LogIfValidationError("errors encrypting webnode treasure claim eth key", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+	if vErr.HasAny() || err != nil {
+		err = errors.New("error while encrypting webnode treasure claim eth key")
+	}
+	return w.TreasureETHPrivateKey, err
 }
 
 func (w *WebnodeTreasureClaim) DecryptTreasureEthKey() string {
-	return oyster_utils.ReturnDecryptedEthKey(w.ID, w.CreatedAt, w.TreasureETHPrivateKey)
+
+	webnodeClaim := &WebnodeTreasureClaim{}
+	DB.Find(webnodeClaim, w.ID)
+
+	return oyster_utils.ReturnDecryptedEthKey(webnodeClaim.ID, webnodeClaim.CreatedAt,
+		webnodeClaim.TreasureETHPrivateKey)
 }
 
 func GetTreasureClaimsByGasAndPRLStatus(gasStatus GasTransferStatus, prlStatus PRLClaimStatus) (treasureClaims []WebnodeTreasureClaim, err error) {

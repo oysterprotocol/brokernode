@@ -2,11 +2,13 @@ package oyster_utils
 
 import (
 	"errors"
+	"fmt"
 	"github.com/orcaman/concurrent-map"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/dgraph-io/badger"
@@ -357,9 +359,27 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 	}
 
 	err := InitUniqueKvStore(dbID)
-
-	if err == badger.ErrConflict {
-
+	LogIfError(err, nil)
+	if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
+		timesToRetry := 20
+		timesRetried := 0
+		for {
+			time.Sleep(250 * time.Millisecond)
+			db := GetUniqueBadgerDb(dbName)
+			if db != nil {
+				return db
+			}
+			err = InitUniqueKvStore(dbID)
+			LogIfError(err, nil)
+			if err == nil {
+				break
+			}
+			if timesRetried >= timesToRetry {
+				LogIfError(errors.New("retried InitUniqueKvStore too many times"), nil)
+				break
+			}
+			timesRetried++
+		}
 	}
 
 	LogIfError(err, nil)
@@ -479,9 +499,13 @@ It won't treat Key missing as error.*/
 func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 	kvs = &KVPairs{}
 	db := GetOrInitUniqueBadgerDB(dbID)
-
 	if db == nil {
-		return kvs, errors.New("nil database")
+		err := errors.New("cannot get data in BatchGetFromUniqueDB because of " +
+			"failure in GetOrInitUniqueBadgerDB")
+		LogIfError(err, map[string]interface{}{
+			"dbID": fmt.Sprint(dbID),
+		})
+		return kvs, err
 	}
 
 	err = db.View(func(txn *badger.Txn) error {
@@ -568,6 +592,14 @@ Return error if any fails.*/
 func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 	ttl = getTTL(ttl)
 	db := GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		err := errors.New("cannot create new transaction in BatchSetToUniqueDB because of " +
+			"failure in GetOrInitUniqueBadgerDB")
+		LogIfError(err, map[string]interface{}{
+			"dbID": fmt.Sprint(dbID),
+		})
+		return err
+	}
 
 	var err error
 	txn := db.NewTransaction(true)
@@ -654,6 +686,14 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 Return error if any fails.*/
 func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
 	db := GetOrInitUniqueBadgerDB(dbID)
+	if db == nil {
+		err := errors.New("cannot create new transaction in BatchDeleteFromUniqueDB because of " +
+			"failure in GetOrInitUniqueBadgerDB")
+		LogIfError(err, map[string]interface{}{
+			"dbID": fmt.Sprint(dbID),
+		})
+		return err
+	}
 
 	var err error
 	txn := db.NewTransaction(true)
