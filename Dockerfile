@@ -42,11 +42,9 @@ RUN apt-get install -y -q netcat
 RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
-RUN go get -u -v github.com/gobuffalo/buffalo/buffalo
+RUN go get github.com/tools/godep
+RUN dep ensure
 
 COPY . .
-
-RUN go get -t -d -v ./...
-RUN go install -v ./...
 
 RUN buffalo version
