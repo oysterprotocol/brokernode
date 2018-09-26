@@ -43,7 +43,7 @@ RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
 RUN go get github.com/tools/godep
-RUN dep ensure
+RUN go dep ensure
 
 COPY . .
 
