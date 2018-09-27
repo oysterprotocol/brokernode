@@ -525,7 +525,14 @@ func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 
 			val := ""
 			if item != nil {
-				valBytes, err := item.ValueCopy(nil)
+				var valBytes []byte
+				err := item.Value(func(val []byte) {
+					if val == nil {
+						valBytes = nil
+					} else {
+						valBytes = append([]byte{}, val...)
+					}
+				})
 				if err != nil {
 					return err
 				}
@@ -568,7 +575,14 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 
 			val := ""
 			if item != nil {
-				valBytes, err := item.ValueCopy(nil)
+				var valBytes []byte
+				err := item.Value(func(val []byte) {
+					if val == nil {
+						valBytes = nil
+					} else {
+						valBytes = append([]byte{}, val...)
+					}
+				})
 				if err != nil {
 					return err
 				}
