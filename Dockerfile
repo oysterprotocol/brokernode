@@ -43,7 +43,7 @@ RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
 # Install godep for dependency management.
-RUN curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/vX.X.X/dep-linux-amd64 && chmod +x /usr/local/bin/dep
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 COPY . .
 
