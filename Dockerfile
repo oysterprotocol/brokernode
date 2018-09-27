@@ -29,12 +29,12 @@
 # # CMD /bin/app migrate; /bin/app
 # CMD exec /bin/app
 
-FROM golang:1.10
+FROM golang:1.11
 ENV ADDR=0.0.0.0
 
 RUN go version
 
-# Install db client (assumes mysql)
+# Install db client (assumes mysql).
 RUN apt-get update
 RUN apt-get install -y -q mysql-client
 RUN apt-get install -y -q netcat
@@ -42,9 +42,12 @@ RUN apt-get install -y -q netcat
 RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
-RUN go get github.com/tools/godep
-RUN go dep ensure
+# Install godep for dependency management.
+RUN curl -fsSL -o /usr/local/bin/dep https://github.com/golang/dep/releases/download/vX.X.X/dep-linux-amd64 && chmod +x /usr/local/bin/dep
 
 COPY . .
+
+# Installs dependencies with godep.
+RUN dep ensure -vendor-only
 
 RUN buffalo version
