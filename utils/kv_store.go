@@ -3,7 +3,6 @@ package oyster_utils
 import (
 	"errors"
 	"fmt"
-	"github.com/orcaman/concurrent-map"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"github.com/orcaman/concurrent-map"
 )
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.

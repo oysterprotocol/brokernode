@@ -14,7 +14,8 @@
 
 [[constraint]]
   name = "github.com/dgraph-io/badger"
-  version = "1.5.4"
+  # version = "1.5.4" TODO: Lock this on the next release.
+  branch = "master"
 
 [[constraint]]
   name = "github.com/ethereum/go-ethereum"
