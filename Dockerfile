@@ -45,6 +45,9 @@ WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 # Installs buffalo
 RUN go get -u -v github.com/gobuffalo/buffalo/buffalo
 
+# Installs go-ethereum, Hack for C lib
+RUN go get -u -v github.com/ethereum/go-ethereum
+
 # Install godep for dependency management.
 RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
@@ -52,5 +55,10 @@ COPY . .
 
 # Installs dependencies with godep.
 RUN dep ensure -vendor-only
+
+# Hack for C lib
+RUN cp -a \
+  "${GOPATH}/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1" \
+  "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"
 
 RUN buffalo version
