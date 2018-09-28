@@ -29,12 +29,12 @@
 # # CMD /bin/app migrate; /bin/app
 # CMD exec /bin/app
 
-FROM golang:1.10
+FROM golang:1.11
 ENV ADDR=0.0.0.0
 
 RUN go version
 
-# Install db client (assumes mysql)
+# Install db client (assumes mysql).
 RUN apt-get update
 RUN apt-get install -y -q mysql-client
 RUN apt-get install -y -q netcat
@@ -42,11 +42,23 @@ RUN apt-get install -y -q netcat
 RUN mkdir -p $GOPATH/src/github.com/oysterprotocol/brokernode
 WORKDIR $GOPATH/src/github.com/oysterprotocol/brokernode
 
+# Installs buffalo
 RUN go get -u -v github.com/gobuffalo/buffalo/buffalo
+
+# Installs go-ethereum, Hack for C lib
+RUN go get -u -v github.com/ethereum/go-ethereum
+
+# Install godep for dependency management.
+RUN curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
 
 COPY . .
 
-RUN go get -t -d -v ./...
-RUN go install -v ./...
+# Installs dependencies with godep.
+RUN dep ensure -vendor-only
+
+# Hack for C lib
+RUN ["cp", "-a", \
+  "/go/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1", \
+  "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"]
 
 RUN buffalo version

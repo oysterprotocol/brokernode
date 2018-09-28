@@ -3,7 +3,6 @@ package oyster_utils
 import (
 	"errors"
 	"fmt"
-	"github.com/orcaman/concurrent-map"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger"
+	"github.com/orcaman/concurrent-map"
 )
 
 // const badgerDir = "/tmp/badger" // TODO: CHANGE THIS.
@@ -523,25 +523,15 @@ func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 				return err
 			}
 
-			val := ""
 			if item != nil {
-				var valBytes []byte
-				err := item.Value(func(val []byte) {
-					if val == nil {
-						valBytes = nil
-					} else {
-						valBytes = append([]byte{}, val...)
-					}
-				})
+				val, err := item.Value()
 				if err != nil {
 					return err
 				}
 
-				val = string(valBytes)
+				// Mutate KV map
+				(*kvs)[k] = string(val)
 			}
-
-			// Mutate KV map
-			(*kvs)[k] = val
 		}
 
 		return nil
@@ -573,25 +563,15 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 				return err
 			}
 
-			val := ""
 			if item != nil {
-				var valBytes []byte
-				err := item.Value(func(val []byte) {
-					if val == nil {
-						valBytes = nil
-					} else {
-						valBytes = append([]byte{}, val...)
-					}
-				})
+				val, err := item.Value()
 				if err != nil {
 					return err
 				}
 
-				val = string(valBytes)
+				// Mutate KV map
+				(*kvs)[k] = string(val)
 			}
-
-			// Mutate KV map
-			(*kvs)[k] = val
 		}
 
 		return nil
