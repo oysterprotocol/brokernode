@@ -57,8 +57,8 @@ COPY . .
 RUN dep ensure -vendor-only
 
 # Hack for C lib
-RUN cp -a \
-  "${GOPATH}/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1" \
-  "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"
+RUN ["cp", "-a", \
+  "/go/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1", \
+  "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"]
 
 RUN buffalo version
