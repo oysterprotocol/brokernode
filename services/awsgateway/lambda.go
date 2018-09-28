@@ -20,7 +20,7 @@ const (
 	MaxConcurrency = 5000
 
 	// MaxChunksLen is the number of chunks sent to each lambda
-	MaxChunksLen = 3000 // 3 MB
+	MaxChunksLen = 300 // .3 MB
 
 	// private
 	hooknodeFnNameDev  = "arn:aws:lambda:us-east-2:174232317769:function:lambda-node-dev-hooknode"
