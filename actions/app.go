@@ -1,8 +1,9 @@
 package actions
 
 import (
-	"github.com/oysterprotocol/brokernode/utils"
 	"os"
+
+	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 
 	raven "github.com/getsentry/raven-go"
 	"github.com/gobuffalo/buffalo"
