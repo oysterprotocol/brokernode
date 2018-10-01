@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/oysterprotocol/brokernode/actions"
-	"github.com/oysterprotocol/brokernode/utils"
 	"log"
 	"math/rand"
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/oysterprotocol/brokernode/actions"
+	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/pop/logging"
