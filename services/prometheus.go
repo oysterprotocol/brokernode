@@ -28,6 +28,8 @@ type PrometheusService struct {
 	HistogramData
 	TimeNow
 	HistogramTreasuresResourceVerifyAndClaim       *prometheus.HistogramVec
+	HistogramSignTreasureGetUnsigned               *prometheus.HistogramVec
+	HistogramSignTreasureSetSigned                 *prometheus.HistogramVec
 	HistogramUploadSessionResourceCreate           *prometheus.HistogramVec
 	HistogramUploadSessionResourceUpdate           *prometheus.HistogramVec
 	HistogramUploadSessionResourceCreateBeta       *prometheus.HistogramVec
@@ -56,6 +58,8 @@ type PrometheusService struct {
 
 func init() {
 	histogramTreasuresResourceVerifyAndClaim := prepareHistogram("treasures_verify_and_claim_seconds", "HistogramTreasuresVerifyAndClaimSeconds", "code")
+	histogramSignTreasureGetUnsigned := prepareHistogram("sign_treasure_resource_get_unsigned_seconds", "HistogramSignTreasureGetUnsigned", "code")
+	histogramSignTreasureSetSigned := prepareHistogram("sign_treasure_resource_set_signed_seconds", "HistogramSignTreasureSetSigned", "code")
 	histogramUploadSessionResourceCreate := prepareHistogram("upload_session_resource_create_seconds", "HistogramUploadSessionResourceCreateSeconds", "code")
 	histogramUploadSessionResourceUpdate := prepareHistogram("upload_session_resource_update_seconds", "HistogramUploadSessionResourceUpdateSeconds", "code")
 	histogramUploadSessionResourceCreateBeta := prepareHistogram("upload_session_resource_create_beta_seconds", "HistogramUploadSessionResourceCreateBetaSeconds", "code")
@@ -87,6 +91,8 @@ func init() {
 		HistogramData:    histogramData,
 		TimeNow:          timeNow,
 		HistogramTreasuresResourceVerifyAndClaim:       histogramTreasuresResourceVerifyAndClaim,
+		HistogramSignTreasureGetUnsigned:               histogramSignTreasureGetUnsigned,
+		HistogramSignTreasureSetSigned:                 histogramSignTreasureSetSigned,
 		HistogramUploadSessionResourceCreate:           histogramUploadSessionResourceCreate,
 		HistogramUploadSessionResourceUpdate:           histogramUploadSessionResourceUpdate,
 		HistogramUploadSessionResourceCreateBeta:       histogramUploadSessionResourceCreateBeta,
