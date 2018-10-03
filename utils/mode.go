@@ -48,6 +48,8 @@ const (
 	DataMapsInSQL DataMapsStorageStatus = iota + 1
 	/*DataMapsInBadger is when the data maps are stored in badger*/
 	DataMapsInBadger
+	/*DataMapsInS3 is when the data maps are stored in S3*/
+	DataMapsInS3
 )
 
 /*BrokerMode - the mode the broker is in (prod, dummy treasure, etc.)*/
