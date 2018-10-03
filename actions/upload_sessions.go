@@ -13,9 +13,9 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
-	"github.com/oysterprotocol/brokernode/utils"
+	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
-	"gopkg.in/segmentio/analytics-go.v3"
+	analytics "gopkg.in/segmentio/analytics-go.v3"
 )
 
 type UploadSessionResource struct {
