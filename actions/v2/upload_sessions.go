@@ -1,4 +1,4 @@
-package actions
+package actions_v2
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop/nulls"
+	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -237,7 +238,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	//go waitForTransferAndNotifyBeta(
 	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
 // Update uploads a chunk associated with an upload session.
@@ -302,7 +303,7 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 			models.DataMapsTimeToLive)
 	}()
 
-	return c.Render(202, r.JSON(map[string]bool{"success": true}))
+	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
 }
 
 // CreateBeta creates an upload session on the beta broker.
@@ -363,7 +364,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	}
 
 	if len(vErr.Errors) > 0 {
-		c.Render(422, r.JSON(vErr.Errors))
+		c.Render(422, actions_utils.Render.JSON(vErr.Errors))
 		return err
 	}
 
@@ -419,7 +420,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	//go waitForTransferAndNotifyBeta(
 	//	res.UploadSession.ETHAddrAlpha.String, res.UploadSession.ETHAddrBeta.String, res.ID)
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
 func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
@@ -461,5 +462,5 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 		PaymentStatus: session.GetPaymentStatus(),
 	}
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }

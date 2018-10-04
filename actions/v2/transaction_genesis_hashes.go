@@ -1,17 +1,19 @@
-package actions
+package actions_v2
 
 import (
 	"fmt"
-	"github.com/gobuffalo/buffalo"
-	"github.com/gobuffalo/pop"
-	"github.com/gobuffalo/uuid"
-	"github.com/iotaledger/giota"
-	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/utils"
 	"math"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/gobuffalo/buffalo"
+	"github.com/gobuffalo/pop"
+	"github.com/gobuffalo/uuid"
+	"github.com/iotaledger/giota"
+	"github.com/oysterprotocol/brokernode/actions/utils"
+	"github.com/oysterprotocol/brokernode/models"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type TransactionGenesisHashResource struct {
@@ -48,11 +50,11 @@ type transactionGenesisHashUpdateRes struct {
 func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 
 	if os.Getenv("TANGLE_MAINTENANCE") == "true" {
-		return c.Render(403, r.JSON(map[string]string{"error": "This broker is undergoing tangle maintenance"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "This broker is undergoing tangle maintenance"}))
 	}
 
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
-		return c.Render(403, r.JSON(map[string]string{"error": "Deployment in progress.  Try again later"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "Deployment in progress.  Try again later"}))
 	}
 
 	start := PrometheusWrapper.TimeNow()
@@ -68,13 +70,13 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 	storedGenesisHash, genesisHashNotFound := models.GetGenesisHashForWebnode(req.CurrentList)
 
 	if genesisHashNotFound != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "No genesis hash available"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "No genesis hash available"}))
 	}
 
 	dataMap, dataMapNotFoundErr := models.GetChunkForWebnodePoW()
 
 	if dataMapNotFoundErr != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "Cannot give proof of work because: " +
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "Cannot give proof of work because: " +
 			dataMapNotFoundErr.Error()}))
 	}
 
@@ -119,7 +121,7 @@ func (usr *TransactionGenesisHashResource) Create(c buffalo.Context) error {
 		},
 	}
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
 func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
@@ -137,18 +139,18 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	t := &models.Transaction{}
 	transactionError := models.DB.Find(t, c.Param("id"))
 	if transactionError != nil {
-		return c.Render(400, r.JSON(map[string]string{"error": "No transaction found"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "No transaction found"}))
 	}
 
 	trytes, err := giota.ToTrytes(req.Trytes)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
-		return c.Render(400, r.JSON(map[string]string{"error": err.Error()}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": err.Error()}))
 	}
 	iotaTransaction, iotaError := giota.NewTransaction(trytes)
 
 	if iotaError != nil {
-		return c.Render(400, r.JSON(map[string]string{"error": "Could not generate transaction object from trytes"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Could not generate transaction object from trytes"}))
 	}
 
 	chunkDataInProgress := models.GetSingleChunkData(oyster_utils.InProgressDir, t.GenesisHash, t.Idx)
@@ -160,21 +162,21 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		chunkToUse = chunkDataComplete
 
 	} else if !oyster_utils.AllChunkDataHasArrived(chunkDataInProgress) && !oyster_utils.AllChunkDataHasArrived(chunkDataComplete) {
-		return c.Render(400, r.JSON(map[string]string{"error": "Could not find data for specified chunk"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Could not find data for specified chunk"}))
 	}
 
 	address, addError := giota.ToAddress(chunkToUse.Address)
 
 	validAddress := addError == nil && address == iotaTransaction.Address
 	if !validAddress {
-		return c.Render(400, r.JSON(map[string]string{"error": "Address is invalid"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
 	_, messageErr := giota.ToTrytes(chunkToUse.Message)
 	validMessage := messageErr == nil && strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment),
 		chunkToUse.Message)
 	if !validMessage {
-		return c.Render(400, r.JSON(map[string]string{"error": "Message is invalid"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Message is invalid"}))
 	}
 
 	host_ip := os.Getenv("HOST_IP")
@@ -185,14 +187,14 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 	broadcastErr := iotaAPI.BroadcastTransactions(iotaTransactions)
 
 	if broadcastErr != nil {
-		return c.Render(400, r.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
+		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
 	}
 
 	storedGenesisHash := models.StoredGenesisHash{}
 	genesisHashNotFound := models.DB.Limit(1).Where("genesis_hash = ?", t.Purchase).First(&storedGenesisHash)
 
 	if genesisHashNotFound != nil {
-		return c.Render(403, r.JSON(map[string]string{"error": "Stored genesis hash was not found"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "Stored genesis hash was not found"}))
 	}
 
 	models.DB.Transaction(func(tx *pop.Connection) error {
@@ -211,5 +213,5 @@ func (usr *TransactionGenesisHashResource) Update(c buffalo.Context) error {
 		NumberOfChunks: int(math.Ceil(float64(storedGenesisHash.FileSizeBytes) / models.FileBytesChunkSize)),
 	}
 
-	return c.Render(202, r.JSON(res))
+	return c.Render(202, actions_utils.Render.JSON(res))
 }

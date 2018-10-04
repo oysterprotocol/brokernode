@@ -1,4 +1,4 @@
-package actions
+package actions_v2
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gobuffalo/buffalo"
+	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
@@ -40,7 +41,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	}
 
 	if req.EthKey == os.Getenv("TEST_MODE_WALLET_KEY") {
-		return c.Render(200, r.JSON(treasureRes{
+		return c.Render(200, actions_utils.Render.JSON(treasureRes{
 			Success: true,
 		}))
 	}
@@ -57,7 +58,7 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 		c.Error(400, keyErr)
 	}
 	if !verify {
-		return c.Render(200, r.JSON(treasureRes{
+		return c.Render(200, actions_utils.Render.JSON(treasureRes{
 			Success: verify,
 		}))
 	}
@@ -95,5 +96,5 @@ func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 			claimClockErr == nil,
 	}
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }

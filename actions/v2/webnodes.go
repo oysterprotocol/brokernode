@@ -1,10 +1,11 @@
-package actions
+package actions_v2
 
 import (
 	"fmt"
 	"os"
 
 	"github.com/gobuffalo/buffalo"
+	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )
@@ -27,11 +28,11 @@ type webnodeCreateRes struct {
 func (usr *WebnodeResource) Create(c buffalo.Context) error {
 
 	if os.Getenv("TANGLE_MAINTENANCE") == "true" {
-		return c.Render(403, r.JSON(map[string]string{"error": "This broker is undergoing tangle maintenance"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "This broker is undergoing tangle maintenance"}))
 	}
 
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
-		return c.Render(403, r.JSON(map[string]string{"error": "Deployment in progress.  Try again later"}))
+		return c.Render(403, actions_utils.Render.JSON(map[string]string{"error": "Deployment in progress.  Try again later"}))
 	}
 
 	start := PrometheusWrapper.TimeNow()
@@ -52,5 +53,5 @@ func (usr *WebnodeResource) Create(c buffalo.Context) error {
 		Webnode: w,
 	}
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
