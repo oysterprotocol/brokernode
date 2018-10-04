@@ -18,6 +18,7 @@ type SignTreasureResource struct {
 
 type TreasurePayload struct {
 	ID              uuid.UUID `json:"id"`
+	Idx             int64     `json:"idx"`
 	TreasurePayload string    `json:"treasurePayload"`
 }
 
@@ -35,14 +36,15 @@ type SignedTreasureReq struct {
 gets the unsigned treasure so the client can sign it*/
 func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 
-	// TODO: prometheus
-
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
 		err := errors.New("Deployment in progress.  Try again later")
 		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramSignTreasureGetUnsigned, start)
 
 	// Get session
 	uploadSession := &models.UploadSession{}
@@ -70,25 +72,13 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 		return err
 	}
 	if uploadSession == nil {
-		err := errors.New("Error finding sessions")
+		err := errors.New("error finding session in GetUnsignedTreasure")
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
 
-	treasures := []models.Treasure{}
-	err = models.DB.Where("genesis_hash = ?", uploadSession.GenesisHash).All(&treasures)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
-	// TODO:  Add logic to return an error if this broker was supposed to attach the treasure
-	// but not treasure was found.
-	// Do not return an error if no treasure was found but this broker was not supposed to
-	// attach the treasure.  Just update the AllDataReady status
-	if len(treasures) == 0 {
-
+	if uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
 		uploadSession.AllDataReady = models.AllDataReady
 		models.DB.ValidateAndUpdate(uploadSession)
 
@@ -99,16 +89,35 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 		return c.Render(200, r.JSON(res))
 	}
 
-	// TODO: Decide whether we want to store this message data in badger, S3, or SQL and
-	// get the message data accordingly. For now just assume SQL.
+	CreateTreasures(uploadSession)
+
+	//treasureMap, err := uploadSession.GetTreasureMap()
+	treasures := []models.Treasure{}
+	err = models.DB.Where("genesis_hash = ?", uploadSession.GenesisHash).All(&treasures)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
+
+	if len(treasures) == 0 && uploadSession.TreasureResponsibilityStatus != models.TreasureNotResponsible {
+
+		err = errors.New("broker was supposed to attach the treasure but no treasures were found")
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
 
 	treasurePayloads := []TreasurePayload{}
 	for _, treasure := range treasures {
 		treasurePayloads = append(treasurePayloads, TreasurePayload{
-			ID:              treasure.ID,
-			TreasurePayload: treasure.Message,
+			ID:  treasure.ID,
+			Idx: treasure.Idx,
+			// TODO:  send the RawMessage or the Message?  Message already in trytes.
+			TreasurePayload: treasure.RawMessage,
 		})
 	}
+
 	res := unsignedTreasureRes{
 		Available:        true,
 		UnsignedTreasure: treasurePayloads,
@@ -120,14 +129,15 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 /*SignTreasure stores the signed treasure*/
 func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 
-	// TODO: prometheus
-
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
 		err := errors.New("Deployment in progress.  Try again later")
 		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
+
+	start := PrometheusWrapper.TimeNow()
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramSignTreasureSetSigned, start)
 
 	// Get session
 	uploadSession := &models.UploadSession{}
@@ -151,10 +161,16 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 		return err
 	}
 	if uploadSession == nil {
-		err := errors.New("Error finding sessions")
+		err := errors.New("error finding session in SignTreasure")
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
+	}
+	if uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
+		uploadSession.AllDataReady = models.AllDataReady
+		models.DB.ValidateAndUpdate(uploadSession)
+
+		return c.Render(200, r.JSON(map[string]bool{"success": true}))
 	}
 
 	req := SignedTreasureReq{}
@@ -170,7 +186,11 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 		err := models.DB.Find(treasure, signedTreasure.ID)
 		oyster_utils.LogIfError(err, nil)
 		if err == nil && treasure.ID != uuid.Nil {
+			// TODO find out if Jet is going to send the raw payload or if it will already be
+			// trytes
+			treasure.RawMessage = signedTreasure.TreasurePayload
 			treasure.Message = signedTreasure.TreasurePayload
+			treasure.SignedStatus = models.TreasureSigned
 			vErr, err := models.DB.ValidateAndUpdate(treasure)
 			oyster_utils.LogIfError(err, nil)
 			oyster_utils.LogIfValidationError("error updating with signed treasure", vErr, nil)
@@ -189,4 +209,80 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 	oyster_utils.LogIfValidationError("error updating with signed treasure", vErr, nil)
 
 	return c.Render(200, r.JSON(map[string]bool{"success": true}))
+}
+
+/*CreateTreasures creates the entries in the treasures table*/
+func CreateTreasures(session *models.UploadSession) {
+
+	treasureIdxMapArray, err := session.GetTreasureMap()
+	if err != nil {
+		fmt.Println("Cannot create treasures to bury in sign_treasure: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+	if len(treasureIdxMapArray) == 0 {
+		fmt.Println("Cannot create treasures to bury in sign_treasure: " + "treasureIdxMapArray is empty")
+		return
+	}
+
+	treasureIdxMap := make(map[int64]models.TreasureMap)
+	for _, treasureIdxEntry := range treasureIdxMapArray {
+		treasureIdxMap[int64(treasureIdxEntry.Idx)] = treasureIdxEntry
+	}
+
+	prlPerTreasure, err := session.GetPRLsPerTreasure()
+	if err != nil {
+		fmt.Println("Cannot create treasures to bury in sign_treasure: " + err.Error())
+		// captured error in upstream method
+		return
+	}
+
+	prlInWei := oyster_utils.ConvertToWeiUnit(prlPerTreasure)
+
+	for idx, treasureChunk := range treasureIdxMap {
+
+		chunkDataEncryptionChunk := models.GetSingleChunkData(oyster_utils.InProgressDir, session.GenesisHash,
+			int64(treasureChunk.EncryptionIdx))
+
+		treasureAddress := models.GetTreasureAddress(oyster_utils.InProgressDir, session.GenesisHash,
+			idx)
+
+		decryptedKey, err := session.DecryptTreasureChunkEthKey(treasureChunk.Key)
+
+		treasurePayloadRaw, err := models.CreateTreasurePayloadRaw(decryptedKey, chunkDataEncryptionChunk.RawMessage,
+			models.MaxSideChainLength)
+
+		// TODO: should use BytesToTrytes or AsciiToTrytes?
+		treasurePayloadTryted := string(oyster_utils.BytesToTrytes([]byte(treasurePayloadRaw)))
+
+		if err != nil {
+			fmt.Println("Cannot create treasures to bury in sign_treasure: " + err.Error())
+			// already captured error in upstream function
+			continue
+		}
+
+		if decryptedKey == os.Getenv("TEST_MODE_WALLET_KEY") {
+			continue
+		}
+
+		if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+
+			treasureToBury := models.Treasure{
+				GenesisHash:     session.GenesisHash,
+				ETHAddr:         ethAddress.Hex(),
+				ETHKey:          decryptedKey,
+				Address:         treasureAddress,
+				Message:         treasurePayloadTryted,
+				RawMessage:      treasurePayloadRaw,
+				SignedStatus:    models.TreasureUnsigned,
+				EncryptionIndex: int64(treasureChunk.EncryptionIdx),
+				Idx:             int64(treasureChunk.Idx),
+			}
+
+			treasureToBury.SetPRLAmount(prlInWei)
+
+			models.DB.ValidateAndCreate(&treasureToBury)
+		}
+	}
 }
