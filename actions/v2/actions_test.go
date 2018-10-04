@@ -20,3 +20,4 @@ func (suite *ActionSuite) SetupTest() {
 	EthWrapper = services.EthWrapper
 	IotaWrapper = services.IotaWrapper
 }
+
