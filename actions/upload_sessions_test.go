@@ -3,35 +3,17 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
 	"io/ioutil"
 	"math/big"
 	"time"
+
+	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 )
-
-type mockWaitForTransfer struct {
-	hasCalled        bool
-	input_brokerAddr common.Address
-	output_int       *big.Int
-	output_error     error
-}
-
-type mockSendPrl struct {
-	hasCalled   bool
-	input_msg   services.OysterCallMsg
-	output_bool bool
-}
-
-type mockCheckPRLBalance struct {
-	hasCalled  bool
-	input_addr common.Address
-	output_int *big.Int
-}
 
 func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	mockWaitForTransfer := mockWaitForTransfer{
