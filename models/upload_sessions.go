@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/iotaledger/giota"
 	"golang.org/x/crypto/sha3"
 	"math"
 	"math/big"
@@ -37,9 +38,10 @@ type Invoice struct {
 }
 
 type TreasureMap struct {
-	Sector int    `json:"sector"`
-	Idx    int    `json:"idx"`
-	Key    string `json:"key"`
+	Sector        int    `json:"sector"`
+	Idx           int    `json:"idx"`
+	EncryptionIdx int    `json:"encryptionIdx"`
+	Key           string `json:"key"`
 }
 
 type UploadSession struct {
@@ -65,8 +67,18 @@ type UploadSession struct {
 	NextIdxToAttach int64 `json:"nextIdxToAttach" db:"next_idx_to_attach"`
 	NextIdxToVerify int64 `json:"nextIdxToVerify" db:"next_idx_to_verify"`
 
-	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
+	AllDataReady                 int `json:"allDataReady" db:"all_data_ready"`
+	TreasureResponsibilityStatus int `json:"treasureResponsibilityStatus" db:"treasure_responsibility_status"`
 }
+
+const (
+	/*TreasureNotResponsible means this broker is not responsible for the treasure*/
+	TreasureNotResponsible int = iota + 1
+	/*TreasureResponsibleNotAttached means this broker is responsible for the treasure but has not attached it yet*/
+	TreasureResponsibleNotAttached
+	/*TreasureResponsibleAttached means this broker is responsible for the treasure and has attached it*/
+	TreasureResponsibleAttached
+)
 
 const (
 	AllDataNotReady int = iota + 1
@@ -403,8 +415,8 @@ func (u *UploadSession) StartUploadSession() (vErr *validate.Errors, err error) 
 
 	switch u.Type {
 	case SessionTypeAlpha:
-		u.NextIdxToAttach = 0
-		u.NextIdxToVerify = 0
+		u.NextIdxToAttach = 1
+		u.NextIdxToVerify = 1
 	case SessionTypeBeta:
 		u.NextIdxToAttach = int64(u.NumChunks - 1)
 		u.NextIdxToVerify = int64(u.NumChunks - 1)
@@ -503,9 +515,10 @@ func (u *UploadSession) MakeTreasureIdxMap(mergedIndexes []int, privateKeys []st
 		}
 
 		treasureIndexArray = append(treasureIndexArray, TreasureMap{
-			Sector: i,
-			Idx:    mergedIndex,
-			Key:    key,
+			Sector:        i,
+			EncryptionIdx: mergedIndex,
+			Idx:           i * oyster_utils.FileSectorInChunkSize,
+			Key:           key,
 		})
 
 		decryptedKey, err := u.DecryptTreasureChunkEthKey(key)
@@ -704,13 +717,13 @@ the first and last chunk hashes are present*/
 func (u *UploadSession) CheckIfAllHashesAreReady() bool {
 
 	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
-		chunkDataStartHash := oyster_utils.GetHashData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+		chunkDataStartHash := oyster_utils.GetHashData(oyster_utils.InProgressDir, u.GenesisHash, 1)
 		chunkDataEndHash := oyster_utils.GetHashData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
 
 		return chunkDataStartHash != "" && chunkDataEndHash != ""
 	}
 
-	startIdx := 0
+	startIdx := 1
 	lastIdx := u.NumChunks - 1
 
 	dataMapStart := []DataMap{}
@@ -740,7 +753,7 @@ func (u *UploadSession) CheckIfAllMessagesAreReady() bool {
 
 func checkIfAllMessagesAreReadyInBadger(treasureIndexes []int, u *UploadSession) bool {
 
-	chunkDataStartMessage := oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+	chunkDataStartMessage := oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, 1)
 	chunkDataEndMessage := oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
 
 	allMessagesFound := false
@@ -748,6 +761,9 @@ func checkIfAllMessagesAreReadyInBadger(treasureIndexes []int, u *UploadSession)
 		allMessagesFound = true
 		if len(treasureIndexes) > 0 {
 			for _, index := range treasureIndexes {
+
+				// TODO change this logic to check for treasures differently
+
 				chunkDataTreasureMessage :=
 					oyster_utils.GetMessageData(oyster_utils.InProgressDir, u.GenesisHash, int64(index))
 				if chunkDataTreasureMessage == "" {
@@ -760,7 +776,7 @@ func checkIfAllMessagesAreReadyInBadger(treasureIndexes []int, u *UploadSession)
 }
 
 func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bool {
-	chunkDataStart := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, 0)
+	chunkDataStart := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, 1)
 	chunkDataEnd := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(u.NumChunks-1))
 
 	allMessagesFound := false
@@ -768,6 +784,9 @@ func checkIfAllMessagesAreReadyInSQL(treasureIndexes []int, u *UploadSession) bo
 		allMessagesFound = true
 		if len(treasureIndexes) > 0 {
 			for _, index := range treasureIndexes {
+
+				// TODO change this logic to check for treasures differently
+
 				chunkDataTreasure :=
 					GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(index))
 				if chunkDataTreasure.Message == "" {
@@ -790,8 +809,8 @@ func (u *UploadSession) GetUnassignedChunksBySession(offset int) (chunkData []oy
 		}
 	} else {
 		stopChunkIdx = u.NextIdxToAttach - int64(offset)
-		if stopChunkIdx < 0 {
-			stopChunkIdx = int64(0)
+		if stopChunkIdx < 1 {
+			stopChunkIdx = int64(1)
 		}
 	}
 
@@ -865,7 +884,7 @@ func moveAllChunksToCompletedBadger(u *UploadSession) error {
 			stop = int64(u.NumChunks - 1)
 		}
 
-		keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(i), stop)
+		keys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(1), stop)
 
 		kvMessages, err := oyster_utils.BatchGetFromUniqueDB(inProgressMessageDBID, keys)
 		if err != nil {
@@ -907,7 +926,7 @@ func moveAllChunksToCompletedBadger(u *UploadSession) error {
 }
 
 func moveAllChunksToCompletedSQL(u *UploadSession) error {
-	for ok, i := true, 0; ok; ok = i < u.NumChunks {
+	for ok, i := true, 1; ok; ok = i < u.NumChunks {
 		end := i + MaxBadgerInsertions
 
 		if end > u.NumChunks {
@@ -1163,6 +1182,31 @@ func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload st
 	return err
 }
 
+func (u *UploadSession) SetTreasureResponsibility() {
+	//TODO:  A better method of assigning treasure responsibility
+	treasureIndexes, _ := u.GetTreasureIndexes()
+	startVal := 0
+
+	for _, idx := range treasureIndexes {
+		startVal += idx
+	}
+
+	if startVal%2 == 0 && u.Type == SessionTypeAlpha {
+		u.TreasureResponsibilityStatus = TreasureResponsibleNotAttached
+	} else if u.Type == SessionTypeAlpha {
+		u.TreasureResponsibilityStatus = TreasureNotResponsible
+	}
+	if startVal%2 != 0 && u.Type == SessionTypeBeta {
+		u.TreasureResponsibilityStatus = TreasureResponsibleNotAttached
+	} else if u.Type == SessionTypeBeta {
+		u.TreasureResponsibilityStatus = TreasureNotResponsible
+	}
+
+	vErr, err := DB.ValidateAndUpdate(u)
+	oyster_utils.LogIfValidationError("error establishing treasure responsibility", vErr, nil)
+	oyster_utils.LogIfError(err, nil)
+}
+
 /*GetSessionsWithIncompleteData gets all the sessions for which we don't have all the data.*/
 func GetSessionsWithIncompleteData() ([]UploadSession, error) {
 	sessions := []UploadSession{}
@@ -1294,22 +1338,47 @@ func SetBrokerTransactionToPaid(session UploadSession) error {
 	return err
 }
 
-/*CreateTreasurePayload makes a payload for a treasure chunk by encrypting an ethereum private key using a sidechain
-hash as the key.*/
-func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainLength int) (string, error) {
+/*CreateTreasurePayload makes a payload for a treasure chunk by encrypting an ethereum private key.*/
+func CreateTreasurePayload(ethereumSeed string, encryptionKey string, maxSideChainLength int) (string, error) {
 	keyLocation := rand.Intn(maxSideChainLength)
 
-	currentHash := sha256Hash
+	currentHash := encryptionKey
 	for i := 0; i <= keyLocation; i++ {
 		currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
 	}
 
-	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, sha256Hash)
+	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, encryptionKey)
 
 	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
 		oyster_utils.TrytesAlphabet)
 
 	return treasurePayload, nil
+}
+
+/*CreateTreasurePayloadRaw makes a payload for a treasure chunk by encrypting an ethereum private key and returns it
+in hex.*/
+func CreateTreasurePayloadRaw(ethereumSeed string, encryptionKey string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	currentHash := encryptionKey
+	for i := 0; i <= keyLocation; i++ {
+		currentHash = oyster_utils.HashHex(currentHash, sha3.New256())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, encryptionKey)
+
+	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
+		oyster_utils.TrytesAlphabet)
+
+	inTryteType, err := giota.ToTrytes(treasurePayload)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return "", err
+	}
+
+	notTryted := oyster_utils.TrytesToBytes(inTryteType)
+
+	return string(notTryted), nil
 }
 
 /*GetChunkForWebnodePoW gets a chunk for webnode PoW and updates the index of the session.*/
@@ -1330,7 +1399,7 @@ func GetChunkForWebnodePoW() (oyster_utils.ChunkData, error) {
 				break
 			}
 		} else {
-			if sessions[i].NextIdxToAttach != int64(0) {
+			if sessions[i].NextIdxToAttach != int64(1) {
 				chunkData = GetSingleChunkData(oyster_utils.InProgressDir,
 					sessions[i].GenesisHash,
 					sessions[i].NextIdxToAttach)
@@ -1559,4 +1628,21 @@ func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataCom
 	}
 
 	return chunkData
+}
+
+func GetTreasureAddress(prefix string, genesisHash string, chunkIdx int64) string {
+	treasureAddress := ""
+	currHash := ""
+	obfuscatedHash := ""
+
+	if chunkIdx == int64(0) {
+		currHash = genesisHash
+	} else {
+		chunkBeforeTheTreasure := GetSingleChunkData(prefix, genesisHash, chunkIdx-1)
+		currHash = oyster_utils.HashHex(chunkBeforeTheTreasure.Hash, sha256.New())
+	}
+
+	obfuscatedHash = oyster_utils.HashHex(currHash, sha512.New384())
+	treasureAddress = string(oyster_utils.MakeAddress(obfuscatedHash))
+	return treasureAddress
 }
