@@ -9,7 +9,6 @@ import (
 
 	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -292,22 +291,4 @@ func verifyPaymentConfirmation(sessionId string, suite *ActionSuite) {
 	err := suite.DB.Find(&session, sessionId)
 	suite.Nil(err)
 	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
-}
-
-func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, error) {
-	v.hasCalled = true
-	v.input_brokerAddr = brokerAddr
-	return v.output_int, v.output_error
-}
-
-func (v *mockSendPrl) sendPrl(msg services.OysterCallMsg) bool {
-	v.hasCalled = true
-	v.input_msg = msg
-	return v.output_bool
-}
-
-func (v *mockCheckPRLBalance) checkPRLBalance(addr common.Address) *big.Int {
-	v.hasCalled = true
-	v.input_addr = addr
-	return v.output_int
 }
