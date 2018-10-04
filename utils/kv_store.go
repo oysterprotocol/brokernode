@@ -120,8 +120,10 @@ func GenerateBulkKeys(genHash string, startingIdx int64, endingIdx int64) *KVKey
 		keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(startingIdx), 10)}))
 	}
 
-	for i := startingIdx; i != stop; i = i + step {
-		keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(i), 10)}))
+	if startingIdx != endingIdx {
+		for i := startingIdx; i != stop; i = i + step {
+			keys = append(keys, GetBadgerKey([]string{genHash, strconv.FormatInt(int64(i), 10)}))
+		}
 	}
 
 	return &keys
