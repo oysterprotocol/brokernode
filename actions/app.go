@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"github.com/oysterprotocol/brokernode/actions/v2"
 	"github.com/oysterprotocol/brokernode/utils"
 	"os"
 
@@ -76,7 +77,7 @@ func App() *buffalo.App {
 		apiV2 := app.Group("/api/v2")
 
 		// UploadSessions
-		uploadSessionResource := UploadSessionResource{}
+		uploadSessionResource := actions_v2.UploadSessionResource{}
 		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
 		apiV2.POST("upload-sessions", uploadSessionResource.Create)
 		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
@@ -84,20 +85,20 @@ func App() *buffalo.App {
 		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
 
 		// Webnodes
-		webnodeResource := WebnodeResource{}
+		webnodeResource := actions_v2.WebnodeResource{}
 		apiV2.POST("supply/webnodes", webnodeResource.Create)
 
 		// Transactions
-		transactionBrokernodeResource := TransactionBrokernodeResource{}
+		transactionBrokernodeResource := actions_v2.TransactionBrokernodeResource{}
 		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
 		apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
 
-		transactionGenesisHashResource := TransactionGenesisHashResource{}
+		transactionGenesisHashResource := actions_v2.TransactionGenesisHashResource{}
 		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
 		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
 
 		// Treasures
-		treasures := TreasuresResource{}
+		treasures := actions_v2.TreasuresResource{}
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
 
 		// Status
