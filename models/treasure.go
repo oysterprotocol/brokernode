@@ -14,6 +14,7 @@ import (
 )
 
 type PRLStatus int
+type SignedStatus int
 
 // IMPORTANT:  Do not remove Message and Address from
 // this struct; they are used for encryption
@@ -26,6 +27,7 @@ type Treasure struct {
 	PRLAmount   string    `json:"prlAmount" db:"prl_amount"`
 	PRLStatus   PRLStatus `json:"prlStatus" db:"prl_status"`
 	Message     string    `json:"message" db:"message"`
+	RawMessage  string    `json:"rawMessage" db:"raw_message"`
 	MsgID       string    `json:"msgId" db:"msg_id"`
 	Address     string    `json:"address" db:"address"`
 	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`
@@ -35,6 +37,10 @@ type Treasure struct {
 	GasTxNonce  int64     `json:"gasTxNonce" db:"gas_tx_nonce"`
 	BuryTxHash  string    `json:"buryTxHash" db:"bury_tx_hash"`
 	BuryTxNonce int64     `json:"buryTxNonce" db:"bury_tx_nonce"`
+
+	SignedStatus    SignedStatus `json:"signedStatus" db:"signed_status"`
+	EncryptionIndex int64        `json:"encryptionIndex" db:"encryption_index"`
+	Idx             int64        `json:"Idx" db:"idx"`
 }
 
 const (
@@ -55,6 +61,15 @@ const (
 	GasError        = -3
 	BuryError       = -5
 	GasReclaimError = -7
+)
+
+const (
+	/*TreasureNotSet is when the treasure payload has not been created*/
+	TreasureNotSet SignedStatus = iota + 1
+	/*TreasureUnsigned is when the treasure payload has been set but has not been signed*/
+	TreasureUnsigned
+	/*TreasureSigned is when the client has signed the treasure payload*/
+	TreasureSigned
 )
 
 const maxNumSimultaneousTreasureTxs = 15
@@ -112,10 +127,8 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 		t.PRLStatus = PRLWaiting
 	}
 
-	if len(t.Message) > 81 {
-		// don't really need full message, just something known to
-		// the broker that we can hash and then use for encryption
-		t.Message = t.Message[0:81]
+	if t.SignedStatus == 0 {
+		t.SignedStatus = TreasureNotSet
 	}
 
 	t.EncryptTreasureEthKey()
