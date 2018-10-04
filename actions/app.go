@@ -104,6 +104,14 @@ func App() *buffalo.App {
 		// Status
 		statusResource := StatusResource{}
 		apiV2.GET("status", statusResource.CheckStatus)
+
+		apiV3 := app.Group("/api/v3")
+		uploadSessionV3Resource := UploadSessionResourceV3{}
+		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
+		apiV3.POST("upload-sessions", uploadSessionV3Resource.Create)
+		apiV3.PUT("upload-sessions/{id}", uploadSessionV3Resource.Update)
+		apiV3.POST("upload-sessions/beta", uploadSessionV3Resource.CreateBeta)
+		apiV3.GET("upload-sessions/{id}", uploadSessionV3Resource.GetPaymentStatus)
 	}
 
 	oyster_utils.StartProfile()
