@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/suite"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -16,9 +15,6 @@ func (suite *ActionSuite) SetupTest() {
 	suite.Action.SetupTest()
 
 	suite.Nil(oyster_utils.InitKvStore())
-
-	EthWrapper = services.EthWrapper
-	IotaWrapper = services.IotaWrapper
 }
 
 func Test_ActionSuite(t *testing.T) {
