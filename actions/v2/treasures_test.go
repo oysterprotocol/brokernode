@@ -7,7 +7,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/services"
 )
 

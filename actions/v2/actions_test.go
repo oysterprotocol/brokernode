@@ -1,8 +1,6 @@
 package actions_v2
 
 import (
-	"testing"
-
 	"github.com/gobuffalo/suite"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -20,4 +18,3 @@ func (suite *ActionSuite) SetupTest() {
 	EthWrapper = services.EthWrapper
 	IotaWrapper = services.IotaWrapper
 }
-
