@@ -2,14 +2,12 @@ package actions
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"time"
 
 	oyster_utils "github.com/oysterprotocol/brokernode/utils"
 
-	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 )
@@ -160,135 +158,4 @@ func (suite *ActionSuite) Test_UploadSessionsV3GetPaymentStatus_Paid() {
 
 	suite.Equal("confirmed", resParsed.PaymentStatus)
 	suite.False(mockCheckPRLBalance.hasCalled)
-}
-
-func (suite *ActionSuite) Test_UploadSessionsV3GetPaymentStatus_NoConfirmButCheckComplete() {
-	//setup
-	mockCheckPRLBalance := mockCheckPRLBalance{
-		output_int: big.NewInt(10),
-	}
-	mockSendPrl := mockSendPrl{}
-	EthWrapper = services.Eth{
-		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
-		SendPRL:         mockSendPrl.sendPrl,
-	}
-
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
-	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
-		FileSizeBytes: 123,
-		NumChunks:     2,
-		PaymentStatus: models.PaymentStatusPending,
-		ETHAddrAlpha:  nulls.NewString("alpha"),
-		ETHAddrBeta:   nulls.NewString("beta"),
-	}
-
-	resParsed := getPaymentStatus(uploadSession1, suite)
-
-	suite.Equal("confirmed", resParsed.PaymentStatus)
-
-	/* checkPRLBalance has been called once just for alpha.  Sending
-	to beta now occurs in a job. */
-	suite.True(mockCheckPRLBalance.hasCalled)
-	suite.False(mockSendPrl.hasCalled)
-	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
-
-	session := models.UploadSession{}
-	suite.Nil(suite.DB.Find(&session, resParsed.ID))
-	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
-}
-
-func (suite *ActionSuite) Test_UploadSessionsV3GetPaymentStatus_NoConfirmAndCheckIncomplete() {
-	//setup
-	mockCheckPRLBalance := mockCheckPRLBalance{
-		output_int: big.NewInt(0),
-	}
-	EthWrapper = services.Eth{
-		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
-	}
-
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
-	uploadSession1 := models.UploadSession{
-		GenesisHash:   genHash,
-		FileSizeBytes: 123,
-		NumChunks:     2,
-		PaymentStatus: models.PaymentStatusInvoiced,
-		ETHAddrAlpha:  nulls.NewString("alpha"),
-	}
-
-	resParsed := getPaymentStatus(uploadSession1, suite)
-
-	suite.Equal("invoiced", resParsed.PaymentStatus)
-	suite.True(mockCheckPRLBalance.hasCalled)
-	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
-
-	session := models.UploadSession{}
-	suite.Nil(suite.DB.Find(&session, resParsed.ID))
-	suite.Equal(models.PaymentStatusInvoiced, session.PaymentStatus)
-}
-
-func (suite *ActionSuite) Test_UploadSessionsV3GetPaymentStatus_BetaConfirmed() {
-	mockCheckPRLBalance := mockCheckPRLBalance{
-		output_int: big.NewInt(10),
-	}
-	mockSendPrl := mockSendPrl{}
-	EthWrapper = services.Eth{
-		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
-		SendPRL:         mockSendPrl.sendPrl,
-	}
-
-	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
-
-	uploadSession1 := models.UploadSession{
-		Type:          models.SessionTypeBeta,
-		GenesisHash:   genHash,
-		FileSizeBytes: 123,
-		NumChunks:     2,
-		PaymentStatus: models.PaymentStatusInvoiced,
-		ETHAddrAlpha:  nulls.NewString("alpha"),
-	}
-
-	resParsed := getPaymentStatus(uploadSession1, suite)
-
-	suite.Equal("confirmed", resParsed.PaymentStatus)
-	suite.True(mockCheckPRLBalance.hasCalled)
-	suite.False(mockSendPrl.hasCalled)
-
-	session := models.UploadSession{}
-	suite.Nil(suite.DB.Find(&session, resParsed.ID))
-	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
-}
-
-func (suite *ActionSuite) Test_UploadSessionsV3GetPaymentStatus_DoesntExist() {
-	//res := suite.JSON("/api/v3/upload-sessions/" + "noIDFound").Get()
-
-	//TODO: Return better error response when ID does not exist
-}
-
-func getPaymentStatusV3(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateRes {
-	seededUploadSession.StartUploadSession()
-
-	session := models.UploadSession{}
-	suite.Nil(suite.DB.Where("genesis_hash = ?", seededUploadSession.GenesisHash).First(&session))
-
-	//execute method
-	res := suite.JSON("/api/v3/upload-sessions/" + fmt.Sprint(session.ID)).Get()
-
-	// Parse response
-	resParsed := paymentStatusCreateRes{}
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	suite.Nil(err)
-
-	suite.Nil(json.Unmarshal(bodyBytes, &resParsed))
-
-	return resParsed
-}
-
-func verifyPaymentConfirmationV3(sessionId string, suite *ActionSuite) {
-	session := models.UploadSession{}
-	err := suite.DB.Find(&session, sessionId)
-	suite.Nil(err)
-	suite.Equal(models.PaymentStatusConfirmed, session.PaymentStatus)
 }
