@@ -47,6 +47,7 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
 	oysterWorker.Register(getHandlerName(checkAllDataIsReadyHandler), checkAllDataIsReadyHandler)
 
+	oysterWorker.Register(getHandlerName(attachTreasuresToTangleHandler), attachTreasuresToTangleHandler)
 	oysterWorker.Register(getHandlerName(buryTreasureAddressesHandler), buryTreasureAddressesHandler)
 	oysterWorker.Register(getHandlerName(claimUnusedPRLsHandler), claimUnusedPRLsHandler)
 	oysterWorker.Register(getHandlerName(checkAlphaPaymentsHandler), checkAlphaPaymentsHandler)
@@ -81,6 +82,9 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(checkAllDataIsReadyHandler,
 		worker.Args{Duration: 7 * time.Second})
+
+	oysterWorkerPerformIn(attachTreasuresToTangleHandler,
+		worker.Args{Duration: 1 * time.Minute})
 
 	// 	oysterWorkerPerformIn(badgerDbGcHandler,
 	// 		worker.Args{Duration: 10 * time.Minute})
@@ -143,6 +147,16 @@ func processPaidSessionsHandler(args worker.Args) error {
 	ProcessPaidSessions(PrometheusWrapper)
 
 	oysterWorkerPerformIn(processPaidSessionsHandler, args)
+	return nil
+}
+
+func attachTreasuresToTangleHandler(args worker.Args) error {
+	if os.Getenv("TANGLE_MAINTENANCE") != "true" {
+		thresholdTime := time.Now().Add(-10 * time.Minute) // consider an attachment timed out after 10 minutes
+		AttachTreasuresToTangle(IotaWrapper, PrometheusWrapper, thresholdTime)
+	}
+
+	oysterWorkerPerformIn(attachTreasuresToTangleHandler, args)
 	return nil
 }
 

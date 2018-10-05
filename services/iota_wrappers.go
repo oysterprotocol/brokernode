@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -41,7 +42,9 @@ type IotaService struct {
 	VerifyTreasure
 	FindTransactions
 	GetTransactionsToApprove
+	DoPoW
 }
+
 type ProcessingFrequency struct {
 	RecentProcessingTimes []time.Duration
 	Frequency             float64
@@ -77,6 +80,9 @@ type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transacti
 /*GetTransactionsToApprove defines the type for a function which will get a trunk and branch transaction for proof of
 work.  This type used for mocking.*/
 type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
+
+/*DoPoW defines the type for doing proof of work.*/
+type DoPoW func(chunks []oyster_utils.ChunkData) error
 
 type FilteredChunk struct {
 	MatchesTangle      []oyster_utils.ChunkData
@@ -147,6 +153,7 @@ func init() {
 		VerifyTreasure:                 verifyTreasure,
 		FindTransactions:               findTransactions,
 		GetTransactionsToApprove:       getTransactionsToApprove,
+		DoPoW: doPoW,
 	}
 
 	PowProcs = runtime.NumCPU()
@@ -193,44 +200,9 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 		startTime := time.Now()
 
-		transfersArray := make([]giota.Transfer, len(powJobRequest.Chunks))
-
-		for i, chunk := range powJobRequest.Chunks {
-			address, err := giota.ToAddress(chunk.Address)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				panic(err)
-			}
-			transfersArray[i].Address = address
-			transfersArray[i].Value = int64(0)
-			transfersArray[i].Message, err = giota.ToTrytes(chunk.Message)
-			if err != nil {
-				oyster_utils.LogIfError(err, nil)
-				panic(err)
-			}
-			transfersArray[i].Tag = OysterTag
-		}
-
-		bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
-
-		oyster_utils.LogIfError(err, nil)
-
-		transactions := []giota.Transaction(bdl)
-
-		transactionsToApprove, err := getTransactionsToApprove()
-		oyster_utils.LogIfError(err, nil)
+		err = doPoW(powJobRequest.Chunks)
 
 		if err == nil {
-
-			err = doPowAndBroadcast(
-				transactionsToApprove.BranchTransaction,
-				transactionsToApprove.TrunkTransaction,
-				minDepth,
-				transactions,
-				minWeightMag,
-				bestPow,
-				powJobRequest.BroadcastNodes)
-
 			channelToChange := Channel[channelID]
 
 			channelInDB := models.ChunkChannel{}
@@ -240,8 +212,54 @@ func PowWorker(jobQueue <-chan PowJob, channelID string, err error) {
 
 			fmt.Println("PowWorker: Leaving")
 			TrackProcessingTime(startTime, len(powJobRequest.Chunks), &channelToChange)
+		} else {
+			fmt.Println("PowWorker: FAILED")
+			oyster_utils.LogIfError(err, nil)
 		}
 	}
+}
+
+func doPoW(chunks []oyster_utils.ChunkData) error {
+
+	transfersArray := make([]giota.Transfer, len(chunks))
+
+	for i, chunk := range chunks {
+		address, err := giota.ToAddress(chunk.Address)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			panic(err)
+		}
+		transfersArray[i].Address = address
+		transfersArray[i].Value = int64(0)
+		transfersArray[i].Message, err = giota.ToTrytes(chunk.Message)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			panic(err)
+		}
+		transfersArray[i].Tag = OysterTag
+	}
+
+	bdl, err := giota.PrepareTransfers(api, seed, transfersArray, nil, "", 1)
+
+	oyster_utils.LogIfError(err, nil)
+
+	transactions := []giota.Transaction(bdl)
+
+	transactionsToApprove, err := getTransactionsToApprove()
+	oyster_utils.LogIfError(err, nil)
+
+	if err == nil {
+		err = doPowAndBroadcast(
+			transactionsToApprove.BranchTransaction,
+			transactionsToApprove.TrunkTransaction,
+			minDepth,
+			transactions,
+			minWeightMag,
+			bestPow,
+			[]string{""})
+	}
+
+	return err
 }
 
 func getTransactionsToApprove() (*giota.GetTransactionsToApproveResponse, error) {
@@ -319,7 +337,6 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 	trytes []giota.Transaction, mwm int64, bestPow giota.PowFunc, broadcastNodes []string) error {
 
 	defer oyster_utils.TimeTrack(time.Now(), "iota_wrappers: doPow_using_"+powName, analytics.NewProperties().
-		//Set("addresses", oyster_utils.MapTransactionsToAddrs(trytes)))
 		Set("num_chunks", len(trytes)))
 
 	var prev giota.Trytes
@@ -364,7 +381,6 @@ func doPowAndBroadcast(branch giota.Trytes, trunk giota.Trytes, depth int64,
 
 			// Async log
 			oyster_utils.LogToSegment("iota_wrappers: broadcast_FAIL", broadcastProperties)
-
 			oyster_utils.LogIfError(err, nil)
 		} else {
 
@@ -562,28 +578,20 @@ func makeTransactionObjects(transactionObjects []giota.Transaction) (transaction
 
 func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord oyster_utils.ChunkData, checkBranchAndTrunk bool) bool {
 
-	// TODO delete this line when we figure out why uploads
-	// occasionally have the wrong chunk_idx for msg_id
-	return true
+	message := chunkOnRecord.Message
+	if checkBranchAndTrunk == false &&
+		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
 
-	/*
-		message := chunkOnRecord.Message
-		if checkBranchAndTrunk == false &&
-			strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
+		return true
+	} else {
+		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
+			Set("chunk_idx", chunkOnRecord.Idx).
+			Set("address", chunkOnRecord.Address).
+			Set("db_message", message).
+			Set("tangle_message", chunkOnTangle.SignatureMessageFragment))
 
-			return true
-
-		} else {
-
-			oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
-				Set("chunk_idx", chunkOnRecord.Idx).
-				Set("address", chunkOnRecord.Address).
-				Set("db_message", message).
-				Set("tangle_message", chunkOnTangle.SignatureMessageFragment))
-
-			return false
-		}
-	*/
+		return false
+	}
 }
 
 // Verify PoW of work.

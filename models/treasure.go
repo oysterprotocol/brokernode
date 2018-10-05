@@ -64,17 +64,33 @@ const (
 )
 
 const (
+	/*TreasureRev1 is the status of a treasure from the rev1 days*/
+	TreasureRev1 SignedStatus = iota + 0
 	/*TreasureNotSet is when the treasure payload has not been created*/
-	TreasureNotSet SignedStatus = iota + 1
+	TreasureNotSet
 	/*TreasureUnsigned is when the treasure payload has been set but has not been signed*/
 	TreasureUnsigned
 	/*TreasureSigned is when the client has signed the treasure payload*/
 	TreasureSigned
+	/*TreasureSignedAndAttached is when the treasure has been attached*/
+	TreasureSignedAndAttached
+	/*TreasureSignedAndAttachmentVerified is when the treasure has been attached and we have
+	verified it is on the tangle*/
+	TreasureSignedAndAttachmentVerified
+
+	/*TreasureSignError is when there was some error signing the treasure*/
+	TreasureSignError = -1
+	/*TreasureAttachError is when there was some error attaching the treasure*/
+	TreasureAttachError = -2
 )
 
 const maxNumSimultaneousTreasureTxs = 15
 
+/*PRLStatusMap is for pretty printing the PRL status*/
 var PRLStatusMap = make(map[PRLStatus]string)
+
+/*SignedStatusMap is for pretty printing the signed status*/
+var SignedStatusMap = make(map[SignedStatus]string)
 
 func init() {
 	PRLStatusMap[PRLWaiting] = "PRLWaiting"
@@ -90,6 +106,14 @@ func init() {
 	PRLStatusMap[PRLError] = "PRLError"
 	PRLStatusMap[GasError] = "GasError"
 	PRLStatusMap[BuryError] = "BuryError"
+
+	SignedStatusMap[TreasureRev1] = "TreasureRev1"
+	SignedStatusMap[TreasureNotSet] = "TreasureNotSet"
+	SignedStatusMap[TreasureUnsigned] = "TreasureUnsigned"
+	SignedStatusMap[TreasureSigned] = "TreasureSigned"
+	SignedStatusMap[TreasureSignedAndAttached] = "TreasureSignedAndAttached"
+	SignedStatusMap[TreasureSignError] = "TreasureSignError"
+	SignedStatusMap[TreasureAttachError] = "TreasureAttachError"
 }
 
 // String is not required by pop and may be deleted
@@ -184,6 +208,46 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 		err := DB.RawQuery("SELECT * FROM treasures WHERE prl_status = ? AND "+
 			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
 			prlStatus,
+			int(timeSinceThreshold.Hours()),
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return treasureToBury, err
+		}
+		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
+	}
+	return treasureRowsToReturn, nil
+}
+
+func GetTreasuresToBuryBySignedStatus(signedStatuses []SignedStatus) ([]Treasure, error) {
+	treasureRowsToReturn := make([]Treasure, 0)
+	for _, status := range signedStatuses {
+		treasureToBury := []Treasure{}
+		err := DB.RawQuery("SELECT * FROM treasures WHERE signed_status = ? LIMIT ?",
+			status,
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return treasureToBury, err
+		}
+		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
+	}
+	return treasureRowsToReturn, nil
+}
+
+func GetTreasuresToBuryBySignedStatusAndUpdateTime(signedStatuses []SignedStatus, thresholdTime time.Time) ([]Treasure,
+	error) {
+	timeSinceThreshold := time.Since(thresholdTime)
+
+	treasureRowsToReturn := make([]Treasure, 0)
+
+	for _, status := range signedStatuses {
+		treasureToBury := []Treasure{}
+
+		err := DB.RawQuery("SELECT * FROM treasures WHERE signed_status = ? AND "+
+			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
+			status,
 			int(timeSinceThreshold.Hours()),
 			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
 
