@@ -1,12 +1,13 @@
-package actions
+package actions_v2
 
 import (
 	"encoding/json"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/oysterprotocol/brokernode/services"
 	"io/ioutil"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 // Record data for VerifyTreasure method
