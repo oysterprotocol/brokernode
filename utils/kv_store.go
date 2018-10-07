@@ -361,7 +361,7 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 	err := InitUniqueKvStore(dbID)
 	LogIfError(err, nil)
 	if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
-		timesToRetry := 20
+		timesToRetry := 50
 		timesRetried := 0
 		for {
 			time.Sleep(250 * time.Millisecond)
