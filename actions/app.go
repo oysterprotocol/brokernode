@@ -72,12 +72,12 @@ func App() *buffalo.App {
 		apiV2 := app.Group("/api/v2")
 
 		// UploadSessions
-		uploadSessionResource := actions_v2.UploadSessionResourceV2{}
+		uploadSessionResourceV2 := actions_v2.UploadSessionResourceV2{}
 		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
-		apiV2.POST("upload-sessions", uploadSessionResource.Create)
-		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
-		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
-		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
+		apiV2.POST("upload-sessions", uploadSessionResourceV2.Create)
+		apiV2.PUT("upload-sessions/{id}", uploadSessionResourceV2.Update)
+		apiV2.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
+		apiV2.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
 
 		// Webnodes
 		webnodeResource := actions_v2.WebnodeResource{}
