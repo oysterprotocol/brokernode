@@ -1,18 +1,19 @@
 package actions
 
 import (
-	"github.com/oysterprotocol/brokernode/utils"
 	"os"
 
 	raven "github.com/getsentry/raven-go"
+
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/buffalo/middleware"
 	"github.com/gobuffalo/buffalo/middleware/ssl"
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/x/sessions"
+	"github.com/oysterprotocol/brokernode/actions/v2"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
 	"github.com/unrolled/secure"
@@ -22,11 +23,6 @@ import (
 // application is being run. Default is "development".
 var ENV = envy.Get("GO_ENV", "development")
 var app *buffalo.App
-
-// Visible for Unit Test
-var IotaWrapper = services.IotaWrapper
-var EthWrapper = services.EthWrapper
-var PrometheusWrapper = services.PrometheusWrapper
 
 // App is where all routes and middleware for buffalo
 // should be defined. This is the nerve center of your
@@ -76,7 +72,7 @@ func App() *buffalo.App {
 		apiV2 := app.Group("/api/v2")
 
 		// UploadSessions
-		uploadSessionResource := UploadSessionResource{}
+		uploadSessionResource := actions_v2.UploadSessionResource{}
 		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
 		apiV2.POST("upload-sessions", uploadSessionResource.Create)
 		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
@@ -84,20 +80,20 @@ func App() *buffalo.App {
 		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
 
 		// Webnodes
-		webnodeResource := WebnodeResource{}
+		webnodeResource := actions_v2.WebnodeResource{}
 		apiV2.POST("supply/webnodes", webnodeResource.Create)
 
 		// Transactions
-		transactionBrokernodeResource := TransactionBrokernodeResource{}
+		transactionBrokernodeResource := actions_v2.TransactionBrokernodeResource{}
 		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
 		apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
 
-		transactionGenesisHashResource := TransactionGenesisHashResource{}
+		transactionGenesisHashResource := actions_v2.TransactionGenesisHashResource{}
 		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
 		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
 
 		// Treasure claims
-		treasures := TreasuresResource{}
+		treasures := actions_v2.TreasuresResource{}
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
 
 		// Status

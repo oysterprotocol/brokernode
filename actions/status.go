@@ -1,8 +1,10 @@
 package actions
 
 import (
-	"github.com/gobuffalo/buffalo"
 	"os"
+
+	"github.com/gobuffalo/buffalo"
+	"github.com/oysterprotocol/brokernode/actions/utils"
 )
 
 /*StatusResource is a resource for the status endpoint*/
@@ -25,5 +27,5 @@ func (status *StatusResource) CheckStatus(c buffalo.Context) error {
 		Available: available,
 	}
 
-	return c.Render(200, r.JSON(res))
+	return c.Render(200, actions_utils.Render.JSON(res))
 }

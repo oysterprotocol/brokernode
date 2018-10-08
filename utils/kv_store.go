@@ -363,7 +363,7 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 	err := InitUniqueKvStore(dbID)
 	LogIfError(err, nil)
 	if err == syscall.EAGAIN || err == syscall.EWOULDBLOCK {
-		timesToRetry := 20
+		timesToRetry := 50
 		timesRetried := 0
 		for {
 			time.Sleep(250 * time.Millisecond)
@@ -528,12 +528,13 @@ func BatchGetFromUniqueDB(dbID []string, ks *KVKeys) (kvs *KVPairs, err error) {
 			val := ""
 			if item != nil {
 				var valBytes []byte
-				err := item.Value(func(val []byte) {
+				err := item.Value(func(val []byte) error {
 					if val == nil {
 						valBytes = nil
 					} else {
 						valBytes = append([]byte{}, val...)
 					}
+					return nil
 				})
 				if err != nil {
 					return err
@@ -578,12 +579,13 @@ func BatchGet(ks *KVKeys) (kvs *KVPairs, err error) {
 			val := ""
 			if item != nil {
 				var valBytes []byte
-				err := item.Value(func(val []byte) {
+				err := item.Value(func(val []byte) error {
 					if val == nil {
 						valBytes = nil
 					} else {
 						valBytes = append([]byte{}, val...)
 					}
+					return nil
 				})
 				if err != nil {
 					return err
