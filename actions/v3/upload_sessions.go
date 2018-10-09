@@ -20,10 +20,6 @@ type UploadSessionUpdateReqV3 struct {
 	Chunks []models.ChunkReq `json:"chunks"`
 }
 
-func init() {
-
-}
-
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()

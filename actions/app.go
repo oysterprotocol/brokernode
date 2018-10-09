@@ -70,46 +70,54 @@ func App() *buffalo.App {
 
 		app.GET("/metrics", buffalo.WrapHandler(prometheus.Handler()))
 
-		apiV2 := app.Group("/api/v2")
-		apiV3 := app.Group("/api/v3")
-
-		// UploadSessions
-		uploadSessionResourceV2 := actions_v2.UploadSessionResourceV2{}
-		apiV2.POST("upload-sessions", uploadSessionResourceV2.Create)
-		apiV2.PUT("upload-sessions/{id}", uploadSessionResourceV2.Update)
-		apiV2.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
-		apiV2.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
-
-		uploadSessionResourceV3 := actions_v3.UploadSessionResourceV3{}
-		apiV3.POST("upload-sessions", uploadSessionResourceV2.Create)
-		apiV3.PUT("upload-sessions/{id}", uploadSessionResourceV3.Update)
-		apiV3.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
-		apiV3.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
-
-		// Webnodes
-		webnodeResource := actions_v2.WebnodeResource{}
-		apiV2.POST("supply/webnodes", webnodeResource.Create)
-
-		// Transactions
-		transactionBrokernodeResource := actions_v2.TransactionBrokernodeResource{}
-		apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
-		apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
-
-		transactionGenesisHashResource := actions_v2.TransactionGenesisHashResource{}
-		apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
-		apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
-
-		// Treasures
-		treasures := actions_v2.TreasuresResource{}
-		apiV2.POST("treasures", treasures.VerifyAndClaim)
-
-		// Status
-		statusResource := StatusResource{}
-		apiV2.GET("status", statusResource.CheckStatus)
+		registerV2Api(app)
+		registerV3Api(app)
 	}
 
 	oyster_utils.StartProfile()
 	defer oyster_utils.StopProfile()
 
 	return app
+}
+
+func registerV2Api(app *buffalo.App) {
+	apiV2 := app.Group("/api/v2")
+
+	// UploadSessions
+	uploadSessionResourceV2 := actions_v2.UploadSessionResourceV2{}
+	apiV2.POST("upload-sessions", uploadSessionResourceV2.Create)
+	apiV2.PUT("upload-sessions/{id}", uploadSessionResourceV2.Update)
+	apiV2.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
+	apiV2.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
+
+	// Webnodes
+	webnodeResource := actions_v2.WebnodeResource{}
+	apiV2.POST("supply/webnodes", webnodeResource.Create)
+
+	// Transactions
+	transactionBrokernodeResource := actions_v2.TransactionBrokernodeResource{}
+	apiV2.POST("demand/transactions/brokernodes", transactionBrokernodeResource.Create)
+	apiV2.PUT("demand/transactions/brokernodes/{id}", transactionBrokernodeResource.Update)
+
+	transactionGenesisHashResource := actions_v2.TransactionGenesisHashResource{}
+	apiV2.POST("demand/transactions/genesis_hashes", transactionGenesisHashResource.Create)
+	apiV2.PUT("demand/transactions/genesis_hashes/{id}", transactionGenesisHashResource.Update)
+
+	// Treasures
+	treasures := actions_v2.TreasuresResource{}
+	apiV2.POST("treasures", treasures.VerifyAndClaim)
+
+	// Status
+	statusResource := StatusResource{}
+	apiV2.GET("status", statusResource.CheckStatus)
+}
+
+func registerV3Api(app *buffalo.App) {
+	apiV3 := app.Group("/api/v3")
+
+	uploadSessionResourceV3 := actions_v3.UploadSessionResourceV3{}
+	apiV3.POST("upload-sessions", uploadSessionResourceV2.Create)
+	apiV3.PUT("upload-sessions/{id}", uploadSessionResourceV3.Update)
+	apiV3.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
+	apiV3.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
 }
