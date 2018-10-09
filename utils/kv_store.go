@@ -172,12 +172,11 @@ func buildBadgerName(names []string, separator string) string {
 /*InitUniqueKvStore creates a new K:V store associated with a particular upload*/
 func InitUniqueKvStore(dbID []string) error {
 	dbName := GetBadgerDBName(dbID)
-	dirPath := GetBadgerDirName(dbID)
-	val, ok := dbMap.Get(dbName)
-	if ok == true && val != nil {
+	if _, ok := dbMap.Get(dbName); ok {
 		return nil
 	}
 
+	dirPath := GetBadgerDirName(dbID)
 	opts := badger.DefaultOptions
 
 	if os.Getenv("GO_ENV") == "test" {
@@ -240,7 +239,7 @@ func InitKvStore() (err error) {
 /*CloseUniqueKvStore closes the K:V store associated with a particular upload.*/
 func CloseUniqueKvStore(dbName string) error {
 	value, ok := dbMap.Get(dbName)
-	if value == nil || ok != true {
+	if !ok {
 		return nil
 	}
 	dbData := value.(DBData)
@@ -269,7 +268,7 @@ func CloseKvStore() error {
 /*RemoveAllUniqueKvStoreData removes all the data associated with a particular K:V store.*/
 func RemoveAllUniqueKvStoreData(dbName string) error {
 	value, ok := dbMap.Get(dbName)
-	if value == nil || ok != true {
+	if !ok {
 		return errors.New("did not find database with name: " +
 			dbName + " in RemoveAllUniqueKvStoreData")
 	}
@@ -296,13 +295,7 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	allDBs := dbMap.Keys()
-	for _, dbName := range allDBs {
-		value, ok := dbMap.Get(dbName)
-		if value == nil || ok != true {
-			errArray = append(errArray, errors.New("did not find database with name: "+
-				dbName+" in RemoveAllKvStoreDataFromAllKvStores"))
-		}
+	for key, value := range dbMap {
 		dbData := value.(DBData)
 		directoryPath := dbData.DirectoryPath
 		if err := CloseUniqueKvStore(dbName); err != nil {
@@ -342,7 +335,7 @@ func RemoveAllKvStoreData() error {
 /*GetUniqueBadgerDb returns a database associated with an upload.  If not initialized this will return nil. */
 func GetUniqueBadgerDb(dbName string) *badger.DB {
 	value, ok := dbMap.Get(dbName)
-	if value == nil || ok != true {
+	if !ok {
 		return nil
 	}
 	dbData := value.(DBData)
@@ -369,9 +362,7 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 			if db != nil {
 				return db
 			}
-			err = InitUniqueKvStore(dbID)
-			LogIfError(err, nil)
-			if err == nil {
+			if err := InitUniqueKvStore(dbID); err == nil {
 				break
 			}
 			if timesRetried >= timesToRetry {
@@ -382,8 +373,7 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 		}
 	}
 
-	LogIfError(err, nil)
-	return GetUniqueBadgerDb(dbName)
+	return db
 }
 
 /*GetBadgerDb returns the underlying the database. If not call InitKvStore(), it will return nil*/
