@@ -295,8 +295,12 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	for key, _ := range dbMap {
-		value := dbMap.Get(key)
+	allDBs := dbMap.Keys()
+	for _, dbName := range allDBs {
+		value, ok := dbMap.Get(dbName)
+		if !ok {
+			continue
+		}
 		dbData := value.(DBData)
 		directoryPath := dbData.DirectoryPath
 		if err := CloseUniqueKvStore(dbName); err != nil {
