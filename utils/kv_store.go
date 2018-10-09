@@ -372,7 +372,6 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 			timesRetried++
 		}
 	}
-
 	return GetUniqueBadgerDb(dbName)
 }
 
