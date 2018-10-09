@@ -295,7 +295,8 @@ func RemoveAllUniqueKvStoreData(dbName string) error {
 /*RemoveAllKvStoreDataFromAllKvStores removes all the data associated with all K:V stores.*/
 func RemoveAllKvStoreDataFromAllKvStores() []error {
 	var errArray []error
-	for key, value := range dbMap {
+	for key, _ := range dbMap {
+		value := dbMap.Get(key)
 		dbData := value.(DBData)
 		directoryPath := dbData.DirectoryPath
 		if err := CloseUniqueKvStore(dbName); err != nil {
@@ -372,7 +373,6 @@ func GetOrInitUniqueBadgerDB(dbID []string) *badger.DB {
 			timesRetried++
 		}
 	}
-
 	return GetUniqueBadgerDb(dbName)
 }
 
