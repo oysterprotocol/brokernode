@@ -58,7 +58,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	})
 
 	// Parse response
-	resParsed := uploadSessionCreateRes{}
+	resParsed := uploadSessionCreateResV2{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
@@ -122,7 +122,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	})
 
 	// Parse response
-	resParsed := uploadSessionCreateBetaRes{}
+	resParsed := uploadSessionCreateBetaResV2{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	suite.Nil(err)
 	err = json.Unmarshal(bodyBytes, &resParsed)
@@ -286,7 +286,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_DoesntExist() {
 	//TODO: Return better error response when ID does not exist
 }
 
-func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateRes {
+func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSuite) paymentStatusCreateResV2 {
 	seededUploadSession.StartUploadSession()
 
 	session := models.UploadSession{}
@@ -296,7 +296,7 @@ func getPaymentStatus(seededUploadSession models.UploadSession, suite *ActionSui
 	res := suite.JSON("/api/v2/upload-sessions/" + fmt.Sprint(session.ID)).Get()
 
 	// Parse response
-	resParsed := paymentStatusCreateRes{}
+	resParsed := paymentStatusCreateResV2{}
 	bodyBytes, err := ioutil.ReadAll(res.Body)
 	suite.Nil(err)
 

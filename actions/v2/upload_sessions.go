@@ -19,13 +19,13 @@ import (
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
-type UploadSessionResource struct {
+type UploadSessionResourceV2 struct {
 	buffalo.Resource
 }
 
 // Request Response structs
 
-type uploadSessionCreateReq struct {
+type uploadSessionCreateReqV2 struct {
 	GenesisHash          string         `json:"genesisHash"`
 	NumChunks            int            `json:"numChunks"`
 	FileSizeBytes        uint64         `json:"fileSizeBytes"` // This is Trytes instead of Byte
@@ -36,14 +36,14 @@ type uploadSessionCreateReq struct {
 	Version              uint32         `json:"version"`
 }
 
-type uploadSessionCreateRes struct {
+type uploadSessionCreateResV2 struct {
 	ID            string               `json:"id"`
 	UploadSession models.UploadSession `json:"uploadSession"`
 	BetaSessionID string               `json:"betaSessionId"`
 	Invoice       models.Invoice       `json:"invoice"`
 }
 
-type uploadSessionCreateBetaRes struct {
+type uploadSessionCreateBetaResV2 struct {
 	ID                  string               `json:"id"`
 	UploadSession       models.UploadSession `json:"uploadSession"`
 	BetaSessionID       string               `json:"betaSessionId"`
@@ -51,11 +51,11 @@ type uploadSessionCreateBetaRes struct {
 	BetaTreasureIndexes []int                `json:"betaTreasureIndexes"`
 }
 
-type UploadSessionUpdateReq struct {
+type UploadSessionUpdateReqV2 struct {
 	Chunks []models.ChunkReq `json:"chunks"`
 }
 
-type paymentStatusCreateRes struct {
+type paymentStatusCreateResV2 struct {
 	ID            string `json:"id"`
 	PaymentStatus string `json:"paymentStatus"`
 }
@@ -67,7 +67,7 @@ func init() {
 }
 
 // Create creates an upload session.
-func (usr *UploadSessionResource) Create(c buffalo.Context) error {
+func (usr *UploadSessionResourceV2) Create(c buffalo.Context) error {
 
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
 		err := errors.New("Deployment in progress.  Try again later")
@@ -83,7 +83,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreate, start)
 
-	req := uploadSessionCreateReq{}
+	req := uploadSessionCreateReqV2{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
 		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
 		c.Error(400, err)
@@ -168,7 +168,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 			c.Error(400, err)
 			return err
 		}
-		betaSessionRes := &uploadSessionCreateBetaRes{}
+		betaSessionRes := &uploadSessionCreateBetaResV2{}
 		if err := oyster_utils.ParseResBody(betaRes, betaSessionRes); err != nil {
 			err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
 			// This should consider as BadRequest since the client pick the beta node.
@@ -232,7 +232,7 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 		}
 	}
 
-	res := uploadSessionCreateRes{
+	res := uploadSessionCreateResV2{
 		UploadSession: alphaSession,
 		ID:            alphaSession.ID.String(),
 		BetaSessionID: betaSessionID,
@@ -245,11 +245,11 @@ func (usr *UploadSessionResource) Create(c buffalo.Context) error {
 }
 
 // Update uploads a chunk associated with an upload session.
-func (usr *UploadSessionResource) Update(c buffalo.Context) error {
+func (usr *UploadSessionResourceV2) Update(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceUpdate, start)
 
-	req := UploadSessionUpdateReq{}
+	req := UploadSessionUpdateReqV2{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
 		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
 		c.Error(400, err)
@@ -310,11 +310,11 @@ func (usr *UploadSessionResource) Update(c buffalo.Context) error {
 }
 
 // CreateBeta creates an upload session on the beta broker.
-func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
+func (usr *UploadSessionResourceV2) CreateBeta(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceCreateBeta, start)
 
-	req := uploadSessionCreateReq{}
+	req := uploadSessionCreateReqV2{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
 		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
 		c.Error(400, err)
@@ -416,7 +416,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 
 	models.NewBrokerBrokerTransaction(&u)
 
-	res := uploadSessionCreateBetaRes{
+	res := uploadSessionCreateBetaResV2{
 		UploadSession:       u,
 		ID:                  u.ID.String(),
 		Invoice:             u.GetInvoice(),
@@ -428,7 +428,7 @@ func (usr *UploadSessionResource) CreateBeta(c buffalo.Context) error {
 	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
-func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
+func (usr *UploadSessionResourceV2) GetPaymentStatus(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceGetPaymentStatus, start)
 
@@ -462,7 +462,7 @@ func (usr *UploadSessionResource) GetPaymentStatus(c buffalo.Context) error {
 		}
 	}
 
-	res := paymentStatusCreateRes{
+	res := paymentStatusCreateResV2{
 		ID:            session.ID.String(),
 		PaymentStatus: session.GetPaymentStatus(),
 	}
