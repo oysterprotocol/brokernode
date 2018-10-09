@@ -11,6 +11,7 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/x/sessions"
 	"github.com/oysterprotocol/brokernode/actions/v2"
+	"github.com/oysterprotocol/brokernode/actions/v3"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -70,14 +71,20 @@ func App() *buffalo.App {
 		app.GET("/metrics", buffalo.WrapHandler(prometheus.Handler()))
 
 		apiV2 := app.Group("/api/v2")
+		apiV3 := app.Group("/api/v3")
 
 		// UploadSessions
-		uploadSessionResource := actions_v2.UploadSessionResource{}
-		// apiV2.Resource("/upload-sessions", &UploadSessionResource{&buffalo.BaseResource{}})
-		apiV2.POST("upload-sessions", uploadSessionResource.Create)
-		apiV2.PUT("upload-sessions/{id}", uploadSessionResource.Update)
-		apiV2.POST("upload-sessions/beta", uploadSessionResource.CreateBeta)
-		apiV2.GET("upload-sessions/{id}", uploadSessionResource.GetPaymentStatus)
+		uploadSessionResourceV2 := actions_v2.UploadSessionResourceV2{}
+		apiV2.POST("upload-sessions", uploadSessionResourceV2.Create)
+		apiV2.PUT("upload-sessions/{id}", uploadSessionResourceV2.Update)
+		apiV2.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
+		apiV2.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
+
+		uploadSessionResourceV3 := actions_v3.UploadSessionResourceV3{}
+		apiV3.POST("upload-sessions", uploadSessionResourceV2.Create)
+		apiV3.PUT("upload-sessions/{id}", uploadSessionResourceV3.Update)
+		apiV3.POST("upload-sessions/beta", uploadSessionResourceV2.CreateBeta)
+		apiV3.GET("upload-sessions/{id}", uploadSessionResourceV2.GetPaymentStatus)
 
 		// Webnodes
 		webnodeResource := actions_v2.WebnodeResource{}
