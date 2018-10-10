@@ -1,8 +1,8 @@
 package actions_v3
 
 import (
-	"time"
 	"fmt"
+	"time"
 
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/actions/utils"
@@ -12,6 +12,15 @@ import (
 	"gopkg.in/segmentio/analytics-go.v3"
 )
 
+const (
+	BatchSize = 25
+)
+
+type bucketRequest struct {
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers"`
+}
+
 type UploadSessionResourceV3 struct {
 	buffalo.Resource
 }
@@ -20,8 +29,18 @@ type UploadSessionUpdateReqV3 struct {
 	Chunks []models.ChunkReq `json:"chunks"`
 }
 
-func init() {
+type UploadSessionCreateReqV3 struct {
+	GenesisHash          string `json:"genesisHash"`
+	NumChunks            int    `json:"numChunks"`
+	FileSizeBytes        uint64 `json:"fileSizeBytes"` // This is Trytes instead of Byte
+	BetaIP               string `json:"betaIp"`
+	StorageLengthInYears int    `json:"storageLengthInYears"`
+}
 
+type UploadSessionCreateResV3 struct {
+	BatchSize   int           `json:"batchSize"`
+	UploadAlpha bucketRequest `json:"uploadAlpha"`
+	UploadBeta  bucketRequest `json:"uploadBeta"`
 }
 
 // Update uploads a chunk associated with an upload session.
@@ -87,4 +106,8 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 	}()
 
 	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
+}
+
+func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
+	return nil
 }
