@@ -15,6 +15,8 @@ func RegisterApi(app *buffalo.App) *buffalo.App {
 
 	uploadSessionResourceV3 := UploadSessionResourceV3{}
 	apiV3.PUT("upload-sessions/{id}", uploadSessionResourceV3.Update)
+	apiV3.POST("upload-sessions", uploadSessionResourceV3.Create)
+	apiV3.POST("upload-sessions/beta", uploadSessionResourceV3.CreateBeta)
 
 	return apiV3
 }

@@ -21,6 +21,9 @@ type bucketRequest struct {
 	Headers map[string]string `json:"headers"`
 }
 
+type uploadSessionCreateBetaResV3 struct {
+}
+
 type UploadSessionResourceV3 struct {
 	buffalo.Resource
 }
@@ -43,71 +46,69 @@ type UploadSessionCreateResV3 struct {
 	UploadBeta  bucketRequest `json:"uploadBeta"`
 }
 
+var NumChunksLimit = -1 //unlimited
+
+func init() {
+	if v, err := strconv.Atoi(os.Getenv("NUM_CHUNKS_LIMIT")); err == nil {
+		NumChunksLimit = v
+	}
+}
+
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
-	start := PrometheusWrapper.TimeNow()
-	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramUploadSessionResourceUpdate, start)
+	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
+}
 
-	req := UploadSessionUpdateReqV3{}
+func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
+	req := uploadSessionCreateReqV3{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
 		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
 		c.Error(400, err)
 		return err
 	}
 
-	// Get session
-	uploadSession := &models.UploadSession{}
-	err := models.DB.Find(uploadSession, c.Param("id"))
-
-	defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: updating_session", analytics.NewProperties().
-		Set("id", uploadSession.ID).
-		Set("genesis_hash", uploadSession.GenesisHash).
-		Set("file_size_byes", uploadSession.FileSizeBytes).
-		Set("num_chunks", uploadSession.NumChunks).
-		Set("storage_years", uploadSession.StorageLengthInYears))
-
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
-	if uploadSession == nil {
-		err := errors.New("Error finding sessions")
-		oyster_utils.LogIfError(err, nil)
+	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
+		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
+		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
 
-	treasureIdxMap, err := uploadSession.GetTreasureIndexes()
-
-	if oyster_utils.DataMapStorageMode == oyster_utils.DataMapsInBadger {
-		dbID := []string{oyster_utils.InProgressDir, uploadSession.GenesisHash, oyster_utils.MessageDir}
-
-		db := oyster_utils.GetOrInitUniqueBadgerDB(dbID)
-		if db == nil {
-			err := errors.New("error creating unique badger DB for messages")
+	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
+	uploadBeta = bucketRequest{}
+	hasBeta := req.BetaIP != ""
+	if hasBeta {
+		betaReq, err := json.Marshal(req)
+		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			c.Error(400, err)
 			return err
 		}
+
+		reqBetaBody := bytes.NewBuffer(betaReq)
+
+		// Should we be hardcoding the port?
+		betaURL := req.BetaIP + ":3000/api/v2/upload-sessions/beta"
+		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
+		defer betaRes.Body.Close() // we need to close the connection
+
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			c.Error(400, err)
+			return err
+		}
+		betaSessionRes := &uploadSessionCreateBetaResV3{}
 	}
 
-	// Update dMaps to have chunks async
-	go func() {
-		defer oyster_utils.TimeTrack(time.Now(), "actions/upload_sessions: async_datamap_updates", analytics.NewProperties().
-			Set("id", uploadSession.ID).
-			Set("genesis_hash", uploadSession.GenesisHash).
-			Set("file_size_byes", uploadSession.FileSizeBytes).
-			Set("num_chunks", uploadSession.NumChunks).
-			Set("storage_years", uploadSession.StorageLengthInYears))
-
-		models.ProcessAndStoreChunkData(req.Chunks, uploadSession.GenesisHash, treasureIdxMap,
-			models.DataMapsTimeToLive)
-	}()
-
-	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
+	res := uploadSessionCreateResV3{
+		BatchSize:   BatchSize,
+		UploadAlpha: bucketRequest{},
+		UploadBeta:  uploadBeta,
+	}
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
-func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
-	return nil
+func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
+	res := uploadSessionCreateBetaResV3{}
+	return c.Render(200, actions_utils.Render.JSON(res))
 }
