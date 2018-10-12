@@ -66,6 +66,9 @@ type UploadSession struct {
 	NextIdxToVerify int64 `json:"nextIdxToVerify" db:"next_idx_to_verify"`
 
 	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
+
+	ApiVersion   int          `json:"api_version"`
+	S3BucketName nulls.String `json:"s3_bucket_name"`
 }
 
 const (
@@ -230,6 +233,11 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 
 	if u.AllDataReady == 0 {
 		u.AllDataReady = AllDataNotReady
+	}
+
+	// Treat the API via api/v2 endpoint
+	if u.ApiVersion == 0 {
+		u.ApiVersion = 2
 	}
 
 	switch oyster_utils.BrokerMode {
