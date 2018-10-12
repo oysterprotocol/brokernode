@@ -88,33 +88,12 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 	hasBeta := req.BetaIP != ""
 	var betaSessionID = ""
 	if hasBeta {
-		betaReq, err := json.Marshal(req)
+		betaSessionRes, err := sendBetaWithUploadRequest(req)
 		if err != nil {
-			oyster_utils.LogIfError(err, nil)
 			c.Error(400, err)
 			return err
 		}
 
-		reqBetaBody := bytes.NewBuffer(betaReq)
-
-		// Should we be hardcoding the port?
-		betaURL := req.BetaIP + ":3000/api/v2/upload-sessions/beta"
-		betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
-		defer betaRes.Body.Close() // we need to close the connection
-
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			c.Error(400, err)
-			return err
-		}
-		betaSessionRes := &uploadSessionCreateBetaResV3{}
-
-		if err := oyster_utils.ParseResBody(betaRes, betaSessionRes); err != nil {
-			err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
-			// This should consider as BadRequest since the client pick the beta node.
-			c.Error(400, err)
-			return err
-		}
 		betaSessionID = betaSessionRes.ID
 		alphaSession.ETHAddrBeta = nulls.NewString(betaSessionRes.ETHAddr)
 	}
@@ -149,4 +128,31 @@ func validateAndGetCreateReq(c buffalo.Context) (uploadSessionCreateReqV3, error
 		return req, err
 	}
 	return req, nil
+}
+
+func sendBetaWithUploadRequest(req uploadSessionCreateReqV3) (uploadSessionCreateBetaResV3, error) {
+	betaSessionRes := uploadSessionCreateBetaResV3{}
+	betaReq, err := json.Marshal(req)
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return betaSessionRes, err
+	}
+	reqBetaBody := bytes.NewBuffer(betaReq)
+
+	// Should we be hardcoding the port?
+	betaURL := req.BetaIP + ":3000/api/v3/upload-sessions/beta"
+	betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
+	defer betaRes.Body.Close() // we need to close the connection
+
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return betaSessionRes, err
+	}
+
+	if err := oyster_utils.ParseResBody(betaRes, &betaSessionRes); err != nil {
+		err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
+		// This should consider as BadRequest since the client pick the beta node.
+		return betaSessionRes, err
+	}
+	return betaSessionRes, nil
 }
