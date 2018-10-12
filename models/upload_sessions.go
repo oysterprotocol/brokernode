@@ -67,8 +67,8 @@ type UploadSession struct {
 
 	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
 
-	ApiVersion   int          `json:"api_version"`
-	S3BucketName nulls.String `json:"s3_bucket_name"`
+	ApiVersion   int          `json:"api_version" db:"api_version"`
+	S3BucketName nulls.String `json:"s3_bucket_name" db:"s3_bucket_name"`
 }
 
 const (
