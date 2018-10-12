@@ -60,17 +60,8 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 }
 
 func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
-	req := uploadSessionCreateReqV3{}
-	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
-		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
-		c.Error(400, err)
-		return err
-	}
-
-	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
-		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
-		fmt.Println(err)
-		c.Error(400, err)
+	req, err := validateAndGetCreateReq(c)
+	if err != nil {
 		return err
 	}
 
@@ -111,4 +102,21 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 	res := uploadSessionCreateBetaResV3{}
 	return c.Render(200, actions_utils.Render.JSON(res))
+}
+
+func validateAndGetCreateReq(c buffalo.Context) uploadSessionCreateReqV3, error {
+	req := uploadSessionCreateReqV3{}
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		c.Error(400, err)
+		return nil, err
+	}
+
+	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
+		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
+		fmt.Println(err)
+		c.Error(400, err)
+		return nil, err
+	}
+	return req, nil
 }
