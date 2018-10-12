@@ -1,6 +1,7 @@
 package actions_v3
 
 import (
+	"github.com/gobuffalo/pop/nulls"
 	"fmt"
 	"time"
 
@@ -16,23 +17,15 @@ const (
 	BatchSize = 25
 )
 
-type bucketRequest struct {
-	Path    string            `json:"path"`
-	Headers map[string]string `json:"headers"`
-}
-
-type uploadSessionCreateBetaResV3 struct {
-}
-
 type UploadSessionResourceV3 struct {
 	buffalo.Resource
 }
 
-type UploadSessionUpdateReqV3 struct {
+type uploadSessionUpdateReqV3 struct {
 	Chunks []models.ChunkReq `json:"chunks"`
 }
 
-type UploadSessionCreateReqV3 struct {
+type uploadSessionCreateReqV3 struct {
 	GenesisHash          string `json:"genesisHash"`
 	NumChunks            int    `json:"numChunks"`
 	FileSizeBytes        uint64 `json:"fileSizeBytes"` // This is Trytes instead of Byte
@@ -40,10 +33,16 @@ type UploadSessionCreateReqV3 struct {
 	StorageLengthInYears int    `json:"storageLengthInYears"`
 }
 
-type UploadSessionCreateResV3 struct {
-	BatchSize   int           `json:"batchSize"`
-	UploadAlpha bucketRequest `json:"uploadAlpha"`
-	UploadBeta  bucketRequest `json:"uploadBeta"`
+type uploadSessionCreateBetaResV3 struct {
+	ID            string               `json:"id"`
+	BetaTreasureIndexes []int                `json:"betaTreasureIndexes"`
+	ETHAddr string `json:"ethAddr"`
+}
+
+type uploadSessionCreateResV3 struct {
+	ID            string               `json:"id"`
+	BetaSessionID string               `json:"betaSessionId"`
+	BatchSize int `json:"batchSize"`
 }
 
 var NumChunksLimit = -1 //unlimited
@@ -66,8 +65,24 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 	}
 
 	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
-	uploadBeta = bucketRequest{}
+
+	// Start Alpha Session.
+	alphaSession := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          req.GenesisHash,
+		FileSizeBytes:        req.FileSizeBytes,
+		NumChunks:            req.NumChunks,
+		StorageLengthInYears: req.StorageLengthInYears,
+		ETHAddrAlpha:         nulls.NewString(alphaEthAddr.Hex()),
+		ETHPrivateKey:        privKey,
+		Version:              req.Version,
+	}
+
+	// Generate bucket_name for s3 and create such bucket_name
+
 	hasBeta := req.BetaIP != ""
+	var betaSessionId = ""
+	var betaTreasureIndexes []int
 	if hasBeta {
 		betaReq, err := json.Marshal(req)
 		if err != nil {
@@ -89,13 +104,24 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 			return err
 		}
 		betaSessionRes := &uploadSessionCreateBetaResV3{}
+		
+		if err := oyster_utils.ParseResBody(betaRes, betaSessionRes); err != nil {
+			err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
+			// This should consider as BadRequest since the client pick the beta node.
+			c.Error(400, err)
+			return err
+		}
+		betaSessionID = betaSessionRes.ID
+		betaTreasureIndexes = betaSessionRes.BetaTreasureIndexes
+		alphaSession.ETHAddrBeta = nulls.NewString(betaSessionRes.ETHAddr)
 	}
 
 	res := uploadSessionCreateResV3{
+		ID: alphaSession.ID,
+		BetaSessionID: betaSessionID,
 		BatchSize:   BatchSize,
-		UploadAlpha: bucketRequest{},
-		UploadBeta:  uploadBeta,
 	}
+
 	return c.Render(200, actions_utils.Render.JSON(res))
 }
 
