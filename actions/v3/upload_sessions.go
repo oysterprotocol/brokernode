@@ -1,10 +1,7 @@
 package actions_v3
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 
@@ -132,27 +129,7 @@ func validateAndGetCreateReq(c buffalo.Context) (uploadSessionCreateReqV3, error
 
 func sendBetaWithUploadRequest(req uploadSessionCreateReqV3) (uploadSessionCreateBetaResV3, error) {
 	betaSessionRes := uploadSessionCreateBetaResV3{}
-	betaReq, err := json.Marshal(req)
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return betaSessionRes, err
-	}
-	reqBetaBody := bytes.NewBuffer(betaReq)
-
-	// Should we be hardcoding the port?
 	betaURL := req.BetaIP + ":3000/api/v3/upload-sessions/beta"
-	betaRes, err := http.Post(betaURL, "application/json", reqBetaBody)
-	defer betaRes.Body.Close() // we need to close the connection
-
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return betaSessionRes, err
-	}
-
-	if err := oyster_utils.ParseResBody(betaRes, &betaSessionRes); err != nil {
-		err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
-		// This should consider as BadRequest since the client pick the beta node.
-		return betaSessionRes, err
-	}
-	return betaSessionRes, nil
+	err := oyster_utils.SendHttpReq(betaURL, req, betaSessionRes)
+	return betaSessionRes, err
 }
