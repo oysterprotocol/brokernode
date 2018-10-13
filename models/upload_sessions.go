@@ -67,8 +67,8 @@ type UploadSession struct {
 
 	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
 
-	ApiVersion   int          `json:"api_version" db:"api_version"`
-	S3BucketName nulls.String `json:"s3_bucket_name" db:"s3_bucket_name"`
+	StorageMethod int          `json:"storage_method" db:"storage_method"`
+	S3BucketName  nulls.String `json:"s3_bucket_name" db:"s3_bucket_name"`
 }
 
 const (
@@ -93,6 +93,12 @@ const (
 	TreasureGeneratingKeys int = iota + 1
 	TreasureInDataMapPending
 	TreasureInDataMapComplete
+)
+
+const (
+	StorageMethodSQL int = iota + 1
+	StorageMethodBadger
+	StorageMethodS3
 )
 
 const (
@@ -235,9 +241,9 @@ func (u *UploadSession) BeforeCreate(tx *pop.Connection) error {
 		u.AllDataReady = AllDataNotReady
 	}
 
-	// Treat the API via api/v2 endpoint
-	if u.ApiVersion == 0 {
-		u.ApiVersion = 2
+	// Default all Storage method as Badger.
+	if u.StorageMethod == 0 {
+		u.StorageMethod = StorageMethodBadger
 	}
 
 	switch oyster_utils.BrokerMode {
