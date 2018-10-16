@@ -78,6 +78,8 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		ETHAddrAlpha:         nulls.NewString(alphaEthAddr.Hex()),
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
+		StorageMethod:        models.StorageMethodS3,
+		S3BucketName:         nulls.String(createUniqueBucketName()),
 	}
 
 	// Generate bucket_name for s3 and create such bucket_name
@@ -95,6 +97,12 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		alphaSession.ETHAddrBeta = nulls.NewString(betaSessionRes.ETHAddr)
 	}
 
+	if err := models.DB.Save(&alphaSession); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
+
 	res := uploadSessionCreateResV3{
 		ID:            alphaSession.ID.String(),
 		BetaSessionID: betaSessionID,
@@ -106,7 +114,39 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 
 /* CreateBeta endpoint. */
 func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
-	res := uploadSessionCreateBetaResV3{}
+	req, err := validateAndGetCreateReq(c)
+	if err != nil {
+		return err
+	}
+
+	// Generates ETH address.
+	betaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeBeta,
+		GenesisHash:          req.GenesisHash,
+		NumChunks:            req.NumChunks,
+		FileSizeBytes:        req.FileSizeBytes,
+		StorageLengthInYears: req.StorageLengthInYears,
+		TotalCost:            req.Invoice.Cost,
+		ETHAddrAlpha:         req.Invoice.EthAddress,
+		ETHAddrBeta:          nulls.NewString(betaEthAddr.Hex()),
+		ETHPrivateKey:        privKey,
+		Version:              req.Version,
+		StorageMethod:        models.StorageMethodS3,
+		S3BucketName:         createUniqueBucketName(),
+	}
+
+	if err := models.DB.Save(&u); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
+
+	res := uploadSessionCreateBetaResV3{
+		ID: u.ID,
+	}
+
 	return c.Render(200, actions_utils.Render.JSON(res))
 }
 

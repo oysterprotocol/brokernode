@@ -2,6 +2,10 @@ package actions_v3
 
 import (
 	"fmt"
+	"os"
+	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -10,16 +14,24 @@ import (
 )
 
 var Svc *s3.S3
+var bucketPrefix string
+var counter uint64
 
 func init() {
 	sess := session.Must(session.NewSession())
 	Svc = s3.New(sess)
+	if v := os.Getenv("DISPLAY_NAME"); v != "" {
+		bucketPrefix = v
+	} else {
+		bucketPrefix = "unknown"
+	}
+	bucketPrefix = strings.Replace(bucketPrefix, "_", "-", -1)
 }
 
 /* Create unique bucket name. */
 func createUniqueBucketName() string {
-	// TODO: Figure out how to make this unique
-	return ""
+	atomic.AddUint64(&counter, 1)
+	return strings.ToLower(fmt.Sprintf("%v-%v-%v", bucketPrefix, time.Now().Format("2006-01-02t15.04.05z07.00"), counter))
 }
 
 /* Create a private bucket with bucketName. */
