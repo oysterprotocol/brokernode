@@ -1,6 +1,7 @@
 package actions_v2
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -85,9 +86,11 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, models.MetaDataChunkIdx)
 
-	suite.Equal(genHash, chunkData.Hash)
+	expectedHash := oyster_utils.HashHex(genHash, sha256.New())
+
+	suite.Equal(expectedHash, chunkData.Hash)
 
 	brokerTx := []models.BrokerBrokerTransaction{}
 
@@ -147,9 +150,11 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// actions/upload_sessions.go then uncomment out these tests.
 	// verifyPaymentConfirmation(as, resParsed.ID)
 
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, models.MetaDataChunkIdx)
 
-	suite.Equal(genHash, chunkData.Hash)
+	expectedHash := oyster_utils.HashHex(genHash, sha256.New())
+
+	suite.Equal(expectedHash, chunkData.Hash)
 
 	brokerTx := []models.BrokerBrokerTransaction{}
 

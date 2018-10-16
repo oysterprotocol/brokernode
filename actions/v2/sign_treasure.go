@@ -112,10 +112,9 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 	treasurePayloads := []TreasurePayload{}
 	for _, treasure := range treasures {
 		treasurePayloads = append(treasurePayloads, TreasurePayload{
-			ID:  treasure.ID,
-			Idx: treasure.Idx,
-			// TODO:  send the RawMessage or the Message?  Message already in trytes.
-			TreasurePayload: treasure.RawMessage,
+			ID:              treasure.ID,
+			Idx:             treasure.Idx,
+			TreasurePayload: treasure.Message,
 		})
 	}
 
@@ -187,9 +186,6 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 		err := models.DB.Find(treasure, signedTreasure.ID)
 		oyster_utils.LogIfError(err, nil)
 		if err == nil && treasure.ID != uuid.Nil {
-			// TODO find out if Jet is going to send the raw payload or if it will already be
-			// trytes
-			treasure.RawMessage = signedTreasure.TreasurePayload
 			treasure.Message = signedTreasure.TreasurePayload
 			treasure.SignedStatus = models.TreasureSigned
 			vErr, err := models.DB.ValidateAndUpdate(treasure)

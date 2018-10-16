@@ -33,7 +33,6 @@ func AttachTreasureTransactions(iotaWrapper services.IotaService) {
 			Address:     treasure.Address,
 			Message:     treasure.Message,
 			GenesisHash: treasure.GenesisHash,
-			RawMessage:  treasure.RawMessage,
 			Idx:         treasure.Idx,
 		}
 
@@ -64,7 +63,6 @@ func VerifyTreasureTransactions(iotaWrapper services.IotaService, thresholdTime 
 			Address:     treasure.Address,
 			Message:     treasure.Message,
 			GenesisHash: treasure.GenesisHash,
-			RawMessage:  treasure.RawMessage,
 			Idx:         treasure.Idx,
 		}
 

@@ -28,7 +28,6 @@ type Treasure struct {
 	PRLAmount   string    `json:"prlAmount" db:"prl_amount"`
 	PRLStatus   PRLStatus `json:"prlStatus" db:"prl_status"`
 	Message     string    `json:"message" db:"message"`
-	RawMessage  string    `json:"rawMessage" db:"raw_message"`
 	MsgID       string    `json:"msgId" db:"msg_id"`
 	Address     string    `json:"address" db:"address"`
 	GenesisHash string    `json:"genesisHash" db:"genesis_hash"`

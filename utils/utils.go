@@ -94,6 +94,31 @@ func SetLogInfoForDatabaseUrl(dbUrl string) {
 	logErrorTags["db_url"] = dbUrl
 }
 
+func SendHttpReq(url string, req interface{}, resp interface{}) error {
+	reqJson, err := json.Marshal(req)
+	if err != nil {
+		LogIfError(err, nil)
+		return err
+	}
+	reqBody := bytes.NewBuffer(reqJson)
+
+	httpRes, err := http.Post(url, "application/json", reqBody)
+	defer httpRes.Body.Close() // we need to close the connection
+
+	if err != nil {
+		LogIfError(err, nil)
+		return err
+	}
+
+	if err := ParseResBody(httpRes, resp); err != nil {
+		err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
+		// This should consider as BadRequest since the client pick the beta node.
+		LogIfError(err, nil)
+		return err
+	}
+	return nil
+}
+
 // ParseReqBody take a request and parses the body to the target interface.
 func ParseReqBody(req *http.Request, dest interface{}) error {
 	body := req.Body
