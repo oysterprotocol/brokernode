@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"math/big"
 	"time"
 
@@ -278,4 +279,37 @@ func (t *Treasure) DecryptTreasureEthKey() string {
 	hashedAddress := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Address)), sha3.New256())
 	decryptedKey := oyster_utils.Decrypt(hashedMessage, t.ETHKey, hashedAddress)
 	return hex.EncodeToString(decryptedKey)
+}
+
+func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]Treasure, error) {
+	// indexes is the actual index of the treasure ( 0, 1,000,000, etc.), NOT the encryption index
+
+	var err error
+	treasures := []Treasure{}
+
+	if len(indexes) == 0 {
+		err = DB.Where("genesis_hash = ?", genesisHash).All(&treasures)
+		return treasures, err
+	} else {
+		for _, index := range indexes {
+			treasure := []Treasure{}
+
+			err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
+				"Idx = ?",
+				genesisHash,
+				index).All(&treasure)
+
+			if len(treasure) > 1 {
+				err = errors.New("there should only be one treasure with a particular genesis hash and index!")
+				break
+			} else if len(treasure) == 1 {
+				treasures = append(treasures, treasure[0])
+			} else if err != nil {
+				break
+			}
+		}
+	}
+
+	oyster_utils.LogIfError(err, nil)
+	return treasures, err
 }

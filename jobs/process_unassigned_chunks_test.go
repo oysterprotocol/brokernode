@@ -22,7 +22,7 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 	oyster_utils.SetPoWMode(oyster_utils.PoWEnabled)
 	defer oyster_utils.ResetPoWMode()
 
-	oyster_utils.SetBrokerMode(oyster_utils.TestModeDummyTreasure)
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
 	numChunks := 31
@@ -103,7 +103,8 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks || sendChunksToLambdaMockCalled_process_unassigned_chunks)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-	suite.Equal(4*(uploadSession1.NumChunks), len(AllChunksCalled))
+
+	suite.Equal(4*(numChunks), len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent
 	in the order we would expect and that the ordering of chunk ids within each data map was
@@ -147,8 +148,6 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
-	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
-	// instead of numChunks + 1
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
 	defer oyster_utils.ResetBrokerMode()
 
@@ -201,8 +200,6 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Beta() {
 
 func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 
-	// Running this in TestModeNoTreasure mode, so we will just expect numChunks
-	// instead of numChunks + 1
 	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
 	defer oyster_utils.ResetBrokerMode()
 
@@ -222,7 +219,7 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 	skipVerifyChunks, restOfChunks := jobs.SkipVerificationOfFirstChunks(bulkChunkData, uploadSession)
 
 	var lenOfChunksToSkipVerifying int
-	lenOfChunksToSkipVerifying = int((float64(numChunks + 1)) * (float64(jobs.PercentOfChunksToSkipVerification) /
+	lenOfChunksToSkipVerifying = int((float64(numChunks)) * (float64(jobs.PercentOfChunksToSkipVerification) /
 		float64(100)))
 
 	suite.Equal(lenOfChunksToSkipVerifying,
@@ -234,10 +231,10 @@ func (suite *JobsSuite) Test_SkipVerificationOfFirstChunks_Alpha() {
 	var restMinIdx int
 	var restMaxIdx int
 
-	skipVerifyMinIdx = 0
-	skipVerifyMaxIdx = lenOfChunksToSkipVerifying - 1
+	skipVerifyMinIdx = models.MetaDataChunkIdx
+	skipVerifyMaxIdx = lenOfChunksToSkipVerifying
 
-	restMinIdx = lenOfChunksToSkipVerifying
+	restMinIdx = lenOfChunksToSkipVerifying + 1
 	restMaxIdx = numChunks
 
 	for _, chunk := range skipVerifyChunks {

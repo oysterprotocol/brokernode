@@ -8,6 +8,7 @@ import (
 )
 
 func Encrypt(key string, secret string, nonce string) []byte {
+
 	keyInBytes, err := hex.DecodeString(key)
 	panicOnErr(err)
 	secretInBytes, err := hex.DecodeString(secret)

@@ -1,4 +1,4 @@
-package services
+package oyster_utils
 
 import (
 	"context"
@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/oysterprotocol/brokernode/utils"
 
 	"errors"
 	"io/ioutil"
@@ -263,7 +262,7 @@ func sharedClient() (c *ethclient.Client, err error) {
 	c, err = ethclient.Dial(os.Getenv("ETH_NODE_URL"))
 	if err != nil {
 		fmt.Println("Failed to dial in to Ethereum node.")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return
 	}
 	// Sets Singleton
@@ -348,7 +347,7 @@ func subscribeToNewBlocks(client *ethclient.Client, subscriptionChannel chan typ
 func generateEthAddr() (addr common.Address, privateKey string, err error) {
 	ethAccount, err := crypto.GenerateKey()
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Could not generate eth key: %v\n", err), nil)
+		LogIfError(fmt.Errorf("Could not generate eth key: %v\n", err), nil)
 		return addr, "", err
 	}
 	addr = crypto.PubkeyToAddress(ethAccount.PublicKey)
@@ -365,7 +364,7 @@ func generateKeys(numKeys int) ([]string, error) {
 	var err error
 	for i := 0; i < numKeys; i++ {
 		key := ""
-		if oyster_utils.BrokerMode == oyster_utils.TestModeDummyTreasure {
+		if BrokerMode == TestModeDummyTreasure {
 			key = os.Getenv("TEST_MODE_WALLET_KEY")
 		} else {
 			_, key, err = generateEthAddr()
@@ -423,20 +422,20 @@ func StringToTxHash(txHash string) common.Hash {
 // execution for new transaction
 func getGasPrice() (*big.Int, error) {
 	// if QAing, un-comment out the line immediately below to hard-code a high gwei value for fast txs
-	// return oyster_utils.ConvertGweiToWei(big.NewInt(70)), nil
+	// return ConvertGweiToWei(big.NewInt(70)), nil
 
 	// connect ethereum client
 	client, err := sharedClient()
 	if err != nil {
 		log.Fatal("Could not get gas price from network")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 	}
 
 	// there is no guarantee with estimate gas price
 	gasPrice, err := client.SuggestGasPrice(context.Background())
 	if err != nil {
 		log.Fatal("Client could not get gas price from network")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 	}
 	return gasPrice, nil
 }
@@ -463,7 +462,7 @@ func getEstimatedGasPrice(to common.Address, from common.Address, gas uint64, ga
 	estimatedGasPrice, err := client.EstimateGas(context.Background(), *msg)
 	if err != nil {
 		log.Fatal("Client could not get gas price estimate from network")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 	}
 	return estimatedGasPrice, nil
 }
@@ -478,7 +477,7 @@ func checkETHBalance(addr common.Address) *big.Int {
 
 	balance, err := client.BalanceAt(context.Background(), addr, nil)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
+		LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -503,7 +502,7 @@ func checkPRLBalance(addr common.Address) *big.Int {
 	callOpts := bind.CallOpts{Pending: true, From: OysterPearlAddress}
 	balance, err := oysterPearl.BalanceOf(&callOpts, addr)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
+		LogIfError(fmt.Errorf("Client could not retrieve balance: %v", err), nil)
 		return big.NewInt(-1)
 	}
 	return balance
@@ -521,7 +520,7 @@ func getCurrentBlock() (*types.Block, error) {
 	// latest block number is nil to get the latest block
 	currentBlock, err := client.BlockByNumber(context.Background(), nil)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("Could not get last block: %v", err), nil)
+		LogIfError(fmt.Errorf("Could not get last block: %v", err), nil)
 		return nil, err
 	}
 
@@ -642,11 +641,11 @@ func waitForConfirmation(txHash common.Hash, pollingDelayInSeconds int) uint {
 		// need to be aware of possible *known transaction* error
 		txStatus, err := getConfirmationStatus(txHash)
 		if err != nil {
-			oyster_utils.LogIfError(err, nil)
+			LogIfError(err, nil)
 			status = 0
 		} else {
 			if txStatus.Uint64() == 0 {
-				oyster_utils.LogIfError(err, nil)
+				LogIfError(err, nil)
 				status = 0
 				break
 			} else if txStatus.Uint64() == 1 {
@@ -720,7 +719,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 	logs := make(chan types.Log)
 	sub, subErr := client.SubscribeFilterLogs(ctx, query, logs)
 	if subErr != nil {
-		oyster_utils.LogIfError(fmt.Errorf("error subscribing to logs: %v", subErr), nil)
+		LogIfError(fmt.Errorf("error subscribing to logs: %v", subErr), nil)
 		return big.NewInt(-1), subErr
 	}
 	defer sub.Unsubscribe()
@@ -728,7 +727,7 @@ func waitForTransfer(brokerAddr common.Address, transferType string) (*big.Int, 
 		select {
 		case err := <-sub.Err():
 			log.Fatal(err)
-			oyster_utils.LogIfError(err, nil)
+			LogIfError(err, nil)
 			return big.NewInt(0), err
 			//case <-time.After(1 * time.Minute):
 			//	log.Print("Timeout to wait for brokerAddr\n")
@@ -800,7 +799,7 @@ func reclaimGas(address common.Address, privateKey *ecdsa.PrivateKey, gasToRecla
 func calculateGasNeeded(desiredGasLimit uint64) (*big.Int, error) {
 	gasPrice, err := getGasPrice()
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return big.NewInt(0), err
 	}
 	gasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(desiredGasLimit)))
@@ -851,14 +850,14 @@ func sendETH(fromAddress common.Address, fromPrivKey *ecdsa.PrivateKey, toAddr c
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, fromPrivKey)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return types.Transactions{}, "", -1, err
 	}
 
 	// send transaction
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
-		oyster_utils.LogIfError(fmt.Errorf("error sending transaction : %v", err), nil)
+		LogIfError(fmt.Errorf("error sending transaction : %v", err), nil)
 		return types.Transactions{}, "", -1, err
 	}
 
@@ -938,7 +937,7 @@ func checkBuriedState(address common.Address) (bool, error) {
 	// check buried state
 	buried, err := oysterPearl.Buried(&callOpts, address)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false, err
 	}
 
@@ -968,7 +967,7 @@ func checkClaimClock(address common.Address) (*big.Int, error) {
 	// check buried state
 	claimClock, err := oysterPearl.Claimed(&callOpts, address)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return big.NewInt(-1), err
 	}
 
@@ -985,7 +984,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 
 	if treasureBalance.Uint64() <= 0 {
 		err := errors.New("treasure balance insufficient")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false
 	}
 
@@ -996,7 +995,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	}
 	if !buried {
 		err = errors.New("treasure address is not in a buried state")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false
 	}
 
@@ -1004,7 +1003,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	auth := bind.NewKeyedTransactor(treasurePrivateKey)
 	if auth == nil {
 		err := errors.New("unable to create a new transactor")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 	}
 
 	fmt.Printf("authorized transactor : %v\n", auth.From.Hex())
@@ -1013,7 +1012,7 @@ func claimPRLs(receiverAddress common.Address, treasureAddress common.Address, t
 	oysterPearl, err := NewOysterPearl(common.HexToAddress(OysterPearlContract), client)
 	if err != nil {
 		err := errors.New("unable to instantiate OysterPearl")
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false
 	}
 
@@ -1123,7 +1122,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	// sign transaction
 	signedTx, err := types.SignTx(tx, signer, &msg.PrivateKey)
 	if err != nil {
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false
 	}
 
@@ -1131,7 +1130,7 @@ func sendPRL(msg OysterCallMsg) bool {
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		// given we have a "known transaction" error we need to respond
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 		return false
 	}
 
@@ -1244,7 +1243,7 @@ func configureGateway(network string) {
 	if err != nil {
 		godotenv.Load()
 		log.Printf(".env error: %v", err)
-		oyster_utils.LogIfError(err, nil)
+		LogIfError(err, nil)
 	}
 	// Resolve network type
 	switch network {

@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
 	"math/big"
@@ -40,7 +39,7 @@ func resetTestVariables_claimTreasureForWebnode(suite *JobsSuite) {
 	calculateGasNeededCalls_claimTreasureForWebnode = 0
 	chechPRLBalanceCalls_claimTreasureForWebnode = 0
 
-	jobs.EthWrapper = services.EthWrapper
+	jobs.EthWrapper = oyster_utils.EthWrapper
 }
 
 func (suite *JobsSuite) Test_CheckOngoingGasTransactions_gas_has_arrived() {
@@ -952,8 +951,8 @@ func generateWebnodeTreasureClaims(suite *JobsSuite,
 	numToGenerate int) {
 
 	for i := 0; i < numToGenerate; i++ {
-		treasureAddr, key, _ := services.EthWrapper.GenerateEthAddr()
-		receiverAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+		treasureAddr, key, _ := oyster_utils.EthWrapper.GenerateEthAddr()
+		receiverAddr, _, _ := oyster_utils.EthWrapper.GenerateEthAddr()
 
 		validChars := []rune("abcde123456789")
 		genesisHash := oyster_utils.RandSeq(64, validChars)

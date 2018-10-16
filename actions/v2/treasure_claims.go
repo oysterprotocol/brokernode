@@ -3,11 +3,11 @@ package actions_v2
 import (
 	"errors"
 	"fmt"
+	"github.com/oysterprotocol/brokernode/actions/utils"
 	"os"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gobuffalo/buffalo"
-	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 )

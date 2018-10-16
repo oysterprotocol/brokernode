@@ -104,11 +104,11 @@ func App() *buffalo.App {
 		apiV2.POST("treasures", treasures.VerifyAndClaim)
 
 		// Status
-		statusResource := StatusResource{}
+		statusResource := actions_v2.StatusResource{}
 		apiV2.GET("status", statusResource.CheckStatus)
 
 		// Treasure signing
-		signTreasureResource := SignTreasureResource{}
+		signTreasureResource := actions_v2.SignTreasureResource{}
 		apiV2.GET("unsigned-treasure/{id}", signTreasureResource.GetUnsignedTreasure)
 		apiV2.PUT("signed-treasure/{id}", signTreasureResource.SignTreasure)
 	}

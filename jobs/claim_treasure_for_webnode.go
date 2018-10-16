@@ -52,7 +52,7 @@ func CheckOngoingGasTransactions() {
 	if len(gasPending) <= 0 {
 		return
 	}
-	gasToProcessTransaction, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLClaim)
+	gasToProcessTransaction, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitPRLClaim)
 	if err != nil {
 		fmt.Println("Cannot calculate gas needed in webnode_treasure_claims with pending " +
 			"gas transfers: " + err.Error())
@@ -61,7 +61,7 @@ func CheckOngoingGasTransactions() {
 	}
 
 	for _, pending := range gasPending {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.TreasureETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(pending.TreasureETHAddr))
 		if ethBalance.Int64() >= gasToProcessTransaction.Int64() {
 			fmt.Println("ETH (gas) transaction sent to " + pending.TreasureETHAddr + " in CheckOngoingGasTransactions() " +
 				"in claim_treasure_for_webnode")
@@ -96,7 +96,7 @@ func CheckOngoingPRLClaims() {
 
 	for _, pending := range prlsPending {
 
-		claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(pending.TreasureETHAddr))
+		claimClock, err := EthWrapper.CheckClaimClock(oyster_utils.StringToAddress(pending.TreasureETHAddr))
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
@@ -137,9 +137,9 @@ func CheckOngoingGasReclaims() {
 	}
 
 	for _, pending := range gasReclaimPending {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.TreasureETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(pending.TreasureETHAddr))
 		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
+			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitETHSend)
 			if err != nil {
 				fmt.Println("Could not calculate gas needed to retrieve ETH from " + pending.TreasureETHAddr +
 					" in CheckProcessingGasReclaims() in claim_treasure_for_webnode")
@@ -316,7 +316,7 @@ func RetrieveLeftoverETHFromTreasureClaiming() {
 	}
 	for _, completedClaim := range completedClaims {
 		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
-			services.StringToAddress(completedClaim.TreasureETHAddr), services.GasLimitETHSend)
+			oyster_utils.StringToAddress(completedClaim.TreasureETHAddr), oyster_utils.GasLimitETHSend)
 		if err != nil {
 			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
 				completedClaim.TreasureETHAddr +
@@ -331,12 +331,12 @@ func RetrieveLeftoverETHFromTreasureClaiming() {
 			continue
 		}
 
-		privateKey, err := services.StringToPrivateKey(completedClaim.DecryptTreasureEthKey())
+		privateKey, err := oyster_utils.StringToPrivateKey(completedClaim.DecryptTreasureEthKey())
 
 		_, _, _, err = EthWrapper.SendETH(
-			services.StringToAddress(completedClaim.TreasureETHAddr),
+			oyster_utils.StringToAddress(completedClaim.TreasureETHAddr),
 			privateKey,
-			services.MainWalletAddress,
+			oyster_utils.MainWalletAddress,
 			gasToReclaim)
 		if err != nil {
 			fmt.Println("Could not reclaim leftover ETH from " + completedClaim.TreasureETHAddr +
@@ -353,14 +353,14 @@ func RetrieveLeftoverETHFromTreasureClaiming() {
 
 /* SendGas wraps call to eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing */
 func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
-	gasToClaim, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLClaim)
+	gasToClaim, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitPRLClaim)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
 	}
 	for _, treasureClaim := range treasuresThatNeedGas {
 
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(treasureClaim.TreasureETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr))
 		if ethBalance.Int64() > gasToClaim.Int64() {
 			/* already have enough gas */
 			treasureClaim.GasStatus = models.GasTransferSuccess
@@ -371,9 +371,9 @@ func SendGas(treasuresThatNeedGas []models.WebnodeTreasureClaim) {
 		gasNeeded := new(big.Int).Sub(gasToClaim, ethBalance)
 
 		_, txHash, nonce, err := EthWrapper.SendETH(
-			services.MainWalletAddress,
-			services.MainWalletPrivateKey,
-			services.StringToAddress(treasureClaim.TreasureETHAddr),
+			oyster_utils.MainWalletAddress,
+			oyster_utils.MainWalletPrivateKey,
+			oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr),
 			gasNeeded)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -397,7 +397,7 @@ func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 			continue
 		}
 
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(treasureClaim.TreasureETHAddr))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr))
 
 		if balance.Int64() == 0 {
 			/* no claimable treasure */
@@ -409,15 +409,15 @@ func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 		}
 
 		privateKey := treasureClaim.DecryptTreasureEthKey()
-		ecdsaPrivateKey, err := services.StringToPrivateKey(privateKey)
+		ecdsaPrivateKey, err := oyster_utils.StringToPrivateKey(privateKey)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
 
 		claimSuccess := EthWrapper.ClaimPRL(
-			services.StringToAddress(treasureClaim.ReceiverETHAddr),
-			services.StringToAddress(treasureClaim.TreasureETHAddr),
+			oyster_utils.StringToAddress(treasureClaim.ReceiverETHAddr),
+			oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr),
 			ecdsaPrivateKey)
 		if claimSuccess {
 			fmt.Println("ClaimPRL processing from " + treasureClaim.TreasureETHAddr + " claim_treasure_for_webnode")
@@ -436,7 +436,7 @@ func ClaimPRL(treasuresWithPRLsToBeClaimed []models.WebnodeTreasureClaim) {
 func SetClaimClockIfUnset(treasureClaim *models.WebnodeTreasureClaim) error {
 
 	if treasureClaim.StartingClaimClock == -1 {
-		claimClock, err := EthWrapper.CheckClaimClock(services.StringToAddress(treasureClaim.TreasureETHAddr))
+		claimClock, err := EthWrapper.CheckClaimClock(oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr))
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return err

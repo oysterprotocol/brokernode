@@ -4,14 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/iotaledger/giota"
 	"github.com/markbates/grift/grift"
-	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
 	"math/big"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
@@ -25,23 +23,26 @@ func getAddress() (common.Address, string, error) {
 	if griftPrivateKey == "" {
 		errorString := "you haven't specified an eth private key to use for this grift"
 		fmt.Println(errorString)
-		return services.StringToAddress(""), griftPrivateKey, errors.New(errorString)
+		return oyster_utils.StringToAddress(""), griftPrivateKey, errors.New(errorString)
 	}
-	address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
+	address := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
 	return address, griftPrivateKey, nil
 }
 
-func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.ChunkReq {
+func GenerateChunkRequests(indexToStopAt int, genesisHash string) []models.ChunkReq {
 	chunkReqs := []models.ChunkReq{}
 
-	for i := 0; i < numToGenerate; i++ {
+	for i := 1; i <= indexToStopAt; i++ {
 
-		trytes, _ := giota.ToTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
+		asciiValue := ""
+		for i := 0; i < 5; i++ {
+			asciiValue += string(rand.Intn(255))
+		}
 
 		req := models.ChunkReq{
 			Idx:  i,
 			Hash: genesisHash,
-			Data: string(trytes),
+			Data: asciiValue,
 		}
 
 		chunkReqs = append(chunkReqs, req)
@@ -50,32 +51,38 @@ func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.Chunk
 }
 
 func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
-	numChunksToGenerate int) []oyster_utils.ChunkData {
+	indexToStopAt int) []oyster_utils.ChunkData {
 	session.StartUploadSession()
 	privateKeys := []string{}
 
 	for i := 0; i < len(mergedIndexes); i++ {
-		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
+		key := ""
+		for j := 0; j < 9; j++ {
+			key += strconv.Itoa(rand.Intn(8) + 1)
+		}
+		privateKeys = append(privateKeys, key+strconv.Itoa(i))
 	}
 
 	session.PaymentStatus = models.PaymentStatusConfirmed
 	models.DB.ValidateAndUpdate(session)
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	chunkReqs := GenerateChunkRequests(numChunksToGenerate, session.GenesisHash)
+	chunkReqs := GenerateChunkRequests(indexToStopAt, session.GenesisHash)
+
 	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
+	session.WaitForAllHashes(100)
+
+	session.CreateTreasures()
+
 	for {
-		jobs.BuryTreasureInDataMaps()
 		finishedMessages, _ := session.WaitForAllMessages(3)
 		if finishedMessages {
 			break
 		}
 	}
 
-	_, _ = session.WaitForAllHashes(10)
-
-	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, 0, int64(session.NumChunks-1))
+	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, models.MetaDataChunkIdx, int64(session.NumChunks))
 	bulkChunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash,
 		bulkKeys)
 
@@ -132,7 +139,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, griftPrivateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(griftPrivateKey)
 
@@ -498,8 +505,8 @@ var _ = grift.Namespace("db", func() {
 		dataMapAll := []oyster_utils.ChunkData{}
 
 		for i := range allSessions {
-			keys := oyster_utils.GenerateBulkKeys(allSessions[i].GenesisHash, 0,
-				int64(allSessions[i].NumChunks-1))
+			keys := oyster_utils.GenerateBulkKeys(allSessions[i].GenesisHash, models.MetaDataChunkIdx,
+				int64(allSessions[i].NumChunks))
 			chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir,
 				allSessions[i].GenesisHash, keys)
 			if err == nil && len(chunkData) != 0 {
@@ -531,7 +538,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, griftPrivateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(griftPrivateKey)
 
@@ -545,16 +552,16 @@ var _ = grift.Namespace("db", func() {
 			prlAmount := big.NewFloat(float64(.0001))
 			prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
 
-			callMsg, _ := services.EthWrapper.CreateSendPRLMessage(services.MainWalletAddress,
-				services.MainWalletPrivateKey,
+			callMsg, _ := oyster_utils.EthWrapper.CreateSendPRLMessage(oyster_utils.MainWalletAddress,
+				oyster_utils.MainWalletPrivateKey,
 				address, *prlAmountInWei)
 
-			sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+			sendSuccess, _, _ := oyster_utils.EthWrapper.SendPRLFromOyster(callMsg)
 			if sendSuccess {
 				fmt.Println("Sent successfully!")
 				for {
 					fmt.Println("Polling for PRL arrival")
-					balance := services.EthWrapper.CheckPRLBalance(address)
+					balance := oyster_utils.EthWrapper.CheckPRLBalance(address)
 					if balance.Int64() > 0 {
 						fmt.Println("PRL arrived!")
 						break
@@ -710,7 +717,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, privateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(privateKey)
 
@@ -739,7 +746,7 @@ var _ = grift.Namespace("db", func() {
 			}
 
 			for {
-				buried, err := services.EthWrapper.CheckBuriedState(address)
+				buried, err := oyster_utils.EthWrapper.CheckBuriedState(address)
 				if err != nil {
 					fmt.Println("ERROR CHECKING BURIED STATE!")
 					return err
@@ -821,8 +828,8 @@ var _ = grift.Namespace("db", func() {
 				fmt.Println("Gas Status:             " + models.GasTransferStatusMap[treasureClaim.GasStatus])
 				fmt.Println("Starting Claim Clock:   " + big.NewInt(treasureClaim.StartingClaimClock).String())
 
-				claimClock, _ := services.EthWrapper.CheckClaimClock(
-					services.StringToAddress(treasureClaim.TreasureETHAddr))
+				claimClock, _ := oyster_utils.EthWrapper.CheckClaimClock(
+					oyster_utils.StringToAddress(treasureClaim.TreasureETHAddr))
 
 				fmt.Println("Current Claim Clock:    " + claimClock.String())
 				fmt.Println("________________________________________________________")
@@ -873,8 +880,8 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("test_broker_txs", "Tests check_alpha_payments and check_beta_payments")
 	grift.Add("test_broker_txs", func(c *grift.Context) error {
 
-		alphaAddr, key, _ := services.EthWrapper.GenerateEthAddr()
-		betaAddr, betaKey, _ := services.EthWrapper.GenerateEthAddr()
+		alphaAddr, key, _ := oyster_utils.EthWrapper.GenerateEthAddr()
+		betaAddr, betaKey, _ := oyster_utils.EthWrapper.GenerateEthAddr()
 
 		validChars := []rune("abcde123456789")
 		genesisHashEndingCharsAlpha := oyster_utils.RandSeq(10, validChars)
@@ -926,12 +933,12 @@ var _ = grift.Namespace("db", func() {
 			return err
 		}
 
-		callMsg, _ := services.EthWrapper.CreateSendPRLMessage(
-			services.MainWalletAddress,
-			services.MainWalletPrivateKey,
-			services.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
+		callMsg, _ := oyster_utils.EthWrapper.CreateSendPRLMessage(
+			oyster_utils.MainWalletAddress,
+			oyster_utils.MainWalletPrivateKey,
+			oyster_utils.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
 
-		sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+		sendSuccess, _, _ := oyster_utils.EthWrapper.SendPRLFromOyster(callMsg)
 
 		if !sendSuccess {
 			fmt.Println(err)
@@ -1085,7 +1092,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("create_completed_upload", "create a completed upload")
 	grift.Add("create_completed_upload", func(c *grift.Context) error {
 
-		address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+		address, privateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
 		fmt.Println("PRIVATE KEY IS:")
 		fmt.Println(privateKey)
 

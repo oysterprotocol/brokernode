@@ -24,7 +24,7 @@ var OysterWorker = worker.NewSimple()
 
 var (
 	IotaWrapper       = services.IotaWrapper
-	EthWrapper        = services.EthWrapper
+	EthWrapper        = oyster_utils.EthWrapper
 	PrometheusWrapper = services.PrometheusWrapper
 )
 
@@ -42,7 +42,6 @@ func registerHandlers(oysterWorker *worker.Simple) {
 	oysterWorker.Register(getHandlerName(processUnassignedChunksHandler), processUnassignedChunksHandler)
 	oysterWorker.Register(getHandlerName(purgeCompletedSessionsHandler), purgeCompletedSessionsHandler)
 	oysterWorker.Register(getHandlerName(verifyDataMapsHandler), verifyDataMapsHandler)
-	oysterWorker.Register(getHandlerName(processPaidSessionsHandler), processPaidSessionsHandler)
 	oysterWorker.Register(getHandlerName(claimTreasureForWebnodeHandler), claimTreasureForWebnodeHandler)
 	oysterWorker.Register(getHandlerName(removeUnpaidUploadSessionHandler), removeUnpaidUploadSessionHandler)
 	oysterWorker.Register(getHandlerName(checkAllDataIsReadyHandler), checkAllDataIsReadyHandler)
@@ -70,9 +69,6 @@ func doWork(oysterWorker *worker.Simple) {
 
 	oysterWorkerPerformIn(verifyDataMapsHandler,
 		worker.Args{Duration: 60 * time.Second})
-
-	oysterWorkerPerformIn(processPaidSessionsHandler,
-		worker.Args{Duration: 20 * time.Second})
 
 	oysterWorkerPerformIn(claimTreasureForWebnodeHandler,
 		worker.Args{Duration: 2 * time.Minute})
@@ -140,13 +136,6 @@ func verifyDataMapsHandler(args worker.Args) error {
 	}
 
 	oysterWorkerPerformIn(verifyDataMapsHandler, args)
-	return nil
-}
-
-func processPaidSessionsHandler(args worker.Args) error {
-	ProcessPaidSessions(PrometheusWrapper)
-
-	oysterWorkerPerformIn(processPaidSessionsHandler, args)
 	return nil
 }
 

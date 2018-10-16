@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 )
 
 type mockWaitForTransfer struct {
@@ -23,7 +22,7 @@ type mockWaitForTransfer struct {
 
 type mockSendPrl struct {
 	hasCalled   bool
-	input_msg   services.OysterCallMsg
+	input_msg   oyster_utils.OysterCallMsg
 	output_bool bool
 }
 
@@ -41,11 +40,11 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	mockSendPrl := mockSendPrl{
 		output_bool: true,
 	}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		WaitForTransfer: mockWaitForTransfer.waitForTransfer,
 		SendPRL:         mockSendPrl.sendPrl,
-		GenerateEthAddr: services.EthWrapper.GenerateEthAddr,
-		GenerateKeys:    services.EthWrapper.GenerateKeys,
+		GenerateEthAddr: oyster_utils.EthWrapper.GenerateEthAddr,
+		GenerateKeys:    oyster_utils.EthWrapper.GenerateKeys,
 	}
 
 	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
@@ -76,7 +75,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	//suite.True(mockWaitForTransfer.hasCalled)
-	//suite.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
+	//suite.Equal(oyster_utils.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 
 	// mockCheckPRLBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
 	// it again.
@@ -104,11 +103,11 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	}
 	mockSendPrl := mockSendPrl{}
 
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		WaitForTransfer: mockWaitForTransfer.waitForTransfer,
 		SendPRL:         mockSendPrl.sendPrl,
-		GenerateEthAddr: services.EthWrapper.GenerateEthAddr,
-		GenerateKeys:    services.EthWrapper.GenerateKeys,
+		GenerateEthAddr: oyster_utils.EthWrapper.GenerateEthAddr,
+		GenerateKeys:    oyster_utils.EthWrapper.GenerateKeys,
 	}
 
 	genHash := oyster_utils.RandSeq(8, []rune("abcdef0123456789"))
@@ -141,7 +140,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out this test.
 	//suite.True(mockWaitForTransfer.hasCalled)
-	suite.Equal(services.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
+	suite.Equal(oyster_utils.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 	suite.False(mockSendPrl.hasCalled)
 
 	// TODO: fix waitForTransfer and uncomment it out in
@@ -162,7 +161,7 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
 	mockCheckPRLBalance := mockCheckPRLBalance{}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
 
@@ -187,7 +186,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 		SendPRL:         mockSendPrl.sendPrl,
 	}
@@ -211,7 +210,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 	to beta now occurs in a job. */
 	suite.True(mockCheckPRLBalance.hasCalled)
 	suite.False(mockSendPrl.hasCalled)
-	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
+	suite.Equal(oyster_utils.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	suite.Nil(suite.DB.Find(&session, resParsed.ID))
@@ -223,7 +222,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckI
 	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(0),
 	}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
 
@@ -241,7 +240,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckI
 
 	suite.Equal("invoiced", resParsed.PaymentStatus)
 	suite.True(mockCheckPRLBalance.hasCalled)
-	suite.Equal(services.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
+	suite.Equal(oyster_utils.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
 	suite.Nil(suite.DB.Find(&session, resParsed.ID))
@@ -253,7 +252,7 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 		SendPRL:         mockSendPrl.sendPrl,
 	}
@@ -318,7 +317,7 @@ func (v *mockWaitForTransfer) waitForTransfer(brokerAddr common.Address, transfe
 	return v.output_int, v.output_error
 }
 
-func (v *mockSendPrl) sendPrl(msg services.OysterCallMsg) bool {
+func (v *mockSendPrl) sendPrl(msg oyster_utils.OysterCallMsg) bool {
 	v.hasCalled = true
 	v.input_msg = msg
 	return v.output_bool

@@ -50,7 +50,7 @@ func CheckProcessingGasTransactions() {
 	}
 
 	for _, pending := range gasPending {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.ETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(pending.ETHAddr))
 		if ethBalance.Int64() > 0 {
 			fmt.Println("ETH (gas) transaction sent to " + pending.ETHAddr + " in CheckProcessingGasTransactions() " +
 				"in claim_unused_prls")
@@ -81,7 +81,7 @@ func CheckProcessingPRLTransactions() {
 	}
 
 	for _, pending := range prlsPending {
-		prlBalance := EthWrapper.CheckPRLBalance(services.StringToAddress(pending.ETHAddr))
+		prlBalance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(pending.ETHAddr))
 		if prlBalance.Int64() == int64(0) {
 			fmt.Println("Unused PRLs retrieved from " + pending.ETHAddr + " in CheckProcessingPRLTransactions() " +
 				"in claim_unused_prls")
@@ -112,9 +112,9 @@ func CheckProcessingGasReclaims() {
 	}
 
 	for _, pending := range gasReclaimPending {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.ETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(pending.ETHAddr))
 		if ethBalance.Int64() > 0 {
-			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(services.GasLimitETHSend)
+			gasNeededToReclaimETH, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitETHSend)
 			if err != nil {
 				fmt.Println("Could not calculate gas needed to retrieve ETH from " + pending.ETHAddr +
 					" in CheckProcessingGasReclaims() in claim_unused_prls")
@@ -235,7 +235,7 @@ func SendGasForNewClaims() {
 	}
 	needGasHavePRLs := []models.CompletedUpload{}
 	for _, completedUpload := range needGas {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(completedUpload.ETHAddr))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(completedUpload.ETHAddr))
 
 		if balance.Int64() == 0 {
 			fmt.Println("No balance at address " + completedUpload.ETHAddr)
@@ -289,7 +289,7 @@ func RetrieveLeftoverETH(thresholdTime time.Time) {
 	}
 	for _, completedClaim := range completedClaims {
 		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
-			services.StringToAddress(completedClaim.ETHAddr), services.GasLimitETHSend)
+			oyster_utils.StringToAddress(completedClaim.ETHAddr), oyster_utils.GasLimitETHSend)
 		if err != nil {
 			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
 				completedClaim.ETHAddr +
@@ -314,9 +314,9 @@ func RetrieveLeftoverETH(thresholdTime time.Time) {
 			continue
 		}
 
-		privateKey, err := services.StringToPrivateKey(completedClaim.DecryptSessionEthKey())
+		privateKey, err := oyster_utils.StringToPrivateKey(completedClaim.DecryptSessionEthKey())
 
-		reclaimingSuccess := EthWrapper.ReclaimGas(services.StringToAddress(completedClaim.ETHAddr),
+		reclaimingSuccess := EthWrapper.ReclaimGas(oyster_utils.StringToAddress(completedClaim.ETHAddr),
 			privateKey, gasToReclaim)
 
 		if reclaimingSuccess {
@@ -330,16 +330,16 @@ func RetrieveLeftoverETH(thresholdTime time.Time) {
 
 // wraps call to eth_gatway's SendETH method and sets GasStatus to GasTransferProcessing
 func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
-	gasToSend, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLSend)
+	gasToSend, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitPRLSend)
 	if err != nil {
 		oyster_utils.LogIfError(fmt.Errorf("Error determining gas to send: %v", err), nil)
 		return
 	}
 	for _, upload := range uploadsThatNeedGas {
 		_, txHash, nonce, err := EthWrapper.SendETH(
-			services.MainWalletAddress,
-			services.MainWalletPrivateKey,
-			services.StringToAddress(upload.ETHAddr),
+			oyster_utils.MainWalletAddress,
+			oyster_utils.MainWalletPrivateKey,
+			oyster_utils.StringToAddress(upload.ETHAddr),
 			gasToSend)
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
@@ -356,7 +356,7 @@ func InitiateGasTransfer(uploadsThatNeedGas []models.CompletedUpload) {
 // wraps calls eth_gatway's SendPRLFromOyster method and sets PRLStatus to PRLClaimProcessing
 func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 	for _, upload := range uploadsWithUnclaimedPRLs {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(upload.ETHAddr))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(upload.ETHAddr))
 		if balance.Int64() == -1 {
 			fmt.Println("Error getting balance of address " + upload.ETHAddr)
 			continue
@@ -364,14 +364,14 @@ func InitiatePRLClaim(uploadsWithUnclaimedPRLs []models.CompletedUpload) {
 
 		privateKey := upload.DecryptSessionEthKey()
 
-		ecdsaPrivateKey, err := services.StringToPrivateKey(privateKey)
+		ecdsaPrivateKey, err := oyster_utils.StringToPrivateKey(privateKey)
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
 		}
-		callMsg, err := EthWrapper.CreateSendPRLMessage(services.StringToAddress(upload.ETHAddr),
-			ecdsaPrivateKey, services.MainWalletAddress, *balance)
+		callMsg, err := EthWrapper.CreateSendPRLMessage(oyster_utils.StringToAddress(upload.ETHAddr),
+			ecdsaPrivateKey, oyster_utils.MainWalletAddress, *balance)
 
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)

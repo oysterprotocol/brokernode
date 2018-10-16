@@ -13,7 +13,6 @@ import (
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/pkg/errors"
 	"gopkg.in/segmentio/analytics-go.v3"
@@ -449,7 +448,7 @@ func (usr *UploadSessionResourceV2) GetPaymentStatus(c buffalo.Context) error {
 
 	// Force to check the status
 	if session.PaymentStatus != models.PaymentStatusConfirmed {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			previousPaymentStatus := session.PaymentStatus
 			session.PaymentStatus = models.PaymentStatusConfirmed

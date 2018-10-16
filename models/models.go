@@ -11,6 +11,10 @@ import (
 // throughout your application.
 var DB *pop.Connection
 
+var (
+	EthWrapper = oyster_utils.EthWrapper
+)
+
 func init() {
 	var err error
 	env := envy.Get("GO_ENV", "development")

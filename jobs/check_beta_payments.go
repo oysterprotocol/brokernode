@@ -33,7 +33,7 @@ func CheckPaymentToBeta() {
 		[]models.PaymentStatus{models.BrokerTxBetaPaymentPending})
 
 	for _, brokerTx := range brokerTxs {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(brokerTx.ETHAddrBeta))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(brokerTx.ETHAddrBeta))
 		expectedBalance := new(big.Int).Quo(brokerTx.GetTotalCostInWei(), big.NewInt(int64(2)))
 		if balance.Int64() > 0 && balance.Int64() >= expectedBalance.Int64() {
 			previousBetaPaymentStatus := brokerTx.PaymentStatus

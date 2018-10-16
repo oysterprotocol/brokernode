@@ -3,11 +3,11 @@ package actions_v2
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/oysterprotocol/brokernode/services"
+	"github.com/oysterprotocol/brokernode/utils"
+	"io/ioutil"
+	"math/big"
 )
 
 // Record data for VerifyTreasure method
@@ -31,7 +31,7 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
 			checkClaimClockCalled = true
@@ -41,7 +41,7 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
@@ -83,7 +83,7 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
@@ -116,7 +116,7 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	EthWrapper = services.Eth{
+	EthWrapper = oyster_utils.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
 			ethAddressCalledWithCheckClaimClock = address
@@ -126,7 +126,7 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := services.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,

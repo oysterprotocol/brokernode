@@ -1,6 +1,8 @@
 package models_test
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"github.com/gobuffalo/pop/nulls"
@@ -59,14 +61,14 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 
 	suite.Equal(u.GenesisHash, uSession.GenesisHash)
 	suite.Equal(fileSizeBytes, uSession.FileSizeBytes)
-	suite.Equal(numChunks+1, uSession.NumChunks)
+	suite.Equal(numChunks, uSession.NumChunks)
 	suite.Equal(models.SessionTypeAlpha, uSession.Type)
 	suite.Equal(decimal.NewFromFloatWithExponent(0.03125, -5), uSession.TotalCost)
 	suite.Equal(2, uSession.StorageLengthInYears)
 
 	// verify indexes for alpha session
-	suite.Equal(int64(0), uSession.NextIdxToVerify)
-	suite.Equal(int64(0), uSession.NextIdxToAttach)
+	suite.Equal(int64(models.MetaDataChunkIdx), uSession.NextIdxToVerify)
+	suite.Equal(int64(models.MetaDataChunkIdx), uSession.NextIdxToAttach)
 
 	u2 := models.UploadSession{
 		Type:                 models.SessionTypeBeta,
@@ -87,8 +89,8 @@ func (suite *ModelSuite) Test_StartUploadSession() {
 	suite.DB.Where("genesis_hash = ?", u2.GenesisHash).First(&uSession2)
 
 	// verify indexes for beta session
-	suite.Equal(int64(uSession2.NumChunks-1), uSession2.NextIdxToVerify)
-	suite.Equal(int64(uSession2.NumChunks-1), uSession2.NextIdxToAttach)
+	suite.Equal(int64(uSession2.NumChunks), uSession2.NextIdxToVerify)
+	suite.Equal(int64(uSession2.NumChunks), uSession2.NextIdxToAttach)
 }
 
 func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
@@ -99,14 +101,16 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	// in the for loop later on a bit simpler
 	t := map[int]models.TreasureMap{}
 	t[5] = models.TreasureMap{
-		Sector: 1,
-		Idx:    5,
-		Key:    "firstKey",
+		Sector:        1,
+		EncryptionIdx: 5,
+		Idx:           0,
+		Key:           "firstKey",
 	}
 	t[78] = models.TreasureMap{
-		Sector: 2,
-		Idx:    78,
-		Key:    "secondKey",
+		Sector:        2,
+		EncryptionIdx: 78,
+		Idx:           60,
+		Key:           "secondKey",
 	}
 
 	treasureIndexArray := make([]models.TreasureMap, 0)
@@ -114,7 +118,7 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	treasureIndexArray = append(treasureIndexArray, t[78])
 
 	// do not format this.  It needs to not have new lines in it
-	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
+	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"encryptionIdx":` + fmt.Sprint(t[5].EncryptionIdx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"encryptionIdx":` + fmt.Sprint(t[78].EncryptionIdx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
 
 	u := models.UploadSession{
 		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
@@ -141,11 +145,12 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	suite.Equal(2, len(treasureIdxMap))
 
 	for _, entry := range treasureIdxMap {
-		_, ok := t[entry.Idx]
+		_, ok := t[entry.EncryptionIdx]
 		suite.True(ok)
-		suite.Equal(entry.Sector, t[entry.Idx].Sector)
-		suite.Equal(entry.Key, t[entry.Idx].Key)
-		suite.Equal(entry.Idx, t[entry.Idx].Idx)
+		suite.Equal(entry.Sector, t[entry.EncryptionIdx].Sector)
+		suite.Equal(entry.Key, t[entry.EncryptionIdx].Key)
+		suite.Equal(entry.Idx, t[entry.EncryptionIdx].Idx)
+		suite.Equal(entry.EncryptionIdx, t[entry.EncryptionIdx].EncryptionIdx)
 	}
 }
 
@@ -326,9 +331,13 @@ func (suite *ModelSuite) Test_MakeTreasureIdxMap() {
 	suite.Equal(2, treasureIdxMap[2].Sector)
 
 	// This will break anytime we change the hashing method.
-	suite.Equal(68, treasureIdxMap[0].Idx)
-	suite.Equal(148, treasureIdxMap[1].Idx)
-	suite.Equal(210, treasureIdxMap[2].Idx)
+	suite.Equal(68, treasureIdxMap[0].EncryptionIdx)
+	suite.Equal(148, treasureIdxMap[1].EncryptionIdx)
+	suite.Equal(210, treasureIdxMap[2].EncryptionIdx)
+
+	suite.Equal(0*oyster_utils.FileSectorInChunkSize, treasureIdxMap[0].Idx)
+	suite.Equal(1*oyster_utils.FileSectorInChunkSize, treasureIdxMap[1].Idx)
+	suite.Equal(2*oyster_utils.FileSectorInChunkSize, treasureIdxMap[2].Idx)
 
 	decryptedKey0, _ := u.DecryptTreasureChunkEthKey(treasureIdxMap[0].Key)
 	decryptedKey1, _ := u.DecryptTreasureChunkEthKey(treasureIdxMap[1].Key)
@@ -414,10 +423,12 @@ func (suite *ModelSuite) Test_WaitForAllChunks() {
 
 	storageLengthInYears := 3
 
+	numChunks := 200
+
 	u := models.UploadSession{
 		Type:                 models.SessionTypeAlpha,
 		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		NumChunks:            200,
+		NumChunks:            numChunks,
 		FileSizeBytes:        9000000,
 		StorageLengthInYears: storageLengthInYears,
 		PaymentStatus:        models.PaymentStatusConfirmed,
@@ -425,22 +436,7 @@ func (suite *ModelSuite) Test_WaitForAllChunks() {
 	}
 
 	mergedIndexes := []int{45}
-	chunkReqs := GenerateChunkRequests(200, u.GenesisHash)
-	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
-
-	vErr, err := u.StartUploadSession()
-	suite.Nil(err)
-	suite.False(vErr.HasAny())
-
-	privateKeys := []string{"0000000001"}
-
-	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-	for {
-		err = u.SetTreasureMessage(mergedIndexes[0], "SOMEVALUE", oyster_utils.TestValueTimeToLive)
-		if err == nil {
-			break
-		}
-	}
+	SessionSetUpForTest(&u, mergedIndexes, numChunks)
 
 	allChunksExist, err := u.WaitForAllChunks(500)
 	suite.True(allChunksExist)
@@ -682,21 +678,15 @@ func (suite *ModelSuite) Test_ProcessAndStoreChunkData_badger() {
 	models.ProcessAndStoreChunkData(chunkReqs, genHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	allMessagesPresent := true
-	treasureIdx := 5
-	treasurePresent := false
 
-	for i := 0; i < 11; i++ {
+	for i := models.MetaDataChunkIdx; i < 11; i++ {
 		chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(i))
-		if chunkData.RawMessage == "" && i != treasureIdx {
+		if chunkData.RawMessage == "" {
 			allMessagesPresent = false
-		}
-		if i == treasureIdx && chunkData.RawMessage != "" {
-			treasurePresent = true
 		}
 	}
 
 	suite.True(allMessagesPresent)
-	suite.False(treasurePresent)
 }
 
 func (suite *ModelSuite) Test_ProcessAndStoreChunkData_sql() {
@@ -710,23 +700,17 @@ func (suite *ModelSuite) Test_ProcessAndStoreChunkData_sql() {
 	models.ProcessAndStoreChunkData(chunkReqs, genHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	allMessagesPresent := true
-	treasureIdx := 5
-	treasurePresent := false
 
 	time.Sleep(5 * time.Second)
 
-	for i := 0; i < 11; i++ {
+	for i := models.MetaDataChunkIdx; i < 11; i++ {
 		chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, genHash, int64(i))
-		if chunkData.RawMessage == "" && i != treasureIdx {
+		if chunkData.RawMessage == "" {
 			allMessagesPresent = false
-		}
-		if i == treasureIdx && chunkData.RawMessage != "" {
-			treasurePresent = true
 		}
 	}
 
 	suite.True(allMessagesPresent)
-	suite.False(treasurePresent)
 }
 
 func (suite *ModelSuite) Test_BuildDataMapsForSession_badger() {
@@ -767,7 +751,7 @@ func (suite *ModelSuite) Test_BuildDataMapsForSession_badger() {
 	finishedHashes, _ := u.WaitForAllHashes(500)
 	suite.True(finishedHashes)
 
-	for i := 0; i < numChunks; i++ {
+	for i := models.MetaDataChunkIdx; i < numChunks; i++ {
 		singleChunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(i))
 
 		key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(i)})
@@ -814,7 +798,7 @@ func (suite *ModelSuite) Test_BuildDataMapsForSession_sql() {
 	finishedHashes, _ := u.WaitForAllHashes(500)
 	suite.True(finishedHashes)
 
-	for i := 0; i < numChunks; i++ {
+	for i := models.MetaDataChunkIdx; i < numChunks; i++ {
 		singleChunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(i))
 
 		key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(i)})
@@ -1128,10 +1112,10 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_alpha() {
 
 	chunkData, err = u.GetUnassignedChunksBySession(100)
 
-	suite.Equal(7, len(chunkData))
+	suite.Equal(8, len(chunkData))
 
 	for _, chunk := range chunkData {
-		suite.True(chunk.Idx >= 2 && chunk.Idx <= int64(u.NumChunks-1))
+		suite.True(chunk.Idx >= 2 && chunk.Idx <= int64(u.NumChunks))
 	}
 }
 
@@ -1173,10 +1157,10 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_beta() {
 
 	chunkData, err = u.GetUnassignedChunksBySession(100)
 
-	suite.Equal(7, len(chunkData))
+	suite.Equal(6, len(chunkData))
 
 	for _, chunk := range chunkData {
-		suite.True(chunk.Idx >= 0 && chunk.Idx <= 6)
+		suite.True(chunk.Idx >= models.MetaDataChunkIdx && chunk.Idx <= 6)
 	}
 }
 
@@ -1208,11 +1192,11 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_badger() {
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, 2)
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, models.MetaDataChunkIdx, 2)
 	chunkData, err :=
 		models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, bulkKeys)
 	suite.Nil(err)
-	suite.Equal(3, len(chunkData))
+	suite.Equal(2, len(chunkData))
 
 	u.MoveChunksToCompleted(chunkData)
 
@@ -1224,7 +1208,7 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_badger() {
 	chunkData, err =
 		models.GetMultiChunkData(oyster_utils.CompletedDir, u.GenesisHash, bulkKeys)
 	suite.Nil(err)
-	suite.Equal(3, len(chunkData))
+	suite.Equal(2, len(chunkData))
 }
 
 func (suite *ModelSuite) Test_MoveChunksToCompleted_sql() {
@@ -1255,11 +1239,11 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_sql() {
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, 2)
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, models.MetaDataChunkIdx, 2)
 	chunkData, err :=
 		models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, bulkKeys)
 	suite.Nil(err)
-	suite.Equal(3, len(chunkData))
+	suite.Equal(2, len(chunkData))
 
 	u.MoveChunksToCompleted(chunkData)
 
@@ -1271,7 +1255,7 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_sql() {
 	chunkData, err =
 		models.GetMultiChunkData(oyster_utils.CompletedDir, u.GenesisHash, bulkKeys)
 	suite.Nil(err)
-	suite.Equal(3, len(chunkData))
+	suite.Equal(2, len(chunkData))
 }
 
 func (suite *ModelSuite) Test_MoveAllChunksToCompleted_badger() {
@@ -1302,7 +1286,7 @@ func (suite *ModelSuite) Test_MoveAllChunksToCompleted_badger() {
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, int64(u.NumChunks-1))
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, models.MetaDataChunkIdx, int64(numChunks))
 	chunkData, err :=
 		models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, bulkKeys)
 	suite.Nil(err)
@@ -1349,9 +1333,11 @@ func (suite *ModelSuite) Test_MoveAllChunksToCompleted_sql() {
 	u.WaitForAllHashes(100)
 	u.WaitForAllMessages(100)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, 0, int64(u.NumChunks-1))
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, models.MetaDataChunkIdx, int64(numChunks))
+
 	chunkData, err :=
 		models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash, bulkKeys)
+
 	suite.Nil(err)
 	suite.Equal(numChunks, len(chunkData))
 
@@ -1459,11 +1445,11 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_not_co
 
 	bulkChunkData := SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	u.NextIdxToAttach = -1
+	u.NextIdxToAttach = models.BetaSessionStopIdx
 	u.NextIdxToVerify = int64(u.NumChunks - 3)
 	suite.DB.ValidateAndUpdate(&u)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), 0)
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), models.MetaDataChunkIdx)
 	bulkChunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		bulkKeys)
 	suite.Nil(err)
@@ -1498,11 +1484,11 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_comple
 
 	bulkChunkData := SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	u.NextIdxToAttach = -1
+	u.NextIdxToAttach = models.BetaSessionStopIdx
 	u.NextIdxToVerify = int64(u.NumChunks - 3)
 	suite.DB.ValidateAndUpdate(&u)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), 0)
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), models.MetaDataChunkIdx)
 	bulkChunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		bulkKeys)
 	suite.Nil(err)
@@ -1511,7 +1497,7 @@ func (suite *ModelSuite) Test_UpdateIndexWithVerifiedChunks_beta_treasure_comple
 
 	u.UpdateIndexWithVerifiedChunks(bulkChunkData)
 
-	suite.Equal(int64(-1), u.NextIdxToVerify)
+	suite.Equal(int64(models.BetaSessionStopIdx), u.NextIdxToVerify)
 }
 
 func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_alpha_treasure_not_complete() {
@@ -1644,7 +1630,7 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_beta_treasure_comple
 	u.NextIdxToAttach = int64(u.NumChunks - 3)
 	suite.DB.ValidateAndUpdate(&u)
 
-	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), 0)
+	bulkKeys := oyster_utils.GenerateBulkKeys(u.GenesisHash, int64(u.NumChunks-3), models.MetaDataChunkIdx)
 	bulkChunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		bulkKeys)
 	suite.Nil(err)
@@ -1653,7 +1639,7 @@ func (suite *ModelSuite) Test_UpdateIndexWithAttachedChunks_beta_treasure_comple
 
 	u.UpdateIndexWithAttachedChunks(bulkChunkData)
 
-	suite.Equal(int64(-1), u.NextIdxToAttach)
+	suite.Equal(int64(models.BetaSessionStopIdx), u.NextIdxToAttach)
 }
 
 func (suite *ModelSuite) Test_DownGradeIndexesOnUnattachedChunks_alpha() {
@@ -1706,7 +1692,7 @@ func (suite *ModelSuite) Test_DownGradeIndexesOnUnattachedChunks_beta() {
 	suite.DB.ValidateAndUpdate(&u)
 
 	chunkData := []oyster_utils.ChunkData{}
-	for i := 6; i > -1; i-- {
+	for i := 6; i > models.BetaSessionStopIdx; i-- {
 		chunkData = append(chunkData, oyster_utils.ChunkData{
 			Idx: int64(i),
 		})
@@ -1761,8 +1747,8 @@ func (suite *ModelSuite) Test_GetCompletedSessions() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(-1),
-		NextIdxToVerify:      int64(-1),
+		NextIdxToAttach:      int64(models.BetaSessionStopIdx),
+		NextIdxToVerify:      int64(models.BetaSessionStopIdx),
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
 		PaymentStatus:        models.PaymentStatusConfirmed,
@@ -1807,8 +1793,8 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(numChunks + 1),
-		NextIdxToVerify:      int64(numChunks + 1),
+		NextIdxToAttach:      int64(numChunks),
+		NextIdxToVerify:      int64(numChunks),
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
 		PaymentStatus:        models.PaymentStatusConfirmed,
@@ -1841,8 +1827,8 @@ func (suite *ModelSuite) Test_GetReadySessions() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(-1),
-		NextIdxToVerify:      int64(-1),
+		NextIdxToAttach:      int64(models.BetaSessionStopIdx),
+		NextIdxToVerify:      int64(models.BetaSessionStopIdx),
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
 		PaymentStatus:        models.PaymentStatusConfirmed,
@@ -1938,7 +1924,7 @@ func (suite *ModelSuite) Test_GetVerifiableSessions() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(-1),
+		NextIdxToAttach:      int64(models.BetaSessionStopIdx),
 		NextIdxToVerify:      5,
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
@@ -1955,8 +1941,8 @@ func (suite *ModelSuite) Test_GetVerifiableSessions() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(-1),
-		NextIdxToVerify:      int64(-1),
+		NextIdxToAttach:      int64(models.BetaSessionStopIdx),
+		NextIdxToVerify:      int64(models.BetaSessionStopIdx),
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
 		PaymentStatus:        models.PaymentStatusConfirmed,
@@ -2019,7 +2005,7 @@ func (suite *ModelSuite) Test_GetVerifiableSessions_session_not_old_enough() {
 		FileSizeBytes:        uint64(15000),
 		NumChunks:            numChunks,
 		StorageLengthInYears: 1,
-		NextIdxToAttach:      int64(-1),
+		NextIdxToAttach:      int64(models.BetaSessionStopIdx),
 		NextIdxToVerify:      5,
 		AllDataReady:         models.AllDataReady,
 		TreasureStatus:       models.TreasureInDataMapComplete,
@@ -2079,54 +2065,6 @@ func (suite *ModelSuite) Test_GetChunkForWebnodePoW() {
 	suite.Equal(oldNextIdxToAttach-1, session.NextIdxToAttach)
 }
 
-func (suite *ModelSuite) Test_SetTreasureMessage_badger() {
-	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
-	defer oyster_utils.ResetDataMapStorageMode()
-
-	treasureIdx := 3
-	treasurePayload := "SOMEPAYLOAD"
-
-	u := models.UploadSession{
-		Type:                 models.SessionTypeBeta,
-		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:        uint64(5000),
-		NumChunks:            5,
-		StorageLengthInYears: 2,
-	}
-
-	suite.DB.ValidateAndCreate(&u)
-
-	u.SetTreasureMessage(treasureIdx, treasurePayload, oyster_utils.TestValueTimeToLive)
-
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIdx))
-
-	suite.Equal(treasurePayload, chunkData.Message)
-}
-
-func (suite *ModelSuite) Test_SetTreasureMessage_sql() {
-	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
-	defer oyster_utils.ResetDataMapStorageMode()
-
-	treasureIdx := 4
-	treasurePayload := "SOMEPAYLOAD"
-
-	u := models.UploadSession{
-		Type:                 models.SessionTypeBeta,
-		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:        uint64(5000),
-		NumChunks:            5,
-		StorageLengthInYears: 2,
-	}
-
-	suite.DB.ValidateAndCreate(&u)
-
-	u.SetTreasureMessage(treasureIdx, treasurePayload, oyster_utils.TestValueTimeToLive)
-
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(treasureIdx))
-
-	suite.Equal(treasurePayload, chunkData.Message)
-}
-
 func (suite *ModelSuite) Test_GetSingleChunkData_badger() {
 	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
 	defer oyster_utils.ResetDataMapStorageMode()
@@ -2145,9 +2083,11 @@ func (suite *ModelSuite) Test_GetSingleChunkData_badger() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(models.MetaDataChunkIdx))
 
-	suite.Equal(u.GenesisHash, chunkData.Hash)
+	expectedHash := oyster_utils.HashHex(u.GenesisHash, sha256.New())
+
+	suite.Equal(expectedHash, chunkData.Hash)
 	suite.NotEqual("", chunkData.Message)
 }
 
@@ -2169,9 +2109,11 @@ func (suite *ModelSuite) Test_GetSingleChunkData_sql() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(0))
+	chunkData := models.GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash, int64(models.MetaDataChunkIdx))
 
-	suite.Equal(u.GenesisHash, chunkData.Hash)
+	expectedHash := oyster_utils.HashHex(u.GenesisHash, sha256.New())
+
+	suite.Equal(expectedHash, chunkData.Hash)
 	suite.NotEqual("", chunkData.Message)
 }
 
@@ -2193,9 +2135,9 @@ func (suite *ModelSuite) Test_GetMultiChunkData_badger() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
-	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
-	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(models.MetaDataChunkIdx)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(mergedIndexes[0])})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks)})
 
 	chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		&oyster_utils.KVKeys{key1, key2, key3})
@@ -2229,9 +2171,9 @@ func (suite *ModelSuite) Test_GetMultiChunkData_sql() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
-	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
-	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(models.MetaDataChunkIdx)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(mergedIndexes[0])})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks)})
 
 	chunkData, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		&oyster_utils.KVKeys{key1, key2, key3})
@@ -2263,9 +2205,9 @@ func (suite *ModelSuite) Test_GetMultiChunkDataFromAnyDB_badger() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
-	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
-	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(models.MetaDataChunkIdx)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(mergedIndexes[0])})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks)})
 
 	chunkDataInProgress, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		&oyster_utils.KVKeys{key1, key2, key3})
@@ -2344,9 +2286,9 @@ func (suite *ModelSuite) Test_GetMultiChunkDataFromAnyDB_sql() {
 
 	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
-	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(0)})
-	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(5)})
-	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks - 1)})
+	key1 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(models.MetaDataChunkIdx)})
+	key2 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(mergedIndexes[0])})
+	key3 := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(u.NumChunks)})
 
 	chunkDataInProgress, err := models.GetMultiChunkData(oyster_utils.InProgressDir, u.GenesisHash,
 		&oyster_utils.KVKeys{key1, key2, key3})
@@ -2433,4 +2375,56 @@ func (suite *ModelSuite) Test_GetSessionsWithIncompleteData() {
 	suite.Nil(err)
 	suite.Equal(1, len(incompleteSessions))
 	suite.Equal(u2.GenesisHash, incompleteSessions[0].GenesisHash)
+}
+
+func (suite *ModelSuite) Test_CreateTreasures() {
+	numChunks := 9
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+		AllDataReady:         models.AllDataReady,
+	}
+
+	mergedIndexes := []int{5}
+
+	u.StartUploadSession()
+	privateKeys := []string{}
+
+	for i := 0; i < len(mergedIndexes); i++ {
+		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
+	}
+
+	u.PaymentStatus = models.PaymentStatusConfirmed
+	models.DB.ValidateAndUpdate(&u)
+	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+	chunkReqs := GenerateChunkRequests(u.NumChunks, u.GenesisHash)
+
+	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
+
+	treasures := []models.Treasure{}
+
+	models.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+
+	suite.Equal(0, len(treasures))
+
+	u.CreateTreasures()
+
+	treasures = []models.Treasure{}
+
+	models.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+
+	obfuscatedHash := oyster_utils.HashHex(u.GenesisHash, sha512.New384())
+	expectedAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
+
+	suite.Equal(1, len(treasures))
+	suite.Equal(expectedAddr, treasures[0].Address)
+	suite.Equal(int64(0), treasures[0].Idx)
+	suite.Equal(int64(mergedIndexes[0]), treasures[0].EncryptionIndex)
+
+	// TODO:  Test decrypting the payload
 }

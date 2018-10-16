@@ -27,7 +27,7 @@ func CheckPaymentToAlpha() {
 		[]models.PaymentStatus{models.BrokerTxAlphaPaymentPending})
 
 	for _, brokerTx := range brokerTxs {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(brokerTx.ETHAddrAlpha))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(brokerTx.ETHAddrAlpha))
 		if balance.Int64() > 0 && balance.Int64() >= brokerTx.GetTotalCostInWei().Int64() {
 			previousPaymentStatus := brokerTx.PaymentStatus
 
@@ -75,9 +75,9 @@ func SendGasToAlphaTransactionAddress() {
 		}
 
 		_, _, _, err = EthWrapper.SendETH(
-			services.MainWalletAddress,
-			services.MainWalletPrivateKey,
-			services.StringToAddress(brokerTx.ETHAddrAlpha),
+			oyster_utils.MainWalletAddress,
+			oyster_utils.MainWalletPrivateKey,
+			oyster_utils.StringToAddress(brokerTx.ETHAddrAlpha),
 			gasToSend)
 
 		if err != nil {
@@ -123,9 +123,9 @@ func CheckGasPayments() {
 /* addressHasEnoughGas will be called on the alpha address to determine if it has enough
 gas to send the PRL to the beta address */
 func addressHasEnoughGas(address string) (bool, *big.Int, error) {
-	gasBalance := EthWrapper.CheckETHBalance(services.StringToAddress(address))
+	gasBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(address))
 
-	gasNeeded, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLSend)
+	gasNeeded, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitPRLSend)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return false, big.NewInt(0), err
@@ -146,7 +146,7 @@ func SendPaymentToBeta() {
 		[]models.PaymentStatus{models.BrokerTxGasPaymentConfirmed})
 
 	for _, brokerTx := range brokerTxs {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(brokerTx.ETHAddrAlpha))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(brokerTx.ETHAddrAlpha))
 		checkAndSendHalfPrlToBeta(brokerTx, balance)
 	}
 }
@@ -160,7 +160,7 @@ func checkAndSendHalfPrlToBeta(brokerTx models.BrokerBrokerTransaction, balance 
 		return
 	}
 
-	betaAddr := services.StringToAddress(brokerTx.ETHAddrBeta)
+	betaAddr := oyster_utils.StringToAddress(brokerTx.ETHAddrBeta)
 	betaBalance := EthWrapper.CheckPRLBalance(betaAddr)
 	if betaBalance.Int64() > 0 {
 		brokerTx.PaymentStatus = models.BrokerTxBetaPaymentConfirmed
@@ -173,15 +173,15 @@ func checkAndSendHalfPrlToBeta(brokerTx models.BrokerBrokerTransaction, balance 
 	splitAmount.Set(balance)
 	splitAmount.Div(balance, big.NewInt(2))
 
-	privateKey, err := services.StringToPrivateKey(brokerTx.DecryptEthKey())
+	privateKey, err := oyster_utils.StringToPrivateKey(brokerTx.DecryptEthKey())
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 	}
 
 	callMsg, _ := EthWrapper.CreateSendPRLMessage(
-		services.StringToAddress(brokerTx.ETHAddrAlpha),
+		oyster_utils.StringToAddress(brokerTx.ETHAddrAlpha),
 		privateKey,
-		services.StringToAddress(brokerTx.ETHAddrBeta), splitAmount)
+		oyster_utils.StringToAddress(brokerTx.ETHAddrBeta), splitAmount)
 
 	sendSuccess, _, _ := EthWrapper.SendPRLFromOyster(callMsg)
 

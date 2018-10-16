@@ -52,7 +52,7 @@ func CheckPRLTransactions() {
 	}
 
 	for _, pending := range prlsPending {
-		prlBalance := EthWrapper.CheckPRLBalance(services.StringToAddress(pending.ETHAddr))
+		prlBalance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(pending.ETHAddr))
 		expectedPRLBalance := pending.GetPRLAmount()
 		if prlBalance.Int64() > 0 && prlBalance.String() == expectedPRLBalance.String() ||
 			prlBalance.Int64() >= expectedPRLBalance.Int64() {
@@ -84,7 +84,7 @@ func CheckGasTransactions() {
 	}
 
 	for _, pending := range gasPending {
-		ethBalance := EthWrapper.CheckETHBalance(services.StringToAddress(pending.ETHAddr))
+		ethBalance := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(pending.ETHAddr))
 		if ethBalance.Int64() > 0 {
 			fmt.Println("ETH (gas) transaction confirmed in CheckGasTransactions()")
 			pending.PRLStatus = models.GasConfirmed
@@ -114,7 +114,7 @@ func CheckBuryTransactions() {
 	}
 
 	for _, pending := range buryPending {
-		buried, err := EthWrapper.CheckBuriedState(services.StringToAddress(pending.ETHAddr))
+		buried, err := EthWrapper.CheckBuriedState(oyster_utils.StringToAddress(pending.ETHAddr))
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			continue
@@ -161,7 +161,7 @@ func CheckForReclaimableGas(thresholdTime time.Time) {
 
 	for _, reclaimable := range reclaimableAddresses {
 		worthReclaimingGas, gasToReclaim, err := EthWrapper.CheckIfWorthReclaimingGas(
-			services.StringToAddress(reclaimable.ETHAddr), services.GasLimitETHSend)
+			oyster_utils.StringToAddress(reclaimable.ETHAddr), oyster_utils.GasLimitETHSend)
 		if err != nil {
 			fmt.Println("Error determining if it's worth it to retrieve leftover ETH from " +
 				reclaimable.ETHAddr +
@@ -186,9 +186,9 @@ func CheckForReclaimableGas(thresholdTime time.Time) {
 			continue
 		}
 
-		privateKey, err := services.StringToPrivateKey(reclaimable.DecryptTreasureEthKey())
+		privateKey, err := oyster_utils.StringToPrivateKey(reclaimable.DecryptTreasureEthKey())
 
-		reclaimingSuccess := EthWrapper.ReclaimGas(services.StringToAddress(reclaimable.ETHAddr),
+		reclaimingSuccess := EthWrapper.ReclaimGas(oyster_utils.StringToAddress(reclaimable.ETHAddr),
 			privateKey, gasToReclaim)
 
 		if reclaimingSuccess {
@@ -348,7 +348,7 @@ func PurgeFinishedTreasure() {
 
 func sendPRL(treasureToBury models.Treasure) {
 
-	balance := EthWrapper.CheckPRLBalance(services.MainWalletAddress)
+	balance := EthWrapper.CheckPRLBalance(oyster_utils.MainWalletAddress)
 	if balance.Int64() <= 0 || balance.Int64() < treasureToBury.GetPRLAmount().Int64() {
 		errorString := "Cannot send PRL to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(treasureToBury.GetPRLAmount().Int64())
@@ -359,9 +359,9 @@ func sendPRL(treasureToBury models.Treasure) {
 
 	amount := *treasureToBury.GetPRLAmount()
 
-	callMsg, _ := EthWrapper.CreateSendPRLMessage(services.MainWalletAddress,
-		services.MainWalletPrivateKey,
-		services.StringToAddress(treasureToBury.ETHAddr), amount)
+	callMsg, _ := EthWrapper.CreateSendPRLMessage(oyster_utils.MainWalletAddress,
+		oyster_utils.MainWalletPrivateKey,
+		oyster_utils.StringToAddress(treasureToBury.ETHAddr), amount)
 
 	sendSuccess, txHash, nonce := EthWrapper.SendPRLFromOyster(callMsg)
 	if !sendSuccess {
@@ -396,14 +396,14 @@ func sendPRL(treasureToBury models.Treasure) {
 
 func sendGas(treasureToBury models.Treasure) {
 
-	gasToSend, err := EthWrapper.CalculateGasNeeded(services.GasLimitPRLBury)
+	gasToSend, err := EthWrapper.CalculateGasNeeded(oyster_utils.GasLimitPRLBury)
 	if err != nil {
 		fmt.Println("Cannot send Gas to treasure address: " + err.Error())
 		// already captured error in upstream function
 		return
 	}
 
-	balance := EthWrapper.CheckETHBalance(services.MainWalletAddress)
+	balance := EthWrapper.CheckETHBalance(oyster_utils.MainWalletAddress)
 	if balance.Int64() < gasToSend.Int64() {
 		errorString := "Cannot send Gas to treasure address due to insufficient balance in wallet.  balance: " +
 			fmt.Sprint(balance.Int64()) + "; amount_to_send: " + fmt.Sprint(gasToSend.Int64())
@@ -412,7 +412,7 @@ func sendGas(treasureToBury models.Treasure) {
 		return
 	}
 
-	_, txHash, nonce, err := EthWrapper.SendETH(services.MainWalletAddress, services.MainWalletPrivateKey, services.StringToAddress(treasureToBury.ETHAddr), gasToSend)
+	_, txHash, nonce, err := EthWrapper.SendETH(oyster_utils.MainWalletAddress, oyster_utils.MainWalletPrivateKey, oyster_utils.StringToAddress(treasureToBury.ETHAddr), gasToSend)
 	if err != nil {
 		errorString := "\nFailure sending " + fmt.Sprint(gasToSend.Int64()) + " Gas to " + treasureToBury.ETHAddr
 		err := errors.New(errorString)
@@ -444,8 +444,8 @@ func sendGas(treasureToBury models.Treasure) {
 
 func buryPRL(treasureToBury models.Treasure) {
 
-	balanceOfPRL := EthWrapper.CheckPRLBalance(services.StringToAddress(treasureToBury.ETHAddr))
-	balanceOfETH := EthWrapper.CheckETHBalance(services.StringToAddress(treasureToBury.ETHAddr))
+	balanceOfPRL := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(treasureToBury.ETHAddr))
+	balanceOfETH := EthWrapper.CheckETHBalance(oyster_utils.StringToAddress(treasureToBury.ETHAddr))
 
 	if balanceOfPRL.Int64() <= 0 || balanceOfETH.Int64() <= 0 {
 		errorString := "Cannot bury treasure address due to insufficient balance in treasure wallet (" +
@@ -456,14 +456,14 @@ func buryPRL(treasureToBury models.Treasure) {
 		return
 	}
 
-	privateKey, err := services.StringToPrivateKey(treasureToBury.DecryptTreasureEthKey())
+	privateKey, err := oyster_utils.StringToPrivateKey(treasureToBury.DecryptTreasureEthKey())
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return
 	}
 
-	callMsg := services.OysterCallMsg{
-		From:       services.StringToAddress(treasureToBury.ETHAddr),
+	callMsg := oyster_utils.OysterCallMsg{
+		From:       oyster_utils.StringToAddress(treasureToBury.ETHAddr),
 		PrivateKey: *privateKey,
 	}
 
@@ -499,21 +499,21 @@ func buryPRL(treasureToBury models.Treasure) {
 }
 
 func waitForPRL(treasureToBury models.Treasure) {
-	waitForConfirmation(treasureToBury, treasureToBury.PRLTxHash, treasureToBury.PRLTxNonce, services.PRLTransfer)
+	waitForConfirmation(treasureToBury, treasureToBury.PRLTxHash, treasureToBury.PRLTxNonce, oyster_utils.PRLTransfer)
 }
 
 func waitForGas(treasureToBury models.Treasure) {
-	waitForConfirmation(treasureToBury, treasureToBury.GasTxHash, treasureToBury.GasTxNonce, services.EthTransfer)
+	waitForConfirmation(treasureToBury, treasureToBury.GasTxHash, treasureToBury.GasTxNonce, oyster_utils.EthTransfer)
 }
 
 func waitForBury(treasureToBury models.Treasure) {
-	waitForConfirmation(treasureToBury, treasureToBury.BuryTxHash, treasureToBury.BuryTxNonce, services.PRLBury)
+	waitForConfirmation(treasureToBury, treasureToBury.BuryTxHash, treasureToBury.BuryTxNonce, oyster_utils.PRLBury)
 }
 
 // TODO: get this to work and un-comment out the calls to waitForPRL, waitForGas, and waitForBury
-func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce int64, txType services.TxType) {
+func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce int64, txType oyster_utils.TxType) {
 
-	success := EthWrapper.WaitForConfirmation(services.StringToTxHash(txHash), SecondsDelayForETHPolling)
+	success := EthWrapper.WaitForConfirmation(oyster_utils.StringToTxHash(txHash), SecondsDelayForETHPolling)
 
 	// we passed the row by value, get it again in case it has changed
 	treasureRow := models.Treasure{}
@@ -538,18 +538,18 @@ func waitForConfirmation(treasureToBury models.Treasure, txHash string, txNonce 
 	}
 }
 
-func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
+func updateStatusSuccess(txType oyster_utils.TxType, treasureRow models.Treasure) models.PRLStatus {
 	var newStatus models.PRLStatus
 	switch txType {
-	case services.PRLTransfer:
+	case oyster_utils.PRLTransfer:
 		if treasureRow.PRLStatus == models.PRLPending || treasureRow.PRLStatus == models.PRLError {
 			newStatus = models.PRLConfirmed
 		}
-	case services.EthTransfer:
+	case oyster_utils.EthTransfer:
 		if treasureRow.PRLStatus == models.GasPending || treasureRow.PRLStatus == models.GasError {
 			newStatus = models.GasConfirmed
 		}
-	case services.PRLBury:
+	case oyster_utils.PRLBury:
 		if treasureRow.PRLStatus == models.BuryPending || treasureRow.PRLStatus == models.BuryError {
 			newStatus = models.BuryConfirmed
 		}
@@ -559,18 +559,18 @@ func updateStatusSuccess(txType services.TxType, treasureRow models.Treasure) mo
 	return newStatus
 }
 
-func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) models.PRLStatus {
+func updateStatusFailed(txType oyster_utils.TxType, treasureRow models.Treasure) models.PRLStatus {
 	var newStatus models.PRLStatus
 	switch txType {
-	case services.PRLTransfer:
+	case oyster_utils.PRLTransfer:
 		if treasureRow.PRLStatus == models.PRLPending {
 			newStatus = models.PRLError
 		}
-	case services.EthTransfer:
+	case oyster_utils.EthTransfer:
 		if treasureRow.PRLStatus == models.GasPending {
 			newStatus = models.GasError
 		}
-	case services.PRLBury:
+	case oyster_utils.PRLBury:
 		if treasureRow.PRLStatus == models.BuryPending {
 			newStatus = models.BuryError
 		}
@@ -581,23 +581,23 @@ func updateStatusFailed(txType services.TxType, treasureRow models.Treasure) mod
 }
 
 // logInvalidTxType Utility to log txType errors and prlStatus
-func logInvalidTxType(txType services.TxType, status models.PRLStatus) {
+func logInvalidTxType(txType oyster_utils.TxType, status models.PRLStatus) {
 	txString := txToString(txType)
 	errorMsg := fmt.Sprintf("not a valid tx type (%v) in bury_treasure_addresses waitForConfirmation  status : %v", txString, status)
 	oyster_utils.LogIfError(errors.New(errorMsg), nil)
 }
 
 // txToString Utility to return the transaction type
-func txToString(value services.TxType) string {
+func txToString(value oyster_utils.TxType) string {
 	status := "Not Found"
 	switch value {
-	case services.PRLTransfer:
+	case oyster_utils.PRLTransfer:
 		status = "PRL Transfer"
-	case services.EthTransfer:
+	case oyster_utils.EthTransfer:
 		status = "Ether Transfer"
-	case services.PRLBury:
+	case oyster_utils.PRLBury:
 		status = "PRL Bury"
-	case services.PRLClaim:
+	case oyster_utils.PRLClaim:
 		status = "PRL Claim"
 	}
 	return status

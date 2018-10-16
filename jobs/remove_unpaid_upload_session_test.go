@@ -2,12 +2,13 @@ package jobs_test
 
 import (
 	"math/big"
+	"math/rand"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -20,7 +21,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_badger() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -38,6 +39,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_badger() {
 }
 
 func (suite *JobsSuite) Test_RemoveUnpaid_allPaid_badger() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
 	defer oyster_utils.ResetDataMapStorageMode()
 
@@ -58,7 +62,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_badger() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
@@ -77,7 +81,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_badger() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -102,7 +106,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_sql() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -139,7 +143,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_sql() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
@@ -158,7 +162,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_sql() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = oyster_utils.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -186,10 +190,14 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 
 	_, err := suite.DB.ValidateAndCreate(&session)
 	suite.Nil(err)
-	models.BuildDataMapsForSession(session.GenesisHash, session.NumChunks+1)
+	models.BuildDataMapsForSession(session.GenesisHash, session.NumChunks)
 
 	mergedIndexes := []int{3}
-	privateKeys := []string{"0000000001"}
+	key := ""
+	for j := 0; j < 10; j++ {
+		key += strconv.Itoa(rand.Intn(8) + 1)
+	}
+	privateKeys := []string{key}
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 	chunkReqs1 := GenerateChunkRequests(session.NumChunks, session.GenesisHash)
@@ -197,11 +205,7 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 
 	session.WaitForAllHashes(500)
 
-	treasureIndexMap, err := session.GetTreasureMap()
-
-	for _, entry := range treasureIndexMap {
-		session.SetTreasureMessage(entry.Idx, "someDummyMessage", oyster_utils.TestValueTimeToLive)
-	}
+	session.CreateTreasures()
 
 	session.TreasureStatus = models.TreasureInDataMapComplete
 	models.DB.ValidateAndSave(&session)
@@ -247,9 +251,10 @@ func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMa
 
 	if expectToHaveDataMap {
 
-		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, 0, int64(sessions[0].NumChunks-1))
+		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, 0, int64(sessions[0].NumChunks))
 
 		chunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, sessions[0].GenesisHash, keys)
+
 		suite.True(len(chunkData) == sessions[0].NumChunks)
 		for _, dataMap := range chunkData {
 			suite.Equal(expectedGenesisHash, dataMap.GenesisHash)

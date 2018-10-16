@@ -83,8 +83,8 @@ func (suite *JobsSuite) Test_StoreCompletedGenesisHashes() {
 	// set first session's indexes so that it will be regarded as complete
 	firstSession := models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).First(&firstSession)
-	firstSession.NextIdxToAttach = -1
-	firstSession.NextIdxToVerify = -1
+	firstSession.NextIdxToAttach = models.BetaSessionStopIdx
+	firstSession.NextIdxToVerify = models.BetaSessionStopIdx
 	firstSession.AllDataReady = models.AllDataReady
 	firstSession.PaymentStatus = models.PaymentStatusConfirmed
 	firstSession.TreasureStatus = models.TreasureInDataMapComplete

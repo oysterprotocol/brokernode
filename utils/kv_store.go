@@ -427,7 +427,6 @@ func GetMessageData(prefix string, genesisHash string, chunkIdx int64) string {
 	if v, hasKey := (*msgValues)[key]; hasKey {
 		rawMessage = v
 	}
-
 	return rawMessage
 }
 
@@ -628,7 +627,7 @@ func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 
 		if e == badger.ErrTxnTooBig {
 			e = nil
-			if commitErr := txn.Commit(nil); commitErr != nil {
+			if commitErr := txn.Commit(); commitErr != nil {
 				e = commitErr
 			} else {
 				txn = db.NewTransaction(true)
@@ -644,7 +643,7 @@ func BatchSetToUniqueDB(dbID []string, kvs *KVPairs, ttl time.Duration) error {
 
 	defer txn.Discard()
 	if err == nil {
-		err = txn.Commit(nil)
+		err = txn.Commit()
 	}
 	LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
@@ -672,7 +671,7 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 
 		if e == badger.ErrTxnTooBig {
 			e = nil
-			if commitErr := txn.Commit(nil); commitErr != nil {
+			if commitErr := txn.Commit(); commitErr != nil {
 				e = commitErr
 			} else {
 				txn = badgerDB.NewTransaction(true)
@@ -688,7 +687,7 @@ func BatchSet(kvs *KVPairs, ttl time.Duration) error {
 
 	defer txn.Discard()
 	if err == nil {
-		err = txn.Commit(nil)
+		err = txn.Commit()
 	}
 	LogIfError(err, map[string]interface{}{"batchSize": len(*kvs)})
 	return err
@@ -717,7 +716,7 @@ func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
 
 		if e == badger.ErrTxnTooBig {
 			e = nil
-			if commitErr := txn.Commit(nil); commitErr != nil {
+			if commitErr := txn.Commit(); commitErr != nil {
 				e = commitErr
 			} else {
 				txn = db.NewTransaction(true)
@@ -733,7 +732,7 @@ func BatchDeleteFromUniqueDB(dbID []string, ks *KVKeys) error {
 
 	defer txn.Discard()
 	if err == nil {
-		err = txn.Commit(nil)
+		err = txn.Commit()
 	}
 
 	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})
@@ -756,7 +755,7 @@ func BatchDelete(ks *KVKeys) error {
 
 		if e == badger.ErrTxnTooBig {
 			e = nil
-			if commitErr := txn.Commit(nil); commitErr != nil {
+			if commitErr := txn.Commit(); commitErr != nil {
 				e = commitErr
 			} else {
 				txn = badgerDB.NewTransaction(true)
@@ -772,7 +771,7 @@ func BatchDelete(ks *KVKeys) error {
 
 	defer txn.Discard()
 	if err == nil {
-		err = txn.Commit(nil)
+		err = txn.Commit()
 	}
 
 	LogIfError(err, map[string]interface{}{"batchSize": len(*ks)})

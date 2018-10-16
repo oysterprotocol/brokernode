@@ -4,7 +4,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math/big"
 	"time"
@@ -26,7 +25,7 @@ func resetTestVariables_checkBetaPayments(suite *JobsSuite) {
 	hasCalledCalculateGas_checkBetaPayments = false
 	hasCalledSendETH_checkBetaPayments = false
 
-	jobs.EthWrapper = services.EthWrapper
+	jobs.EthWrapper = oyster_utils.EthWrapper
 }
 
 func (suite *JobsSuite) Test_CheckPaymentToBeta_payment_arrived() {

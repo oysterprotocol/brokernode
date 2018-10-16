@@ -28,7 +28,7 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 	}
 
 	for _, session := range sessions {
-		balance := EthWrapper.CheckPRLBalance(services.StringToAddress(session.ETHAddrAlpha.String))
+		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			continue
 		}

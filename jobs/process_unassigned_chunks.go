@@ -147,15 +147,15 @@ func SkipVerificationOfFirstChunks(chunks []oyster_utils.ChunkData, session mode
 	var verifyMaxIdx int
 
 	if session.Type == models.SessionTypeAlpha {
-		skipVerifyMinIdx = 0
-		skipVerifyMaxIdx = lenOfChunksToSkipVerifying - 1
-		verifyMinIdx = lenOfChunksToSkipVerifying
-		verifyMaxIdx = numChunks - 1
+		skipVerifyMinIdx = models.MetaDataChunkIdx
+		skipVerifyMaxIdx = lenOfChunksToSkipVerifying
+		verifyMinIdx = lenOfChunksToSkipVerifying + 1
+		verifyMaxIdx = numChunks
 	} else {
-		skipVerifyMinIdx = numChunks - lenOfChunksToSkipVerifying
-		skipVerifyMaxIdx = numChunks - 1
-		verifyMinIdx = 0
-		verifyMaxIdx = lenOfChunksToVerify - 1
+		skipVerifyMinIdx = numChunks - lenOfChunksToSkipVerifying + 1
+		skipVerifyMaxIdx = numChunks
+		verifyMinIdx = models.MetaDataChunkIdx
+		verifyMaxIdx = lenOfChunksToVerify
 	}
 
 	if skipVerifyMinIdx == skipVerifyMaxIdx {

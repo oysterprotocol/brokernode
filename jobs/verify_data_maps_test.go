@@ -14,6 +14,9 @@ var (
 )
 
 func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
 	// make suite available inside mock methods
 	Suite = *suite
 
@@ -56,7 +59,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 
 	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
-	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, models.MetaDataChunkIdx,
 		int64(uploadSession1.NumChunks))
 	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
@@ -64,7 +67,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 		session1Keys)
 
 	// check that it is the length we expect
-	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(numChunks, len(chunksSession1InProgress))
 	suite.Equal(0, len(chunksSession1Completed))
 
 	// set all data maps to need verifying
@@ -75,11 +78,11 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 	session.AllDataReady = models.AllDataReady
 	suite.DB.ValidateAndUpdate(&session)
 
-	session.NextIdxToAttach = -1
-	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	session.NextIdxToAttach = models.BetaSessionStopIdx
+	session.NextIdxToVerify = int64(session.NumChunks)
 	suite.DB.ValidateAndUpdate(&session)
 
-	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+	suite.Equal(int64(session.NumChunks), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
@@ -90,12 +93,14 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_beta() {
 	session = models.UploadSession{}
 	suite.DB.First(&session)
 
-	suite.Equal(int64(-1), session.NextIdxToVerify)
+	suite.Equal(int64(models.BetaSessionStopIdx), session.NextIdxToVerify)
 
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_verify)
 }
 
 func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	// make suite available inside mock methods
 	Suite = *suite
 
@@ -142,7 +147,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 
 	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
-	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, models.MetaDataChunkIdx,
 		int64(uploadSession1.NumChunks))
 	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
@@ -150,7 +155,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 		session1Keys)
 
 	// check that it is the length we expect
-	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(numChunks, len(chunksSession1InProgress))
 	suite.Equal(0, len(chunksSession1Completed))
 
 	// set all data maps to need verifying
@@ -161,11 +166,11 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 	session.AllDataReady = models.AllDataReady
 	suite.DB.ValidateAndUpdate(&session)
 
-	session.NextIdxToAttach = -1
-	session.NextIdxToVerify = int64(session.NumChunks - 1)
+	session.NextIdxToAttach = models.BetaSessionStopIdx
+	session.NextIdxToVerify = int64(session.NumChunks)
 	suite.DB.ValidateAndUpdate(&session)
 
-	suite.Equal(int64(session.NumChunks-1), session.NextIdxToVerify)
+	suite.Equal(int64(session.NumChunks), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
@@ -182,6 +187,8 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_beta() {
 }
 
 func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	// make suite available inside mock methods
 	Suite = *suite
 
@@ -224,7 +231,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 
 	SessionSetUpForTest(uploadSession1, []int{5}, uploadSession1.NumChunks)
 
-	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, models.MetaDataChunkIdx,
 		int64(uploadSession1.NumChunks))
 	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
@@ -232,7 +239,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 		session1Keys)
 
 	// check that it is the length we expect
-	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(numChunks, len(chunksSession1InProgress))
 	suite.Equal(0, len(chunksSession1Completed))
 
 	uploadSession1.PaymentStatus = models.PaymentStatusConfirmed
@@ -241,10 +248,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 	suite.DB.ValidateAndUpdate(uploadSession1)
 
 	uploadSession1.NextIdxToAttach = int64(uploadSession1.NumChunks)
-	uploadSession1.NextIdxToVerify = 0
+	uploadSession1.NextIdxToVerify = models.MetaDataChunkIdx
 	suite.DB.ValidateAndUpdate(uploadSession1)
 
-	suite.Equal(int64(0), uploadSession1.NextIdxToVerify)
+	suite.Equal(int64(models.MetaDataChunkIdx), uploadSession1.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
@@ -260,6 +267,8 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_all_alpha() {
 }
 
 func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
 	// make suite available inside mock methods
 	Suite = *suite
 
@@ -306,7 +315,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 
 	SessionSetUpForTest(&uploadSession1, []int{5}, uploadSession1.NumChunks)
 
-	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, models.MetaDataChunkIdx,
 		int64(uploadSession1.NumChunks))
 	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
@@ -314,7 +323,7 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 		session1Keys)
 
 	// check that it is the length we expect
-	suite.Equal(numChunks+1, len(chunksSession1InProgress))
+	suite.Equal(numChunks, len(chunksSession1InProgress))
 	suite.Equal(0, len(chunksSession1Completed))
 
 	// set all data maps to need verifying
@@ -326,10 +335,10 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	suite.DB.ValidateAndUpdate(&session)
 
 	session.NextIdxToAttach = int64(session.NumChunks)
-	session.NextIdxToVerify = 0
+	session.NextIdxToVerify = models.MetaDataChunkIdx
 	suite.DB.ValidateAndUpdate(&session)
 
-	suite.Equal(int64(0), session.NextIdxToVerify)
+	suite.Equal(int64(models.MetaDataChunkIdx), session.NextIdxToVerify)
 
 	// call method under test, passing in our mock of our iota methods
 	jobs.VerifyDataMaps(IotaMock, jobs.PrometheusWrapper, time.Now().Add(1*time.Minute))
@@ -341,5 +350,5 @@ func (suite *JobsSuite) Test_VerifyDataMaps_verify_some_alpha() {
 	suite.DB.First(&session)
 
 	// we only set 3 to be matching the tangle
-	suite.Equal(int64(3), session.NextIdxToVerify)
+	suite.Equal(int64(3+models.MetaDataChunkIdx), session.NextIdxToVerify)
 }

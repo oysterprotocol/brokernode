@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math/big"
 	"time"
@@ -593,9 +592,9 @@ func resetTestVariables() {
 	hasCalledReclaimGas = false
 	hasCalledCheckIfWorthReclaimingGas = false
 
-	jobs.EthWrapper = services.Eth{
-		GenerateEthAddr:      services.EthWrapper.GenerateEthAddr,
-		CreateSendPRLMessage: services.EthWrapper.CreateSendPRLMessage,
+	jobs.EthWrapper = oyster_utils.Eth{
+		GenerateEthAddr:      oyster_utils.EthWrapper.GenerateEthAddr,
+		CreateSendPRLMessage: oyster_utils.EthWrapper.CreateSendPRLMessage,
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckPRLBalance = true
 			return big.NewInt(600000000000000000)
@@ -604,7 +603,7 @@ func resetTestVariables() {
 			hasCalledCheckETHBalance = true
 			return big.NewInt(600000000000000000)
 		},
-		SendPRLFromOyster: func(msg services.OysterCallMsg) (bool, string, int64) {
+		SendPRLFromOyster: func(msg oyster_utils.OysterCallMsg) (bool, string, int64) {
 			SentToSendPRLFromOyster++
 			hasCalledSendPRLFromOyster = true
 			return false, "some__transaction_hash", 0

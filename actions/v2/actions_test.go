@@ -15,6 +15,6 @@ func (suite *ActionSuite) SetupTest() {
 
 	suite.Nil(oyster_utils.InitKvStore())
 
-	EthWrapper = services.EthWrapper
+	EthWrapper = oyster_utils.EthWrapper
 	IotaWrapper = services.IotaWrapper
 }

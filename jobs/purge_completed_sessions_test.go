@@ -9,12 +9,22 @@ import (
 
 func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
-	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
 	defer oyster_utils.ResetDataMapStorageMode()
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
 
-	// running these tests in TestModeNoTreasure so we will not expect
-	// numChunks + 1 in subsequent tests, just numChunks
-	oyster_utils.SetBrokerMode(oyster_utils.TestModeNoTreasure)
+	runTest(suite)
+
+	suite.DB.RawQuery("DELETE from upload_sessions").All(&[]models.UploadSession{})
+	suite.DB.RawQuery("DELETE from treasures").All(&[]models.Treasure{})
+	suite.DB.RawQuery("DELETE from completed_uploads").All(&[]models.CompletedUpload{})
+
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+
+	runTest(suite)
+}
+
+func runTest(suite *JobsSuite) {
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
 	fileBytesCount := uint64(30000)
@@ -31,7 +41,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	SessionSetUpForTest(&uploadSession1, []int{15, 20}, uploadSession1.NumChunks)
+	SessionSetUpForTest(&uploadSession1, []int{15, 20}, numChunks)
 
 	uploadSession2 := models.UploadSession{
 		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
@@ -43,7 +53,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	SessionSetUpForTest(&uploadSession2, []int{11, 22}, uploadSession2.NumChunks)
+	SessionSetUpForTest(&uploadSession2, []int{11, 22}, numChunks)
 
 	uploadSession3 := models.UploadSession{
 		GenesisHash:   oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
@@ -55,7 +65,7 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		ETHPrivateKey: privateKey,
 	}
 
-	SessionSetUpForTest(&uploadSession3, []int{12, 18}, uploadSession3.NumChunks)
+	SessionSetUpForTest(&uploadSession3, []int{12, 18}, numChunks)
 
 	finished1, _ := uploadSession1.WaitForAllHashes(5)
 	finished2, _ := uploadSession2.WaitForAllHashes(5)
@@ -84,22 +94,22 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 		suite.DB.ValidateAndUpdate(&session)
 	}
 
-	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, 0,
-		int64(uploadSession1.NumChunks-1))
+	session1Keys := oyster_utils.GenerateBulkKeys(uploadSession1.GenesisHash, models.MetaDataChunkIdx,
+		int64(uploadSession1.NumChunks))
 	chunksSession1InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession1.GenesisHash,
 		session1Keys)
 	chunksSession1Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession1.GenesisHash,
 		session1Keys)
 
-	session2Keys := oyster_utils.GenerateBulkKeys(uploadSession2.GenesisHash, 0,
-		int64(uploadSession2.NumChunks-1))
+	session2Keys := oyster_utils.GenerateBulkKeys(uploadSession2.GenesisHash, models.MetaDataChunkIdx,
+		int64(uploadSession2.NumChunks))
 	chunksSession2InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession2.GenesisHash,
 		session2Keys)
 	chunksSession2Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession2.GenesisHash,
 		session2Keys)
 
-	session3Keys := oyster_utils.GenerateBulkKeys(uploadSession3.GenesisHash, 0,
-		int64(uploadSession3.NumChunks-1))
+	session3Keys := oyster_utils.GenerateBulkKeys(uploadSession3.GenesisHash, models.MetaDataChunkIdx,
+		int64(uploadSession3.NumChunks))
 	chunksSession3InProgress, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, uploadSession3.GenesisHash,
 		session3Keys)
 	chunksSession3Completed, _ := models.GetMultiChunkData(oyster_utils.CompletedDir, uploadSession3.GenesisHash,
@@ -128,8 +138,8 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 	// set first session's NextIdxToVerify so that it will be regarded as complete
 	firstSession := models.UploadSession{}
 	suite.DB.Where("genesis_hash = ?", uploadSession1.GenesisHash).First(&firstSession)
-	firstSession.NextIdxToAttach = -1
-	firstSession.NextIdxToVerify = -1
+	firstSession.NextIdxToAttach = models.BetaSessionStopIdx
+	firstSession.NextIdxToVerify = models.BetaSessionStopIdx
 	vErr, err := suite.DB.ValidateAndSave(&firstSession)
 	suite.False(vErr.HasAny())
 	suite.Nil(err)
@@ -169,7 +179,6 @@ func (suite *JobsSuite) Test_PurgeCompletedSessions() {
 
 	// verify final lengths are what we expected
 	suite.Equal(0, len(chunksSession1InProgress))
-
 	suite.Equal(numChunks, len(chunksSession1Completed))
 	suite.Equal(0, len(chunksSession2Completed))
 	suite.Equal(numChunks, len(chunksSession2InProgress))

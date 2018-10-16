@@ -102,7 +102,7 @@ func adjustIndexes(session *models.UploadSession) {
 			if session.Type == models.SessionTypeAlpha {
 				session.NextIdxToAttach = int64(session.NumChunks)
 			} else {
-				session.NextIdxToAttach = -1
+				session.NextIdxToAttach = models.BetaSessionStopIdx
 			}
 			models.DB.ValidateAndUpdate(session)
 		}
@@ -119,43 +119,9 @@ func CheckChunks(IotaWrapper services.IotaService, unverifiedChunks []oyster_uti
 			"in verify_data_maps"), nil)
 	}
 
-	treasureIndexes, err := session.GetTreasureIndexes()
 	oyster_utils.LogIfError(err, nil)
 
-	treasureChunks := []oyster_utils.ChunkData{}
-	nonTreasureChunksNoMatch := []oyster_utils.ChunkData{}
-	nonTreasureChunksMatching := []oyster_utils.ChunkData{}
-
-	treasureIdxMap := make(map[int64]bool)
-	for _, index := range treasureIndexes {
-		treasureIdxMap[int64(index)] = true
-	}
-
-	if len(filteredChunks.DoesNotMatchTangle) > 0 || len(filteredChunks.MatchesTangle) > 0 {
-		for _, chunk := range filteredChunks.DoesNotMatchTangle {
-			if _, ok := treasureIdxMap[chunk.Idx]; ok {
-				treasureChunks = append(treasureChunks, chunk)
-			} else {
-				nonTreasureChunksNoMatch = append(nonTreasureChunksNoMatch, chunk)
-			}
-		}
-		for _, chunk := range filteredChunks.MatchesTangle {
-			if _, ok := treasureIdxMap[chunk.Idx]; ok {
-				treasureChunks = append(treasureChunks, chunk)
-			} else {
-				nonTreasureChunksMatching = append(nonTreasureChunksMatching, chunk)
-			}
-		}
-		if len(treasureChunks) > 0 {
-			session.MoveChunksToCompleted(treasureChunks)
-		}
-	}
-
-	session.DownGradeIndexesOnUnattachedChunks(nonTreasureChunksNoMatch)
+	session.DownGradeIndexesOnUnattachedChunks(filteredChunks.DoesNotMatchTangle)
 	session.DownGradeIndexesOnUnattachedChunks(filteredChunks.NotAttached)
-
-	if len(filteredChunks.MatchesTangle) > 0 {
-		chunks := InsertTreasureChunks(nonTreasureChunksMatching, treasureChunks, *session)
-		session.UpdateIndexWithVerifiedChunks(chunks)
-	}
+	session.UpdateIndexWithVerifiedChunks(filteredChunks.MatchesTangle)
 }

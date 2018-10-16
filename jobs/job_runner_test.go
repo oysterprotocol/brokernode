@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"math/rand"
 	"strconv"
 	"testing"
 
@@ -27,7 +28,7 @@ func (suite *JobsSuite) SetupTest() {
 	// Reset the jobs's IotaWrapper, EthWrapper before each test.
 	// Some tests may override this value.
 	jobs.IotaWrapper = services.IotaWrapper
-	jobs.EthWrapper = services.EthWrapper
+	jobs.EthWrapper = oyster_utils.EthWrapper
 	jobs.PrometheusWrapper = services.PrometheusWrapper
 
 	/*
@@ -74,17 +75,20 @@ func Test_JobsSuite(t *testing.T) {
 	suite.Run(t, js)
 }
 
-func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.ChunkReq {
+func GenerateChunkRequests(indexToStopAt int, genesisHash string) []models.ChunkReq {
 	chunkReqs := []models.ChunkReq{}
 
-	for i := 0; i < numToGenerate; i++ {
+	for i := 1; i <= indexToStopAt; i++ {
 
-		trytes, _ := giota.ToTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
+		asciiValue := ""
+		for i := 0; i < 5; i++ {
+			asciiValue += string(rand.Intn(255))
+		}
 
 		req := models.ChunkReq{
 			Idx:  i,
 			Hash: genesisHash,
-			Data: string(trytes),
+			Data: asciiValue,
 		}
 
 		chunkReqs = append(chunkReqs, req)
@@ -93,32 +97,38 @@ func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.Chunk
 }
 
 func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
-	numChunksToGenerate int) []oyster_utils.ChunkData {
+	indexToStopAt int) []oyster_utils.ChunkData {
 	session.StartUploadSession()
 	privateKeys := []string{}
 
 	for i := 0; i < len(mergedIndexes); i++ {
-		privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
+		key := ""
+		for j := 0; j < 9; j++ {
+			key += strconv.Itoa(rand.Intn(8) + 1)
+		}
+		privateKeys = append(privateKeys, key+strconv.Itoa(i))
 	}
 
 	session.PaymentStatus = models.PaymentStatusConfirmed
 	models.DB.ValidateAndUpdate(session)
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	chunkReqs := GenerateChunkRequests(numChunksToGenerate, session.GenesisHash)
+	chunkReqs := GenerateChunkRequests(indexToStopAt, session.GenesisHash)
+
 	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
+	session.WaitForAllHashes(100)
+
+	session.CreateTreasures()
+
 	for {
-		jobs.BuryTreasureInDataMaps()
 		finishedMessages, _ := session.WaitForAllMessages(3)
 		if finishedMessages {
 			break
 		}
 	}
 
-	_, _ = session.WaitForAllHashes(10)
-
-	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, 0, int64(session.NumChunks-1))
+	bulkKeys := oyster_utils.GenerateBulkKeys(session.GenesisHash, models.MetaDataChunkIdx, int64(session.NumChunks))
 	bulkChunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, session.GenesisHash,
 		bulkKeys)
 

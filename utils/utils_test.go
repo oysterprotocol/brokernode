@@ -74,48 +74,6 @@ func Test_GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks_HugeFileSize(t *t
 	oyster_utils.AssertTrue(v == (oyster_utils.FileSectorInChunkSize*60)+500+61, t, "")
 }
 
-func Test_TransformIndexWithBuriedIndexes_NoBuriedIndexes(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(10, []int{})
-
-	oyster_utils.AssertTrue(index == 10, t, "No change on the index")
-}
-
-func Test_TransformIndexWithBuriedIndexes_NoChangeOnIndex(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(10, []int{20, 1})
-
-	oyster_utils.AssertTrue(index == 10, t, "No change on the index")
-}
-
-func Test_TransformIndexWithBuriedIndexes_EqualIndex(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(20, []int{20, 1})
-
-	oyster_utils.AssertTrue(index == 21, t, "Increase index by 1")
-}
-
-func Test_TransformIndexWithBuriedIndexes_WithinFirstSector(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-2, []int{20, 0})
-
-	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize-1, t, "Increase index by 1")
-}
-
-func Test_TransformIndexWithBuriedIndexes_ToAnotherSector(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-1, []int{20, 0})
-
-	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize+1, t, "Increasee index by 2")
-}
-
-func Test_TransformIndexWithBuriedIndexes_TreasureAsLastIndex(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize-1, []int{oyster_utils.FileSectorInChunkSize - 1, 0})
-
-	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize+1, t, "Increase index by 2")
-}
-
-func Test_TransformIndexWithBuriedIndexes_LastSector(t *testing.T) {
-	index := oyster_utils.TransformIndexWithBuriedIndexes(oyster_utils.FileSectorInChunkSize*2-3, []int{0, 0})
-
-	oyster_utils.AssertTrue(index == oyster_utils.FileSectorInChunkSize*2-1, t, "Increase index by 2")
-}
-
 func Test_GenerateInsertedIndexesForPearl_BadFileSize(t *testing.T) {
 	indexes := oyster_utils.GenerateInsertedIndexesForPearl(0)
 

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/sha3"
 	"io/ioutil"
-	"log"
 	"math"
 	"math/big"
 	"math/rand"
@@ -141,22 +140,6 @@ func GetTotalFileChunkIncludingBuriedPearlsUsingFileSize(fileSizeInByte uint64) 
 /*GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks returns the total file chunk, including burying pearl.*/
 func GetTotalFileChunkIncludingBuriedPearlsUsingNumChunks(numChunks int) int {
 	return numChunks + int(math.Ceil(float64(numChunks)/float64(FileSectorInChunkSize)))
-}
-
-/*TransformIndexWithBuriedIndexes transforms index with correct position for insertion after considering the buried indexes.*/
-func TransformIndexWithBuriedIndexes(index int, treasureIdxMap []int) int {
-	if len(treasureIdxMap) == 0 {
-		log.Println("TransformIndexWithBuriedIndexes(): treasureIdxMap as []int{} is empty")
-		return index
-	}
-
-	// We needs to consider to each sector to save a space for Treasure, thus -1.
-	sector := index / (FileSectorInChunkSize - 1)
-	if (index - sector*(FileSectorInChunkSize-1)) >= treasureIdxMap[sector] {
-		return index + sector + 1
-	} else {
-		return index + sector
-	}
 }
 
 /*GenerateInsertedIndexesForPearl randomly generates a set of indexes in each sector.*/
