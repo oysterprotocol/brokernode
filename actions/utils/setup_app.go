@@ -24,7 +24,6 @@ var ENV = envy.Get("GO_ENV", "development")
 func CreateBuffaloApp() *buffalo.App {
 	app := buffalo.New(buffalo.Options{
 		Env:          ENV,
-		LooseSlash:   true,
 		SessionStore: sessions.Null{},
 		PreWares: []buffalo.PreWare{
 			cors.AllowAll().Handler,
