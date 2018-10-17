@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"os"
 	"reflect"
 	"runtime"
@@ -24,7 +25,7 @@ var OysterWorker = worker.NewSimple()
 
 var (
 	IotaWrapper       = services.IotaWrapper
-	EthWrapper        = oyster_utils.EthWrapper
+	EthWrapper        = eth_gateway.EthWrapper
 	PrometheusWrapper = services.PrometheusWrapper
 )
 

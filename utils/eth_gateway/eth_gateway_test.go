@@ -1,9 +1,8 @@
-package oyster_utils_test
+package eth_gateway_test
 
 import (
 	"context"
 	"fmt"
-	"github.com/oysterprotocol/brokernode/utils"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -21,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 )
 
 //
@@ -106,7 +106,7 @@ func printTx(tx *types.Transaction) {
 // generate address test
 func test_generateAddress(t *testing.T) {
 	// generate eth address using gateway
-	addr, privateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
+	addr, privateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 	if err != nil {
 		t.Fatalf("error creating ethereum network address")
 	}
@@ -124,14 +124,14 @@ func test_generateAddress(t *testing.T) {
 
 // generate address from private key test
 func test_generateEthAddrFromPrivateKey(t *testing.T) {
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	// generate eth address using gateway
-	originalAddr, originalPrivateKey, err := oyster_utils.EthWrapper.GenerateEthAddr()
+	originalAddr, originalPrivateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 	if err != nil {
 		t.Fatalf("error creating ethereum network address")
 	}
 
-	generatedAddress := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
+	generatedAddress := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(originalPrivateKey)
 
 	// ensure address is what we expected
 	if originalAddr != generatedAddress {
@@ -142,10 +142,10 @@ func test_generateEthAddrFromPrivateKey(t *testing.T) {
 
 // get gas price from network test
 func test_getGasPrice(t *testing.T) {
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	t.Skip(nil)
 	// get the suggested gas price
-	gasPrice, err := oyster_utils.EthWrapper.GetGasPrice()
+	gasPrice, err := eth_gateway.EthWrapper.GetGasPrice()
 	if err != nil {
 		t.Fatalf("error retrieving gas price: %v\n", err)
 	}
@@ -159,7 +159,7 @@ func test_getGasPrice(t *testing.T) {
 
 // check if it's worth it to try and reclaiming eth from an address
 func test_checkIfWorthReclaimingGas(t *testing.T) {
-	worthIt, amountToReclaim, err := oyster_utils.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, oyster_utils.GasLimitETHSend)
+	worthIt, amountToReclaim, err := eth_gateway.EthWrapper.CheckIfWorthReclaimingGas(ethAddress01, eth_gateway.GasLimitETHSend)
 
 	if worthIt {
 		t.Logf("Should try to reclaim gas: %v\n", "true")
@@ -180,7 +180,7 @@ func test_reclaimGas(t *testing.T) {
 	gasToReclaim := big.NewInt(5000)
 	prlWallet := getWallet(prl2File)
 
-	success := oyster_utils.EthWrapper.ReclaimGas(prlWallet.Address, prlWallet.PrivateKey, gasToReclaim)
+	success := eth_gateway.EthWrapper.ReclaimGas(prlWallet.Address, prlWallet.PrivateKey, gasToReclaim)
 
 	// This isn't a very good test because it succeeds regardless of the outcome?
 
@@ -195,12 +195,12 @@ func test_reclaimGas(t *testing.T) {
 func test_calculateGasNeeded(t *testing.T) {
 	t.Skip(nil)
 
-	gasPrice, err := oyster_utils.EthWrapper.GetGasPrice()
-	gasLimitToUse := oyster_utils.GasLimitETHSend
+	gasPrice, err := eth_gateway.EthWrapper.GetGasPrice()
+	gasLimitToUse := eth_gateway.GasLimitETHSend
 
 	expectedGasToSend := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimitToUse)))
 
-	gasToSend, err := oyster_utils.EthWrapper.CalculateGasNeeded(gasLimitToUse)
+	gasToSend, err := eth_gateway.EthWrapper.CalculateGasNeeded(gasLimitToUse)
 	if expectedGasToSend.Int64() != gasToSend.Int64() {
 		t.Fatalf("failed to calculate the gas to send: %v\n", err)
 	}
@@ -213,11 +213,11 @@ func test_calculateGasNeeded(t *testing.T) {
 
 // check balance on test network test
 func test_checkETHBalance(t *testing.T) {
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	//t.Skip(nil)
 	// test balance for an ether account
 	// Convert string address to byte[] address form
-	bal := oyster_utils.EthWrapper.CheckETHBalance(ethAddress01)
+	bal := eth_gateway.EthWrapper.CheckETHBalance(ethAddress01)
 	if bal.Int64() != -1 {
 		t.Logf("balance verified: %v\n", bal)
 	} else {
@@ -228,7 +228,7 @@ func test_checkETHBalance(t *testing.T) {
 // get current block number
 func test_getCurrentBlockNumber(t *testing.T) {
 	// Get the current block from the network
-	block, err := oyster_utils.EthWrapper.GetCurrentBlock()
+	block, err := eth_gateway.EthWrapper.GetCurrentBlock()
 	if err != nil {
 		t.Fatalf("could not retrieve the current block: %v\n", err)
 	}
@@ -240,9 +240,9 @@ func test_getCurrentBlockNumber(t *testing.T) {
 // get current block gas limit
 func test_getCurrentBlockGasLimit(t *testing.T) {
 	//t.Skip(nil)
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	// Get the current block from the network
-	block, err := oyster_utils.EthWrapper.GetCurrentBlock()
+	block, err := eth_gateway.EthWrapper.GetCurrentBlock()
 	if err != nil {
 		t.Fatalf("could not retrieve the current block: %v\n", err)
 	}
@@ -252,11 +252,11 @@ func test_getCurrentBlockGasLimit(t *testing.T) {
 }
 
 func test_getNonceForAccount(t *testing.T) {
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	// TODO:  works remove Skip()
 	//t.Skip(nil)
 	// Get the nonce for the given account
-	nonce, err := oyster_utils.EthWrapper.GetNonce(context.Background(), ethCoinbase)
+	nonce, err := eth_gateway.EthWrapper.GetNonce(context.Background(), ethCoinbase)
 	if err != nil {
 		t.Fatalf("unable to access the account nonce : %v", err)
 	} else {
@@ -267,12 +267,12 @@ func test_getNonceForAccount(t *testing.T) {
 // send gas(ether) to an address for a transaction
 func test_sendEth(t *testing.T) {
 	t.Skip(nil)
-	oyster_utils.RunOnTestNet()
+	eth_gateway.RunOnTestNet()
 	// transfer
 	transferValue := big.NewInt(1)
 	transferValueInWei := new(big.Int).Mul(transferValue, oneWei)
 	// Send ether to test account
-	txs, _, _, err := oyster_utils.EthWrapper.SendETH(oyster_utils.MainWalletAddress, oyster_utils.MainWalletPrivateKey, ethAddress02, transferValueInWei)
+	txs, _, _, err := eth_gateway.EthWrapper.SendETH(eth_gateway.MainWalletAddress, eth_gateway.MainWalletPrivateKey, ethAddress02, transferValueInWei)
 	if err != nil {
 		t.Logf("failed to send ether to %v ether to %v\n", transferValue, ethAddress02.Hex())
 		t.Fatalf("transaction error: %v\n", err)
@@ -284,7 +284,7 @@ func test_sendEth(t *testing.T) {
 		printTx(transaction)
 
 		// wait for confirmation
-		confirmed := oyster_utils.EthWrapper.WaitForConfirmation(lastTransaction.Hash(), 3)
+		confirmed := eth_gateway.EthWrapper.WaitForConfirmation(lastTransaction.Hash(), 3)
 		if confirmed == 1 {
 			t.Logf("confirmed ether was sent to : %v", ethAddress02.Hex())
 		} else if confirmed == 0 {
@@ -302,10 +302,10 @@ func test_ensureTransactionStoredInPool(t *testing.T) {
 		txHash = lastTransactionHash
 	}
 	// check pending
-	isPending := oyster_utils.EthWrapper.PendingConfirmation(txHash)
+	isPending := eth_gateway.EthWrapper.PendingConfirmation(txHash)
 	if isPending {
 		// get item by txHash and ensure its in the table
-		txWithBlockNumber := oyster_utils.EthWrapper.GetTransaction(txHash)
+		txWithBlockNumber := eth_gateway.EthWrapper.GetTransaction(txHash)
 		if txWithBlockNumber.Transaction != nil {
 			// compare transaction hash
 			if reflect.DeepEqual(txWithBlockNumber.Transaction.Hash(), txHash) {
@@ -320,23 +320,23 @@ func test_ensureTransactionStoredInPool(t *testing.T) {
 // ensure confirmation is made with last transaction hash from sendEth
 func test_confirmTransactionStatus(t *testing.T) {
 	t.Skip(nil)
-	//oyster_utils.RunOnTestNet()
+	//services.RunOnTestNet()
 	txHash := lastTransaction.Hash()
 	if len(txHash) <= 0 {
 		// set an existing tx hash
 		txHash = lastTransactionHash
 	}
 	// check pending
-	isPending := oyster_utils.EthWrapper.PendingConfirmation(txHash)
+	isPending := eth_gateway.EthWrapper.PendingConfirmation(txHash)
 	if isPending {
 		// check confirmation
-		txStatus := oyster_utils.EthWrapper.WaitForConfirmation(txHash, 3)
+		txStatus := eth_gateway.EthWrapper.WaitForConfirmation(txHash, 3)
 		if txStatus == 0 {
 			t.Logf("transaction failure")
 		} else if txStatus == 1 {
 			t.Logf("confirmation completed")
 
-			bal := oyster_utils.EthWrapper.CheckETHBalance(ethAddress02)
+			bal := eth_gateway.EthWrapper.CheckETHBalance(ethAddress02)
 			t.Logf("balance updated : %v", bal)
 		}
 	}
@@ -360,7 +360,7 @@ func test_deployOysterPearl(t *testing.T) {
 	defer cancel()
 
 	// deploy a token contract on the simulated blockchain
-	_, _, token, err := oyster_utils.DeployOysterPearl(&bind.TransactOpts{
+	_, _, token, err := eth_gateway.DeployOysterPearl(&bind.TransactOpts{
 		Nonce:    big.NewInt(0),
 		From:     auth.From,
 		GasLimit: params.GenesisGasLimit,
@@ -398,7 +398,7 @@ func test_simOysterPearlBury(t *testing.T) {
 	//
 	// deploy a token contract on the simulated blockchain
 	//
-	_, _, token, err := oyster_utils.DeployOysterPearl(&bind.TransactOpts{
+	_, _, token, err := eth_gateway.DeployOysterPearl(&bind.TransactOpts{
 		Nonce:    big.NewInt(0),
 		From:     auth.From,
 		GasLimit: params.GenesisGasLimit,
@@ -466,7 +466,7 @@ func test_tokenNameFromOysterPearl(t *testing.T) {
 	t.Skip(nil)
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
-	oysterPearl, err := oyster_utils.NewOysterPearl(oysterContract, backend)
+	oysterPearl, err := eth_gateway.NewOysterPearl(oysterContract, backend)
 	if err != nil {
 		t.Fatalf("unable to access contract instance at :%v", err)
 	}
@@ -485,18 +485,18 @@ func test_stakePRLFromOysterPearl(t *testing.T) {
 	// test ethClient
 	var backend, _ = ethclient.Dial(oysterbyNetwork)
 	// instance of the oyster pearl contract
-	pearlDistribute, err := oyster_utils.NewPearlDistributeOysterby(prlDistribution, backend)
+	pearlDistribute, err := eth_gateway.NewPearlDistributeOysterby(prlDistribution, backend)
 
 	// authentication
-	walletAddress := oyster_utils.MainWalletAddress
+	walletAddress := eth_gateway.MainWalletAddress
 
 	t.Logf("using wallet key store from: %v\n", walletAddress.Hex())
 
-	gasPrice, _ := oyster_utils.EthWrapper.GetGasPrice()
-	block, _ := oyster_utils.EthWrapper.GetCurrentBlock()
+	gasPrice, _ := eth_gateway.EthWrapper.GetGasPrice()
+	block, _ := eth_gateway.EthWrapper.GetCurrentBlock()
 
 	// Create an authorized transactor and spend 1 PRL
-	auth := bind.NewKeyedTransactor(oyster_utils.MainWalletPrivateKey)
+	auth := bind.NewKeyedTransactor(eth_gateway.MainWalletPrivateKey)
 	if err != nil {
 		t.Fatalf("unable to create a new transactor : %v", err)
 	}
@@ -537,7 +537,7 @@ func test_transferPRLFromOysterPearl(t *testing.T) {
 
 	prlValue := big.NewInt(0).SetUint64(toWei(15))
 	// sendPRL
-	sent, _, _ := oyster_utils.EthWrapper.SendPRLFromOyster(oyster_utils.OysterCallMsg{
+	sent, _, _ := eth_gateway.EthWrapper.SendPRLFromOyster(eth_gateway.OysterCallMsg{
 		Amount: *prlValue,
 	})
 
@@ -563,7 +563,7 @@ func test_sendPRL(t *testing.T) {
 	prlValue := big.NewInt(5)
 
 	// Compose OysterCall Message
-	var sendMsg = oyster_utils.OysterCallMsg{
+	var sendMsg = eth_gateway.OysterCallMsg{
 		From:       prlWallet.Address,
 		To:         prlAddress02,
 		Amount:     *prlValue,
@@ -573,7 +573,7 @@ func test_sendPRL(t *testing.T) {
 
 	// Send PRL is a blocking call which will send the new transaction to the network
 	// then wait for the confirmation to return true or false
-	var confirmed = oyster_utils.EthWrapper.SendPRL(sendMsg)
+	var confirmed = eth_gateway.EthWrapper.SendPRL(sendMsg)
 	if confirmed {
 		// successful prl send
 		t.Logf("Sent PRL to :%v", sendMsg.To.Hex())
@@ -597,7 +597,7 @@ func test_claimPRL(t *testing.T) {
 	treasurePrivateKey := prlWallet.PrivateKey
 
 	// Claim PRL
-	claimed := oyster_utils.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
+	claimed := eth_gateway.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
 	if !claimed {
 		t.Fatal("Failed to claim PRLs")
 	} else {
@@ -619,7 +619,7 @@ func test_claimPRLInsufficientFunds(t *testing.T) {
 	treasurePrivateKey := prlWallet.PrivateKey
 
 	// Claim PRL
-	claimed := oyster_utils.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
+	claimed := eth_gateway.EthWrapper.ClaimPRL(receiverAddress, treasureAddress, treasurePrivateKey)
 	if !claimed {
 		t.Log("Failed to claim PRLs") // expected result
 	} else {
@@ -635,13 +635,13 @@ func test_buryPRL(t *testing.T) {
 
 	prlValue := big.NewInt(1)
 	// only configure to and amount
-	buryMsg := oyster_utils.OysterCallMsg{
+	buryMsg := eth_gateway.OysterCallMsg{
 		To:     prlAddress02,
 		Amount: *prlValue,
 	}
 
 	// Bury PRL
-	buried, _, _ := oyster_utils.EthWrapper.BuryPrl(buryMsg)
+	buried, _, _ := eth_gateway.EthWrapper.BuryPrl(buryMsg)
 	if buried {
 		// successful bury attempt
 		t.Log("Buried the PRLs successfully")
@@ -654,9 +654,9 @@ func test_buryPRL(t *testing.T) {
 // check if an address is in a buried state
 func test_checkBuriedState(t *testing.T) {
 
-	addr, _, _ := oyster_utils.EthWrapper.GenerateEthAddr()
+	addr, _, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 
-	buried, err := oyster_utils.EthWrapper.CheckBuriedState(addr)
+	buried, err := eth_gateway.EthWrapper.CheckBuriedState(addr)
 
 	if err != nil {
 		t.Fatal("Failed to check the bury state of the given address.")
@@ -672,9 +672,9 @@ func test_checkBuriedState(t *testing.T) {
 // check the claim clock value of an address
 func test_checkClaimClock(t *testing.T) {
 
-	addr, _, _ := oyster_utils.EthWrapper.GenerateEthAddr()
+	addr, _, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 
-	claimClock, err := oyster_utils.EthWrapper.CheckClaimClock(addr)
+	claimClock, err := eth_gateway.EthWrapper.CheckClaimClock(addr)
 
 	if err != nil {
 		t.Fatal("Failed to check the claim of the given address.")
@@ -687,7 +687,7 @@ func test_checkClaimClock(t *testing.T) {
 func test_balanceOfFromOysterPearl(t *testing.T) {
 
 	// working pulls the balance from Oyster PRL on test net prl balances
-	bankBalance := oyster_utils.EthWrapper.CheckPRLBalance(prlBankAddress)
+	bankBalance := eth_gateway.EthWrapper.CheckPRLBalance(prlBankAddress)
 	t.Logf("oyster pearl bank address balance :%v", bankBalance)
 
 }

@@ -3,12 +3,13 @@ package actions_v2
 import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/services"
-	"github.com/oysterprotocol/brokernode/utils"
+
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 )
 
 // Visible for Unit Test
 var IotaWrapper = services.IotaWrapper
-var EthWrapper = oyster_utils.EthWrapper
+var EthWrapper = eth_gateway.EthWrapper
 var PrometheusWrapper = services.PrometheusWrapper
 
 func RegisterApi(app *buffalo.App) *buffalo.App {

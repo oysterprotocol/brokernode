@@ -4,6 +4,7 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"log"
 )
 
@@ -12,7 +13,7 @@ import (
 var DB *pop.Connection
 
 var (
-	EthWrapper = oyster_utils.EthWrapper
+	EthWrapper = eth_gateway.EthWrapper
 )
 
 func init() {

@@ -3,11 +3,13 @@ package actions_v2
 import (
 	"encoding/json"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/oysterprotocol/brokernode/services"
-	"github.com/oysterprotocol/brokernode/utils"
+
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"io/ioutil"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/oysterprotocol/brokernode/services"
 )
 
 // Record data for VerifyTreasure method
@@ -31,7 +33,8 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	EthWrapper = oyster_utils.Eth{
+
+	EthWrapper = eth_gateway.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
 			checkClaimClockCalled = true
@@ -41,7 +44,8 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+
+	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
@@ -83,7 +87,8 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+
+	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,
@@ -116,7 +121,8 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-	EthWrapper = oyster_utils.Eth{
+
+	EthWrapper = eth_gateway.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
 			ethAddressCalledWithCheckClaimClock = address
@@ -126,7 +132,8 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-	addr := oyster_utils.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
+
+	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
 		"receiverEthAddr": addr,

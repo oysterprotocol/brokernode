@@ -6,6 +6,7 @@ import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 )
 
 /*UnpaidExpirationInHour means number of hours before it should remove unpaid upload session. */
@@ -28,7 +29,7 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 	}
 
 	for _, session := range sessions {
-		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(session.ETHAddrAlpha.String))
+		balance := EthWrapper.CheckPRLBalance(eth_gateway.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			continue
 		}

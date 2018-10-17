@@ -1,4 +1,4 @@
-package oyster_utils
+package eth_gateway
 
 var EthMock Eth
 

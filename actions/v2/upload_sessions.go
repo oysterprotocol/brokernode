@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"net/http"
 	"os"
 	"strconv"
@@ -448,7 +449,8 @@ func (usr *UploadSessionResourceV2) GetPaymentStatus(c buffalo.Context) error {
 
 	// Force to check the status
 	if session.PaymentStatus != models.PaymentStatusConfirmed {
-		balance := EthWrapper.CheckPRLBalance(oyster_utils.StringToAddress(session.ETHAddrAlpha.String))
+
+		balance := EthWrapper.CheckPRLBalance(eth_gateway.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			previousPaymentStatus := session.PaymentStatus
 			session.PaymentStatus = models.PaymentStatusConfirmed

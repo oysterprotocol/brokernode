@@ -1,6 +1,7 @@
 package jobs_test
 
 import (
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"math/rand"
 	"strconv"
 	"testing"
@@ -28,7 +29,7 @@ func (suite *JobsSuite) SetupTest() {
 	// Reset the jobs's IotaWrapper, EthWrapper before each test.
 	// Some tests may override this value.
 	jobs.IotaWrapper = services.IotaWrapper
-	jobs.EthWrapper = oyster_utils.EthWrapper
+	jobs.EthWrapper = eth_gateway.EthWrapper
 	jobs.PrometheusWrapper = services.PrometheusWrapper
 
 	/*

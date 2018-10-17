@@ -3,6 +3,7 @@ package models_test
 import (
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"time"
 )
 
@@ -186,8 +187,8 @@ func generateWebnodeTreasureClaims(ms *ModelSuite,
 	numToGenerate int) {
 
 	for i := 0; i < numToGenerate; i++ {
-		treasureAddr, key, _ := oyster_utils.EthWrapper.GenerateEthAddr()
-		receiverAddr, _, _ := oyster_utils.EthWrapper.GenerateEthAddr()
+		treasureAddr, key, _ := eth_gateway.EthWrapper.GenerateEthAddr()
+		receiverAddr, _, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 
 		validChars := []rune("abcde123456789")
 		genesisHash := oyster_utils.RandSeq(64, validChars)
