@@ -8,8 +8,8 @@ import (
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"github.com/shopspring/decimal"
 	"math/big"
 	"os"
@@ -25,9 +25,9 @@ func getAddress() (common.Address, string, error) {
 	if griftPrivateKey == "" {
 		errorString := "you haven't specified an eth private key to use for this grift"
 		fmt.Println(errorString)
-		return services.StringToAddress(""), griftPrivateKey, errors.New(errorString)
+		return eth_gateway.StringToAddress(""), griftPrivateKey, errors.New(errorString)
 	}
-	address := services.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
+	address := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(griftPrivateKey)
 	return address, griftPrivateKey, nil
 }
 
@@ -132,7 +132,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, griftPrivateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(griftPrivateKey)
 
@@ -531,7 +531,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, griftPrivateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, griftPrivateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(griftPrivateKey)
 
@@ -545,16 +545,16 @@ var _ = grift.Namespace("db", func() {
 			prlAmount := big.NewFloat(float64(.0001))
 			prlAmountInWei := oyster_utils.ConvertToWeiUnit(prlAmount)
 
-			callMsg, _ := services.EthWrapper.CreateSendPRLMessage(services.MainWalletAddress,
-				services.MainWalletPrivateKey,
+			callMsg, _ := eth_gateway.EthWrapper.CreateSendPRLMessage(eth_gateway.MainWalletAddress,
+				eth_gateway.MainWalletPrivateKey,
 				address, *prlAmountInWei)
 
-			sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+			sendSuccess, _, _ := eth_gateway.EthWrapper.SendPRLFromOyster(callMsg)
 			if sendSuccess {
 				fmt.Println("Sent successfully!")
 				for {
 					fmt.Println("Polling for PRL arrival")
-					balance := services.EthWrapper.CheckPRLBalance(address)
+					balance := eth_gateway.EthWrapper.CheckPRLBalance(address)
 					if balance.Int64() > 0 {
 						fmt.Println("PRL arrived!")
 						break
@@ -710,7 +710,7 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-			address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+			address, privateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(privateKey)
 
@@ -739,7 +739,7 @@ var _ = grift.Namespace("db", func() {
 			}
 
 			for {
-				buried, err := services.EthWrapper.CheckBuriedState(address)
+				buried, err := eth_gateway.EthWrapper.CheckBuriedState(address)
 				if err != nil {
 					fmt.Println("ERROR CHECKING BURIED STATE!")
 					return err
@@ -821,8 +821,8 @@ var _ = grift.Namespace("db", func() {
 				fmt.Println("Gas Status:             " + models.GasTransferStatusMap[treasureClaim.GasStatus])
 				fmt.Println("Starting Claim Clock:   " + big.NewInt(treasureClaim.StartingClaimClock).String())
 
-				claimClock, _ := services.EthWrapper.CheckClaimClock(
-					services.StringToAddress(treasureClaim.TreasureETHAddr))
+				claimClock, _ := eth_gateway.EthWrapper.CheckClaimClock(
+					eth_gateway.StringToAddress(treasureClaim.TreasureETHAddr))
 
 				fmt.Println("Current Claim Clock:    " + claimClock.String())
 				fmt.Println("________________________________________________________")
@@ -873,8 +873,8 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("test_broker_txs", "Tests check_alpha_payments and check_beta_payments")
 	grift.Add("test_broker_txs", func(c *grift.Context) error {
 
-		alphaAddr, key, _ := services.EthWrapper.GenerateEthAddr()
-		betaAddr, betaKey, _ := services.EthWrapper.GenerateEthAddr()
+		alphaAddr, key, _ := eth_gateway.EthWrapper.GenerateEthAddr()
+		betaAddr, betaKey, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 
 		validChars := []rune("abcde123456789")
 		genesisHashEndingCharsAlpha := oyster_utils.RandSeq(10, validChars)
@@ -926,12 +926,12 @@ var _ = grift.Namespace("db", func() {
 			return err
 		}
 
-		callMsg, _ := services.EthWrapper.CreateSendPRLMessage(
-			services.MainWalletAddress,
-			services.MainWalletPrivateKey,
-			services.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
+		callMsg, _ := eth_gateway.EthWrapper.CreateSendPRLMessage(
+			eth_gateway.MainWalletAddress,
+			eth_gateway.MainWalletPrivateKey,
+			eth_gateway.StringToAddress(brokerTxAlpha.ETHAddrAlpha), *totalCostInWei)
 
-		sendSuccess, _, _ := services.EthWrapper.SendPRLFromOyster(callMsg)
+		sendSuccess, _, _ := eth_gateway.EthWrapper.SendPRLFromOyster(callMsg)
 
 		if !sendSuccess {
 			fmt.Println(err)
@@ -1085,7 +1085,7 @@ var _ = grift.Namespace("db", func() {
 	grift.Desc("create_completed_upload", "create a completed upload")
 	grift.Add("create_completed_upload", func(c *grift.Context) error {
 
-		address, privateKey, err := services.EthWrapper.GenerateEthAddr()
+		address, privateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 		fmt.Println("PRIVATE KEY IS:")
 		fmt.Println(privateKey)
 

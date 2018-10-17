@@ -6,8 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"github.com/shopspring/decimal"
 	"math/big"
 )
@@ -31,7 +31,7 @@ func resetTestVariables_checkAlphaPayments(suite *JobsSuite) {
 	hasCalledSendETH_checkAlphaPayments = false
 	hasCalledSendPRL_checkAlphaPayments = false
 
-	jobs.EthWrapper = services.EthWrapper
+	jobs.EthWrapper = eth_gateway.EthWrapper
 }
 
 func (suite *JobsSuite) Test_CheckPaymentToAlpha_no_prl_balance() {
@@ -294,13 +294,13 @@ func (suite *JobsSuite) Test_CheckGasPayments_gas_arrived() {
 
 func (suite *JobsSuite) Test_SendPaymentToBeta_payment_already_arrived() {
 	resetTestVariables_checkAlphaPayments(suite)
-	jobs.EthWrapper.CreateSendPRLMessage = services.EthWrapper.CreateSendPRLMessage
+	jobs.EthWrapper.CreateSendPRLMessage = eth_gateway.EthWrapper.CreateSendPRLMessage
 	jobs.EthWrapper.CheckPRLBalance = func(addr common.Address) *big.Int {
 		hasCalledCheckPRLBalance_checkAlphaPayments = true
 		// give a large balance so we will see the payment as already arrived
 		return big.NewInt(999999999999)
 	}
-	jobs.EthWrapper.SendPRLFromOyster = func(msg services.OysterCallMsg) (bool, string, int64) {
+	jobs.EthWrapper.SendPRLFromOyster = func(msg eth_gateway.OysterCallMsg) (bool, string, int64) {
 		hasCalledSendPRL_checkAlphaPayments = true
 		return true, "some__transaction_hash", 0
 	}
@@ -323,13 +323,13 @@ func (suite *JobsSuite) Test_SendPaymentToBeta_payment_already_arrived() {
 
 func (suite *JobsSuite) Test_SendPaymentToBeta_send_payment() {
 	resetTestVariables_checkAlphaPayments(suite)
-	jobs.EthWrapper.CreateSendPRLMessage = services.EthWrapper.CreateSendPRLMessage
+	jobs.EthWrapper.CreateSendPRLMessage = eth_gateway.EthWrapper.CreateSendPRLMessage
 	jobs.EthWrapper.CheckPRLBalance = func(addr common.Address) *big.Int {
 		hasCalledCheckPRLBalance_checkAlphaPayments = true
 		// give a 0 balance so we will send the PRL
 		return big.NewInt(0)
 	}
-	jobs.EthWrapper.SendPRLFromOyster = func(msg services.OysterCallMsg) (bool, string, int64) {
+	jobs.EthWrapper.SendPRLFromOyster = func(msg eth_gateway.OysterCallMsg) (bool, string, int64) {
 		hasCalledSendPRL_checkAlphaPayments = true
 		return true, "some__transaction_hash", 0
 	}

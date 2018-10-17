@@ -1,13 +1,13 @@
 package jobs_test
 
 import (
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
@@ -20,7 +20,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_badger() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -58,7 +58,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_badger() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
@@ -77,7 +77,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_badger() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -102,7 +102,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_sql() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},
@@ -139,7 +139,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_sql() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(10)
 		},
@@ -158,7 +158,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_sql() {
 
 	removeAllUploadSessions(suite)
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			return big.NewInt(0)
 		},

@@ -3,8 +3,8 @@ package models_test
 import (
 	"encoding/hex"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"math/big"
 	"time"
 )
@@ -52,7 +52,7 @@ func (suite *ModelSuite) Test_Get_And_Set_PRL_Amount() {
 
 	prlAmount := big.NewInt(5000000000000000000)
 
-	ethAddr, key, _ := services.EthWrapper.GenerateEthAddr()
+	ethAddr, key, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 	iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 	iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 
@@ -72,7 +72,7 @@ func (suite *ModelSuite) Test_Get_And_Set_PRL_Amount() {
 func (suite *ModelSuite) Test_EncryptAndDecryptEthPrivateKey() {
 
 	ethKey := hex.EncodeToString([]byte("SOME_PRIVATE_KEY"))
-	ethAddr, _, _ := services.EthWrapper.GenerateEthAddr()
+	ethAddr, _, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 	iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 	iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 
@@ -112,7 +112,7 @@ func generateTreasuresToBuryOfEachStatus(suite *ModelSuite, numToCreateOfEachSta
 func generateTreasuresToBury(suite *ModelSuite, numToCreateOfEachStatus int, status models.PRLStatus) {
 	prlAmount := big.NewInt(500000000000000000)
 	for i := 0; i < numToCreateOfEachStatus; i++ {
-		ethAddr, key, _ := services.EthWrapper.GenerateEthAddr()
+		ethAddr, key, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 		iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 		iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 

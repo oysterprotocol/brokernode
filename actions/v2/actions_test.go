@@ -1,6 +1,7 @@
 package actions_v2
 
 import (
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"testing"
 
 	"github.com/gobuffalo/suite"
@@ -18,7 +19,7 @@ func (suite *ActionSuite) SetupTest() {
 
 	suite.Nil(oyster_utils.InitKvStore())
 
-	EthWrapper = services.EthWrapper
+	EthWrapper = eth_gateway.EthWrapper
 	IotaWrapper = services.IotaWrapper
 }
 
