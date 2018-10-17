@@ -26,12 +26,13 @@ type uploadSessionUpdateReqV3 struct {
 }
 
 type uploadSessionCreateReqV3 struct {
-	GenesisHash          string `json:"genesisHash"`
-	NumChunks            int    `json:"numChunks"`
-	FileSizeBytes        uint64 `json:"fileSizeBytes"` // This is Trytes instead of Byte
-	BetaIP               string `json:"betaIp"`
-	StorageLengthInYears int    `json:"storageLengthInYears"`
-	Version              uint32 `json:"version"`
+	GenesisHash          string         `json:"genesisHash"`
+	NumChunks            int            `json:"numChunks"`
+	FileSizeBytes        uint64         `json:"fileSizeBytes"` // This is Trytes instead of Byte
+	BetaIP               string         `json:"betaIp"`
+	StorageLengthInYears int            `json:"storageLengthInYears"`
+	Invoice              models.Invoice `json:"invoice"`
+	Version              uint32         `json:"version"`
 }
 
 type uploadSessionCreateBetaResV3 struct {
@@ -79,10 +80,10 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.String(createUniqueBucketName()),
+		S3BucketName:         nulls.NewString(createUniqueBucketName()),
 	}
 
-	if err := createBucket(alphaSession.S3BucketName.String()); err != nil {
+	if err := createBucket(alphaSession.S3BucketName.String); err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Error(500, err)
 	}
@@ -137,10 +138,10 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.String(createUniqueBucketName()),
+		S3BucketName:         nulls.NewString(createUniqueBucketName()),
 	}
 
-	if err := createBucket(u.S3BucketName.String()); err != nil {
+	if err := createBucket(u.S3BucketName.String); err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Error(500, err)
 	}
