@@ -39,10 +39,7 @@ func createBucket(bucketName string) error {
 	input := &s3.CreateBucketInput{
 		Bucket: aws.String(bucketName),
 	}
-	result, err := Svc.CreateBucket(input)
-	if err == nil {
-		fmt.Println(result)
-	}
+	_, err := Svc.CreateBucket(input)
 	oyster_utils.LogIfError(err, nil)
 	return err
 }
@@ -52,10 +49,7 @@ func deleteBucket(bucketName string) error {
 	input := &s3.DeleteBucketInput{
 		Bucket: aws.String(bucketName),
 	}
-	result, err := Svc.DeleteBucket(input)
-	if err == nil {
-		fmt.Println(result)
-	}
+	_, err := Svc.DeleteBucket(input)
 	oyster_utils.LogIfError(err, nil)
 	return err
 }

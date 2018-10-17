@@ -63,7 +63,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 	req, err := validateAndGetCreateReq(c)
 	if err != nil {
-		return err
+		return c.Error(400, err)
 	}
 
 	alphaEthAddr, privKey, _ := EthWrapper.GenerateEthAddr()
@@ -82,6 +82,11 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		S3BucketName:         nulls.String(createUniqueBucketName()),
 	}
 
+	if err := createBucket(alphaSession.S3BucketName.String()); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(500, err)
+	}
+
 	// Generate bucket_name for s3 and create such bucket_name
 
 	hasBeta := req.BetaIP != ""
@@ -89,8 +94,7 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 	if hasBeta {
 		betaSessionRes, err := sendBetaWithUploadRequest(req)
 		if err != nil {
-			c.Error(400, err)
-			return err
+			return c.Error(400, err)
 		}
 
 		betaSessionID = betaSessionRes.ID
@@ -99,8 +103,7 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 
 	if err := models.DB.Save(&alphaSession); err != nil {
 		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
+		return c.Error(400, err)
 	}
 
 	res := uploadSessionCreateResV3{
@@ -134,17 +137,20 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         createUniqueBucketName(),
+		S3BucketName:         nulls.String(createUniqueBucketName()),
+	}
+
+	if err := createBucket(u.S3BucketName.String()); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(500, err)
 	}
 
 	if err := models.DB.Save(&u); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
+		return c.Error(400, err)
 	}
 
 	res := uploadSessionCreateBetaResV3{
-		ID: u.ID,
+		ID: u.ID.String(),
 	}
 
 	return c.Render(200, actions_utils.Render.JSON(res))
@@ -153,16 +159,11 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 func validateAndGetCreateReq(c buffalo.Context) (uploadSessionCreateReqV3, error) {
 	req := uploadSessionCreateReqV3{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
-		err = fmt.Errorf("Invalid request, unable to parse request body  %v", err)
-		c.Error(400, err)
-		return req, err
+		return req, fmt.Errorf("Invalid request, unable to parse request body  %v", err)
 	}
 
 	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
-		err := errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
-		fmt.Println(err)
-		c.Error(400, err)
-		return req, err
+		return req, errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
 	}
 	return req, nil
 }
