@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
-	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"math/big"
 	"time"
 )
@@ -17,7 +17,7 @@ func (suite *JobsSuite) Test_CheckPRLTransactions() {
 
 	hasCalledCheckPRLBalance := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckPRLBalance = true
 			return big.NewInt(600000000000000000)
@@ -43,7 +43,7 @@ func (suite *JobsSuite) Test_CheckGasTransactions() {
 
 	hasCalledCheckETHBalance := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckETHBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckETHBalance = true
 			return big.NewInt(600000000000000000)
@@ -69,7 +69,7 @@ func (suite *JobsSuite) Test_CheckBuryTransactions() {
 
 	hasCalledCheckBuriedState := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckBuriedState: func(addr common.Address) (bool, error) {
 			hasCalledCheckBuriedState = true
 			return true, nil
@@ -232,25 +232,25 @@ func (suite *JobsSuite) Test_SendPRLsToWaitingTreasureAddresses() {
 	hasCalledCheckPRLBalance := false
 	hasCalledSendPRL := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckPRLBalance = true
 			// set one of the transactions to 0 balance so it will remain pending
-			if addr == services.StringToAddress(noBalanceAddress) {
+			if addr == eth_gateway.StringToAddress(noBalanceAddress) {
 				return big.NewInt(0)
 			}
 			return big.NewInt(600000000000000000)
 		},
-		SendPRLFromOyster: func(msg services.OysterCallMsg) (bool, string, int64) {
+		SendPRLFromOyster: func(msg eth_gateway.OysterCallMsg) (bool, string, int64) {
 			hasCalledSendPRL = true
 			// make one of the transfers unsuccessful
-			if msg.To == services.StringToAddress(sendPRLFromOysterFailedAddress) {
+			if msg.To == eth_gateway.StringToAddress(sendPRLFromOysterFailedAddress) {
 				return false, "", -1
 			}
 			return true, "some__transaction_hash", 0
 		},
-		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
-		CreateSendPRLMessage:            services.EthWrapper.CreateSendPRLMessage,
+		GeneratePublicKeyFromPrivateKey: eth_gateway.EthWrapper.GeneratePublicKeyFromPrivateKey,
+		CreateSendPRLMessage:            eth_gateway.EthWrapper.CreateSendPRLMessage,
 	}
 
 	// 1 transfer shouldn't go through due to insufficient balance and should remain waiting
@@ -299,11 +299,11 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 	failSendEthAddress := waitingForGas[0].ETHAddr
 	noBalanceAddress := waitingForGas[1].ETHAddr
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckETHBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckETHBalance = true
 			// cause one to remain pending due to no balance
-			if addr == services.StringToAddress(noBalanceAddress) {
+			if addr == eth_gateway.StringToAddress(noBalanceAddress) {
 				return big.NewInt(0)
 			}
 			return big.NewInt(600000000000000000)
@@ -312,12 +312,12 @@ func (suite *JobsSuite) Test_SendGasToTreasureAddresses() {
 			gas *big.Int) (types.Transactions, string, int64, error) {
 			hasCalledSendGas = true
 			// make one of the transfers unsuccessful
-			if toAddress == services.StringToAddress(failSendEthAddress) {
+			if toAddress == eth_gateway.StringToAddress(failSendEthAddress) {
 				return types.Transactions{}, "", -1, errors.New("FAIL")
 			}
 			return types.Transactions{}, "111111", 1, nil
 		},
-		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
+		GeneratePublicKeyFromPrivateKey: eth_gateway.EthWrapper.GeneratePublicKeyFromPrivateKey,
 		CalculateGasNeeded: func(desiredGasLimit uint64) (*big.Int, error) {
 			hasCalledCalculateGasNeeded = true
 			gasPrice := oyster_utils.ConvertGweiToWei(big.NewInt(1))
@@ -369,7 +369,7 @@ func (suite *JobsSuite) Test_InvokeBury() {
 	failBuryPRLAddress := waitingForBury[0].ETHAddr
 	notYetBuriedAddress := waitingForBury[1].ETHAddr
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckETHBalance: func(addr common.Address) *big.Int {
 			hasCalledCheckETHBalance = true
 			return big.NewInt(600000000000000000)
@@ -378,23 +378,23 @@ func (suite *JobsSuite) Test_InvokeBury() {
 			hasCalledCheckPRLBalance = true
 			return big.NewInt(600000000000000000)
 		},
-		BuryPrl: func(msg services.OysterCallMsg) (bool, string, int64) {
+		BuryPrl: func(msg eth_gateway.OysterCallMsg) (bool, string, int64) {
 			hasCalledBuryPRL = true
 			// make one of the transfers unsuccessful
-			if msg.From == services.StringToAddress(failBuryPRLAddress) {
+			if msg.From == eth_gateway.StringToAddress(failBuryPRLAddress) {
 				return false, "", -1
 			}
 			return true, "111111", 1
 		},
 		CheckBuriedState: func(address common.Address) (bool, error) {
 			hasCalledCheckBuryStatus = true
-			if address == services.StringToAddress(notYetBuriedAddress) {
+			if address == eth_gateway.StringToAddress(notYetBuriedAddress) {
 				return false, nil
 			}
 			return true, nil
 		},
-		CreateSendPRLMessage:            services.EthWrapper.CreateSendPRLMessage,
-		GeneratePublicKeyFromPrivateKey: services.EthWrapper.GeneratePublicKeyFromPrivateKey,
+		CreateSendPRLMessage:            eth_gateway.EthWrapper.CreateSendPRLMessage,
+		GeneratePublicKeyFromPrivateKey: eth_gateway.EthWrapper.GeneratePublicKeyFromPrivateKey,
 	}
 
 	// 1 transfer shouldn't go through to to BuryPRL failure and should be set to an error
@@ -441,7 +441,7 @@ func (suite *JobsSuite) Test_CheckForReclaimableGas_not_worth_it_keep_waiting() 
 	hasCalledCheckIfWorthReclaimingGas := false
 	hasCalledReclaimGas := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckIfWorthReclaimingGas: func(address common.Address,
 			desiredGasLimit uint64) (bool, *big.Int, error) {
 			hasCalledCheckIfWorthReclaimingGas = true
@@ -488,7 +488,7 @@ func (suite *JobsSuite) Test_CheckForReclaimableGas_not_worth_it_stop_waiting() 
 	hasCalledCheckIfWorthReclaimingGas := false
 	hasCalledReclaimGas := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckIfWorthReclaimingGas: func(address common.Address,
 			desiredGasLimit uint64) (bool, *big.Int, error) {
 			hasCalledCheckIfWorthReclaimingGas = true
@@ -535,7 +535,7 @@ func (suite *JobsSuite) Test_CheckForReclaimableGas_worth_it() {
 	hasCalledCheckIfWorthReclaimingGas := false
 	hasCalledReclaimGas := false
 
-	jobs.EthWrapper = services.Eth{
+	jobs.EthWrapper = eth_gateway.Eth{
 		CheckIfWorthReclaimingGas: func(address common.Address,
 			desiredGasLimit uint64) (bool, *big.Int, error) {
 			hasCalledCheckIfWorthReclaimingGas = true
@@ -640,7 +640,7 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_does_not_exist() {
 func generateTreasuresToBury(suite *JobsSuite, numToCreateOfEachStatus int, status models.PRLStatus) {
 	prlAmount := big.NewInt(100000000000000000)
 	for i := 0; i < numToCreateOfEachStatus; i++ {
-		ethAddr, key, _ := services.EthWrapper.GenerateEthAddr()
+		ethAddr, key, _ := eth_gateway.EthWrapper.GenerateEthAddr()
 		iotaAddr := oyster_utils.RandSeq(81, oyster_utils.TrytesAlphabet)
 		iotaMessage := oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet)
 		genesisHash := oyster_utils.RandSeq(64, []rune("abcdef123456789"))

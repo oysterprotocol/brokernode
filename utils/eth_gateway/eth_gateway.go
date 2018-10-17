@@ -1,4 +1,4 @@
-package services
+package eth_gateway
 
 import (
 	"context"
