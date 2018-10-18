@@ -14,6 +14,7 @@ import (
 )
 
 type PRLStatus int
+type SignedStatus int
 
 // IMPORTANT:  Do not remove Message and Address from
 // this struct; they are used for encryption
@@ -35,6 +36,10 @@ type Treasure struct {
 	GasTxNonce  int64     `json:"gasTxNonce" db:"gas_tx_nonce"`
 	BuryTxHash  string    `json:"buryTxHash" db:"bury_tx_hash"`
 	BuryTxNonce int64     `json:"buryTxNonce" db:"bury_tx_nonce"`
+
+	SignedStatus    SignedStatus `json:"signedStatus" db:"signed_status"`
+	EncryptionIndex int64        `json:"encryptionIndex" db:"encryption_index"`
+	Idx             int64        `json:"Idx" db:"idx"`
 }
 
 const (
@@ -57,9 +62,34 @@ const (
 	GasReclaimError = -7
 )
 
+const (
+	/*TreasureRev1 is the status of a treasure from the rev1 days*/
+	TreasureRev1 SignedStatus = iota + 0
+	/*TreasureNotSet is when the treasure payload has not been created*/
+	TreasureNotSet
+	/*TreasureUnsigned is when the treasure payload has been set but has not been signed*/
+	TreasureUnsigned
+	/*TreasureSigned is when the client has signed the treasure payload*/
+	TreasureSigned
+	/*TreasureSignedAndAttached is when the treasure has been attached*/
+	TreasureSignedAndAttached
+	/*TreasureSignedAndAttachmentVerified is when the treasure has been attached and we have
+	verified it is on the tangle*/
+	TreasureSignedAndAttachmentVerified
+
+	/*TreasureSignError is when there was some error signing the treasure*/
+	TreasureSignError = -1
+	/*TreasureAttachError is when there was some error attaching the treasure*/
+	TreasureAttachError = -2
+)
+
 const maxNumSimultaneousTreasureTxs = 15
 
+/*PRLStatusMap is for pretty printing the PRL status*/
 var PRLStatusMap = make(map[PRLStatus]string)
+
+/*SignedStatusMap is for pretty printing the signed status*/
+var SignedStatusMap = make(map[SignedStatus]string)
 
 func init() {
 	PRLStatusMap[PRLWaiting] = "PRLWaiting"
@@ -75,6 +105,14 @@ func init() {
 	PRLStatusMap[PRLError] = "PRLError"
 	PRLStatusMap[GasError] = "GasError"
 	PRLStatusMap[BuryError] = "BuryError"
+
+	SignedStatusMap[TreasureRev1] = "TreasureRev1"
+	SignedStatusMap[TreasureNotSet] = "TreasureNotSet"
+	SignedStatusMap[TreasureUnsigned] = "TreasureUnsigned"
+	SignedStatusMap[TreasureSigned] = "TreasureSigned"
+	SignedStatusMap[TreasureSignedAndAttached] = "TreasureSignedAndAttached"
+	SignedStatusMap[TreasureSignError] = "TreasureSignError"
+	SignedStatusMap[TreasureAttachError] = "TreasureAttachError"
 }
 
 // String is not required by pop and may be deleted

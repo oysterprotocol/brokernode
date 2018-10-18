@@ -11,6 +11,7 @@ import (
 	"math"
 	"math/big"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -37,9 +38,10 @@ type Invoice struct {
 }
 
 type TreasureMap struct {
-	Sector int    `json:"sector"`
-	Idx    int    `json:"idx"`
-	Key    string `json:"key"`
+	Sector        int    `json:"sector"`
+	Idx           int    `json:"idx"`           // actual index, i.e. 0, 1,000,0000, 2,000,000, etc.
+	EncryptionIdx int    `json:"encryptionIdx"` // the random chunk used to encrypt this treasure payload
+	Key           string `json:"key"`
 }
 
 type UploadSession struct {
@@ -65,11 +67,21 @@ type UploadSession struct {
 	NextIdxToAttach int64 `json:"nextIdxToAttach" db:"next_idx_to_attach"`
 	NextIdxToVerify int64 `json:"nextIdxToVerify" db:"next_idx_to_verify"`
 
-	AllDataReady int `json:"allDataReady" db:"all_data_ready"`
+	AllDataReady                 int `json:"allDataReady" db:"all_data_ready"`
+	TreasureResponsibilityStatus int `json:"treasureResponsibilityStatus" db:"treasure_responsibility_status"`
 
 	StorageMethod int          `json:"storage_method" db:"storage_method"`
 	S3BucketName  nulls.String `json:"s3_bucket_name" db:"s3_bucket_name"`
 }
+
+const (
+	/*TreasureNotResponsible means this broker is not responsible for the treasure*/
+	TreasureNotResponsible int = iota + 1
+	/*TreasureResponsibleNotAttached means this broker is responsible for the treasure but has not attached it yet*/
+	TreasureResponsibleNotAttached
+	/*TreasureResponsibleAttached means this broker is responsible for the treasure and has attached it*/
+	TreasureResponsibleAttached
+)
 
 const (
 	AllDataNotReady int = iota + 1
@@ -117,6 +129,13 @@ const (
 	/*CompletedDataMapsTimeToLive will cause completed_data_maps
 	message data to be garbage collected after 3 weeks.*/
 	CompletedDataMapsTimeToLive = 21 * 24 * time.Hour
+)
+
+const (
+	/*BetaSessionStopIdx is the index at which a beta session will assume it is done attaching or verifying the upload*/
+	BetaSessionStopIdx = 0
+	/*MetaDataChunkIdx is the first index of the metadata*/
+	MetaDataChunkIdx = 1
 )
 
 var (
@@ -1177,6 +1196,88 @@ func (u *UploadSession) SetTreasureMessage(treasureIndex int, treasurePayload st
 	return err
 }
 
+/*CreateTreasures creates the entries in the treasures table*/
+func (u *UploadSession) CreateTreasures() {
+
+	treasureIdxMapArray, err := u.GetTreasureMap()
+	if err != nil {
+		fmt.Println("Cannot create treasures to bury in upload_sessions: " + err.Error())
+		// already captured error in upstream function
+		return
+	}
+
+	if len(treasureIdxMapArray) == 0 {
+		fmt.Println("Cannot create treasures to bury in upload_sessions: " + "treasureIdxMapArray is empty")
+		return
+	}
+
+	treasureIdxMap := make(map[int64]TreasureMap)
+	for _, treasureIdxEntry := range treasureIdxMapArray {
+		treasureIdxMap[int64(treasureIdxEntry.Idx)] = treasureIdxEntry
+	}
+
+	prlPerTreasure, err := u.GetPRLsPerTreasure()
+	if err != nil {
+		fmt.Println("Cannot create treasures to bury in upload_sessions: " + err.Error())
+		// captured error in upstream method
+		return
+	}
+
+	prlInWei := oyster_utils.ConvertToWeiUnit(prlPerTreasure)
+
+	for idx, treasureChunk := range treasureIdxMap {
+
+		chunkDataEncryptionChunk := GetSingleChunkData(oyster_utils.InProgressDir, u.GenesisHash,
+			int64(treasureChunk.EncryptionIdx))
+
+		treasureAddress := GetTreasureAddress(oyster_utils.InProgressDir, u.GenesisHash,
+			idx)
+
+		decryptedKey, err := u.DecryptTreasureChunkEthKey(treasureChunk.Key)
+
+		treasurePayloadTryted, err := CreateTreasurePayloadRev2(decryptedKey, chunkDataEncryptionChunk.RawMessage,
+			chunkDataEncryptionChunk.Hash,
+			MaxSideChainLength)
+
+		if err != nil {
+			fmt.Println("Cannot create treasures to bury in upload_sessions: " + err.Error())
+			// already captured error in upstream function
+			continue
+		}
+
+		if decryptedKey == os.Getenv("TEST_MODE_WALLET_KEY") {
+			continue
+		}
+
+		if oyster_utils.BrokerMode == oyster_utils.ProdMode {
+
+			ethAddress := EthWrapper.GenerateEthAddrFromPrivateKey(decryptedKey)
+
+			treasureToBury := Treasure{
+				GenesisHash:     u.GenesisHash,
+				ETHAddr:         ethAddress.Hex(),
+				ETHKey:          decryptedKey,
+				Address:         treasureAddress,
+				Message:         treasurePayloadTryted,
+				SignedStatus:    TreasureUnsigned,
+				EncryptionIndex: int64(treasureChunk.EncryptionIdx),
+				Idx:             int64(treasureChunk.Idx),
+			}
+
+			treasureToBury.SetPRLAmount(prlInWei)
+
+			vErr, err := DB.ValidateAndCreate(&treasureToBury)
+
+			oyster_utils.LogIfError(err, nil)
+			oyster_utils.LogIfValidationError("", vErr, nil)
+			if err == nil && !vErr.HasAny() {
+				u.TreasureStatus = TreasureInDataMapComplete
+				DB.ValidateAndUpdate(u)
+			}
+		}
+	}
+}
+
 /*GetSessionsWithIncompleteData gets all the sessions for which we don't have all the data.*/
 func GetSessionsWithIncompleteData() ([]UploadSession, error) {
 	sessions := []UploadSession{}
@@ -1319,6 +1420,29 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 	}
 
 	encryptedResult := oyster_utils.Encrypt(currentHash, TreasurePrefix+ethereumSeed, sha256Hash)
+
+	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
+		oyster_utils.TrytesAlphabet)
+
+	return treasurePayload, nil
+}
+
+//TODO:  Rename this CreateTreasurePayload when we deploy rev2
+/*CreateTreasurePayloadRev2 makes a payload for a treasure chunk by encrypting an ethereum private key.*/
+func CreateTreasurePayloadRev2(ethereumSeed string, encryptionKey string, hash string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	encryptionKeyInBytes := []byte(encryptionKey)
+	encryptionKeyAsHexString := hex.EncodeToString(encryptionKeyInBytes)
+
+	currentEncryptionKey := encryptionKeyAsHexString
+	for i := 0; i <= keyLocation; i++ {
+		// Note:  This used to be HashHex because we were using the hashes which are hex values.
+		// Now we will be using the message fields.  This might have implications.
+		currentEncryptionKey = oyster_utils.HashString(currentEncryptionKey, sha3.New256())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentEncryptionKey, TreasurePrefix+ethereumSeed, hash)
 
 	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
 		oyster_utils.TrytesAlphabet)
@@ -1539,6 +1663,24 @@ func GetMultiChunkDataFromAnyDB(genesisHash string, ks *oyster_utils.KVKeys) ([]
 		}
 	}
 	return chunkData, nil
+}
+
+/*GetTreasureAddress gets the iota address where a treasure will be*/
+func GetTreasureAddress(prefix string, genesisHash string, chunkIdx int64) string {
+	treasureAddress := ""
+	currHash := ""
+	obfuscatedHash := ""
+
+	if chunkIdx == int64(0) {
+		currHash = genesisHash
+	} else {
+		chunkBeforeTheTreasure := GetSingleChunkData(prefix, genesisHash, chunkIdx-1)
+		currHash = oyster_utils.HashHex(chunkBeforeTheTreasure.Hash, sha256.New())
+	}
+
+	obfuscatedHash = oyster_utils.HashHex(currHash, sha512.New384())
+	treasureAddress = string(oyster_utils.MakeAddress(obfuscatedHash))
+	return treasureAddress
 }
 
 func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataComplete []oyster_utils.ChunkData,

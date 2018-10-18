@@ -1,6 +1,8 @@
 package models_test
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"github.com/gobuffalo/pop/nulls"
@@ -99,14 +101,16 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	// in the for loop later on a bit simpler
 	t := map[int]models.TreasureMap{}
 	t[5] = models.TreasureMap{
-		Sector: 1,
-		Idx:    5,
-		Key:    "firstKey",
+		Sector:        1,
+		EncryptionIdx: 5,
+		Idx:           0,
+		Key:           "firstKey",
 	}
 	t[78] = models.TreasureMap{
-		Sector: 2,
-		Idx:    78,
-		Key:    "secondKey",
+		Sector:        2,
+		EncryptionIdx: 78,
+		Idx:           60,
+		Key:           "secondKey",
 	}
 
 	treasureIndexArray := make([]models.TreasureMap, 0)
@@ -114,7 +118,7 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	treasureIndexArray = append(treasureIndexArray, t[78])
 
 	// do not format this.  It needs to not have new lines in it
-	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
+	testMap := `[{"sector":` + fmt.Sprint(t[5].Sector) + `,"idx":` + fmt.Sprint(t[5].Idx) + `,"encryptionIdx":` + fmt.Sprint(t[5].EncryptionIdx) + `,"key":"` + fmt.Sprint(t[5].Key) + `"},{"sector":` + fmt.Sprint(t[78].Sector) + `,"idx":` + fmt.Sprint(t[78].Idx) + `,"encryptionIdx":` + fmt.Sprint(t[78].EncryptionIdx) + `,"key":"` + fmt.Sprint(t[78].Key) + `"}]`
 
 	u := models.UploadSession{
 		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
@@ -141,11 +145,12 @@ func (suite *ModelSuite) Test_TreasureMapGetterAndSetter() {
 	suite.Equal(2, len(treasureIdxMap))
 
 	for _, entry := range treasureIdxMap {
-		_, ok := t[entry.Idx]
+		_, ok := t[entry.EncryptionIdx]
 		suite.True(ok)
-		suite.Equal(entry.Sector, t[entry.Idx].Sector)
-		suite.Equal(entry.Key, t[entry.Idx].Key)
-		suite.Equal(entry.Idx, t[entry.Idx].Idx)
+		suite.Equal(entry.Sector, t[entry.EncryptionIdx].Sector)
+		suite.Equal(entry.Key, t[entry.EncryptionIdx].Key)
+		suite.Equal(entry.Idx, t[entry.EncryptionIdx].Idx)
+		suite.Equal(entry.EncryptionIdx, t[entry.EncryptionIdx].EncryptionIdx)
 	}
 }
 
@@ -2433,4 +2438,111 @@ func (suite *ModelSuite) Test_GetSessionsWithIncompleteData() {
 	suite.Nil(err)
 	suite.Equal(1, len(incompleteSessions))
 	suite.Equal(u2.GenesisHash, incompleteSessions[0].GenesisHash)
+}
+
+func (suite *ModelSuite) Test_CreateTreasures() {
+	/*
+
+		Test will fail until more rev2 changes are added.  Re-enable when ready.
+
+		numChunks := 9
+
+		u := models.UploadSession{
+			Type:                 models.SessionTypeAlpha,
+			GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+			FileSizeBytes:        uint64(9000),
+			NumChunks:            numChunks,
+			StorageLengthInYears: 2,
+			AllDataReady:         models.AllDataReady,
+		}
+
+		mergedIndexes := []int{5}
+
+		u.StartUploadSession()
+		privateKeys := []string{}
+
+		for i := 0; i < len(mergedIndexes); i++ {
+			privateKeys = append(privateKeys, "100000000"+strconv.Itoa(i))
+		}
+
+		u.PaymentStatus = models.PaymentStatusConfirmed
+		models.DB.ValidateAndUpdate(&u)
+		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+		chunkReqs := GenerateChunkRequests(u.NumChunks, u.GenesisHash)
+
+		models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
+
+		treasures := []models.Treasure{}
+
+		models.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+
+		suite.Equal(0, len(treasures))
+
+		u.CreateTreasures()
+
+		treasures = []models.Treasure{}
+
+		models.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+
+		obfuscatedHash := oyster_utils.HashHex(u.GenesisHash, sha512.New384())
+		expectedAddr := string(oyster_utils.MakeAddress(obfuscatedHash))
+
+		suite.Equal(1, len(treasures))
+		suite.Equal(expectedAddr, treasures[0].Address)
+		suite.Equal(int64(0), treasures[0].Idx)
+		suite.Equal(int64(mergedIndexes[0]), treasures[0].EncryptionIndex)
+
+	*/
+
+	// TODO:  Test decrypting the payload
+}
+
+func (suite *ModelSuite) Test_GetTreasureAddress() {
+	numChunks := 9
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+		AllDataReady:         models.AllDataReady,
+	}
+
+	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+
+	expectedTreasureAddress := string(oyster_utils.MakeAddress(oyster_utils.HashHex(u.GenesisHash, sha512.New384())))
+
+	treasureAddress := models.GetTreasureAddress(oyster_utils.InProgressDir, u.GenesisHash, int64(0))
+
+	// test that the returned treasure address is the genesis hash converted to an address
+	suite.Equal(expectedTreasureAddress, treasureAddress)
+
+	dummyIdx := 999999
+	dummyHash := "1123243546576879808978675645342312"
+	dummyMessage := "132435678980989786756453423123243546576879808"
+
+	dbIDMessage := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.MessageDir}
+	dbIDHash := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+	key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(dummyIdx)})
+
+	messageMap := oyster_utils.KVPairs{}
+	hashMap := oyster_utils.KVPairs{}
+
+	messageMap[key] = dummyMessage
+	hashMap[key] = dummyHash
+
+	oyster_utils.BatchSetToUniqueDB(dbIDMessage, &messageMap, oyster_utils.TestValueTimeToLive)
+	oyster_utils.BatchSetToUniqueDB(dbIDHash, &hashMap, oyster_utils.TestValueTimeToLive)
+
+	treasureAddress = models.GetTreasureAddress(oyster_utils.InProgressDir, u.GenesisHash, int64(1000000))
+
+	currHash := oyster_utils.HashHex(dummyHash, sha256.New())
+	expectedTreasureAddress = string(oyster_utils.MakeAddress(oyster_utils.HashHex(currHash, sha512.New384())))
+
+	// test that the returned treasure address is the hash next in the hash chain from the
+	// chunk before the treasure chunk, converted to an address
+	suite.Equal(expectedTreasureAddress, treasureAddress)
 }
