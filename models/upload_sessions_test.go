@@ -384,7 +384,7 @@ func (suite *ModelSuite) Test_GetTreasureIndexes() {
 		TreasureIdxMap:       nulls.String{string(testMap), true},
 	}
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, expectedIndexes, oyster_utils.TestValueTimeToLive)
 
 	vErr, err := u.StartUploadSession()
@@ -674,7 +674,7 @@ func (suite *ModelSuite) Test_ProcessAndStoreChunkData_badger() {
 	genHash := oyster_utils.RandSeq(6, []rune("abcdef0123456789"))
 
 	mergedIndexes := []int{5}
-	chunkReqs := GenerateChunkRequests(10, genHash)
+	chunkReqs := GenerateChunkRequestsForTests(10, genHash)
 	models.ProcessAndStoreChunkData(chunkReqs, genHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	allMessagesPresent := true
@@ -696,7 +696,7 @@ func (suite *ModelSuite) Test_ProcessAndStoreChunkData_sql() {
 	genHash := oyster_utils.RandSeq(6, []rune("abcdef0123456789"))
 
 	mergedIndexes := []int{5}
-	chunkReqs := GenerateChunkRequests(10, genHash)
+	chunkReqs := GenerateChunkRequestsForTests(10, genHash)
 	models.ProcessAndStoreChunkData(chunkReqs, genHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	allMessagesPresent := true
@@ -885,7 +885,7 @@ func (suite *ModelSuite) Test_WaitForAllMessages() {
 	// This will be false since we did not send any chunk requests
 	suite.False(finishedMessages)
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 
 	firstBatch := chunkReqs[0:2]
 	secondBatch := chunkReqs[2:numChunks]
@@ -1009,7 +1009,7 @@ func (suite *ModelSuite) Test_CheckIfAllMessagesAreReady_badger() {
 	// This will be false since we did not send any chunk requests
 	suite.False(finishedMessages)
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 
 	firstBatch := chunkReqs[0:2]
 	secondBatch := chunkReqs[2:numChunks]
@@ -1053,7 +1053,7 @@ func (suite *ModelSuite) Test_CheckIfAllMessagesAreReady_sql() {
 	// This will be false since we did not send any chunk requests
 	suite.False(finishedMessages)
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 
 	firstBatch := chunkReqs[0:2]
 	secondBatch := chunkReqs[2:numChunks]
@@ -1093,7 +1093,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_alpha() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -1138,7 +1138,7 @@ func (suite *ModelSuite) Test_GetUnassignedChunksBySession_beta() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -1186,7 +1186,7 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_badger() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -1233,7 +1233,7 @@ func (suite *ModelSuite) Test_MoveChunksToCompleted_sql() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -1280,7 +1280,7 @@ func (suite *ModelSuite) Test_MoveAllChunksToCompleted_badger() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -1327,7 +1327,7 @@ func (suite *ModelSuite) Test_MoveAllChunksToCompleted_sql() {
 	suite.Nil(err)
 	u.MakeTreasureIdxMap([]int{}, []string{})
 
-	chunkReqs := GenerateChunkRequests(numChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(numChunks, u.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, []int{}, oyster_utils.TestValueTimeToLive)
 
 	u.WaitForAllHashes(100)
@@ -2402,7 +2402,7 @@ func (suite *ModelSuite) Test_CreateTreasures() {
 	models.DB.ValidateAndUpdate(&u)
 	u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	chunkReqs := GenerateChunkRequests(u.NumChunks, u.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(u.NumChunks, u.GenesisHash)
 
 	models.ProcessAndStoreChunkData(chunkReqs, u.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 

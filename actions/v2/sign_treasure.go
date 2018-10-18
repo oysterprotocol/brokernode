@@ -39,7 +39,6 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
 		err := errors.New("Deployment in progress.  Try again later")
-		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
@@ -51,37 +50,19 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 	uploadSession := &models.UploadSession{}
 	err := models.DB.Find(uploadSession, c.Param("id"))
 
-	if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
-
-		uploadSession.AllDataReady = models.AllDataReady
-		models.DB.ValidateAndUpdate(uploadSession)
-
-		res := unsignedTreasureRes{
-			Available:        false,
-			UnsignedTreasure: []TreasurePayload{},
-		}
-		return c.Render(200, actions_utils.Render.JSON(res))
-	}
-
-	defer oyster_utils.TimeTrack(time.Now(), "actions/sign_treasure: getting_unsigned_treasure", analytics.NewProperties().
-		Set("id", uploadSession.ID).
-		Set("genesis_hash", uploadSession.GenesisHash))
-
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		c.Error(400, err)
 		return err
 	}
-	if uploadSession == nil {
-		err := errors.New("error finding session in GetUnsignedTreasure")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
 
-	if uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
-		uploadSession.AllDataReady = models.AllDataReady
-		models.DB.ValidateAndUpdate(uploadSession)
+	if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure ||
+		uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
+
+		if err == nil {
+			uploadSession.AllDataReady = models.AllDataReady
+			models.DB.ValidateAndUpdate(uploadSession)
+		}
 
 		res := unsignedTreasureRes{
 			Available:        false,
@@ -90,9 +71,13 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 		return c.Render(200, actions_utils.Render.JSON(res))
 	}
 
+	defer oyster_utils.TimeTrack(time.Now(), "actions/sign_treasure: getting_unsigned_treasure",
+		analytics.NewProperties().
+			Set("id", uploadSession.ID).
+			Set("genesis_hash", uploadSession.GenesisHash))
+
 	uploadSession.CreateTreasures()
 
-	//treasureMap, err := uploadSession.GetTreasureMap()
 	treasures := []models.Treasure{}
 	err = models.DB.Where("genesis_hash = ?", uploadSession.GenesisHash).All(&treasures)
 	if err != nil {
@@ -131,7 +116,6 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 
 	if os.Getenv("DEPLOY_IN_PROGRESS") == "true" {
 		err := errors.New("Deployment in progress.  Try again later")
-		fmt.Println(err)
 		c.Error(400, err)
 		return err
 	}
@@ -143,10 +127,19 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 	uploadSession := &models.UploadSession{}
 	err := models.DB.Find(uploadSession, c.Param("id"))
 
-	if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure {
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		c.Error(400, err)
+		return err
+	}
 
-		uploadSession.AllDataReady = models.AllDataReady
-		models.DB.ValidateAndUpdate(uploadSession)
+	if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure ||
+		uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
+
+		if err == nil {
+			uploadSession.AllDataReady = models.AllDataReady
+			models.DB.ValidateAndUpdate(uploadSession)
+		}
 
 		return c.Render(200, actions_utils.Render.JSON(map[string]bool{"success": true}))
 	}
@@ -154,24 +147,6 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 	defer oyster_utils.TimeTrack(time.Now(), "actions/sign_treasure: signing_treasure", analytics.NewProperties().
 		Set("id", uploadSession.ID).
 		Set("genesis_hash", uploadSession.GenesisHash))
-
-	if err != nil {
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
-	if uploadSession == nil {
-		err := errors.New("error finding session in SignTreasure")
-		oyster_utils.LogIfError(err, nil)
-		c.Error(400, err)
-		return err
-	}
-	if uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
-		uploadSession.AllDataReady = models.AllDataReady
-		models.DB.ValidateAndUpdate(uploadSession)
-
-		return c.Render(200, actions_utils.Render.JSON(map[string]bool{"success": true}))
-	}
 
 	req := SignedTreasureReq{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
@@ -185,17 +160,17 @@ func (usr *SignTreasureResource) SignTreasure(c buffalo.Context) error {
 		treasure := &models.Treasure{}
 		err := models.DB.Find(treasure, signedTreasure.ID)
 		oyster_utils.LogIfError(err, nil)
-		if err == nil && treasure.ID != uuid.Nil {
+		if err == nil {
 			treasure.Message = signedTreasure.TreasurePayload
 			treasure.SignedStatus = models.TreasureSigned
 			vErr, err := models.DB.ValidateAndUpdate(treasure)
 			oyster_utils.LogIfError(err, nil)
 			oyster_utils.LogIfValidationError("error updating with signed treasure", vErr, nil)
 		} else {
-			err := errors.New("treasure does not exist or error finding treasure")
-			oyster_utils.LogIfError(err, nil)
-			c.Error(400, err)
-			return err
+			newErr := errors.New(err.Error() + " - treasure does not exist or error finding treasure")
+			oyster_utils.LogIfError(newErr, nil)
+			c.Error(400, newErr)
+			return newErr
 		}
 	}
 

@@ -76,7 +76,7 @@ func Test_JobsSuite(t *testing.T) {
 	suite.Run(t, js)
 }
 
-func GenerateChunkRequests(indexToStopAt int, genesisHash string) []models.ChunkReq {
+func GenerateChunkRequestsForTests(indexToStopAt int, genesisHash string) []models.ChunkReq {
 	chunkReqs := []models.ChunkReq{}
 
 	for i := 1; i <= indexToStopAt; i++ {
@@ -114,7 +114,7 @@ func SessionSetUpForTest(session *models.UploadSession, mergedIndexes []int,
 	models.DB.ValidateAndUpdate(session)
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	chunkReqs := GenerateChunkRequests(indexToStopAt, session.GenesisHash)
+	chunkReqs := GenerateChunkRequestsForTests(indexToStopAt, session.GenesisHash)
 
 	models.ProcessAndStoreChunkData(chunkReqs, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 

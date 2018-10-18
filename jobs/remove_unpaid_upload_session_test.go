@@ -201,7 +201,7 @@ func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus i
 	privateKeys := []string{key}
 	session.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
-	chunkReqs1 := GenerateChunkRequests(session.NumChunks, session.GenesisHash)
+	chunkReqs1 := GenerateChunkRequestsForTests(session.NumChunks, session.GenesisHash)
 	models.ProcessAndStoreChunkData(chunkReqs1, session.GenesisHash, mergedIndexes, oyster_utils.TestValueTimeToLive)
 
 	session.WaitForAllHashes(500)
