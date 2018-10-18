@@ -13,9 +13,25 @@ func (suite *ActionSuite) Test_GetUnsignedTreasure_no_session_found() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	res := suite.JSON("/api/v2/unsigned-treasure/abcdef").Get()
+	fileSizeBytes := uint64(123)
+	numChunks := 2
+	storageLengthInYears := 2
 
-	suite.Equal(500, res.Code)
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	sessionID := u.ID
+	suite.DB.Destroy(&u)
+
+	res := suite.JSON("/api/v2/unsigned-treasure/" + sessionID.String()).Get()
+
+	suite.Equal(404, res.Code)
 	suite.True(strings.Contains(res.Body.String(), "no rows in result set"))
 }
 
@@ -131,7 +147,6 @@ func (suite *ActionSuite) Test_GetUnsignedTreasure_responsible_no_treasures() {
 }
 
 func (suite *ActionSuite) Test_GetUnsignedTreasure_responsible_with_treasures() {
-
 	/*
 
 		This test will fail until more rev2 changes are added.  Re-enable when ready.
@@ -190,17 +205,33 @@ func (suite *ActionSuite) Test_SignTreasure_no_sessions() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
+	fileSizeBytes := uint64(123)
+	numChunks := 2
+	storageLengthInYears := 2
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	sessionID := u.ID
+	suite.DB.Destroy(&u)
+
 	treasurePayloads := []TreasurePayload{{
 		ID:              uuid.NewV3(uuid.UUID{}, "blahblah"),
 		Idx:             int64(5),
 		TreasurePayload: "treasurePayload",
 	}}
 
-	res := suite.JSON("/api/v2/signed-treasure/" + "abcdef").Put(map[string]interface{}{
+	res := suite.JSON("/api/v2/signed-treasure/" + sessionID.String()).Put(map[string]interface{}{
 		"signedTreasure": treasurePayloads,
 	})
 
-	suite.Equal(500, res.Code)
+	suite.Equal(404, res.Code)
 	suite.True(strings.Contains(res.Body.String(), "no rows in result set"))
 }
 
@@ -332,92 +363,92 @@ func (suite *ActionSuite) Test_SignTreasure_treasure_responsible_no_treasures() 
 func (suite *ActionSuite) Test_SignTreasure_treasure_responsible_with_treasures() {
 	/*
 
-		This test will fail until more rev2 changes are added.  Re-enable when ready.
+			This test will fail until more rev2 changes are added.  Re-enable when ready.
 
-	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
-	defer oyster_utils.ResetBrokerMode()
+		oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+		defer oyster_utils.ResetBrokerMode()
 
-	fileSizeBytes := uint64(123)
-	numChunks := 9
-	storageLengthInYears := 2
+		fileSizeBytes := uint64(123)
+		numChunks := 9
+		storageLengthInYears := 2
 
-	u := models.UploadSession{
-		Type:                         models.SessionTypeAlpha,
-		GenesisHash:                  oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
-		FileSizeBytes:                fileSizeBytes,
-		NumChunks:                    numChunks,
-		StorageLengthInYears:         storageLengthInYears,
-		TreasureResponsibilityStatus: models.TreasureResponsibleNotAttached,
-	}
+		u := models.UploadSession{
+			Type:                         models.SessionTypeAlpha,
+			GenesisHash:                  oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+			FileSizeBytes:                fileSizeBytes,
+			NumChunks:                    numChunks,
+			StorageLengthInYears:         storageLengthInYears,
+			TreasureResponsibilityStatus: models.TreasureResponsibleNotAttached,
+		}
 
-	// set session up for test so that TreasureIdxMap gets created
-	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+		// set session up for test so that TreasureIdxMap gets created
+		SessionSetUpForTest(&u, []int{5}, u.NumChunks)
 
-	// call unsigned treasures endpoint so that an entry in the treasures
-	// table is created
-	res := suite.JSON("/api/v2/unsigned-treasure/" + u.ID.String()).Get()
+		// call unsigned treasures endpoint so that an entry in the treasures
+		// table is created
+		res := suite.JSON("/api/v2/unsigned-treasure/" + u.ID.String()).Get()
 
-	// Parse response
-	resParsed := unsignedTreasureRes{}
-	bodyBytes, _ := ioutil.ReadAll(res.Body)
-	json.Unmarshal(bodyBytes, &resParsed)
+		// Parse response
+		resParsed := unsignedTreasureRes{}
+		bodyBytes, _ := ioutil.ReadAll(res.Body)
+		json.Unmarshal(bodyBytes, &resParsed)
 
-	initialTreasurePayload := resParsed.UnsignedTreasure[0]
+		initialTreasurePayload := resParsed.UnsignedTreasure[0]
 
-	treasures := []models.Treasure{}
-	suite.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+		treasures := []models.Treasure{}
+		suite.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
 
-	// verify the ID, Idx, and Message all match the entry in our treasures table
-	suite.Equal(initialTreasurePayload.TreasurePayload, treasures[0].Message)
-	suite.Equal(initialTreasurePayload.ID, treasures[0].ID)
-	suite.Equal(initialTreasurePayload.Idx, treasures[0].Idx)
+		// verify the ID, Idx, and Message all match the entry in our treasures table
+		suite.Equal(initialTreasurePayload.TreasurePayload, treasures[0].Message)
+		suite.Equal(initialTreasurePayload.ID, treasures[0].ID)
+		suite.Equal(initialTreasurePayload.Idx, treasures[0].Idx)
 
-	// verify that the SignedStatus is TreasureUnsigned
-	suite.Equal(models.TreasureUnsigned, treasures[0].SignedStatus)
+		// verify that the SignedStatus is TreasureUnsigned
+		suite.Equal(models.TreasureUnsigned, treasures[0].SignedStatus)
 
-	// Get session
-	uploadSession := &models.UploadSession{}
-	models.DB.Find(uploadSession, u.ID)
+		// Get session
+		uploadSession := &models.UploadSession{}
+		models.DB.Find(uploadSession, u.ID)
 
-	// verify that all the data is not yet ready
-	suite.Equal(models.AllDataNotReady, uploadSession.AllDataReady)
+		// verify that all the data is not yet ready
+		suite.Equal(models.AllDataNotReady, uploadSession.AllDataReady)
 
-	// create a treasure payload with a un updated ("signed") message
-	treasurePayloads := []TreasurePayload{{
-		ID:              initialTreasurePayload.ID,
-		Idx:             initialTreasurePayload.Idx,
-		TreasurePayload: "someDifferentPayload",
-	}}
+		// create a treasure payload with a un updated ("signed") message
+		treasurePayloads := []TreasurePayload{{
+			ID:              initialTreasurePayload.ID,
+			Idx:             initialTreasurePayload.Idx,
+			TreasurePayload: "someDifferentPayload",
+		}}
 
-	// call signed treasures endpoint
-	res = suite.JSON("/api/v2/signed-treasure/" + u.ID.String()).Put(map[string]interface{}{
-		"signedTreasure": treasurePayloads,
-	})
+		// call signed treasures endpoint
+		res = suite.JSON("/api/v2/signed-treasure/" + u.ID.String()).Put(map[string]interface{}{
+			"signedTreasure": treasurePayloads,
+		})
 
-	suite.Equal(200, res.Code)
+		suite.Equal(200, res.Code)
 
-	treasures = []models.Treasure{}
-	suite.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
+		treasures = []models.Treasure{}
+		suite.DB.Where("genesis_hash = ?", u.GenesisHash).All(&treasures)
 
-	// verify message is not the same as the initial message
-	suite.NotEqual(initialTreasurePayload.TreasurePayload, treasures[0].Message)
+		// verify message is not the same as the initial message
+		suite.NotEqual(initialTreasurePayload.TreasurePayload, treasures[0].Message)
 
-	// verify ID and Idx are still the same
-	suite.Equal(initialTreasurePayload.ID, treasures[0].ID)
-	suite.Equal(initialTreasurePayload.Idx, treasures[0].Idx)
+		// verify ID and Idx are still the same
+		suite.Equal(initialTreasurePayload.ID, treasures[0].ID)
+		suite.Equal(initialTreasurePayload.Idx, treasures[0].Idx)
 
-	// verify message matches the message we passed in
-	suite.Equal(treasurePayloads[0].TreasurePayload, treasures[0].Message)
+		// verify message matches the message we passed in
+		suite.Equal(treasurePayloads[0].TreasurePayload, treasures[0].Message)
 
-	// verify that the SignedStatus is TreasureSigned
-	suite.Equal(models.TreasureSigned, treasures[0].SignedStatus)
+		// verify that the SignedStatus is TreasureSigned
+		suite.Equal(models.TreasureSigned, treasures[0].SignedStatus)
 
-	// Get session
-	uploadSession = &models.UploadSession{}
-	models.DB.Find(uploadSession, u.ID)
+		// Get session
+		uploadSession = &models.UploadSession{}
+		models.DB.Find(uploadSession, u.ID)
 
-	// verify that all the data is ready
-	suite.Equal(models.AllDataReady, uploadSession.AllDataReady)
+		// verify that all the data is ready
+		suite.Equal(models.AllDataReady, uploadSession.AllDataReady)
 
 	*/
 }
