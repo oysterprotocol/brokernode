@@ -4,12 +4,18 @@ import (
 	"github.com/gobuffalo/envy"
 	"github.com/gobuffalo/pop"
 	"github.com/oysterprotocol/brokernode/utils"
+	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"log"
 )
 
 // DB is a connection to your database to be used
 // throughout your application.
 var DB *pop.Connection
+
+var (
+	/*EthWrapper will be used to interact with the ethereum blockchain*/
+	EthWrapper = eth_gateway.EthWrapper
+)
 
 func init() {
 	var err error

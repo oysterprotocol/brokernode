@@ -1,0 +1,1 @@
+call AddColumnUnlessExists(Database(), 'upload_sessions', 'treasure_responsibility_status', 'int(11) DEFAULT 0');

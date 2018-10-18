@@ -38,5 +38,10 @@ func RegisterApi(app *buffalo.App) *buffalo.App {
 	treasures := TreasuresResource{}
 	apiV2.POST("treasures", treasures.VerifyAndClaim)
 
+	// Treasure signing
+	signTreasureResource := SignTreasureResource{}
+	apiV2.GET("unsigned-treasure/{id}", signTreasureResource.GetUnsignedTreasure)
+	apiV2.PUT("signed-treasure/{id}", signTreasureResource.SignTreasure)
+
 	return apiV2
 }
