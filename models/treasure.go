@@ -13,7 +13,10 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+/*PRLStatus is used when burying PRLs*/
 type PRLStatus int
+
+/*SignedStatus specifies whether the treasure is signed, attached, and verified*/
 type SignedStatus int
 
 // IMPORTANT:  Do not remove Message and Address from
@@ -111,6 +114,7 @@ func init() {
 	SignedStatusMap[TreasureUnsigned] = "TreasureUnsigned"
 	SignedStatusMap[TreasureSigned] = "TreasureSigned"
 	SignedStatusMap[TreasureSignedAndAttached] = "TreasureSignedAndAttached"
+	SignedStatusMap[TreasureSignedAndAttachmentVerified] = "TreasureSignedAndAttachmentVerified"
 	SignedStatusMap[TreasureSignError] = "TreasureSignError"
 	SignedStatusMap[TreasureAttachError] = "TreasureAttachError"
 }

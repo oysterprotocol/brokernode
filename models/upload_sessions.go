@@ -1427,8 +1427,8 @@ func CreateTreasurePayload(ethereumSeed string, sha256Hash string, maxSideChainL
 	return treasurePayload, nil
 }
 
-//TODO:  Rename this CreateTreasurePayload when we deploy rev2
 /*CreateTreasurePayloadRev2 makes a payload for a treasure chunk by encrypting an ethereum private key.*/
+//TODO:  Rename this CreateTreasurePayload when we deploy rev2
 func CreateTreasurePayloadRev2(ethereumSeed string, encryptionKey string, hash string, maxSideChainLength int) (string, error) {
 	keyLocation := rand.Intn(maxSideChainLength)
 

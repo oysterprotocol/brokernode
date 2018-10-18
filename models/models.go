@@ -13,6 +13,7 @@ import (
 var DB *pop.Connection
 
 var (
+	/*EthWrapper will be used to interact with the ethereum blockchain*/
 	EthWrapper = eth_gateway.EthWrapper
 )
 
