@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"math/big"
 	"time"
 
@@ -154,10 +155,8 @@ func (t *Treasure) BeforeCreate(tx *pop.Connection) error {
 		t.PRLStatus = PRLWaiting
 	}
 
-	if len(t.Message) > 81 {
-		// don't really need full message, just something known to
-		// the broker that we can hash and then use for encryption
-		t.Message = t.Message[0:81]
+	if t.SignedStatus == 0 {
+		t.SignedStatus = TreasureNotSet
 	}
 
 	t.EncryptTreasureEthKey()
@@ -225,6 +224,23 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	return treasureRowsToReturn, nil
 }
 
+/*GetTreasuresToBuryBySignedStatus gets all the treasures that matched the signed statuses passed in*/
+func GetTreasuresToBuryBySignedStatus(signedStatuses []SignedStatus) ([]Treasure, error) {
+	treasureRowsToReturn := make([]Treasure, 0)
+	for _, status := range signedStatuses {
+		treasureToBury := []Treasure{}
+		err := DB.RawQuery("SELECT * FROM treasures WHERE signed_status = ? LIMIT ?",
+			status,
+			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
+		if err != nil {
+			oyster_utils.LogIfError(err, nil)
+			return treasureToBury, err
+		}
+		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
+	}
+	return treasureRowsToReturn, nil
+}
+
 func GetAllTreasuresToBury() ([]Treasure, error) {
 	allTreasures := []Treasure{}
 	err := DB.RawQuery("SELECT * FROM treasures").All(&allTreasures)
@@ -243,4 +259,37 @@ func (t *Treasure) DecryptTreasureEthKey() string {
 	hashedAddress := oyster_utils.HashHex(hex.EncodeToString([]byte(t.Address)), sha3.New256())
 	decryptedKey := oyster_utils.Decrypt(hashedMessage, t.ETHKey, hashedAddress)
 	return hex.EncodeToString(decryptedKey)
+}
+
+/*GetTreasuresByGenesisHashAndIndexes gets treasures that match the genesis hash and indexes passed in*/
+func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]Treasure, error) {
+	// indexes is the actual index of the treasure ( 0, 1,000,000, etc.), NOT the encryption index
+
+	var err error
+	treasures := []Treasure{}
+
+	if len(indexes) == 0 {
+		err = DB.Where("genesis_hash = ?", genesisHash).All(&treasures)
+		return treasures, err
+	}
+	for _, index := range indexes {
+		treasure := []Treasure{}
+
+		err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
+			"idx = ?",
+			genesisHash,
+			index).All(&treasure)
+
+		if len(treasure) > 1 {
+			err = errors.New("there should only be one treasure with a particular genesis hash and index")
+			break
+		} else if len(treasure) == 1 {
+			treasures = append(treasures, treasure[0])
+		} else if err != nil {
+			break
+		}
+	}
+
+	oyster_utils.LogIfError(err, nil)
+	return treasures, err
 }
