@@ -27,7 +27,7 @@ var cachedData cmap.ConcurrentMap
 
 func init() {
 	hasAwsKey := len(os.Getenv("AWS_ACCESS_KEY_ID")) > 0 && len(os.Getenv("AWS_SECRET_ACCESS_KEY")) > 0
-	// Stub out the S3 if we don't have S3 access right
+	// Stub out the S3 if we don't have S3 access right.
 	if hasAwsKey {
 		svc = &s3Wrapper{
 			s3: s3.New(session.Must(session.NewSession())),
