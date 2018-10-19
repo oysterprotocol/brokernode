@@ -2428,3 +2428,52 @@ func (suite *ModelSuite) Test_CreateTreasures() {
 
 	// TODO:  Test decrypting the payload
 }
+
+func (suite *ModelSuite) Test_GetTreasureAddress() {
+	numChunks := 9
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        uint64(9000),
+		NumChunks:            numChunks,
+		StorageLengthInYears: 2,
+		AllDataReady:         models.AllDataReady,
+	}
+
+	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+
+	expectedTreasureAddress := string(oyster_utils.MakeAddress(oyster_utils.HashHex(u.GenesisHash, sha512.New384())))
+
+	treasureAddress := models.GetTreasureAddress(oyster_utils.InProgressDir, u.GenesisHash, int64(0))
+
+	// test that the returned treasure address is the genesis hash converted to an address
+	suite.Equal(expectedTreasureAddress, treasureAddress)
+
+	dummyIdx := 999999
+	dummyHash := "1123243546576879808978675645342312"
+	dummyMessage := "132435678980989786756453423123243546576879808"
+
+	dbIDMessage := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.MessageDir}
+	dbIDHash := []string{oyster_utils.InProgressDir, u.GenesisHash, oyster_utils.HashDir}
+
+	key := oyster_utils.GetBadgerKey([]string{u.GenesisHash, strconv.Itoa(dummyIdx)})
+
+	messageMap := oyster_utils.KVPairs{}
+	hashMap := oyster_utils.KVPairs{}
+
+	messageMap[key] = dummyMessage
+	hashMap[key] = dummyHash
+
+	oyster_utils.BatchSetToUniqueDB(dbIDMessage, &messageMap, oyster_utils.TestValueTimeToLive)
+	oyster_utils.BatchSetToUniqueDB(dbIDHash, &hashMap, oyster_utils.TestValueTimeToLive)
+
+	treasureAddress = models.GetTreasureAddress(oyster_utils.InProgressDir, u.GenesisHash, int64(1000000))
+
+	currHash := oyster_utils.HashHex(dummyHash, sha256.New())
+	expectedTreasureAddress = string(oyster_utils.MakeAddress(oyster_utils.HashHex(currHash, sha512.New384())))
+
+	// test that the returned treasure address is the hash next in the hash chain from the
+	// chunk before the treasure chunk, converted to an address
+	suite.Equal(expectedTreasureAddress, treasureAddress)
+}

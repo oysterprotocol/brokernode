@@ -12,6 +12,7 @@ import (
 	"github.com/oysterprotocol/brokernode/utils"
 )
 
+/*TreasuresResource is used for treasure claims*/
 type TreasuresResource struct {
 	buffalo.Resource
 }
@@ -28,7 +29,7 @@ type treasureRes struct {
 	Success bool `json:"success"`
 }
 
-// Verifies the treasure and claims such treasure.
+/*VerifyAndClaim verifies the treasure and claims such treasure.*/
 func (t *TreasuresResource) VerifyAndClaim(c buffalo.Context) error {
 	start := PrometheusWrapper.TimeNow()
 	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramTreasuresResourceVerifyAndClaim, start)

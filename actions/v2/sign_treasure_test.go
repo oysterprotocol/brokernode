@@ -13,9 +13,25 @@ func (suite *ActionSuite) Test_GetUnsignedTreasure_no_session_found() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
-	res := suite.JSON("/api/v2/unsigned-treasure/abcdef").Get()
+	fileSizeBytes := uint64(123)
+	numChunks := 2
+	storageLengthInYears := 2
 
-	suite.Equal(500, res.Code)
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	sessionID := u.ID
+	suite.DB.Destroy(&u)
+
+	res := suite.JSON("/api/v2/unsigned-treasure/" + sessionID.String()).Get()
+
+	suite.Equal(404, res.Code)
 	suite.True(strings.Contains(res.Body.String(), "no rows in result set"))
 }
 
@@ -147,7 +163,9 @@ func (suite *ActionSuite) Test_GetUnsignedTreasure_responsible_with_treasures() 
 		TreasureResponsibilityStatus: models.TreasureResponsibleNotAttached,
 	}
 
-	SessionSetUpForTest(&u, []int{5}, u.NumChunks)
+	mergedIndexes := []int{5}
+
+	SessionSetUpForTest(&u, mergedIndexes, u.NumChunks)
 
 	res := suite.JSON("/api/v2/unsigned-treasure/" + u.ID.String()).Get()
 
@@ -181,17 +199,33 @@ func (suite *ActionSuite) Test_SignTreasure_no_sessions() {
 	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
 	defer oyster_utils.ResetBrokerMode()
 
+	fileSizeBytes := uint64(123)
+	numChunks := 2
+	storageLengthInYears := 2
+
+	u := models.UploadSession{
+		Type:                 models.SessionTypeAlpha,
+		GenesisHash:          oyster_utils.RandSeq(6, []rune("abcdef0123456789")),
+		FileSizeBytes:        fileSizeBytes,
+		NumChunks:            numChunks,
+		StorageLengthInYears: storageLengthInYears,
+	}
+
+	u.StartUploadSession()
+	sessionID := u.ID
+	suite.DB.Destroy(&u)
+
 	treasurePayloads := []TreasurePayload{{
 		ID:              uuid.NewV3(uuid.UUID{}, "blahblah"),
 		Idx:             int64(5),
 		TreasurePayload: "treasurePayload",
 	}}
 
-	res := suite.JSON("/api/v2/signed-treasure/" + "abcdef").Put(map[string]interface{}{
+	res := suite.JSON("/api/v2/signed-treasure/" + sessionID.String()).Put(map[string]interface{}{
 		"signedTreasure": treasurePayloads,
 	})
 
-	suite.Equal(500, res.Code)
+	suite.Equal(404, res.Code)
 	suite.True(strings.Contains(res.Body.String(), "no rows in result set"))
 }
 

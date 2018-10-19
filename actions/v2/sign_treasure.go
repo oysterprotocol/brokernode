@@ -13,10 +13,12 @@ import (
 	"time"
 )
 
+/*SignTreasureResource is used for the signing of treasures*/
 type SignTreasureResource struct {
 	buffalo.Resource
 }
 
+/*defines the format in which client and broker will communicate about treasure signing*/
 type TreasurePayload struct {
 	ID              uuid.UUID `json:"id"`
 	Idx             int64     `json:"idx"`
@@ -29,6 +31,7 @@ type unsignedTreasureRes struct {
 	Available        bool              `json:"available"`
 }
 
+/*SignedTreasureReq is what the PUT from the client to sign the treasures will look like*/
 type SignedTreasureReq struct {
 	SignedTreasure []TreasurePayload `json:"signedTreasure"`
 }

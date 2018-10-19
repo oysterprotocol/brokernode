@@ -1249,7 +1249,7 @@ func (u *UploadSession) CreateTreasures() {
 
 		decryptedKey, err := u.DecryptTreasureChunkEthKey(treasureChunk.Key)
 
-		treasurePayloadTryted, err := CreateTreasurePayload(decryptedKey, chunkDataEncryptionChunk.RawMessage,
+		treasurePayloadTryted, err := CreateTreasurePayloadRev2(decryptedKey, chunkDataEncryptionChunk.RawMessage,
 			chunkDataEncryptionChunk.Hash,
 			MaxSideChainLength)
 
@@ -1425,6 +1425,29 @@ func SetBrokerTransactionToPaid(session UploadSession) error {
 
 /*CreateTreasurePayload makes a payload for a treasure chunk by encrypting an ethereum private key.*/
 func CreateTreasurePayload(ethereumSeed string, encryptionKey string, hash string, maxSideChainLength int) (string, error) {
+	keyLocation := rand.Intn(maxSideChainLength)
+
+	encryptionKeyInBytes := []byte(encryptionKey)
+	encryptionKeyAsHexString := hex.EncodeToString(encryptionKeyInBytes)
+
+	currentEncryptionKey := encryptionKeyAsHexString
+	for i := 0; i <= keyLocation; i++ {
+		// Note:  This used to be HashHex because we were using the hashes which are hex values.
+		// Now we will be using the message fields.  This might have implications.
+		currentEncryptionKey = oyster_utils.HashString(currentEncryptionKey, sha3.New256())
+	}
+
+	encryptedResult := oyster_utils.Encrypt(currentEncryptionKey, TreasurePrefix+ethereumSeed, hash)
+
+	treasurePayload := string(oyster_utils.BytesToTrytes(encryptedResult)) + oyster_utils.RandSeq(TreasureChunkPadding,
+		oyster_utils.TrytesAlphabet)
+
+	return treasurePayload, nil
+}
+
+/*CreateTreasurePayloadRev2 makes a payload for a treasure chunk by encrypting an ethereum private key.*/
+//TODO:  Rename this CreateTreasurePayload when we deploy rev2
+func CreateTreasurePayloadRev2(ethereumSeed string, encryptionKey string, hash string, maxSideChainLength int) (string, error) {
 	keyLocation := rand.Intn(maxSideChainLength)
 
 	encryptionKeyInBytes := []byte(encryptionKey)
@@ -1655,6 +1678,24 @@ func GetMultiChunkDataFromAnyDB(genesisHash string, ks *oyster_utils.KVKeys) ([]
 	return chunkData, nil
 }
 
+/*GetTreasureAddress gets the iota address where a treasure will be*/
+func GetTreasureAddress(prefix string, genesisHash string, chunkIdx int64) string {
+	treasureAddress := ""
+	currHash := ""
+	obfuscatedHash := ""
+
+	if chunkIdx == int64(0) {
+		currHash = genesisHash
+	} else {
+		chunkBeforeTheTreasure := GetSingleChunkData(prefix, genesisHash, chunkIdx-1)
+		currHash = oyster_utils.HashHex(chunkBeforeTheTreasure.Hash, sha256.New())
+	}
+
+	obfuscatedHash = oyster_utils.HashHex(currHash, sha512.New384())
+	treasureAddress = string(oyster_utils.MakeAddress(obfuscatedHash))
+	return treasureAddress
+}
+
 func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataComplete []oyster_utils.ChunkData,
 	ks *oyster_utils.KVKeys) []oyster_utils.ChunkData {
 
@@ -1687,21 +1728,4 @@ func reassembleChunks(chunkDataInProgress []oyster_utils.ChunkData, chunkDataCom
 	}
 
 	return chunkData
-}
-
-func GetTreasureAddress(prefix string, genesisHash string, chunkIdx int64) string {
-	treasureAddress := ""
-	currHash := ""
-	obfuscatedHash := ""
-
-	if chunkIdx == int64(0) {
-		currHash = genesisHash
-	} else {
-		chunkBeforeTheTreasure := GetSingleChunkData(prefix, genesisHash, chunkIdx-1)
-		currHash = oyster_utils.HashHex(chunkBeforeTheTreasure.Hash, sha256.New())
-	}
-
-	obfuscatedHash = oyster_utils.HashHex(currHash, sha512.New384())
-	treasureAddress = string(oyster_utils.MakeAddress(obfuscatedHash))
-	return treasureAddress
 }
