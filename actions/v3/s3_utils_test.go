@@ -8,7 +8,6 @@ func (suite *ActionSuite) Test_GenerateDifferentBucketName() {
 }
 
 func (suite *ActionSuite) Test_CreateAndDeleteBucket() {
-	/* Ignore this test since Travis won't have any permission to create/delete bucket
 	bucket := createUniqueBucketName()
 	print(bucket)
 	err := createBucket(bucket)
@@ -17,11 +16,9 @@ func (suite *ActionSuite) Test_CreateAndDeleteBucket() {
 
 	err = deleteBucket(bucket)
 	suite.Nil(err)
-	*/
 }
 
 func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
-	/* Ignore this test since Travis won't have any permission to create/delete bucket
 	bucket := createUniqueBucketName()
 	suite.Nil(createBucket(bucket))
 
@@ -31,7 +28,7 @@ func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
 	err := setObject(bucket, objectKey, data)
 	suite.Nil(err)
 
-	getObjectData, err := getObject(bucket, objectKey, false)
+	getObjectData, err := getObject(bucket, objectKey, true)
 
 	suite.Nil(err)
 	suite.Equal(data, getObjectData)
@@ -40,5 +37,4 @@ func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
 	suite.Nil(err)
 
 	suite.Nil(deleteBucket(bucket))
-	*/
 }
