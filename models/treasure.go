@@ -271,23 +271,22 @@ func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]T
 	if len(indexes) == 0 {
 		err = DB.Where("genesis_hash = ?", genesisHash).All(&treasures)
 		return treasures, err
-	} else {
-		for _, index := range indexes {
-			treasure := []Treasure{}
+	}
+	for _, index := range indexes {
+		treasure := []Treasure{}
 
-			err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
-				"idx = ?",
-				genesisHash,
-				index).All(&treasure)
+		err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
+			"idx = ?",
+			genesisHash,
+			index).All(&treasure)
 
-			if len(treasure) > 1 {
-				err = errors.New("there should only be one treasure with a particular genesis hash and index!")
-				break
-			} else if len(treasure) == 1 {
-				treasures = append(treasures, treasure[0])
-			} else if err != nil {
-				break
-			}
+		if len(treasure) > 1 {
+			err = errors.New("there should only be one treasure with a particular genesis hash and index")
+			break
+		} else if len(treasure) == 1 {
+			treasures = append(treasures, treasure[0])
+		} else if err != nil {
+			break
 		}
 	}
 
