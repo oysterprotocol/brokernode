@@ -38,6 +38,9 @@ func (suite *JobsSuite) SetupTest() {
 	*/
 
 	IotaMock = services.IotaService{
+		DoPoW: func(chunks []oyster_utils.ChunkData) error {
+			return nil
+		},
 		SendChunksToChannel: func(chunks []oyster_utils.ChunkData, channel *models.ChunkChannel) {
 
 		},

@@ -224,6 +224,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	return treasureRowsToReturn, nil
 }
 
+/*GetTreasuresToBuryBySignedStatus gets all the treasures that matched the signed statuses passed in*/
 func GetTreasuresToBuryBySignedStatus(signedStatuses []SignedStatus) ([]Treasure, error) {
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, status := range signedStatuses {
@@ -231,30 +232,6 @@ func GetTreasuresToBuryBySignedStatus(signedStatuses []SignedStatus) ([]Treasure
 		err := DB.RawQuery("SELECT * FROM treasures WHERE signed_status = ? LIMIT ?",
 			status,
 			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			return treasureToBury, err
-		}
-		treasureRowsToReturn = append(treasureRowsToReturn, treasureToBury...)
-	}
-	return treasureRowsToReturn, nil
-}
-
-func GetTreasuresToBuryBySignedStatusAndUpdateTime(signedStatuses []SignedStatus, thresholdTime time.Time) ([]Treasure,
-	error) {
-	timeSinceThreshold := time.Since(thresholdTime)
-
-	treasureRowsToReturn := make([]Treasure, 0)
-
-	for _, status := range signedStatuses {
-		treasureToBury := []Treasure{}
-
-		err := DB.RawQuery("SELECT * FROM treasures WHERE signed_status = ? AND "+
-			"TIMESTAMPDIFF(hour, updated_at, NOW()) >= ? LIMIT ?",
-			status,
-			int(timeSinceThreshold.Hours()),
-			maxNumSimultaneousTreasureTxs).All(&treasureToBury)
-
 		if err != nil {
 			oyster_utils.LogIfError(err, nil)
 			return treasureToBury, err
@@ -284,6 +261,7 @@ func (t *Treasure) DecryptTreasureEthKey() string {
 	return hex.EncodeToString(decryptedKey)
 }
 
+/*GetTreasuresByGenesisHashAndIndexes gets treasures that match the genesis hash and indexes passed in*/
 func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]Treasure, error) {
 	// indexes is the actual index of the treasure ( 0, 1,000,000, etc.), NOT the encryption index
 
@@ -293,23 +271,22 @@ func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]T
 	if len(indexes) == 0 {
 		err = DB.Where("genesis_hash = ?", genesisHash).All(&treasures)
 		return treasures, err
-	} else {
-		for _, index := range indexes {
-			treasure := []Treasure{}
+	}
+	for _, index := range indexes {
+		treasure := []Treasure{}
 
-			err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
-				"Idx = ?",
-				genesisHash,
-				index).All(&treasure)
+		err = DB.RawQuery("SELECT * FROM treasures WHERE genesis_hash = ? AND "+
+			"idx = ?",
+			genesisHash,
+			index).All(&treasure)
 
-			if len(treasure) > 1 {
-				err = errors.New("there should only be one treasure with a particular genesis hash and index!")
-				break
-			} else if len(treasure) == 1 {
-				treasures = append(treasures, treasure[0])
-			} else if err != nil {
-				break
-			}
+		if len(treasure) > 1 {
+			err = errors.New("there should only be one treasure with a particular genesis hash and index")
+			break
+		} else if len(treasure) == 1 {
+			treasures = append(treasures, treasure[0])
+		} else if err != nil {
+			break
 		}
 	}
 
