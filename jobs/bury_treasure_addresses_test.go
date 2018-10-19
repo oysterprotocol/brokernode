@@ -579,6 +579,8 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_ready() {
 	suite.Equal(3, len(allTreasures))
 
 	for _, treasure := range allTreasures {
+		treasure.SignedStatus = models.TreasureSignedAndAttachmentVerified
+		suite.DB.ValidateAndUpdate(&treasure)
 		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
 			GenesisHash:    treasure.GenesisHash,
 			TreasureStatus: models.TreasureBuried,
@@ -602,6 +604,8 @@ func (suite *JobsSuite) Test_PurgeFinishedTreasure_gen_hash_not_ready() {
 	suite.Equal(3, len(allTreasures))
 
 	for _, treasure := range allTreasures {
+		treasure.SignedStatus = models.TreasureSignedAndAttachmentVerified
+		suite.DB.ValidateAndUpdate(&treasure)
 		suite.DB.ValidateAndCreate(&models.StoredGenesisHash{
 			GenesisHash:    treasure.GenesisHash,
 			TreasureStatus: models.TreasurePending,

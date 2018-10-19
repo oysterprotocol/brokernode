@@ -47,6 +47,7 @@ type PrometheusService struct {
 	HistogramProcessPaidSessions                   *prometheus.HistogramVec
 	HistogramCheckAllDataIsReady                   *prometheus.HistogramVec
 	HistogramUpdateMsgStatus                       *prometheus.HistogramVec
+	HistogramAttachTreasuresToTangle               *prometheus.HistogramVec
 	HistogramBuryTreasureAddresses                 *prometheus.HistogramVec
 	HistogramProcessUnassignedChunks               *prometheus.HistogramVec
 	HistogramPurgeCompletedSessions                *prometheus.HistogramVec
@@ -77,6 +78,7 @@ func init() {
 	histogramProcessPaidSessions := prepareHistogram("process_paid_sessions_seconds", "HistogramProcessPaidSessions", "code")
 	histogramCheckAllDataIsReady := prepareHistogram("check_all_data_is_ready_seconds", "HistogramCheckAllDataIsReady", "code")
 	histogramUpdateMsgStatus := prepareHistogram("update_msg_status_seconds", "HistogramUpdateMsgStatus", "code")
+	histogramAttachTreasuresToTangle := prepareHistogram("attach_treasures_to_tangle_seconds", "HistogramAttachTreasuresToTangle", "code")
 	histogramBuryTreasureAddresses := prepareHistogram("bury_treasure_addresses_seconds", "HistogramBuryTreasureAddresses", "code")
 	histogramProcessUnassignedChunks := prepareHistogram("process_unassigned_chunks_seconds", "HistogramProcessUnassignedChunks", "code")
 	histogramPurgeCompletedSessions := prepareHistogram("purge_completed_sessions_seconds", "HistogramPurgeCompletedSessions", "code")
@@ -110,6 +112,7 @@ func init() {
 		HistogramProcessPaidSessions:                   histogramProcessPaidSessions,
 		HistogramCheckAllDataIsReady:                   histogramCheckAllDataIsReady,
 		HistogramUpdateMsgStatus:                       histogramUpdateMsgStatus,
+		HistogramAttachTreasuresToTangle:               histogramAttachTreasuresToTangle,
 		HistogramBuryTreasureAddresses:                 histogramBuryTreasureAddresses,
 		HistogramProcessUnassignedChunks:               histogramProcessUnassignedChunks,
 		HistogramPurgeCompletedSessions:                histogramPurgeCompletedSessions,

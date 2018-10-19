@@ -317,30 +317,33 @@ func PurgeFinishedTreasure() {
 	}
 
 	for _, completeTreasure := range completeTreasures {
-		ethAddr := completeTreasure.ETHAddr
+		if completeTreasure.SignedStatus == models.TreasureSignedAndAttachmentVerified ||
+			completeTreasure.SignedStatus == models.TreasureRev1 {
+			ethAddr := completeTreasure.ETHAddr
 
-		genesisHashExists, genesisHashIsBuried, err :=
-			models.CheckIfGenesisHashExistsAndIsBuried(completeTreasure.GenesisHash)
-		oyster_utils.LogIfError(err, nil)
-		if genesisHashExists && !genesisHashIsBuried {
-			err := models.SetToTreasureBuriedByGenesisHash(completeTreasure.GenesisHash)
+			genesisHashExists, genesisHashIsBuried, err :=
+				models.CheckIfGenesisHashExistsAndIsBuried(completeTreasure.GenesisHash)
+			oyster_utils.LogIfError(err, nil)
+			if genesisHashExists && !genesisHashIsBuried {
+				err := models.SetToTreasureBuriedByGenesisHash(completeTreasure.GenesisHash)
+				if err != nil {
+					oyster_utils.LogIfError(err, nil)
+					continue
+				}
+			} else if !genesisHashExists {
+				// skip until another process creates the genesis hash row
+				continue
+			}
+
+			err = models.DB.Destroy(&completeTreasure)
 			if err != nil {
 				oyster_utils.LogIfError(err, nil)
 				continue
 			}
-		} else if !genesisHashExists {
-			// skip until another process creates the genesis hash row
-			continue
+			oyster_utils.LogToSegment("bury_treasure_addresses: PurgeFinishedTreasure",
+				analytics.NewProperties().
+					Set("eth_address", ethAddr))
 		}
-
-		err = models.DB.Destroy(&completeTreasure)
-		if err != nil {
-			oyster_utils.LogIfError(err, nil)
-			continue
-		}
-		oyster_utils.LogToSegment("bury_treasure_addresses: PurgeFinishedTreasure",
-			analytics.NewProperties().
-				Set("eth_address", ethAddr))
 	}
 }
 
