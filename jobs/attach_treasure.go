@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+/*AttachTreasuresToTangle calls attachment and verification methods for treasures*/
 func AttachTreasuresToTangle(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService,
 	thresholdTime time.Time) {
 
@@ -19,6 +20,7 @@ func AttachTreasuresToTangle(iotaWrapper services.IotaService, PrometheusWrapper
 	VerifyTreasureTransactions(iotaWrapper, thresholdTime)
 }
 
+/*AttachTreasureTransactions is responsible for attaching the treasures to the tangle*/
 func AttachTreasureTransactions(iotaWrapper services.IotaService) {
 	var vErr *validate.Errors
 	treasuresToAttach, err := models.GetTreasuresToBuryBySignedStatus([]models.SignedStatus{models.TreasureSigned,
@@ -57,6 +59,9 @@ func AttachTreasureTransactions(iotaWrapper services.IotaService) {
 	}
 }
 
+/*VerifyTreasureTransactions verifies the treasures that are supposedly attached to the tangle.
+It will also set treasures to an error state if they have timed out or if what is on the tangle does
+not match our records.*/
 func VerifyTreasureTransactions(iotaWrapper services.IotaService, thresholdTime time.Time) {
 	treasuresToAttach, err := models.GetTreasuresToBuryBySignedStatus([]models.SignedStatus{
 		models.TreasureSignedAndAttached})

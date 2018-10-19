@@ -224,6 +224,7 @@ func GetTreasuresToBuryByPRLStatusAndUpdateTime(prlStatuses []PRLStatus, thresho
 	return treasureRowsToReturn, nil
 }
 
+/*GetTreasuresToBuryBySignedStatus gets all the treasures that matched the signed statuses passed in*/
 func GetTreasuresToBuryBySignedStatus(signedStatuses []SignedStatus) ([]Treasure, error) {
 	treasureRowsToReturn := make([]Treasure, 0)
 	for _, status := range signedStatuses {
@@ -260,6 +261,7 @@ func (t *Treasure) DecryptTreasureEthKey() string {
 	return hex.EncodeToString(decryptedKey)
 }
 
+/*GetTreasuresByGenesisHashAndIndexes gets treasures that match the genesis hash and indexes passed in*/
 func GetTreasuresByGenesisHashAndIndexes(genesisHash string, indexes []int) ([]Treasure, error) {
 	// indexes is the actual index of the treasure ( 0, 1,000,000, etc.), NOT the encryption index
 
