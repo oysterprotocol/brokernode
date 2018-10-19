@@ -32,6 +32,8 @@ type ChunkReq struct {
 	Hash string `json:"hash"` // This is GenesisHash.
 }
 
+type ChunkReqs []ChunkReq
+
 type Invoice struct {
 	Cost       decimal.Decimal `json:"cost"`
 	EthAddress nulls.String    `json:"ethAddress"`
@@ -149,6 +151,19 @@ var (
 	Long-term we will query the smart contract for this value*/
 	StoragePeg = decimal.NewFromFloat(float64(64))
 )
+
+// Support Sorts on []ChunkReq
+func (s ChunkReqs) Len() int {
+	return len(s)
+}
+
+func (s ChunkReqs) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s ChunkReqs) Less(i, j int) bool {
+	return s[i].Idx < s[j].Idx
+}
 
 // String is not required by pop and may be deleted
 func (u UploadSession) String() string {
