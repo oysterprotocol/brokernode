@@ -103,7 +103,6 @@ func (suite *JobsSuite) Test_ProcessUnassignedChunks() {
 
 	suite.True(sendChunksToChannelMockCalled_process_unassigned_chunks || sendChunksToLambdaMockCalled_process_unassigned_chunks)
 	suite.True(verifyChunkMessagesMatchesRecordMockCalled_process_unassigned_chunks)
-
 	suite.Equal(4*(numChunks), len(AllChunksCalled))
 
 	/* This test is verifying that the chunks belonging to particular sessions were sent

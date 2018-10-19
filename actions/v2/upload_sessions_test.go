@@ -42,7 +42,6 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	mockSendPrl := mockSendPrl{
 		output_bool: true,
 	}
-
 	EthWrapper = eth_gateway.Eth{
 		WaitForTransfer: mockWaitForTransfer.waitForTransfer,
 		SendPRL:         mockSendPrl.sendPrl,
@@ -78,7 +77,6 @@ func (suite *ActionSuite) Test_UploadSessionsCreate() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out these tests.
 	//suite.True(mockWaitForTransfer.hasCalled)
-
 	//suite.Equal(eth_gateway.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 
 	// mockCheckPRLBalance will result a positive value, and Alpha knows that beta has such balance, it won't send
@@ -146,7 +144,6 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 	// TODO: fix waitForTransfer and uncomment it out in
 	// actions/upload_sessions.go then uncomment out this test.
 	//suite.True(mockWaitForTransfer.hasCalled)
-
 	suite.Equal(eth_gateway.StringToAddress(resParsed.UploadSession.ETHAddrAlpha.String), mockWaitForTransfer.input_brokerAddr)
 	suite.False(mockSendPrl.hasCalled)
 
@@ -170,7 +167,6 @@ func (suite *ActionSuite) Test_UploadSessionsCreateBeta() {
 func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_Paid() {
 	//setup
 	mockCheckPRLBalance := mockCheckPRLBalance{}
-
 	EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
@@ -196,7 +192,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
-
 	EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 		SendPRL:         mockSendPrl.sendPrl,
@@ -221,7 +216,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmButCheckC
 	to beta now occurs in a job. */
 	suite.True(mockCheckPRLBalance.hasCalled)
 	suite.False(mockSendPrl.hasCalled)
-
 	suite.Equal(eth_gateway.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
@@ -234,7 +228,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckI
 	mockCheckPRLBalance := mockCheckPRLBalance{
 		output_int: big.NewInt(0),
 	}
-
 	EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 	}
@@ -253,7 +246,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_NoConfirmAndCheckI
 
 	suite.Equal("invoiced", resParsed.PaymentStatus)
 	suite.True(mockCheckPRLBalance.hasCalled)
-
 	suite.Equal(eth_gateway.StringToAddress(uploadSession1.ETHAddrAlpha.String), mockCheckPRLBalance.input_addr)
 
 	session := models.UploadSession{}
@@ -266,7 +258,6 @@ func (suite *ActionSuite) Test_UploadSessionsGetPaymentStatus_BetaConfirmed() {
 		output_int: big.NewInt(10),
 	}
 	mockSendPrl := mockSendPrl{}
-
 	EthWrapper = eth_gateway.Eth{
 		CheckPRLBalance: mockCheckPRLBalance.checkPRLBalance,
 		SendPRL:         mockSendPrl.sendPrl,

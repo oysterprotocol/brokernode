@@ -252,7 +252,7 @@ func verifyData(suite *JobsSuite, expectedGenesisHash string, expectToHaveDataMa
 
 	if expectToHaveDataMap {
 
-		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, 0, int64(sessions[0].NumChunks))
+		keys := oyster_utils.GenerateBulkKeys(sessions[0].GenesisHash, models.MetaDataChunkIdx, int64(sessions[0].NumChunks))
 
 		chunkData, _ := models.GetMultiChunkData(oyster_utils.InProgressDir, sessions[0].GenesisHash, keys)
 

@@ -562,7 +562,6 @@ var _ = grift.Namespace("db", func() {
 				fmt.Println("Sent successfully!")
 				for {
 					fmt.Println("Polling for PRL arrival")
-
 					balance := eth_gateway.EthWrapper.CheckPRLBalance(address)
 					if balance.Int64() > 0 {
 						fmt.Println("PRL arrived!")
@@ -719,7 +718,6 @@ var _ = grift.Namespace("db", func() {
 		}
 
 		for i := 0; i < numToCreate; i++ {
-
 			address, privateKey, err := eth_gateway.EthWrapper.GenerateEthAddr()
 			fmt.Println("PRIVATE KEY IS:")
 			fmt.Println(privateKey)
@@ -749,7 +747,6 @@ var _ = grift.Namespace("db", func() {
 			}
 
 			for {
-
 				buried, err := eth_gateway.EthWrapper.CheckBuriedState(address)
 				if err != nil {
 					fmt.Println("ERROR CHECKING BURIED STATE!")

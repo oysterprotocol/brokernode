@@ -215,7 +215,6 @@ func (usr *UploadSessionResourceV2) Create(c buffalo.Context) error {
 				c.Error(400, err)
 				return err
 			}
-
 			// Update alpha treasure idx map.
 			alphaSession.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
@@ -449,7 +448,6 @@ func (usr *UploadSessionResourceV2) GetPaymentStatus(c buffalo.Context) error {
 
 	// Force to check the status
 	if session.PaymentStatus != models.PaymentStatusConfirmed {
-
 		balance := EthWrapper.CheckPRLBalance(eth_gateway.StringToAddress(session.ETHAddrAlpha.String))
 		if balance.Int64() > 0 {
 			previousPaymentStatus := session.PaymentStatus

@@ -740,7 +740,7 @@ func (u *UploadSession) CheckIfAllHashesAreReady() bool {
 		return chunkDataStartHash != "" && chunkDataEndHash != ""
 	}
 
-	startIdx := 1
+	startIdx := MetaDataChunkIdx
 	lastIdx := u.NumChunks
 
 	dataMapStart := []DataMap{}
@@ -936,7 +936,7 @@ func moveAllChunksToCompletedBadger(u *UploadSession) error {
 }
 
 func moveAllChunksToCompletedSQL(u *UploadSession) error {
-	for ok, i := true, 1; ok; ok = i <= u.NumChunks {
+	for ok, i := true, MetaDataChunkIdx; ok; ok = i <= u.NumChunks {
 		end := i + MaxBadgerInsertions
 
 		if end > u.NumChunks {

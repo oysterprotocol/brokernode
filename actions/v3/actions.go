@@ -3,7 +3,6 @@ package actions_v3
 import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/oysterprotocol/brokernode/services"
-
 	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 )
 

@@ -3,7 +3,6 @@ package actions_v2
 import (
 	"encoding/json"
 	"errors"
-
 	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"io/ioutil"
 	"math/big"
@@ -33,7 +32,6 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-
 	EthWrapper = eth_gateway.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
@@ -44,7 +42,6 @@ func (suite *ActionSuite) Test_VerifyTreasureAndClaim_Success() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-
 	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -87,7 +84,6 @@ func (suite *ActionSuite) Test_VerifyTreasure_FailureWithError() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-
 	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{
@@ -121,7 +117,6 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	IotaWrapper = services.IotaService{
 		VerifyTreasure: mockVerifyTreasure.verifyTreasure,
 	}
-
 	EthWrapper = eth_gateway.Eth{
 		GenerateEthAddrFromPrivateKey: EthWrapper.GenerateEthAddrFromPrivateKey,
 		CheckClaimClock: func(address common.Address) (*big.Int, error) {
@@ -132,7 +127,6 @@ func (suite *ActionSuite) Test_Check_Claim_Clock_Error() {
 	}
 
 	ethKey := "9999999999999999999999999999999999999999999999999999999999999991"
-
 	addr := eth_gateway.EthWrapper.GenerateEthAddrFromPrivateKey(ethKey)
 
 	res := suite.JSON("/api/v2/treasures").Post(map[string]interface{}{

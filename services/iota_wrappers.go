@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"math"
 	"os"
 	"runtime"
@@ -81,7 +82,7 @@ type FindTransactions func([]giota.Address) (map[giota.Address][]giota.Transacti
 work.  This type used for mocking.*/
 type GetTransactionsToApprove func() (*giota.GetTransactionsToApproveResponse, error)
 
-/*DoPoW defines the type for doing proof of work.*/
+/*DoPoW defines the type for a function that does proof of work.*/
 type DoPoW func(chunks []oyster_utils.ChunkData) error
 
 type FilteredChunk struct {
@@ -584,6 +585,7 @@ func chunksMatch(chunkOnTangle giota.Transaction, chunkOnRecord oyster_utils.Chu
 
 		return true
 	} else {
+		oyster_utils.LogIfError(errors.New("chunk on tangle does not match record"), nil)
 		oyster_utils.LogToSegment("iota_wrappers: resend_chunk_tangle_mismatch", analytics.NewProperties().
 			Set("chunk_idx", chunkOnRecord.Idx).
 			Set("address", chunkOnRecord.Address).
