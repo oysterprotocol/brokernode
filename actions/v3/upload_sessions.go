@@ -65,8 +65,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 	}
 
 	uploadSession := &models.UploadSession{}
-	err := models.DB.Find(uploadSession, c.Param("id"))
-	if err != nil {
+	if err = models.DB.Find(uploadSession, c.Param("id")); err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Error(500, err)
 	}
@@ -78,14 +77,17 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 		return c.Error(400, errors.New("Using the wrong endpoint. This endpoint is for V3 only"))
 	}
 
-	data, err := json.Marshal(req.Chunks)
-	if err != nil {
-		return c.Error(500, fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err))
-	}
-
 	fileIndex := req.Chunks[0].Idx / BatchSize
 	objectKey := fmt.Sprintf("%v/%v", uploadSession.GenesisHash, fileIndex)
-	setObject(uploadSession.S3BucketName.String, objectKey, data)
+
+	var data []byte
+	if data, err = json.Marshal(req.Chunks); err != nil {
+		return c.Error(500, fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err))
+	}
+	if err = setObject(uploadSession.S3BucketName.String, objectKey, string(data)); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(500, fmt.Errorf("Unable to store data to S3 with err: %v", err))
+	}
 
 	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
 }
