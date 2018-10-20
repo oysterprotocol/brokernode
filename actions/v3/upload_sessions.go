@@ -65,12 +65,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 	}
 
 	uploadSession := &models.UploadSession{}
-<<<<<<< HEAD
 	if err = models.DB.Find(uploadSession, c.Param("id")); err != nil {
-=======
-	err := models.DB.Find(uploadSession, c.Param("id"))
-	if err != nil {
->>>>>>> 1cc55ad1016fdfa963ce219aaa09c875968e2505
 		oyster_utils.LogIfError(err, nil)
 		return c.Error(500, err)
 	}
