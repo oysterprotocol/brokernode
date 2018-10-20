@@ -19,6 +19,8 @@ type s3Wrapper struct {
 	s3 *s3.S3
 }
 
+var awsPagingSize int64
+
 var svc *s3Wrapper
 var bucketPrefix string
 var counter uint64
@@ -26,6 +28,8 @@ var counter uint64
 var cachedData cmap.ConcurrentMap
 
 func init() {
+	awsPagingSize = 1000 // The max paging size per request.
+
 	hasAwsKey := len(os.Getenv("AWS_ACCESS_KEY_ID")) > 0 && len(os.Getenv("AWS_SECRET_ACCESS_KEY")) > 0
 	// Stub out the S3 if we don't have S3 access right.
 	if hasAwsKey {
@@ -111,6 +115,21 @@ func deleteObject(bucketName string, objectKey string) error {
 	return svc.DeleteObject(input)
 }
 
+func listObjectKeys(bucketName string, objectKeyPrefix string) ([]string, error) {
+	var keys []string
+
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucketName),
+		Prefix:  aws.String(objectKeyPrefix),
+		MaxKeys: aws.Int64(awsPagingSize),
+	}
+	err := svc.ListObjectPages(input, func(objKeys []string, lastPage bool) bool {
+		keys = append(keys, objKeys...)
+		return true
+	})
+	return keys, err
+}
+
 func getKey(bucketName string, objectKey string) string {
 	return fmt.Sprintf("%v:%v", bucketName, objectKey)
 }
@@ -170,4 +189,21 @@ func (svc *s3Wrapper) GetObjectAsString(input *s3.GetObjectInput) (string, error
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(output.Body)
 	return buf.String(), nil
+}
+
+func (svc *s3Wrapper) ListObjectPages(input *s3.ListObjectsV2Input, fn func([]string, bool) bool) error {
+	if svc.s3 == nil {
+		fn(nil, true)
+		return nil
+	}
+
+	err := svc.s3.ListObjectsV2Pages(input, func(page *s3.ListObjectsV2Output, lastPage bool) bool {
+		var keys []string
+		for _, c := range page.Contents {
+			keys = append(keys, aws.StringValue(c.Key))
+		}
+		return fn(keys, lastPage)
+	})
+	oyster_utils.LogIfError(err, nil)
+	return err
 }

@@ -38,3 +38,28 @@ func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
 
 	suite.Nil(deleteBucket(bucket))
 }
+
+func (suite *ActionSuite) Test_ListObject() {
+	bucket := createUniqueBucketName()
+	suite.Nil(createBucket(bucket))
+
+	objectKeys := []string{"o1", "o2", "o3", "o4", "o5"}
+	for _, k := range objectKeys {
+		suite.Nil(setObject(bucket, k, "data"))
+	}
+
+	awsPagingSize = 2
+
+	l, err := listObjectKeys(bucket, "o")
+
+	suite.Nil(err)
+	suite.Equal(objectKeys, l)
+
+	awsPagingSize = 1000
+
+	// Clean up the bucket
+	for _, k := range objectKeys {
+		suite.Nil(deleteObject(bucket, k))
+	}
+	suite.Nil(deleteBucket(bucket))
+}
