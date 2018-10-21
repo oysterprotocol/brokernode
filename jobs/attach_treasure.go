@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+
 /*AttachTreasuresToTangle calls attachment and verification methods for treasures*/
 func AttachTreasuresToTangle(iotaWrapper services.IotaService, PrometheusWrapper services.PrometheusService,
 	thresholdTime time.Time) {
