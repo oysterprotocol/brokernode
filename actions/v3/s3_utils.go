@@ -50,6 +50,10 @@ func init() {
 	cachedData = cmap.New()
 }
 
+func isS3Enabled() bool {
+	return svc.s3 != nil
+}
+
 /* Create unique bucket name. */
 func createUniqueBucketName() string {
 	atomic.AddUint64(&counter, 1)

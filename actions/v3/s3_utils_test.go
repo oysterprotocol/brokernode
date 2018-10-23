@@ -8,6 +8,10 @@ func (suite *ActionSuite) Test_GenerateDifferentBucketName() {
 }
 
 func (suite *ActionSuite) Test_CreateAndDeleteBucket() {
+	if !isS3Enabled() {
+		return
+	}
+
 	bucket := createUniqueBucketName()
 	print(bucket)
 	err := createBucket(bucket)
@@ -19,6 +23,10 @@ func (suite *ActionSuite) Test_CreateAndDeleteBucket() {
 }
 
 func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
+	if !isS3Enabled() {
+		return
+	}
+
 	bucket := createUniqueBucketName()
 	suite.Nil(createBucket(bucket))
 
@@ -40,6 +48,10 @@ func (suite *ActionSuite) Test_SetAndGetAndDeleteObject() {
 }
 
 func (suite *ActionSuite) Test_ListObject() {
+	if !isS3Enabled() {
+		return
+	}
+
 	bucket := createUniqueBucketName()
 	suite.Nil(createBucket(bucket))
 
