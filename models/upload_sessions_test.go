@@ -5,14 +5,34 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+	"sort"
+	"strconv"
+	"time"
+
 	"github.com/gobuffalo/pop/nulls"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/shopspring/decimal"
-	"math/big"
-	"strconv"
-	"time"
 )
+
+func (suite *ModelSuite) Test_ChunkReqsSorting() {
+	s := []models.ChunkReq{
+		models.ChunkReq{Idx: 10},
+		models.ChunkReq{Idx: 2},
+		models.ChunkReq{Idx: 1},
+		models.ChunkReq{Idx: 9},
+	}
+
+	sort.Sort(models.ChunkReqs(s))
+
+	var idx []int
+	for _, chunk := range s {
+		idx = append(idx, chunk.Idx)
+	}
+
+	suite.Equal([]int{1, 2, 9, 10}, idx)
+}
 
 func (suite *ModelSuite) Test_BigFileSize() {
 	fileSizeBytes := uint64(9223372036854775808) // 2^63+1, more than signed int64 range.
