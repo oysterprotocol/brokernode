@@ -46,7 +46,7 @@ func init() {
 
 	cachedData = cmap.New()
 
-	defaultBucketName = os.Getenv("BUCKET_NAME")
+	defaultBucketName = os.Getenv("S3_BUCKET_NAME")
 }
 
 /* Create unique bucket name. */
