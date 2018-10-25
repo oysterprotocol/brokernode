@@ -18,4 +18,5 @@ func (suite *ActionSuite) Test_CheckStatus() {
 	suite.Nil(err)
 
 	suite.Equal(true, resParsed.Available == true || resParsed.Available == false)
+	suite.Equal(true, resParsed.NumChunksLimit == -1 || resParsed.NumChunksLimit > 0)
 }
