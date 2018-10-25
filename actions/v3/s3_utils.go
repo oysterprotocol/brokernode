@@ -22,6 +22,7 @@ type s3Wrapper struct {
 var svc *s3Wrapper
 var bucketPrefix string
 var counter uint64
+var defaultBucketName string
 
 var cachedData cmap.ConcurrentMap
 
@@ -44,6 +45,8 @@ func init() {
 	bucketPrefix = strings.Replace(bucketPrefix, "_", "-", -1)
 
 	cachedData = cmap.New()
+
+	defaultBucketName = os.Getenv("BUCKET_NAME")
 }
 
 /* Create unique bucket name. */
@@ -109,6 +112,21 @@ func deleteObject(bucketName string, objectKey string) error {
 	}
 
 	return svc.DeleteObject(input)
+}
+
+// Get Object operation on defaultBucketName
+func getDefaultBucketObject(objectKey string, cached bool) (string, error) {
+	return getObject(defaultBucketName, objectKey, cached)
+}
+
+// Set Object operation on defaultBucketName
+func setDefaultBucketObject(objectKey string, data string) error {
+	return setObject(defaultBucketName, objectKey, data)
+}
+
+// Delete Object operation on defaultBucketName
+func deleteDefaultBucketObject(objectKey string) error {
+	return deleteObject(defaultBucketName, objectKey)
 }
 
 func getKey(bucketName string, objectKey string) string {

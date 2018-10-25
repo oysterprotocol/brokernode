@@ -73,7 +73,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 		return c.Error(400, fmt.Errorf("Error in finding session for id %v", c.Param("id")))
 	}
 
-	if uploadSession.S3BucketName.String == "" {
+	if uploadSession.StorageMethod != models.StorageMethodS3 {
 		return c.Error(400, errors.New("Using the wrong endpoint. This endpoint is for V3 only"))
 	}
 
@@ -84,7 +84,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 	if data, err = json.Marshal(req.Chunks); err != nil {
 		return c.Error(500, fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err))
 	}
-	if err = setObject(uploadSession.S3BucketName.String, objectKey, string(data)); err != nil {
+	if err = setDefaultBucketObject(objectKey, string(data)); err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Error(500, fmt.Errorf("Unable to store data to S3 with err: %v", err))
 	}
@@ -112,15 +112,7 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.NewString(createUniqueBucketName()),
 	}
-
-	if err := createBucket(alphaSession.S3BucketName.String); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, err)
-	}
-
-	// Generate bucket_name for s3 and create such bucket_name
 
 	hasBeta := req.BetaIP != ""
 	var betaSessionID = ""
@@ -170,12 +162,6 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.NewString(createUniqueBucketName()),
-	}
-
-	if err := createBucket(u.S3BucketName.String); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, err)
 	}
 
 	if err := models.DB.Save(&u); err != nil {
@@ -213,15 +199,15 @@ func validateAndGetUpdateReq(c buffalo.Context) (uploadSessionUpdateReqV3, error
 
 	sort.Sort(models.ChunkReqs(req.Chunks))
 	startValue := req.Chunks[0].Idx - 1
-	isIdUniqueIncrease := true
+	isIDUniqueIncrease := true
 	for _, chunk := range req.Chunks {
 		if startValue != chunk.Idx-1 {
-			isIdUniqueIncrease = false
+			isIDUniqueIncrease = false
 			break
 		}
 		startValue = chunk.Idx
 	}
-	if !isIdUniqueIncrease {
+	if !isIDUniqueIncrease {
 		return req, errors.New("Provided Id should be consecutive")
 	}
 	return req, nil
