@@ -24,6 +24,7 @@ var awsPagingSize int64
 var svc *s3Wrapper
 var bucketPrefix string
 var counter uint64
+var defaultBucketName string
 
 var cachedData cmap.ConcurrentMap
 
@@ -48,6 +49,8 @@ func init() {
 	bucketPrefix = strings.Replace(bucketPrefix, "_", "-", -1)
 
 	cachedData = cmap.New()
+
+	defaultBucketName = os.Getenv("AWS_BUCKET_NAME")
 }
 
 func isS3Enabled() bool {
@@ -132,6 +135,21 @@ func listObjectKeys(bucketName string, objectKeyPrefix string) ([]string, error)
 		return true
 	})
 	return keys, err
+}
+
+// Get Object operation on defaultBucketName
+func getDefaultBucketObject(objectKey string, cached bool) (string, error) {
+	return getObject(defaultBucketName, objectKey, cached)
+}
+
+// Set Object operation on defaultBucketName
+func setDefaultBucketObject(objectKey string, data string) error {
+	return setObject(defaultBucketName, objectKey, data)
+}
+
+// Delete Object operation on defaultBucketName
+func deleteDefaultBucketObject(objectKey string) error {
+	return deleteObject(defaultBucketName, objectKey)
 }
 
 func getKey(bucketName string, objectKey string) string {
