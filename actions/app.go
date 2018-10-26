@@ -24,9 +24,13 @@ func App() *buffalo.App {
 		app.GET("/metrics", buffalo.WrapHandler(prometheus.Handler()))
 
 		apiV2 := actions_v2.RegisterApi(app)
-		// Status
+
+		// Status v2, will be deprecated (:3000/api/v2/status)
 		statusResource := StatusResource{}
 		apiV2.GET("status", statusResource.CheckStatus)
+
+		// Status (:3000/status)
+		app.GET("/status", statusResource.CheckStatus)
 
 		actions_v3.RegisterApi(app)
 	}
