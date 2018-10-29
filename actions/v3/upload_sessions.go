@@ -86,7 +86,8 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 		return c.Error(400, errors.New("Using the wrong endpoint. This endpoint is for V3 only"))
 	}
 
-	objectKey := oyster_utils.GetObjectKeyForData(uploadSession.GenesisHash, req.Chunks[0].Idx, BatchSize)
+	isReverseIteration := uploadSession.Type == models.SessionTypeBeta
+	objectKey := oyster_utils.GetObjectKeyForData(uploadSession.GenesisHash, req.Chunks[0].Idx, uploadSession.NumChunks, isReverseIteration, BatchSize)
 
 	var data []byte
 	if data, err = json.Marshal(req.Chunks); err != nil {

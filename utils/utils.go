@@ -400,11 +400,23 @@ func GetObjectKeyForTreasure(genesisHash string) string {
 }
 
 /*GetObjectKeyForData will return object key for particular data. startIndex is the smallest index in data. */
-func GetObjectKeyForData(genesisHash string, startIndex int, batchSize int) string {
-	return fmt.Sprintf("%v/%v/%v", genesisHash, "data", startIndex%batchSize)
+func GetObjectKeyForData(genesisHash string, startIndex int, totalCount int, isReserveIteration bool, batchSize int) string {
+	index := 0
+	if isReserveIteration {
+		index = (totalCount - 1 - startIndex) / batchSize
+	} else {
+		index = startIndex / batchSize
+	}
+	return fmt.Sprintf("%v/%v/%v", genesisHash, "data", index)
 }
 
 /*GetObjectKeyForHash will return object key for particular data. startIndex is the smallest index in data. */
-func GetObjectKeyForHash(genesisHash string, startIndex int, batchSize int) string {
-	return fmt.Sprintf("%v/%v/%v", genesisHash, "hash", startIndex%batchSize)
+func GetObjectKeyForHash(genesisHash string, startIndex int, totalCount int, isReserveIteration bool, batchSize int) string {
+	index := 0
+	if isReserveIteration {
+		index = (totalCount - 1 - startIndex) / batchSize
+	} else {
+		index = startIndex / batchSize
+	}
+	return fmt.Sprintf("%v/%v/%v", genesisHash, "hash", index)
 }
