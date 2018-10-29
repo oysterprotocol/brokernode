@@ -98,8 +98,7 @@ func SetLogInfoForDatabaseUrl(dbUrl string) {
 func SendHttpReq(url string, req interface{}, resp interface{}) error {
 	reqJson, err := json.Marshal(req)
 	if err != nil {
-		LogIfError(err, nil)
-		return err
+		return LogIfError(err, nil)
 	}
 	reqBody := bytes.NewBuffer(reqJson)
 
@@ -107,15 +106,13 @@ func SendHttpReq(url string, req interface{}, resp interface{}) error {
 	defer httpRes.Body.Close() // we need to close the connection
 
 	if err != nil {
-		LogIfError(err, nil)
-		return err
+		return LogIfError(err, nil)
 	}
 
 	if err := ParseResBody(httpRes, resp); err != nil {
 		err = fmt.Errorf("Unable to communicate with Beta node: %v", err)
 		// This should consider as BadRequest since the client pick the beta node.
-		LogIfError(err, nil)
-		return err
+		return LogIfError(err, nil)
 	}
 	return nil
 }
@@ -256,8 +253,7 @@ func MergeIndexes(a []int, b []int, sectorSize int, numChunks int) ([]int, error
 	var merged []int
 	if len(a) == 0 && len(b) == 0 || len(a) != len(b) {
 		err := errors.New("Invalid input for utils.MergeIndexes. Both a []int and b []int must have the same length")
-		LogIfError(err, map[string]interface{}{"aInputSize": len(a), "bInputSize": len(b)})
-		return nil, err
+		return nil, LogIfError(err, map[string]interface{}{"aInputSize": len(a), "bInputSize": len(b)})
 	}
 
 	for i := 0; i < len(a); i++ {
@@ -311,9 +307,9 @@ func ConvertGweiToWei(gwei *big.Int) *big.Int {
 }
 
 /*LogIfError logs any error if it is not nil. Allow caller to provide additional freeform info.*/
-func LogIfError(err error, extraInfo map[string]interface{}) {
+func LogIfError(err error, extraInfo map[string]interface{}) error {
 	if err == nil {
-		return
+		return nil
 	}
 
 	fmt.Println(err)
@@ -325,6 +321,7 @@ func LogIfError(err error, extraInfo map[string]interface{}) {
 			raven.CaptureError(err, logErrorTags)
 		}
 	}
+	return err
 }
 
 /* ReturnEncryptedEthKey will be used by several models to encrypt the eth key so we are not storing a naked key */
@@ -390,4 +387,24 @@ func IntMax(x, y int) int {
 /*GenerateBadgerKey will generate a msg_id for use with badger*/
 func GenerateBadgerKey(startingString string, genesisHash string, chunkIdx int) string {
 	return fmt.Sprintf("%v%v__%d", startingString, genesisHash, chunkIdx)
+}
+
+/*GetObjectKeyForTreasure will return the treasure key.*/
+func GetObjectKeyForConfig(genesisHash string) string {
+	return fmt.Sprintf("%v/%v", genesisHash, "config")
+}
+
+/*GetObjectKeyForTreasure will return the treasure key.*/
+func GetObjectKeyForTreasure(genesisHash string) string {
+	return fmt.Sprintf("%v/%v", genesisHash, "treasure_map")
+}
+
+/*GetObjectKeyForData will return object key for particular data. startIndex is the smallest index in data. */
+func GetObjectKeyForData(genesisHash string, startIndex int, batchSize int) string {
+	return fmt.Sprintf("%v/%v/%v", genesisHash, "data", startIndex%batchSize)
+}
+
+/*GetObjectKeyForHash will return object key for particular data. startIndex is the smallest index in data. */
+func GetObjectKeyForHash(genesisHash string, startIndex int, batchSize int) string {
+	return fmt.Sprintf("%v/%v/%v", genesisHash, "hash", startIndex%batchSize)
 }
