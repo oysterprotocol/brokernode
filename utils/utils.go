@@ -407,6 +407,7 @@ func GetObjectKeyForData(genesisHash string, startIndex int, totalCount int, isR
 	} else {
 		index = startIndex / batchSize
 	}
+
 	return fmt.Sprintf("%v/%v/%v", genesisHash, "data", index)
 }
 
@@ -418,5 +419,6 @@ func GetObjectKeyForHash(genesisHash string, startIndex int, totalCount int, isR
 	} else {
 		index = startIndex / batchSize
 	}
+
 	return fmt.Sprintf("%v/%v/%v", genesisHash, "hash", index)
 }
