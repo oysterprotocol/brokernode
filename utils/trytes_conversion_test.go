@@ -3,7 +3,6 @@ package oyster_utils_test
 import (
 	"testing"
 
-	giota "github.com/iotaledger/iota.go/api"
 	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/utils"
 )

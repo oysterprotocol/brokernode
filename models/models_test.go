@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/suite"
-	giota "github.com/iotaledger/iota.go/api"
 	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
