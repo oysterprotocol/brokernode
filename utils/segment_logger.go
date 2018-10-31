@@ -1,11 +1,13 @@
 package oyster_utils
 
 import (
-	"github.com/iotaledger/giota"
-	"gopkg.in/segmentio/analytics-go.v3"
 	"net"
 	"os"
 	"time"
+
+	"github.com/iotaledger/iota.go/transaction"
+	"github.com/iotaledger/iota.go/trinary"
+	"gopkg.in/segmentio/analytics-go.v3"
 )
 
 var (
@@ -48,9 +50,9 @@ func GetLocalIP() string {
 	return "cannot get local ip"
 }
 
-func MapTransactionsToAddrs(txs []giota.Transaction) (addrs []giota.Address) {
+func MapTransactionsToAddrs(txs []transaction.Transaction) (addrs []trinary.Hash) {
 
-	addrs = make([]giota.Address, 0, len(txs))
+	addrs = make([]trinary.Hash, 0, len(txs))
 
 	for _, tx := range txs {
 		addrs = append(addrs, tx.Address)

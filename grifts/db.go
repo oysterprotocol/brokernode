@@ -3,18 +3,19 @@ package grifts
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/iotaledger/giota"
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"github.com/shopspring/decimal"
-	"math/big"
-	"os"
-	"strconv"
-	"time"
 )
 
 const qaTrytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -36,7 +37,7 @@ func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.Chunk
 
 	for i := 0; i < numToGenerate; i++ {
 
-		trytes, _ := giota.ToTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
+		trytes, _ := trinary.NewTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
 
 		req := models.ChunkReq{
 			Idx:  i,

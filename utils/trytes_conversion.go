@@ -5,7 +5,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"errors"
-	"github.com/iotaledger/giota"
+	"github.com/iotaledger/iota.go/trinary"
 	"strings"
 )
 
@@ -79,7 +79,7 @@ func TrytesToAscii(inputTrytes string) (string, error) {
 }
 
 //TrytesToBytes and BytesToTrytes written by Chris Warner, thanks!
-func TrytesToBytes(t giota.Trytes) []byte {
+func TrytesToBytes(t trinary.Trytes) []byte {
 	var output []byte
 	trytesString := string(t)
 	for i := 0; i < len(trytesString); i += 2 {
@@ -92,14 +92,14 @@ func TrytesToBytes(t giota.Trytes) []byte {
 	return output
 }
 
-func ChunkMessageToTrytesWithStopper(messageString string) (giota.Trytes, error) {
+func ChunkMessageToTrytesWithStopper(messageString string) (trinary.Trytes, error) {
 	// messageString will be either a binary string or will already be in trytes
-	trytes, err := giota.ToTrytes(messageString)
+	trytes, err := trinary.NewTrytes(messageString)
 	if err == nil {
 		// not capturing here since this isn't a "real" error
 		return trytes, nil
 	}
-	trytes, err = giota.ToTrytes(RunesToTrytes([]rune(messageString)) + StopperTryte)
+	trytes, err = trinary.NewTrytes(RunesToTrytes([]rune(messageString)) + StopperTryte)
 	LogIfError(err, nil)
 	return trytes, err
 }
@@ -115,14 +115,14 @@ func RunesToTrytes(r []rune) string {
 	return output
 }
 
-func BytesToTrytes(b []byte) giota.Trytes {
+func BytesToTrytes(b []byte) trinary.Trytes {
 	var output string
 	for _, c := range b {
 		v1 := c % 27
 		v2 := (c - v1) / 27
 		output += string(TrytesAlphabet[v1]) + string(TrytesAlphabet[v2])
 	}
-	trytes, err := giota.ToTrytes(output)
+	trytes, err := trinary.NewTrytes(output)
 	if err != nil {
 		LogIfError(err, nil)
 	}

@@ -1,15 +1,17 @@
 package oyster_utils_test
 
 import (
-	"github.com/iotaledger/giota"
-	"github.com/oysterprotocol/brokernode/utils"
 	"testing"
+
+	giota "github.com/iotaledger/iota.go/api"
+	"github.com/iotaledger/iota.go/trinary"
+	"github.com/oysterprotocol/brokernode/utils"
 )
 
 type tryteConversion struct {
 	b []byte
 	s string
-	t giota.Trytes
+	t trinary.Trytes
 }
 
 type hashAddressConversion struct {
@@ -18,9 +20,9 @@ type hashAddressConversion struct {
 }
 
 var (
-	caseOneTrytes, _   = giota.ToTrytes("IC")
-	caseTwoTrytes, _   = giota.ToTrytes("HDWCXCGDEAXCGDEAPCEAHDTCGDHD")
-	caseThreeTrytes, _ = giota.ToTrytes("QBCD9DPCBDVCEAXCGDEAHDWCTCEAQCTCGDHDEA9DPCBDVCFA")
+	caseOneTrytes, _   = trinary.NewTrytes("IC")
+	caseTwoTrytes, _   = trinary.NewTrytes("HDWCXCGDEAXCGDEAPCEAHDTCGDHD")
+	caseThreeTrytes, _ = trinary.NewTrytes("QBCD9DPCBDVCEAXCGDEAHDWCTCEAQCTCGDHDEA9DPCBDVCFA")
 	stringConvCases    = []tryteConversion{
 		{b: []byte("Z"), s: "Z", t: caseOneTrytes},
 		{b: []byte("this is a test"), s: "this is a test", t: caseTwoTrytes},

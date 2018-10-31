@@ -9,7 +9,9 @@ import (
 	"github.com/gobuffalo/buffalo"
 	"github.com/gobuffalo/pop"
 	"github.com/gobuffalo/uuid"
-	"github.com/iotaledger/giota"
+	giota "github.com/iotaledger/iota.go/api"
+	"github.com/iotaledger/iota.go/transaction"
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/actions/utils"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -142,12 +144,12 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 	t := &models.Transaction{}
 	transactionError := models.DB.Find(t, c.Param("id"))
 
-	trytes, err := giota.ToTrytes(req.Trytes)
+	transactionTrytes, err := trinary.NewTrytes(req.Trytes)
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
 		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": err.Error()}))
 	}
-	iotaTransaction, iotaError := giota.NewTransaction(trytes)
+	iotaTransaction, iotaError := transaction.AsTransactionObject(transactionTrytes)
 
 	if transactionError != nil || iotaError != nil {
 		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "No transaction found"}))
@@ -164,13 +166,13 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Could not find data for specified chunk"}))
 	}
 
-	address, addError := giota.ToAddress(chunkToUse.Address)
+	address, addError := trinary.NewTrytes(chunkToUse.Address)
 	validAddress := addError == nil && address == iotaTransaction.Address
 	if !validAddress {
 		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Address is invalid"}))
 	}
 
-	_, messageErr := giota.ToTrytes(chunkToUse.Message)
+	_, messageErr := trinary.NewTrytes(chunkToUse.Message)
 	validMessage := messageErr == nil && strings.Contains(fmt.Sprint(iotaTransaction.SignatureMessageFragment),
 		chunkToUse.Message)
 	if !validMessage {
@@ -179,10 +181,15 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	host_ip := os.Getenv("HOST_IP")
 	provider := "http://" + host_ip + ":14265"
-	iotaAPI := giota.NewAPI(provider, nil)
+	iotaAPI, err := giota.ComposeAPI(giota.HttpClientSettings{
+		URI: provider,
+	})
+	if err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Render(500, actions_utils.Render.JSON(map[string]string{"error": "Unable to connect to iota"}))
+	}
 
-	iotaTransactions := []giota.Transaction{*iotaTransaction}
-	broadcastErr := iotaAPI.BroadcastTransactions(iotaTransactions)
+	_, broadcastErr := iotaAPI.BroadcastTransactions(transactionTrytes)
 
 	if broadcastErr != nil {
 		return c.Render(400, actions_utils.Render.JSON(map[string]string{"error": "Broadcast to Tangle failed"}))
