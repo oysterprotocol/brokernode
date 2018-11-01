@@ -140,6 +140,8 @@ func init() {
 		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
+	powName, bestPow = pow.GetBestPoW()
+
 	provider := "http://" + host_ip + ":14265"
 
 	// create a new API instance
@@ -152,8 +154,6 @@ func init() {
 	}
 
 	seed = "OYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRLOYSTERPRL"
-
-	powName, bestPow = pow.GetBestPoW()
 
 	IotaWrapper = IotaService{
 		SendChunksToLambda:             sendChunksToLambda,
