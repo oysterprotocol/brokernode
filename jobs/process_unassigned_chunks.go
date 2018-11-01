@@ -3,11 +3,11 @@ package jobs
 import (
 	"errors"
 	"fmt"
-	"github.com/iotaledger/giota"
 	"math"
 	"os"
 	"time"
 
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
@@ -384,8 +384,8 @@ func HandleTreasureChunks(chunks []oyster_utils.ChunkData, session models.Upload
 
 	for i := 0; i < len(chunks); i++ {
 		if _, ok := treasureMap[int(chunks[i].Idx)]; ok {
-			address := make([]giota.Address, 0, 1)
-			chunkAddress, err := giota.ToAddress(chunks[i].Address)
+			address := make([]trinary.Hash, 0, 1)
+			chunkAddress, err := trinary.NewTrytes(chunks[i].Address)
 			if err != nil {
 				oyster_utils.LogIfError(errors.New(err.Error()+" in HandleTreasureChunks() in "+
 					"process_unassigned_chunks"), nil)

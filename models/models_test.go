@@ -1,13 +1,14 @@
 package models_test
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/gobuffalo/suite"
-	"github.com/iotaledger/giota"
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
-	"strconv"
-	"testing"
 )
 
 type ModelSuite struct {
@@ -26,7 +27,7 @@ func GenerateChunkRequests(numToGenerate int, genesisHash string) []models.Chunk
 
 	for i := 0; i < numToGenerate; i++ {
 
-		trytes, _ := giota.ToTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
+		trytes, _ := trinary.NewTrytes(oyster_utils.RandSeq(10, oyster_utils.TrytesAlphabet))
 
 		req := models.ChunkReq{
 			Idx:  i,

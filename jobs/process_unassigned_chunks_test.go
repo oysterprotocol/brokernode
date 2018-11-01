@@ -1,12 +1,14 @@
 package jobs_test
 
 import (
-	"github.com/iotaledger/giota"
+	"time"
+
+	"github.com/iotaledger/iota.go/transaction"
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
 	"github.com/oysterprotocol/brokernode/utils"
-	"time"
 )
 
 var (
@@ -482,14 +484,14 @@ func verifyChunkMessagesMatchesRecordMock_process_unassigned_chunks(chunks []oys
 	}, err
 }
 
-func findTransactions_process_unassigned_chunks(addresses []giota.Address) (map[giota.Address][]giota.Transaction, error) {
+func findTransactions_process_unassigned_chunks(addresses []trinary.Hash) (map[trinary.Hash][]transaction.Transaction, error) {
 
-	addrToTransactionMap := make(map[giota.Address][]giota.Transaction)
+	addrToTransactionMap := make(map[trinary.Hash][]transaction.Transaction)
 
-	address, _ := giota.ToAddress(fakeFindTransactionsAddress)
+	address, _ := trinary.NewTrytes(fakeFindTransactionsAddress)
 	if addresses[0] == address {
 		// only add to the map if the address is the address we decided to check for
-		addrToTransactionMap[addresses[0]] = []giota.Transaction{}
+		addrToTransactionMap[addresses[0]] = []transaction.Transaction{}
 	}
 
 	findTransactionsMockCalled_process_unassigned_chunks = true
