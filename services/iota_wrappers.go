@@ -143,7 +143,6 @@ func init() {
 	powName, bestPow = pow.GetBestPoW()
 
 	provider := "http://" + host_ip + ":14265"
-
 	// create a new API instance
 	api, err = giota.ComposeAPI(giota.HttpClientSettings{
 		URI:          provider,
