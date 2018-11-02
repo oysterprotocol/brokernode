@@ -105,4 +105,5 @@ func (suite *ActionSuite) Test_BatchDelete() {
 	suite.Nil(deleteBucket(bucket))
 
 	awsPagingSize = 1000
+
 }
