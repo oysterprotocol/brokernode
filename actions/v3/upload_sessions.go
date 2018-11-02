@@ -56,7 +56,7 @@ type uploadSessionConfig struct {
 	BatchSize        int    `json:"batchSize"`        // Represent each data contain not more number of field.
 	FileSizeBytes    uint64 `json:"fileSizeBytes"`    // Represent the total file size.
 	NumChunks        int    `json:"numChunks"`        // Represent total number of chunks.
-	ReserveIteration bool   `json:"reserveIteration"` // Represent whether iterate it from the beginning to end or end to the beginning.
+	ReverseIteration bool   `json:"reverseIteration"` // Represent whether iterate it from the beginning to end or end to the beginning.
 }
 
 var NumChunksLimit = -1 //unlimited
@@ -290,9 +290,14 @@ func saveTreasureMapForS3(u *models.UploadSession, treasureIndexA []int, treasur
 		}
 		// Update treasureId
 		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
-	}
-	if !u.TreasureIdxMap.Valid || u.TreasureIdxMap.String == "" {
-		return oyster_utils.LogIfError(errors.New("Not treasure was included in the UploadSession"), nil)
+
+		// Verify that MakeTreasureIdxMap is correct. Otherwise, regenerate it again.
+		treasureIndexes, _ := alphaSession.GetTreasureIndexes()
+		if alphaSession.TreasureStatus == models.TreasureInDataMapPending &&
+			alphaSession.TreasureIdxMap.Valid && alphaSession.TreasureIdxMap.String != "" &&
+			len(treasureIndexes) == len(mergedIndexes) {
+			break
+		}
 	}
 
 	return setDefaultBucketObject(oyster_utils.GetObjectKeyForTreasure(u.GenesisHash), u.TreasureIdxMap.String)
@@ -304,7 +309,7 @@ func saveConfigForS3(u models.UploadSession) error {
 		BatchSize:        BatchSize,
 		FileSizeBytes:    u.FileSizeBytes,
 		NumChunks:        u.NumChunks,
-		ReserveIteration: u.Type == models.SessionTypeBeta,
+		ReverseIteration: u.Type == models.SessionTypeBeta,
 	}
 	data, err := json.Marshal(config)
 	if err != nil {
