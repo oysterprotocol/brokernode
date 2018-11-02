@@ -181,7 +181,7 @@ func (usr *TransactionBrokernodeResource) Update(c buffalo.Context) error {
 
 	host_ip := os.Getenv("HOST_IP")
 	provider := "http://" + host_ip + ":14265"
-	iotaAPI, err := giota.ComposeAPI(giota.HttpClientSettings{
+	iotaAPI, err := giota.ComposeAPI(giota.HTTPClientSettings{
 		URI: provider,
 	})
 	if err != nil {

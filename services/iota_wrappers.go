@@ -113,7 +113,7 @@ var (
 	seed             trinary.Trytes
 	minDepth         = int64(1)
 	minWeightMag     = int64(6)
-	bestPow          pow.PowFunc
+	bestPow          pow.ProofOfWorkFunc
 	powName          string
 	Channel          = map[string]PowChannel{}
 	wg               sync.WaitGroup
@@ -140,13 +140,13 @@ func init() {
 		panic("Invalid IRI host: Check the .env file for HOST_IP")
 	}
 
-	powName, bestPow = pow.GetBestPoW()
+	powName, bestPow = pow.GetFastestProofOfWorkImpl()
 
 	provider := "http://" + host_ip + ":14265"
 	// create a new API instance
-	api, err = giota.ComposeAPI(giota.HttpClientSettings{
-		URI:          provider,
-		LocalPowFunc: bestPow,
+	api, err = giota.ComposeAPI(giota.HTTPClientSettings{
+		URI:                  provider,
+		LocalProofOfWorkFunc: bestPow,
 	})
 	if err != nil {
 		panic(err)
@@ -347,7 +347,7 @@ func findTransactions(addresses []trinary.Hash) (map[trinary.Hash][]transaction.
 }
 
 func doPowAndBroadcast(branch trinary.Trytes, trunk trinary.Trytes, depth int64,
-	trytes []transaction.Transaction, mwm int64, bestPow pow.PowFunc, broadcastNodes []string) error {
+	trytes []transaction.Transaction, mwm int64, bestPow pow.ProofOfWorkFunc, broadcastNodes []string) error {
 
 	defer oyster_utils.TimeTrack(time.Now(), "iota_wrappers: doPow_using_"+powName, analytics.NewProperties().
 		Set("num_chunks", len(trytes)))
