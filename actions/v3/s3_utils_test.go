@@ -75,3 +75,35 @@ func (suite *ActionSuite) Test_ListObject() {
 	}
 	suite.Nil(deleteBucket(bucket))
 }
+
+func (suite *ActionSuite) Test_BatchDelete() {
+	if !isS3Enabled() {
+		return
+	}
+
+	awsPagingSize = 2
+
+	bucket := createUniqueBucketName()
+	suite.Nil(createBucket(bucket))
+
+	objectKeys := []string{"o/1", "o/2", "o/3", "o/4", "o/5"}
+	for _, k := range objectKeys {
+		suite.Nil(setObject(bucket, k, "data"))
+	}
+
+	l, err := listObjectKeys(bucket, "o/")
+	suite.Nil(err)
+	suite.Equal(objectKeys, l)
+
+	err = deleteObjectKeys(bucket, "o/")
+	suite.Nil(err)
+
+	l, err = listObjectKeys(bucket, "o/")
+	suite.Nil(err)
+	suite.True(len(l) == 0)
+
+	suite.Nil(deleteBucket(bucket))
+
+	awsPagingSize = 1000
+
+}

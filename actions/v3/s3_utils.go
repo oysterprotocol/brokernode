@@ -137,6 +137,38 @@ func listObjectKeys(bucketName string, objectKeyPrefix string) ([]string, error)
 	return keys, err
 }
 
+func deleteObjectKeys(bucketName string, objectKeyPrefix string) error {
+	input := &s3.ListObjectsV2Input{
+		Bucket:  aws.String(bucketName),
+		Prefix:  aws.String(objectKeyPrefix),
+		MaxKeys: aws.Int64(awsPagingSize),
+	}
+
+	var deleteErr error
+	err := svc.ListObjectPages(input, func(objKeys []string, lastPage bool) bool {
+		var objIdentifier []*s3.ObjectIdentifier
+		for _, objKey := range objKeys {
+			objIdentifier = append(objIdentifier, &s3.ObjectIdentifier{Key: aws.String(objKey)})
+		}
+		deleteInput := &s3.DeleteObjectsInput{
+			Bucket: aws.String(bucketName),
+			Delete: &s3.Delete{
+				Objects: objIdentifier,
+			},
+		}
+		deleteErr = svc.DeleteObjects(deleteInput)
+		if deleteErr != nil {
+			return false
+		}
+		return true
+	})
+
+	if deleteErr != nil {
+		return deleteErr
+	}
+	return err
+}
+
 // Get Object operation on defaultBucketName
 func getDefaultBucketObject(objectKey string, cached bool) (string, error) {
 	return getObject(defaultBucketName, objectKey, cached)
@@ -147,9 +179,19 @@ func setDefaultBucketObject(objectKey string, data string) error {
 	return setObject(defaultBucketName, objectKey, data)
 }
 
-// Delete Object operation on defaultBucketName
+// Delete Object operation on defaultBucketName with particular prefix
 func deleteDefaultBucketObject(objectKey string) error {
 	return deleteObject(defaultBucketName, objectKey)
+}
+
+// List Object operation on defaultBucketName with particular prefix
+func listDefaultBucketObjectKeys(objectKeyPrefix string) ([]string, error) {
+	return listObjectKeys(defaultBucketName, objectKeyPrefix)
+}
+
+// Delete all the object operation on defaultBucketName with particular prefix
+func deleteDefaultBucketObjectKeys(objectKeyPrefix string) error {
+	return deleteObjectKeys(defaultBucketName, objectKeyPrefix)
 }
 
 func getKey(bucketName string, objectKey string) string {
@@ -226,6 +268,16 @@ func (svc *s3Wrapper) ListObjectPages(input *s3.ListObjectsV2Input, fn func([]st
 		}
 		return fn(keys, lastPage)
 	})
+	oyster_utils.LogIfError(err, nil)
+	return err
+}
+
+func (svc *s3Wrapper) DeleteObjects(input *s3.DeleteObjectsInput) error {
+	if svc.s3 == nil {
+		return nil
+	}
+
+	_, err := svc.s3.DeleteObjects(input)
 	oyster_utils.LogIfError(err, nil)
 	return err
 }
