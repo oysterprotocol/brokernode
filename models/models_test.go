@@ -1,12 +1,13 @@
 package models_test
 
 import (
+	"strconv"
+	"testing"
+
 	"github.com/gobuffalo/suite"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"math/rand"
-	"strconv"
-	"testing"
 )
 
 type ModelSuite struct {
@@ -24,7 +25,6 @@ func GenerateChunkRequestsForTests(indexToStopAt int, genesisHash string) []mode
 	chunkReqs := []models.ChunkReq{}
 
 	for i := 1; i <= indexToStopAt; i++ {
-
 		asciiValue := ""
 		for i := 0; i < 5; i++ {
 			asciiValue += string(rand.Intn(255))

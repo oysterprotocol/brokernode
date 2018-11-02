@@ -1,8 +1,10 @@
 package actions_v3
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/gobuffalo/buffalo"
@@ -57,6 +59,36 @@ func init() {
 
 // Update uploads a chunk associated with an upload session.
 func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
+	req, err := validateAndGetUpdateReq(c)
+	if err != nil {
+		return c.Error(400, err)
+	}
+
+	uploadSession := &models.UploadSession{}
+	if err = models.DB.Find(uploadSession, c.Param("id")); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(500, err)
+	}
+	if uploadSession == nil {
+		return c.Error(400, fmt.Errorf("Error in finding session for id %v", c.Param("id")))
+	}
+
+	if uploadSession.StorageMethod != models.StorageMethodS3 {
+		return c.Error(400, errors.New("Using the wrong endpoint. This endpoint is for V3 only"))
+	}
+
+	fileIndex := req.Chunks[0].Idx / BatchSize
+	objectKey := fmt.Sprintf("%v/%v", uploadSession.GenesisHash, fileIndex)
+
+	var data []byte
+	if data, err = json.Marshal(req.Chunks); err != nil {
+		return c.Error(500, fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err))
+	}
+	if err = setDefaultBucketObject(objectKey, string(data)); err != nil {
+		oyster_utils.LogIfError(err, nil)
+		return c.Error(500, fmt.Errorf("Unable to store data to S3 with err: %v", err))
+	}
+
 	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
 }
 
@@ -80,15 +112,7 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.NewString(createUniqueBucketName()),
 	}
-
-	if err := createBucket(alphaSession.S3BucketName.String); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, err)
-	}
-
-	// Generate bucket_name for s3 and create such bucket_name
 
 	hasBeta := req.BetaIP != ""
 	var betaSessionID = ""
@@ -138,12 +162,6 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 		ETHPrivateKey:        privKey,
 		Version:              req.Version,
 		StorageMethod:        models.StorageMethodS3,
-		S3BucketName:         nulls.NewString(createUniqueBucketName()),
-	}
-
-	if err := createBucket(u.S3BucketName.String); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, err)
 	}
 
 	if err := models.DB.Save(&u); err != nil {
@@ -160,11 +178,37 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 func validateAndGetCreateReq(c buffalo.Context) (uploadSessionCreateReqV3, error) {
 	req := uploadSessionCreateReqV3{}
 	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
-		return req, fmt.Errorf("Invalid request, unable to parse request body  %v", err)
+		return req, fmt.Errorf("Invalid request, unable to parse request body: %v", err)
 	}
 
 	if NumChunksLimit != -1 && req.NumChunks > NumChunksLimit {
 		return req, errors.New("This broker has a limit of " + fmt.Sprint(NumChunksLimit) + " file chunks.")
+	}
+	return req, nil
+}
+
+func validateAndGetUpdateReq(c buffalo.Context) (uploadSessionUpdateReqV3, error) {
+	req := uploadSessionUpdateReqV3{}
+	if err := oyster_utils.ParseReqBody(c.Request(), &req); err != nil {
+		return req, fmt.Errorf("Invalid request, unable to parse request body: %v", err)
+	}
+
+	if len(req.Chunks) > BatchSize {
+		return req, fmt.Errorf("Except chunks to be in a batch of size %v", BatchSize)
+	}
+
+	sort.Sort(models.ChunkReqs(req.Chunks))
+	startValue := req.Chunks[0].Idx - 1
+	isIDUniqueIncrease := true
+	for _, chunk := range req.Chunks {
+		if startValue != chunk.Idx-1 {
+			isIDUniqueIncrease = false
+			break
+		}
+		startValue = chunk.Idx
+	}
+	if !isIDUniqueIncrease {
+		return req, errors.New("Provided Id should be consecutive")
 	}
 	return req, nil
 }

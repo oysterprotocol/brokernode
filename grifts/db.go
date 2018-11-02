@@ -3,17 +3,18 @@ package grifts
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/markbates/grift/grift"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/utils"
 	"github.com/oysterprotocol/brokernode/utils/eth_gateway"
 	"github.com/shopspring/decimal"
-	"math/big"
 	"math/rand"
-	"os"
-	"strconv"
-	"time"
 )
 
 const qaTrytes = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"

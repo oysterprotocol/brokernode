@@ -7,7 +7,8 @@ import (
 	"testing"
 
 	"github.com/gobuffalo/suite"
-	"github.com/iotaledger/giota"
+	"github.com/iotaledger/iota.go/transaction"
+	"github.com/iotaledger/iota.go/trinary"
 	"github.com/oysterprotocol/brokernode/jobs"
 	"github.com/oysterprotocol/brokernode/models"
 	"github.com/oysterprotocol/brokernode/services"
@@ -63,10 +64,10 @@ func (suite *JobsSuite) SetupTest() {
 				DoesNotMatchTangle: emptyChunkArray,
 			}, err
 		},
-		ChunksMatch: func(chunkOnTangle giota.Transaction, chunkOnRecord oyster_utils.ChunkData, checkBranchAndTrunk bool) bool {
+		ChunksMatch: func(chunkOnTangle transaction.Transaction, chunkOnRecord oyster_utils.ChunkData, checkBranchAndTrunk bool) bool {
 			return false
 		},
-		FindTransactions: func([]giota.Address) (map[giota.Address][]giota.Transaction, error) {
+		FindTransactions: func([]trinary.Hash) (map[trinary.Hash][]transaction.Transaction, error) {
 			return nil, nil
 		},
 	}

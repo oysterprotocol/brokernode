@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/lambda"
-	"github.com/iotaledger/giota"
+	"github.com/iotaledger/iota.go/trinary"
 )
 
 const (
@@ -30,10 +30,10 @@ const (
 
 // HooknodeChunk is the chunk object sent to lambda
 type HooknodeChunk struct {
-	Address string       `json:"address"`
-	Value   int          `json:"value"`
-	Message giota.Trytes `json:"message"`
-	Tag     giota.Trytes `json:"tag"`
+	Address string         `json:"address"`
+	Value   int            `json:"value"`
+	Message trinary.Trytes `json:"message"`
+	Tag     trinary.Trytes `json:"tag"`
 }
 
 // HooknodeReq is the payload sent to lambda
