@@ -33,6 +33,7 @@ type uploadSessionCreateReqV3 struct {
 	FileSizeBytes        uint64         `json:"fileSizeBytes"` // This is Trytes instead of Byte
 	BetaIP               string         `json:"betaIp"`
 	StorageLengthInYears int            `json:"storageLengthInYears"`
+	AlphaTreasureIndexes []int          `json:"alphaTreasureIndexes"`
 	Invoice              models.Invoice `json:"invoice"`
 	Version              uint32         `json:"version"`
 }
@@ -44,9 +45,18 @@ type uploadSessionCreateBetaResV3 struct {
 }
 
 type uploadSessionCreateResV3 struct {
-	ID            string `json:"id"`
-	BetaSessionID string `json:"betaSessionId"`
-	BatchSize     int    `json:"batchSize"`
+	ID            string         `json:"id"`
+	BetaSessionID string         `json:"betaSessionId"`
+	BatchSize     int            `json:"batchSize"`
+	Invoice       models.Invoice `json:"invoice"`
+}
+
+/*uploadSessionConfig represents the general configuration that other client could understand.*/
+type uploadSessionConfig struct {
+	BatchSize        int    `json:"batchSize"`        // Represent each data contain not more number of field.
+	FileSizeBytes    uint64 `json:"fileSizeBytes"`    // Represent the total file size.
+	NumChunks        int    `json:"numChunks"`        // Represent total number of chunks.
+	ReverseIteration bool   `json:"reverseIteration"` // Represent whether iterate it from the beginning to end or end to the beginning.
 }
 
 var NumChunksLimit = -1 //unlimited
@@ -66,8 +76,7 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 
 	uploadSession := &models.UploadSession{}
 	if err = models.DB.Find(uploadSession, c.Param("id")); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, err)
+		return c.Error(500, oyster_utils.LogIfError(err, nil))
 	}
 	if uploadSession == nil {
 		return c.Error(400, fmt.Errorf("Error in finding session for id %v", c.Param("id")))
@@ -77,16 +86,15 @@ func (usr *UploadSessionResourceV3) Update(c buffalo.Context) error {
 		return c.Error(400, errors.New("Using the wrong endpoint. This endpoint is for V3 only"))
 	}
 
-	fileIndex := req.Chunks[0].Idx / BatchSize
-	objectKey := fmt.Sprintf("%v/%v", uploadSession.GenesisHash, fileIndex)
+	isReverseIteration := uploadSession.Type == models.SessionTypeBeta
+	objectKey := oyster_utils.GetObjectKeyForData(uploadSession.GenesisHash, req.Chunks[0].Idx, uploadSession.NumChunks, isReverseIteration, BatchSize)
 
 	var data []byte
 	if data, err = json.Marshal(req.Chunks); err != nil {
-		return c.Error(500, fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err))
+		return c.Error(500, oyster_utils.LogIfError(fmt.Errorf("Unable to marshal ChunkReq to JSON with err %v", err), nil))
 	}
 	if err = setDefaultBucketObject(objectKey, string(data)); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(500, fmt.Errorf("Unable to store data to S3 with err: %v", err))
+		return c.Error(500, oyster_utils.LogIfError(fmt.Errorf("Unable to store data to S3 with err: %v", err), nil))
 	}
 
 	return c.Render(202, actions_utils.Render.JSON(map[string]bool{"success": true}))
@@ -114,6 +122,16 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 		StorageMethod:        models.StorageMethodS3,
 	}
 
+	if vErr, err := alphaSession.StartUploadSession(); err != nil || vErr.HasAny() {
+		return c.Error(400, fmt.Errorf("StartUploadSession error: %v and validation error: %v", err, vErr))
+	}
+
+	invoice := alphaSession.GetInvoice()
+
+	// Mutates this because copying in golang sucks...
+	req.Invoice = invoice
+	req.AlphaTreasureIndexes = oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
+
 	hasBeta := req.BetaIP != ""
 	var betaSessionID = ""
 	if hasBeta {
@@ -124,17 +142,27 @@ func (usr *UploadSessionResourceV3) Create(c buffalo.Context) error {
 
 		betaSessionID = betaSessionRes.ID
 		alphaSession.ETHAddrBeta = nulls.NewString(betaSessionRes.ETHAddr)
+
+		if err := saveTreasureMapForS3(&alphaSession, req.AlphaTreasureIndexes, betaSessionRes.TreasureIndexes); err != nil {
+			return c.Error(500, err)
+		}
+
+		if err := models.DB.Save(&alphaSession); err != nil {
+			return c.Error(400, oyster_utils.LogIfError(err, nil))
+		}
 	}
 
-	if err := models.DB.Save(&alphaSession); err != nil {
-		oyster_utils.LogIfError(err, nil)
-		return c.Error(400, err)
+	if err := saveConfigForS3(alphaSession); err != nil {
+		return c.Error(500, err)
 	}
+
+	models.NewBrokerBrokerTransaction(&alphaSession)
 
 	res := uploadSessionCreateResV3{
 		ID:            alphaSession.ID.String(),
 		BetaSessionID: betaSessionID,
 		BatchSize:     BatchSize,
+		Invoice:       invoice,
 	}
 
 	return c.Render(200, actions_utils.Render.JSON(res))
@@ -164,12 +192,29 @@ func (usr *UploadSessionResourceV3) CreateBeta(c buffalo.Context) error {
 		StorageMethod:        models.StorageMethodS3,
 	}
 
-	if err := models.DB.Save(&u); err != nil {
-		return c.Error(400, err)
+	if vErr, err := u.StartUploadSession(); err != nil || vErr.HasAny() {
+		return c.Error(400, fmt.Errorf("Can't startUploadSession with validation error: %v and err: %v", vErr, err))
 	}
 
+	betaTreasureIndexes := oyster_utils.GenerateInsertedIndexesForPearl(oyster_utils.ConvertToByte(req.FileSizeBytes))
+	if err := saveTreasureMapForS3(&u, req.AlphaTreasureIndexes, betaTreasureIndexes); err != nil {
+		return c.Error(500, err)
+	}
+
+	if err := models.DB.Save(&u); err != nil {
+		return c.Error(500, err)
+	}
+
+	if err := saveConfigForS3(u); err != nil {
+		return c.Error(500, err)
+	}
+
+	models.NewBrokerBrokerTransaction(&u)
+
 	res := uploadSessionCreateBetaResV3{
-		ID: u.ID.String(),
+		ID:              u.ID.String(),
+		TreasureIndexes: betaTreasureIndexes,
+		ETHAddr:         u.ETHAddrBeta.String,
 	}
 
 	return c.Render(200, actions_utils.Render.JSON(res))
@@ -218,4 +263,57 @@ func sendBetaWithUploadRequest(req uploadSessionCreateReqV3) (uploadSessionCreat
 	betaURL := req.BetaIP + ":3000/api/v3/upload-sessions/beta"
 	err := oyster_utils.SendHttpReq(betaURL, req, betaSessionRes)
 	return betaSessionRes, err
+}
+
+/*saveTreasureMapForS3 saves treasure keys as JSON format into S3.*/
+func saveTreasureMapForS3(u *models.UploadSession, treasureIndexA []int, treasureIndexB []int) error {
+	mergedIndexes, err := oyster_utils.MergeIndexes(treasureIndexA, treasureIndexB,
+		oyster_utils.FileSectorInChunkSize, u.NumChunks)
+	if err != nil {
+		return err
+	}
+
+	if len(mergedIndexes) == 0 {
+		if oyster_utils.BrokerMode != oyster_utils.TestModeNoTreasure {
+			return oyster_utils.LogIfError(errors.New("no indexes selected for treasure"), nil)
+		}
+		return nil
+	}
+
+	for {
+		privateKeys, err := EthWrapper.GenerateKeys(len(mergedIndexes))
+		if err != nil {
+			return oyster_utils.LogIfError(errors.New("Could not generate eth keys: "+err.Error()), nil)
+		}
+		if len(mergedIndexes) != len(privateKeys) {
+			return oyster_utils.LogIfError(errors.New("privateKeys and mergedIndexes should have the same length"), nil)
+		}
+		// Update treasureId
+		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
+
+		// Verify that MakeTreasureIdxMap is correct. Otherwise, regenerate it again.
+		treasureIndexes, _ := u.GetTreasureIndexes()
+		if u.TreasureStatus == models.TreasureInDataMapPending &&
+			u.TreasureIdxMap.Valid && u.TreasureIdxMap.String != "" &&
+			len(treasureIndexes) == len(mergedIndexes) {
+			break
+		}
+	}
+
+	return setDefaultBucketObject(oyster_utils.GetObjectKeyForTreasure(u.GenesisHash), u.TreasureIdxMap.String)
+}
+
+/*saveConfigForS3 saves uploadSession config to S3 endpoint so that Lamdba function could read it.*/
+func saveConfigForS3(u models.UploadSession) error {
+	config := uploadSessionConfig{
+		BatchSize:        BatchSize,
+		FileSizeBytes:    u.FileSizeBytes,
+		NumChunks:        u.NumChunks,
+		ReverseIteration: u.Type == models.SessionTypeBeta,
+	}
+	data, err := json.Marshal(config)
+	if err != nil {
+		return oyster_utils.LogIfError(err, nil)
+	}
+	return setDefaultBucketObject(oyster_utils.GetObjectKeyForConfig(u.GenesisHash), string(data))
 }
