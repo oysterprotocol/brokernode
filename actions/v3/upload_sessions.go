@@ -292,9 +292,9 @@ func saveTreasureMapForS3(u *models.UploadSession, treasureIndexA []int, treasur
 		u.MakeTreasureIdxMap(mergedIndexes, privateKeys)
 
 		// Verify that MakeTreasureIdxMap is correct. Otherwise, regenerate it again.
-		treasureIndexes, _ := alphaSession.GetTreasureIndexes()
-		if alphaSession.TreasureStatus == models.TreasureInDataMapPending &&
-			alphaSession.TreasureIdxMap.Valid && alphaSession.TreasureIdxMap.String != "" &&
+		treasureIndexes, _ := u.GetTreasureIndexes()
+		if u.TreasureStatus == models.TreasureInDataMapPending &&
+			u.TreasureIdxMap.Valid && u.TreasureIdxMap.String != "" &&
 			len(treasureIndexes) == len(mergedIndexes) {
 			break
 		}
