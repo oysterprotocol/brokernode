@@ -199,6 +199,14 @@ func (u UploadSession) String() string {
 		allDataReady = "AllDataNotReady"
 	}
 
+	treasureResponsibility := "TreasureNotResponsible"
+	switch u.TreasureResponsibilityStatus {
+	case TreasureResponsibleNotAttached:
+		treasureResponsibility = "TreasureResponsibleNotAttached"
+	case TreasureResponsibleAttached:
+		treasureResponsibility = "TreasureResponsibleAttached"
+	}
+
 	output := ""
 
 	output += fmt.Sprintln("________________________________________________________")
@@ -218,6 +226,7 @@ func (u UploadSession) String() string {
 	output += fmt.Sprintln(u.NextIdxToAttach)
 	output += fmt.Sprint("NextIdxToVerify:     ")
 	output += fmt.Sprintln(u.NextIdxToVerify)
+	output += fmt.Sprintln("Responsibility:      " + treasureResponsibility)
 	output += fmt.Sprintln("________________________________________________________")
 
 	return output

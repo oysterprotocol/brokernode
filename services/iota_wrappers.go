@@ -273,7 +273,7 @@ func doPoW(chunks []oyster_utils.ChunkData) error {
 }
 
 func getTransactionsToApprove() (*giota.TransactionsToApprove, error) {
-	return api.GetTransactionsToApprove(uint64(minDepth), "")
+	return api.GetTransactionsToApprove(uint64(minDepth))
 }
 
 func TrackProcessingTime(startTime time.Time, numChunks int, channel *PowChannel) {
@@ -372,7 +372,8 @@ func doPowAndBroadcast(branch trinary.Trytes, trunk trinary.Trytes, depth int64,
 		// We customized this to lock here.
 		mutex.Lock()
 		transactionToTrytes, err := transaction.TransactionToTrytes(&trytes[i])
-		if err != nil {
+
+		if err == nil {
 			trytes[i].Nonce, err = bestPow(transactionToTrytes, int(mwm))
 		}
 		mutex.Unlock()
