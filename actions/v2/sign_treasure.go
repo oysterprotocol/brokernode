@@ -62,10 +62,8 @@ func (usr *SignTreasureResource) GetUnsignedTreasure(c buffalo.Context) error {
 	if oyster_utils.BrokerMode == oyster_utils.TestModeNoTreasure ||
 		uploadSession.TreasureResponsibilityStatus == models.TreasureNotResponsible {
 
-		if err == nil {
-			uploadSession.AllDataReady = models.AllDataReady
-			models.DB.ValidateAndUpdate(uploadSession)
-		}
+		uploadSession.AllDataReady = models.AllDataReady
+		models.DB.ValidateAndUpdate(uploadSession)
 
 		res := unsignedTreasureRes{
 			Available:        false,

@@ -1162,6 +1162,9 @@ func (u *UploadSession) UpdateIndexWithAttachedChunks(chunks []oyster_utils.Chun
 	}
 
 	u.NextIdxToAttach = nextIdxToAttachNew
+	if u.Type == SessionTypeAlpha && u.NextIdxToAttach > int64(u.NumChunks) {
+		u.NextIdxToAttach--
+	}
 
 	vErr, err := DB.ValidateAndUpdate(u)
 	if err != nil {
@@ -1335,9 +1338,12 @@ func GetSessionsWithIncompleteData() ([]UploadSession, error) {
 func GetSessionsByOldestUpdate() ([]UploadSession, error) {
 	sessionsByAge := []UploadSession{}
 
-	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? AND all_data_ready = ? ORDER BY updated_at ASC",
-		PaymentStatusConfirmed, TreasureInDataMapComplete, AllDataReady).All(&sessionsByAge)
+	err := DB.RawQuery("SELECT * FROM upload_sessions "+
+		"WHERE payment_status = ? "+
+		"AND all_data_ready = ? "+
+		"AND (treasure_status = ? OR treasure_responsibility_status = ?) "+
+		"ORDER BY updated_at ASC",
+		PaymentStatusConfirmed, AllDataReady, TreasureInDataMapComplete, TreasureNotResponsible).All(&sessionsByAge)
 
 	if err != nil {
 		oyster_utils.LogIfError(err, nil)
@@ -1372,9 +1378,13 @@ func GetVerifiableSessions(thresholdTime time.Time) ([]UploadSession, error) {
 	sessions := []UploadSession{}
 	verifiableSessions := []UploadSession{}
 
-	err := DB.RawQuery("SELECT * FROM upload_sessions WHERE payment_status = ? AND "+
-		"treasure_status = ? AND all_data_ready = ? AND updated_at <= ? ORDER BY updated_at ASC",
-		PaymentStatusConfirmed, TreasureInDataMapComplete, AllDataReady,
+	err := DB.RawQuery("SELECT * FROM upload_sessions "+
+		"WHERE payment_status = ? "+
+		"AND all_data_ready = ? "+
+		"AND (treasure_status = ? OR treasure_responsibility_status = ?) "+
+		"AND updated_at <= ? "+
+		"ORDER BY updated_at ASC",
+		PaymentStatusConfirmed, AllDataReady, TreasureInDataMapComplete, TreasureNotResponsible,
 		thresholdTime).All(&sessions)
 
 	if err != nil {

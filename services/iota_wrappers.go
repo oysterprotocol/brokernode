@@ -600,7 +600,6 @@ func chunksMatch(chunkOnTangle transaction.Transaction, chunkOnRecord oyster_uti
 	message := chunkOnRecord.Message
 	if checkBranchAndTrunk == false &&
 		strings.Contains(fmt.Sprint(chunkOnTangle.SignatureMessageFragment), message) {
-
 		return true
 	} else {
 		oyster_utils.LogIfError(errors.New("chunk on tangle does not match record"), nil)
