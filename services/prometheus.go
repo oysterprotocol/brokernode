@@ -52,7 +52,7 @@ type PrometheusService struct {
 	HistogramProcessUnassignedChunks               *prometheus.HistogramVec
 	HistogramPurgeCompletedSessions                *prometheus.HistogramVec
 	HistogramStoreCompletedGenesisHashes           *prometheus.HistogramVec
-	HistogramRemoveUnpaidUploadSession             *prometheus.HistogramVec
+	HistogramRemoveDeadUploadSession               *prometheus.HistogramVec
 	HistogramUpdateTimeOutDataMaps                 *prometheus.HistogramVec
 	HistogramVerifyDataMaps                        *prometheus.HistogramVec
 }
@@ -83,7 +83,7 @@ func init() {
 	histogramProcessUnassignedChunks := prepareHistogram("process_unassigned_chunks_seconds", "HistogramProcessUnassignedChunks", "code")
 	histogramPurgeCompletedSessions := prepareHistogram("purge_completed_sessions_seconds", "HistogramPurgeCompletedSessions", "code")
 	histogramStoreCompletedGenesisHashes := prepareHistogram("store_completed_genesis_hashes_seconds", "HistogramStoreCompletedGenesisHashes", "code")
-	histogramRemoveUnpaidUploadSession := prepareHistogram("remove_unpaid_upload_session_seconds", "HistogramRemoveUnpaidUploadSession", "code")
+	histogramRemoveDeadUploadSession := prepareHistogram("remove_unpaid_upload_session_seconds", "HistogramRemoveDeadUploadSession", "code")
 	histogramUpdateTimeOutDataMaps := prepareHistogram("update_time_out_datamaps_seconds", "HistogramUpdateTimeOutDataMaps", "code")
 	histogramVerifyDataMaps := prepareHistogram("verify_datamaps_seconds", "HistogramVerifyDataMaps", "code")
 
@@ -117,7 +117,7 @@ func init() {
 		HistogramProcessUnassignedChunks:               histogramProcessUnassignedChunks,
 		HistogramPurgeCompletedSessions:                histogramPurgeCompletedSessions,
 		HistogramStoreCompletedGenesisHashes:           histogramStoreCompletedGenesisHashes,
-		HistogramRemoveUnpaidUploadSession:             histogramRemoveUnpaidUploadSession,
+		HistogramRemoveDeadUploadSession:               histogramRemoveDeadUploadSession,
 		HistogramUpdateTimeOutDataMaps:                 histogramUpdateTimeOutDataMaps,
 		HistogramVerifyDataMaps:                        histogramVerifyDataMaps,
 	}

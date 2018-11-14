@@ -12,19 +12,24 @@ import (
 /*UnpaidExpirationInHour means number of hours before it should remove unpaid upload session. */
 const UnpaidExpirationInHour = 24
 
-/*RemoveUnpaidUploadSession cleans up upload_sessions and data_maps table for expired/unpaid session. */
-func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
+/*RemoveDeadUploadSession cleans up upload_sessions and data_maps table for expired/unpaid session. */
+func RemoveDeadUploadSession(PrometheusWrapper services.PrometheusService) {
 
 	start := PrometheusWrapper.TimeNow()
-	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramRemoveUnpaidUploadSession, start)
+	defer PrometheusWrapper.HistogramSeconds(PrometheusWrapper.HistogramRemoveDeadUploadSession, start)
 
+	removeUnpaidSessions()
+	removeOldSessions()
+}
+
+func removeUnpaidSessions() {
 	sessions := []models.UploadSession{}
 	err := models.DB.RawQuery(
 		"SELECT * FROM upload_sessions WHERE payment_status != ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
 		models.PaymentStatusConfirmed, UnpaidExpirationInHour).All(&sessions)
 	if err != nil {
 		oyster_utils.LogIfError(errors.New(err.Error()+" while finding old unpaid sessions in "+
-			"remove_unpaid_upload_session"), nil)
+			"removeUnpaidSessions()"), nil)
 		return
 	}
 
@@ -34,6 +39,24 @@ func RemoveUnpaidUploadSession(PrometheusWrapper services.PrometheusService) {
 			continue
 		}
 
+		removeSession(session)
+	}
+}
+
+// remove very old sessions where we never received all the data.  For example if someone started and upload
+// but left the page before all chunks were sent to the brokers.
+func removeOldSessions() {
+	sessions := []models.UploadSession{}
+	err := models.DB.RawQuery(
+		"SELECT * FROM upload_sessions WHERE all_data_ready != ? AND TIMESTAMPDIFF(hour, updated_at, NOW()) >= ?",
+		models.AllDataReady, UnpaidExpirationInHour).All(&sessions)
+	if err != nil {
+		oyster_utils.LogIfError(errors.New(err.Error()+" while finding old unpaid sessions in "+
+			"removeOldSessions()"), nil)
+		return
+	}
+
+	for _, session := range sessions {
 		removeSession(session)
 	}
 }
@@ -65,13 +88,13 @@ func removeDataMapsFromBadger(session models.UploadSession) error {
 	errMessage := oyster_utils.CloseUniqueKvStore(dbNameMessage)
 	if errMessage != nil {
 		oyster_utils.LogIfError(errors.New(errMessage.Error()+" deleting message data from "+
-			dbNameMessage+" in RemoveUnpaidUploadSession"), nil)
+			dbNameMessage+" in RemoveDeadUploadSession"), nil)
 		return errMessage
 	}
 	errHash := oyster_utils.CloseUniqueKvStore(dbNameHash)
 	if errHash != nil {
 		oyster_utils.LogIfError(errors.New(errHash.Error()+" deleting hash data from "+
-			dbNameHash+" in RemoveUnpaidUploadSession"), nil)
+			dbNameHash+" in RemoveDeadUploadSession"), nil)
 		return errHash
 	}
 	return nil

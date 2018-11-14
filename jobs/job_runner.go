@@ -175,7 +175,7 @@ func claimUnusedPRLsHandler(args worker.Args) error {
 }
 
 func removeUnpaidUploadSessionHandler(args worker.Args) error {
-	RemoveUnpaidUploadSession(PrometheusWrapper)
+	RemoveDeadUploadSession(PrometheusWrapper)
 
 	oysterWorkerPerformIn(removeUnpaidUploadSessionHandler, args)
 	return nil

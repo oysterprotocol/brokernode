@@ -31,10 +31,10 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_badger() {
 	UploadSessionsAndDataMap_Expired := "aaaaaaa1"
 	UploadSessionsAndDataMap_NoExpired := "bbbbbbb1"
 
-	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
-	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, models.AllDataReady, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, models.AllDataReady, false)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
 }
@@ -50,9 +50,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid_badger() {
 
 	AllPaid := "ccccccc1"
 
-	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
+	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, models.AllDataReady, true)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, AllPaid, true)
 }
@@ -69,9 +69,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_badger() {
 		},
 	}
 	HasBalance := "ddddddd1"
-	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
+	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, models.AllDataReady, true)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, HasBalance, true)
 }
@@ -93,7 +93,7 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_badger() {
 	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, OnlyRemoveUploadSession_NoExpired, false)
 }
@@ -115,10 +115,10 @@ func (suite *JobsSuite) Test_RemoveUnpaid_uploadSessionsAndDataMap_sql() {
 	UploadSessionsAndDataMap_Expired := "aaaaaaa2"
 	UploadSessionsAndDataMap_NoExpired := "bbbbbbb2"
 
-	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, true)
-	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, false)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired, models.PaymentStatusInvoiced, models.AllDataReady, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired, models.PaymentStatusInvoiced, models.AllDataReady, false)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, UploadSessionsAndDataMap_NoExpired, true)
 }
@@ -131,9 +131,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_allPaid_sql() {
 
 	AllPaid := "ccccccc2"
 
-	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, true)
+	addStartUploadSession(suite, AllPaid, models.PaymentStatusConfirmed, models.AllDataReady, true)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, AllPaid, true)
 }
@@ -150,9 +150,9 @@ func (suite *JobsSuite) Test_RemoveUnpaid_hasBalance_sql() {
 		},
 	}
 	HasBalance := "ddddddd2"
-	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, true)
+	addStartUploadSession(suite, HasBalance, models.PaymentStatusInvoiced, models.AllDataReady, true)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, HasBalance, true)
 }
@@ -174,18 +174,60 @@ func (suite *JobsSuite) Test_RemoveUnpaid_OnlyRemoveUploadSession_sql() {
 	addOnlySession(suite, OnlyRemoveUploadSession_Expired, models.PaymentStatusInvoiced, true)
 	addOnlySession(suite, OnlyRemoveUploadSession_NoExpired, models.PaymentStatusInvoiced, false)
 
-	jobs.RemoveUnpaidUploadSession(jobs.PrometheusWrapper)
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
 
 	verifyData(suite, OnlyRemoveUploadSession_NoExpired, false)
 }
 
-func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus int, isExpired bool) {
+func (suite *JobsSuite) Test_RemoveOld_uploadSessionsAndDataMap_badger() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInBadger)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	UploadSessionsAndDataMap_Expired_data_not_ready := "ccccccc1"
+	UploadSessionsAndDataMap_NoExpired_data_not_ready := "ddddddd1"
+
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired_data_not_ready, models.PaymentStatusConfirmed, models.AllDataNotReady, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired_data_not_ready, models.PaymentStatusConfirmed, models.AllDataNotReady, false)
+
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, UploadSessionsAndDataMap_NoExpired_data_not_ready, true)
+}
+
+func (suite *JobsSuite) Test_RemoveOld_uploadSessionsAndDataMap_sql() {
+	oyster_utils.SetStorageMode(oyster_utils.DataMapsInSQL)
+	defer oyster_utils.ResetDataMapStorageMode()
+
+	removeAllUploadSessions(suite)
+
+	oyster_utils.SetBrokerMode(oyster_utils.ProdMode)
+	defer oyster_utils.ResetBrokerMode()
+
+	UploadSessionsAndDataMap_Expired_data_not_ready := "ccccccc1"
+	UploadSessionsAndDataMap_NoExpired_data_not_ready := "ddddddd1"
+
+	addStartUploadSession(suite, UploadSessionsAndDataMap_Expired_data_not_ready, models.PaymentStatusConfirmed, models.AllDataNotReady, true)
+	addStartUploadSession(suite, UploadSessionsAndDataMap_NoExpired_data_not_ready, models.PaymentStatusConfirmed, models.AllDataNotReady, false)
+
+	jobs.RemoveDeadUploadSession(jobs.PrometheusWrapper)
+
+	verifyData(suite, UploadSessionsAndDataMap_NoExpired_data_not_ready, true)
+}
+
+func addStartUploadSession(suite *JobsSuite, genesisHash string, paymentStatus int, allDataReadyStatus int,
+	isExpired bool) {
 	session := models.UploadSession{
 		GenesisHash:    genesisHash,
 		FileSizeBytes:  8000,
 		NumChunks:      5,
 		Type:           models.SessionTypeAlpha,
 		PaymentStatus:  paymentStatus,
+		AllDataReady:   allDataReadyStatus,
 		TreasureStatus: models.TreasureInDataMapPending,
 	}
 
