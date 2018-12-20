@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+
 var app *buffalo.App
 
 // App is where all routes and middleware for buffalo
