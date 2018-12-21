@@ -11,6 +11,7 @@ type ActionSuite struct {
 	*suite.Action
 }
 
+
 func (suite *ActionSuite) SetupTest() {
 	suite.Action.SetupTest()
 
